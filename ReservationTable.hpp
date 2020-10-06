@@ -19,6 +19,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			bool isIdle(uint32_t slot_offset);
 			
+			/**
+			 * @param start Slot offset that marks the beginning of the range of slots.
+			 * @param end Slot offset that marks the (eclusive) end of the range of slots.
+			 * @return Slot status of the specified slot range.
+			 */
+			std::vector<bool> isIdle(uint32_t start, uint32_t end);
+			
+			/**
+			 * @return Number of slots this table keeps values for.
+			 */
 			uint32_t getPlanningHorizon() const;
 			
 			/**
@@ -27,6 +37,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param utilized
 			 */
 			void mark(uint32_t slot_offset, bool utilized);
+			
+			/**
+			 * @param start Slot offset that marks the earliest opportunity.
+			 * @param length Number of slots of the slot range.
+			 * @return Slot offset that marks the beginning of a completely idle slot range.
+			 */
+			uint32_t findEarliestIdleRange(uint32_t start, uint32_t length);
 			
 		protected:
 			/** Holds the utilization status of every slot from the current one up to some planning horizon. */
