@@ -9,6 +9,12 @@
 #include <cstdint>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
+	
+	/**
+	 * A reservation table keeps track of all slots of a particular, logical frequency channel for a pre-defined planning horizon.
+	 * It is regularly updated when new information about slot utilization becomes available.
+	 * It can be queried to find ranges of idle slots suitable for communication.
+	 */
 	class ReservationTable {
 		public:
 			explicit ReservationTable(uint32_t planning_horizon);
@@ -42,6 +48,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param start Slot offset that marks the earliest opportunity.
 			 * @param length Number of slots of the slot range.
 			 * @return Slot offset that marks the beginning of a completely idle slot range.
+			 * @throws runtime_error If no suitable slot range can be found.
 			 */
 			uint32_t findEarliestIdleRange(uint32_t start, uint32_t length);
 			
@@ -49,7 +56,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Holds the utilization status of every slot from the current one up to some planning horizon. */
 			std::vector<bool> slot_utilization_vec;
 			/** Specifies the number of slots this reservation table holds values for. */
-			uint32_t planning_horizon;
+			const uint32_t planning_horizon;
 	};
 }
 

@@ -16,7 +16,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class L2Packet {
 		public:
-			L2Packet(Packet* packet) : packet(packet) {}
+			explicit L2Packet(Packet* packet) : packet(packet) {}
 			
 			/**
 			 * @return Encapulated, original packet.
