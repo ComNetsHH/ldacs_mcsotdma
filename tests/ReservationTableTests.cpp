@@ -200,7 +200,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testFindIdleRange() {
-			int32_t start = planning_horizon - 2;
+			int32_t start = int32_t(planning_horizon) - 2;
 			// start + length exceeds planning horizon ...
 			uint32_t length = 3;
 			bool exception_thrown = false;
@@ -230,35 +230,34 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(start, start_of_idle_range);
 			
 			// But starting in the p
-			
-//			uint32_t idle_slot_range_start = table->findEarliestIdleRange(0, 5);
-//			CPPUNIT_ASSERT_EQUAL(uint32_t(0), idle_slot_range_start);
-//			table->mark(0, true);
-//			// x00000
-//			// 012345
-//			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
-//			CPPUNIT_ASSERT_EQUAL(uint32_t(1), idle_slot_range_start);
-//			table->mark(5, true);
-//			// x0000x0000
-//			// 0123456789
-//			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
-//			CPPUNIT_ASSERT_EQUAL(uint32_t(6), idle_slot_range_start);
-//			table->mark(11, true);
-//			// x0000x00000x0
-//			// 0123456789012
-//			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
-//			CPPUNIT_ASSERT_EQUAL(uint32_t(6), idle_slot_range_start);
-//			idle_slot_range_start = table->findEarliestIdleRange(7, 5);
-//			CPPUNIT_ASSERT_EQUAL(uint32_t(12), idle_slot_range_start);
+			int32_t idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+			CPPUNIT_ASSERT_EQUAL(int32_t(0), idle_slot_range_start);
+			table->mark(0, true);
+			// x00000
+			// 012345
+			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+			CPPUNIT_ASSERT_EQUAL(int32_t(1), idle_slot_range_start);
+			table->mark(5, true);
+			// x0000x0000
+			// 0123456789
+			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+			CPPUNIT_ASSERT_EQUAL(int32_t(6), idle_slot_range_start);
+			table->mark(11, true);
+			// x0000x00000x0
+			// 0123456789012
+			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+			CPPUNIT_ASSERT_EQUAL(int32_t(6), idle_slot_range_start);
+			idle_slot_range_start = table->findEarliestIdleRange(7, 5);
+			CPPUNIT_ASSERT_EQUAL(int32_t(12), idle_slot_range_start);
 		}
 	
 	CPPUNIT_TEST_SUITE(ReservationTableTests);
-			CPPUNIT_TEST(testConstructor);
-			CPPUNIT_TEST(testPlanningHorizon);
-			CPPUNIT_TEST(testValidSlot);
-			CPPUNIT_TEST(testValidSlotRange);
-			CPPUNIT_TEST(testMarking);
-			CPPUNIT_TEST(testIdleRange);
-//			CPPUNIT_TEST(testFindIdleRange);
+		CPPUNIT_TEST(testConstructor);
+		CPPUNIT_TEST(testPlanningHorizon);
+		CPPUNIT_TEST(testValidSlot);
+		CPPUNIT_TEST(testValidSlotRange);
+		CPPUNIT_TEST(testMarking);
+		CPPUNIT_TEST(testIdleRange);
+		CPPUNIT_TEST(testFindIdleRange);
 	CPPUNIT_TEST_SUITE_END();
 };

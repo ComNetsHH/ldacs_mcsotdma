@@ -53,8 +53,6 @@ bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t start, uint32_t l
 	    }
 	}
 	return true;
-	
-//	return std::all_of(this->slot_utilization_vec.begin() + index_start, this->slot_utilization_vec.begin() + (index_start + length), [](bool is_utilized) {return is_utilized;});
 }
 
 bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isUtilized(int32_t start, uint32_t length) {
@@ -66,7 +64,7 @@ int32_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::findEarliestIdleRange(int32_t
 	if (!isValid(start, length))
 		throw std::invalid_argument("Invalid slot range!");
 	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
-		if (this->isIdle(start, length))
+		if (this->isIdle(i, length))
 			return i;
 	}
 	throw std::runtime_error("No idle slot range of specified length found.");
