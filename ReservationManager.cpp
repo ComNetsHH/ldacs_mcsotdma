@@ -24,3 +24,8 @@ const FrequencyChannel& ReservationManager::getFreqChannel(uint64_t center_frequ
 const ReservationTable& ReservationManager::getReservationTable(uint64_t center_frequency) const {
 	return reservation_tables.at(center_frequency);
 }
+
+void ReservationManager::removeFrequencyChannel(uint64_t center_frequency) {
+	reservation_tables.erase(center_frequency);
+	frequency_channels.erase(center_frequency);
+}

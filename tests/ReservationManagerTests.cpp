@@ -51,11 +51,24 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(false, exception_thrown);
 		}
 		
-		void testBlacklistFreqChannel() {
-		
+		void testRemoveFreqChannel() {
+			bool p2p_channel = false;
+			uint64_t center_freq = 1000;
+			uint64_t bandwidth = 500;
+			
+			manager->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
+			manager->removeFrequencyChannel(center_freq);
+			bool exception_thrown = false;
+			try {
+				const FrequencyChannel& channel = manager->getFreqChannel(center_freq);
+			} catch(const std::exception& e) {
+				exception_thrown = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+			
 		}
 		
-		void testRemoveFreqChannel() {
+		void testBlacklistFreqChannel() {
 		
 		}
 		

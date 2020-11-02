@@ -20,6 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			explicit ReservationManager(uint32_t planning_horizon);
 			
 			void addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
+			void removeFrequencyChannel(uint64_t center_frequency);
 			
 			const FrequencyChannel& getFreqChannel(uint64_t center_frequency) const;
 			const ReservationTable& getReservationTable(uint64_t center_frequency) const;
