@@ -77,7 +77,7 @@ bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isValid(int32_t slot_offset) con
 bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isValid(int32_t start, uint32_t length) const {
 	if (length == 1)
 		return this->isValid(start);
-	return isValid(start) && int32_t(start + length) <= int32_t(planning_horizon);
+	return isValid(start) && isValid(start + length - 1);
 }
 
 uint64_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getCurrentSlot() const {
@@ -85,7 +85,12 @@ uint64_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getCurrentSlot() const {
 }
 
 void TUHH_INTAIRNET_MCSOTDMA::ReservationTable::update(uint64_t num_slots) {
+	// Shift all elements to the front, old ones are overwritten.
 	std::move(this->slot_utilization_vec.begin() + num_slots, this->slot_utilization_vec.end(), this->slot_utilization_vec.begin());
+	// All new elements are initialized as idle.
+	auto it = slot_utilization_vec.end() - 1;
+	for (size_t i = 0; i < num_slots; i++)
+		(*it--) = false;
 }
 
 const std::vector<bool>& TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getVec() const {

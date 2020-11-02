@@ -123,7 +123,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			// Starting outside the allowed negative range should be invalid.
 			exception_thrown = false;
 			try {
-				table->isUtilized(planning_horizon - 1, range_length);
+				table->isUtilized(-int32_t(planning_horizon) - 1, range_length);
 			} catch (const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -132,7 +132,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			// Going outside the allowed positive range should be invalid.
 			exception_thrown = false;
 			try {
-				table->isUtilized(planning_horizon - 1, range_length);
+				table->isUtilized(planning_horizon, range_length);
 			} catch (const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -202,7 +202,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		void testFindIdleRange() {
 			int32_t start = int32_t(planning_horizon) - 2;
 			// start + length exceeds planning horizon ...
-			uint32_t length = 3;
+			uint32_t length = 4;
 			bool exception_thrown = false;
 			try {
 				table->findEarliestIdleRange(start, length);
@@ -213,7 +213,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
 			
 			// Now we can stay 'just' within the valid range.
-			length = 2;
+			length = 3;
 			exception_thrown = false;
 			try {
 				int32_t start_of_idle_range = table->findEarliestIdleRange(start, length);
@@ -250,6 +250,36 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			idle_slot_range_start = table->findEarliestIdleRange(7, 5);
 			CPPUNIT_ASSERT_EQUAL(int32_t(12), idle_slot_range_start);
 		}
+		
+		void testUpdate() {
+			CPPUNIT_ASSERT_EQUAL(true, table->isIdle(0, planning_horizon));
+			table->mark(planning_horizon, true);
+			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(0, planning_horizon + 1));
+			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(planning_horizon));
+			table->update(1);
+			for (int32_t offset = 0; offset <= int32_t(planning_horizon); offset++) {
+				if (offset == int32_t(planning_horizon) - 1)
+					CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(offset));
+				else
+					CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(offset));
+			}
+			
+			table->update(2);
+			for (int32_t offset = 0; offset <= int32_t(planning_horizon); offset++) {
+				if (offset == int32_t(planning_horizon) - (1+2))
+					CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(offset));
+				else
+					CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(offset));
+			}
+			
+			table->update(7);
+			for (int32_t offset = 0; offset <= int32_t(planning_horizon); offset++) {
+				if (offset == int32_t(planning_horizon) - (1+2+7))
+					CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(offset));
+				else
+					CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(offset));
+			}
+		}
 	
 	CPPUNIT_TEST_SUITE(ReservationTableTests);
 		CPPUNIT_TEST(testConstructor);
@@ -259,5 +289,6 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		CPPUNIT_TEST(testMarking);
 		CPPUNIT_TEST(testIdleRange);
 		CPPUNIT_TEST(testFindIdleRange);
+		CPPUNIT_TEST(testUpdate);
 	CPPUNIT_TEST_SUITE_END();
 };
