@@ -19,14 +19,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			explicit ReservationManager(uint32_t planning_horizon);
 			
+			/**
+			 * Adds a frequency channel and corresponding reservation table.
+			 * @param is_p2p
+			 * @param center_frequency
+			 * @param bandwidth
+			 */
 			void addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
 			void removeFrequencyChannel(uint64_t center_frequency);
 			
-			const FrequencyChannel& getFreqChannel(uint64_t center_frequency) const;
-			const ReservationTable& getReservationTable(uint64_t center_frequency) const;
-			
-			bool isBlacklisted(uint64_t center_frequency) const;
-			void setBlacklisted(uint64_t center_frequency, bool value);
+			FrequencyChannel& getFreqChannel(uint64_t center_frequency);
+			ReservationTable& getReservationTable(uint64_t center_frequency);
 		protected:
 			/** Number of slots to remember both in the past and in the future. */
 			uint32_t planning_horizon;

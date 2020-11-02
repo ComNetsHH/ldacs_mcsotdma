@@ -48,10 +48,17 @@ class FrequencyChannelTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(false, *channel == *other);
 			delete other;
 		}
+		
+		void testBlacklisting() {
+			CPPUNIT_ASSERT_EQUAL(false, channel->isBlacklisted());
+			channel->setBlacklisted(true);
+			CPPUNIT_ASSERT_EQUAL(true, channel->isBlacklisted());
+		}
 	
 	CPPUNIT_TEST_SUITE(FrequencyChannelTests);
 		CPPUNIT_TEST(testGetCenterFreq);
 		CPPUNIT_TEST(testCheckP2P);
 		CPPUNIT_TEST(testEquality);
+		CPPUNIT_TEST(testBlacklisting);
 	CPPUNIT_TEST_SUITE_END();
 };

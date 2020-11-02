@@ -31,17 +31,17 @@ void TUHH_INTAIRNET_MCSOTDMA::ReservationTable::mark(int32_t slot_offset, bool u
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = utilized;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isUtilized(int32_t slot_offset) {
+bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isUtilized(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("Reservation table planning horizon smaller than queried offset!");
 	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t slot_offset) {
+bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t slot_offset) const {
 	return !this->isUtilized(slot_offset);
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t start, uint32_t length) {
+bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t start, uint32_t length) const {
 	if (length == 1)
 		return this->isUtilized(start);
 	if (!this->isValid(start, length))
@@ -55,12 +55,12 @@ bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t start, uint32_t l
 	return true;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isUtilized(int32_t start, uint32_t length) {
+bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isUtilized(int32_t start, uint32_t length) const {
 	// A slot range is utilized if any slot within is utilized.
 	return !this->isIdle(start, length);
 }
 
-int32_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length) {
+int32_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length) const {
 	if (!isValid(start, length))
 		throw std::invalid_argument("Invalid slot range!");
 	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {

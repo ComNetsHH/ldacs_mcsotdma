@@ -28,27 +28,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param slot_offset Offset to the current slot. Positive values for future slots, zero for the current slot and negative values for past slots.
 			 * @return Whether the specified slot is marked as idle.
 			 */
-			bool isIdle(int32_t slot_offset);
+			bool isIdle(int32_t slot_offset) const;
 			
 			/**
 			 * @param slot_offset Offset to the current slot. Positive values for future slots, zero for the current slot and negative values for past slots.
 			 * @return Whether the specified slot is marked as utilized.
 			 */
-			bool isUtilized(int32_t slot_offset);
+			bool isUtilized(int32_t slot_offset) const;
 			
 			/**
 			 * @param start Slot offset that marks the beginning of the range of slots.
 			 * @param length Number of slots in the range.
 			 * @return Whether the specified slot range is fully idle.
 			 */
-			bool isIdle(int32_t start, uint32_t length);
+			bool isIdle(int32_t start, uint32_t length) const;
 			
 			/**
 			 * @param start Slot offset that marks the beginning of the range of slots.
 			 * @param length Number of slots in the range.
 			 * @return Whether the specified slot range is utilized.
 			 */
-			bool isUtilized(int32_t start, uint32_t length);
+			bool isUtilized(int32_t start, uint32_t length) const;
 			
 			/**
 			 * @return Number of slots this table keeps values for in either direction of time.
@@ -68,7 +68,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Slot offset that marks the beginning of a completely idle slot range.
 			 * @throws runtime_error If no suitable slot range can be found.
 			 */
-			int32_t findEarliestIdleRange(int32_t start, uint32_t length);
+			int32_t findEarliestIdleRange(int32_t start, uint32_t length) const;
 			
 			/**
 			 * @return The discrete 64-bit number that denotes what this reservation table assumes as the current moment in time, which is the last time it was updated.
