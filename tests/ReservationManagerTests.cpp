@@ -55,8 +55,8 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			bool p2p_channel = false;
 			uint64_t center_freq = 1000;
 			uint64_t bandwidth = 500;
-			
 			manager->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
+			
 			manager->removeFrequencyChannel(center_freq);
 			bool exception_thrown = false;
 			try {
@@ -69,7 +69,21 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 		}
 		
 		void testBlacklistFreqChannel() {
-		
+			bool p2p_channel = false;
+			uint64_t center_freq = 1000;
+			uint64_t bandwidth = 500;
+			
+			bool exception_thrown = false;
+			try {
+				manager->setBlacklisted(center_freq, true);
+			} catch(const std::exception& e) {
+				exception_thrown = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+			
+			manager->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
+			manager->setBlacklisted(center_freq, true);
+			CPPUNIT_ASSERT_EQUAL(true, manager->isBlacklisted(center_freq));
 		}
 		
 		void testMarkSlot() {

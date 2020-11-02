@@ -24,6 +24,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			const FrequencyChannel& getFreqChannel(uint64_t center_frequency) const;
 			const ReservationTable& getReservationTable(uint64_t center_frequency) const;
+			
+			bool isBlacklisted(uint64_t center_frequency) const;
+			void setBlacklisted(uint64_t center_frequency, bool value);
 		protected:
 			/** Number of slots to remember both in the past and in the future. */
 			uint32_t planning_horizon;

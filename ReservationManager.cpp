@@ -29,3 +29,11 @@ void ReservationManager::removeFrequencyChannel(uint64_t center_frequency) {
 	reservation_tables.erase(center_frequency);
 	frequency_channels.erase(center_frequency);
 }
+
+void ReservationManager::setBlacklisted(uint64_t center_frequency, bool value) {
+	frequency_channels.at(center_frequency).setBlacklisted(value);
+}
+
+bool ReservationManager::isBlacklisted(uint64_t center_frequency) const {
+	return frequency_channels.at(center_frequency).isBlacklisted();
+}

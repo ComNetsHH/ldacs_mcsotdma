@@ -22,6 +22,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			bool isBroadcastChannel() const;
 			
+			bool isBlacklisted() const;
+			
+			void setBlacklisted(bool value);
+			
 			bool operator==(const FrequencyChannel& other) const;
 			bool operator<(const FrequencyChannel& other) const;
 			bool operator<=(const FrequencyChannel& other) const;
@@ -35,6 +39,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const uint64_t center_frequency;
 			/** Bandwidth in Hertz. */
 			const uint64_t bandwidth;
+			/** FrequencyChannel object are local to each user, so they can blacklist a channel through this flag. */
+			bool is_blacklisted;
 	};
 	
 }
