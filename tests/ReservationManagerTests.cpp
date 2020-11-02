@@ -65,11 +65,32 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 				exception_thrown = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+		}
+		
+		void testUpdate() {
+			bool p2p_channel = false;
+			uint64_t center_freq1 = 1000, center_freq2 = center_freq1 + 1;
+			uint64_t bandwidth = 500;
+			manager->addFrequencyChannel(p2p_channel, center_freq1, bandwidth);
+			manager->addFrequencyChannel(p2p_channel, center_freq2, bandwidth);
+			Timestamp now = Timestamp();
+			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq1).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq2).getCurrentSlot() == now);
 			
+			uint64_t num_slots = 5;
+			manager->update(num_slots);
+			CPPUNIT_ASSERT_EQUAL(false, manager->getReservationTable(center_freq1).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(false, manager->getReservationTable(center_freq2).getCurrentSlot() == now);
+			
+			now += num_slots;
+			
+			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq1).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq2).getCurrentSlot() == now);
 		}
 	
 	CPPUNIT_TEST_SUITE(ReservationManagerTests);
 		CPPUNIT_TEST(testAddFreqChannel);
 		CPPUNIT_TEST(testRemoveFreqChannel);
+		CPPUNIT_TEST(testUpdate);
 	CPPUNIT_TEST_SUITE_END();
 };

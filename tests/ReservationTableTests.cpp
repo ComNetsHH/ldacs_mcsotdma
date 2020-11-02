@@ -280,6 +280,19 @@ class ReservationTableTests : public CppUnit::TestFixture {
 					CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(offset));
 			}
 		}
+		
+		void testLastUpdated() {
+			Timestamp now = Timestamp();
+			CPPUNIT_ASSERT_EQUAL(true, table->getCurrentSlot() == now);
+			now += 1;
+			CPPUNIT_ASSERT_EQUAL(false, table->getCurrentSlot() == now);
+			table->update(1);
+			CPPUNIT_ASSERT_EQUAL(true, table->getCurrentSlot() == now);
+			table->update(13);
+			CPPUNIT_ASSERT_EQUAL(false, table->getCurrentSlot() == now);
+			now += 13;
+			CPPUNIT_ASSERT_EQUAL(true, table->getCurrentSlot() == now);
+		}
 	
 	CPPUNIT_TEST_SUITE(ReservationTableTests);
 		CPPUNIT_TEST(testConstructor);
@@ -290,5 +303,6 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		CPPUNIT_TEST(testIdleRange);
 		CPPUNIT_TEST(testFindIdleRange);
 		CPPUNIT_TEST(testUpdate);
+		CPPUNIT_TEST(testLastUpdated);
 	CPPUNIT_TEST_SUITE_END();
 };

@@ -9,7 +9,8 @@
 #include <iostream>
 #include "ReservationTable.hpp"
 
-TUHH_INTAIRNET_MCSOTDMA::ReservationTable::ReservationTable(uint32_t planning_horizon) : planning_horizon(planning_horizon), slot_utilization_vec(std::vector<bool>(uint64_t(planning_horizon * 2 + 1))) {
+TUHH_INTAIRNET_MCSOTDMA::ReservationTable::ReservationTable(uint32_t planning_horizon)
+	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<bool>(uint64_t(planning_horizon * 2 + 1))), last_updated() {
 	// The planning horizon denotes how many slots we want to be able to look into future and past.
 	// Since the current moment in time must also be represented, we need planning_horizon*2+1 values.
 	// If we use UINT32_MAX, then we wouldn't be able to store 2*UINT32_MAX+1 in UINT64, so throw an exception if this is attempted.
@@ -80,7 +81,7 @@ bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isValid(int32_t start, uint32_t 
 	return isValid(start) && isValid(start + length - 1);
 }
 
-uint64_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getCurrentSlot() const {
+const TUHH_INTAIRNET_MCSOTDMA::Timestamp& TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getCurrentSlot() const {
 	return this->last_updated;
 }
 
@@ -91,6 +92,7 @@ void TUHH_INTAIRNET_MCSOTDMA::ReservationTable::update(uint64_t num_slots) {
 	auto it = slot_utilization_vec.end() - 1;
 	for (size_t i = 0; i < num_slots; i++)
 		(*it--) = false;
+	last_updated += num_slots;
 }
 
 const std::vector<bool>& TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getVec() const {
@@ -101,4 +103,8 @@ uint64_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::convertOffsetToIndex(int32_t
 	// The vector has planning_horizon-many past slots, one current slot, and planning_horizon-many future slots.
 	// So planning_horizon+0 indicates the current slot, which is the basis for this relative access.
 	return planning_horizon + slot_offset;
+}
+
+void TUHH_INTAIRNET_MCSOTDMA::ReservationTable::setLastUpdated(const TUHH_INTAIRNET_MCSOTDMA::Timestamp& timestamp) {
+	last_updated = timestamp;
 }

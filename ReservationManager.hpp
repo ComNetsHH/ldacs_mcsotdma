@@ -30,6 +30,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			FrequencyChannel& getFreqChannel(uint64_t center_frequency);
 			ReservationTable& getReservationTable(uint64_t center_frequency);
+			
+			/**
+			 * Calls update() function on each reservation table.
+			 * @param num_slots
+			 */
+			void update(uint64_t num_slots);
 		protected:
 			/** Number of slots to remember both in the past and in the future. */
 			uint32_t planning_horizon;

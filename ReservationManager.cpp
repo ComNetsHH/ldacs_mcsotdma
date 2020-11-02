@@ -29,3 +29,8 @@ void ReservationManager::removeFrequencyChannel(uint64_t center_frequency) {
 	reservation_tables.erase(center_frequency);
 	frequency_channels.erase(center_frequency);
 }
+
+void ReservationManager::update(uint64_t num_slots) {
+	for (auto& pair : reservation_tables)
+		pair.second.update(num_slots);
+}

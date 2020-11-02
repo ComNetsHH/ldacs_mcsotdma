@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <cstdint>
+#include "Timestamp.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -71,15 +72,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			int32_t findEarliestIdleRange(int32_t start, uint32_t length) const;
 			
 			/**
-			 * @return The discrete 64-bit number that denotes what this reservation table assumes as the current moment in time, which is the last time it was updated.
+			 * @return The last time this table was updated.
 			 */
-			uint64_t getCurrentSlot() const;
+			const Timestamp& getCurrentSlot() const;
 			
 			/**
 			 * Progress time for this reservation table. Old values are dropped, new values are added.
+			 * Also increments the last_updated timestamp by by num_slots.
 			 * @param num_slots The number of slots that have passed since the last update.
 			 */
 			void update(uint64_t num_slots);
+			
+			/**
+			 * Sets what this table regards as the current moment in time.
+			 * Should be used just once at the start - calls to 'update()' will increment the timestamp henceforth.
+			 * @param timestamp
+			 */
+			void setLastUpdated(const Timestamp& timestamp);
 			
 			/**
 			 * @return Reference to the internally-used slot utilization vector.
@@ -105,7 +114,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Specifies the number of slots this reservation table holds values for both into the future and into the past. In total, twice the planning horizon is covered. */
 			const uint32_t planning_horizon;
 			/** OMNeT++ has discrete points in time that can be represented by a 64-bit number. This keeps track of that moment in time where this table was last updated. */
-			uint64_t last_updated;
+			Timestamp last_updated;
 	};
 }
 
