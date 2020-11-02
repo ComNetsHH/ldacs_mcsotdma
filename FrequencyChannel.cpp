@@ -24,8 +24,24 @@ bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isBroadcastChannel() const {
 }
 
 bool
-TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator==(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) {
+TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator==(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) const {
 	return this->isPointToPointChannel() == other.isPointToPointChannel() && this->getCenterFrequency() == other.getCenterFrequency() && this->getBandwidth() == other.getBandwidth();
+}
+
+bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator<(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) const {
+	return this->getCenterFrequency() < other.getCenterFrequency();
+}
+
+bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator<=(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) const {
+	return this->getCenterFrequency() <= other.getCenterFrequency();
+}
+
+bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator>(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) const {
+	return this->getCenterFrequency() > other.getCenterFrequency();
+}
+
+bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator>=(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) const {
+	return this->getCenterFrequency() >= other.getCenterFrequency();
 }
 
 

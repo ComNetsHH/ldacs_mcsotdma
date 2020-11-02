@@ -9,7 +9,7 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-class ReservationTableTests : public CppUnit::TestFixture {
+class ReservationManagerTests : public CppUnit::TestFixture {
 	private:
 		ReservationManager* manager;
 	
@@ -24,7 +24,31 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testAddFreqChannel() {
-		
+			bool p2p_channel = false;
+			uint64_t center_freq = 1000;
+			uint64_t bandwidth = 500;
+			
+			// Fetching it now should throw an exception.
+			bool exception_thrown = false;
+			try {
+				const FrequencyChannel& channel = manager->getFreqChannel(center_freq);
+			} catch(const std::exception& e) {
+				exception_thrown = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+			
+			// Add it.
+			manager->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
+			
+			// Now we should be able to get both reservation table and frequency channel.
+			exception_thrown = false;
+			try {
+				const FrequencyChannel& channel = manager->getFreqChannel(center_freq);
+				const ReservationTable& table = manager->getReservationTable(center_freq);
+			} catch(const std::exception& e) {
+				exception_thrown = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(false, exception_thrown);
 		}
 		
 		void testBlacklistFreqChannel() {
@@ -43,11 +67,11 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		
 		}
 	
-	CPPUNIT_TEST_SUITE(ReservationTableTests);
-			CPPUNIT_TEST(testAddFreqChannel);
-			CPPUNIT_TEST(testBlacklistFreqChannel);
-			CPPUNIT_TEST(testRemoveFreqChannel);
-			CPPUNIT_TEST(testMarkSlot);
-			CPPUNIT_TEST(testFindIdleGap);
-		CPPUNIT_TEST_SUITE_END();
+	CPPUNIT_TEST_SUITE(ReservationManagerTests);
+		CPPUNIT_TEST(testAddFreqChannel);
+		CPPUNIT_TEST(testBlacklistFreqChannel);
+		CPPUNIT_TEST(testRemoveFreqChannel);
+		CPPUNIT_TEST(testMarkSlot);
+		CPPUNIT_TEST(testFindIdleGap);
+	CPPUNIT_TEST_SUITE_END();
 };

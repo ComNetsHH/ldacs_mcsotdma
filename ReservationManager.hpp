@@ -17,14 +17,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class ReservationManager {
 		public:
-			ReservationManager(uint32_t planning_horizon);
+			explicit ReservationManager(uint32_t planning_horizon);
 			
-			void addFrequencyChannel(bool is_point_to_point_channel, uint64_t center_frequency, uint64_t bandwidth);
+			void addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
+			
+			const FrequencyChannel& getFreqChannel(uint64_t center_frequency) const;
+			const ReservationTable& getReservationTable(uint64_t center_frequency) const;
 		protected:
 			/** Number of slots to remember both in the past and in the future. */
 			uint32_t planning_horizon;
-			/** One reservation table per frequency channel. */
-			std::map<FrequencyChannel, ReservationTable> reservation_tables;
+			/** Maps center frequency to FrequencyChannel object. */
+			std::map<uint64_t, TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel> frequency_channels;
+			/** Maps center frequency to reservation table. */
+			std::map<uint64_t, TUHH_INTAIRNET_MCSOTDMA::ReservationTable> reservation_tables;
 	};
 	
 }

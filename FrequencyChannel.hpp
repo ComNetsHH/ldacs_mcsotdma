@@ -22,7 +22,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			bool isBroadcastChannel() const;
 			
-			bool operator==(const FrequencyChannel& other);
+			bool operator==(const FrequencyChannel& other) const;
+			bool operator<(const FrequencyChannel& other) const;
+			bool operator<=(const FrequencyChannel& other) const;
+			bool operator>(const FrequencyChannel& other) const;
+			bool operator>=(const FrequencyChannel& other) const;
 		
 		protected:
 			/** Whether this is a point-to-point frequency channel for unicast communication. */
