@@ -4,9 +4,11 @@
 
 #include <cppunit/ui/text/TestRunner.h>
 #include "ReservationTableTests.cpp"
+#include "FrequencyChannelTests.cpp"
 
 int main() {
 	CppUnit::TextUi::TestRunner runner;
 	runner.addTest(ReservationTableTests::suite());
+	runner.addTest(FrequencyChannelTests::suite());
 	runner.run();
 }
