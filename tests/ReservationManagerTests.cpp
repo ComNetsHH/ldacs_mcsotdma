@@ -11,16 +11,16 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 class ReservationManagerTests : public CppUnit::TestFixture {
 	private:
-		ReservationManager* manager;
+		ReservationManager* reservation;
 	
 	public:
 		void setUp() override {
 			uint32_t planning_horizon = 1024;
-			manager = new ReservationManager(planning_horizon);
+			reservation = new ReservationManager(planning_horizon);
 		}
 		
 		void tearDown() override {
-			delete manager;
+			delete reservation;
 		}
 		
 		void testAddFreqChannel() {
@@ -31,20 +31,20 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			// Fetching it now should throw an exception.
 			bool exception_thrown = false;
 			try {
-				const FrequencyChannel& channel = manager->getFreqChannel(center_freq);
+				const FrequencyChannel& channel = reservation->getFreqChannel(center_freq);
 			} catch(const std::exception& e) {
 				exception_thrown = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
 			
 			// Add it.
-			manager->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
+			reservation->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
 			
 			// Now we should be able to get both reservation table and frequency channel.
 			exception_thrown = false;
 			try {
-				const FrequencyChannel& channel = manager->getFreqChannel(center_freq);
-				const ReservationTable& table = manager->getReservationTable(center_freq);
+				const FrequencyChannel& channel = reservation->getFreqChannel(center_freq);
+				const ReservationTable& table = reservation->getReservationTable(center_freq);
 			} catch(const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -55,12 +55,12 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			bool p2p_channel = false;
 			uint64_t center_freq = 1000;
 			uint64_t bandwidth = 500;
-			manager->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
+			reservation->addFrequencyChannel(p2p_channel, center_freq, bandwidth);
 			
-			manager->removeFrequencyChannel(center_freq);
+			reservation->removeFrequencyChannel(center_freq);
 			bool exception_thrown = false;
 			try {
-				const FrequencyChannel& channel = manager->getFreqChannel(center_freq);
+				const FrequencyChannel& channel = reservation->getFreqChannel(center_freq);
 			} catch(const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -71,21 +71,21 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			bool p2p_channel = false;
 			uint64_t center_freq1 = 1000, center_freq2 = center_freq1 + 1;
 			uint64_t bandwidth = 500;
-			manager->addFrequencyChannel(p2p_channel, center_freq1, bandwidth);
-			manager->addFrequencyChannel(p2p_channel, center_freq2, bandwidth);
+			reservation->addFrequencyChannel(p2p_channel, center_freq1, bandwidth);
+			reservation->addFrequencyChannel(p2p_channel, center_freq2, bandwidth);
 			Timestamp now = Timestamp();
-			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq1).getCurrentSlot() == now);
-			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq2).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation->getReservationTable(center_freq1).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation->getReservationTable(center_freq2).getCurrentSlot() == now);
 			
 			uint64_t num_slots = 5;
-			manager->update(num_slots);
-			CPPUNIT_ASSERT_EQUAL(false, manager->getReservationTable(center_freq1).getCurrentSlot() == now);
-			CPPUNIT_ASSERT_EQUAL(false, manager->getReservationTable(center_freq2).getCurrentSlot() == now);
+			reservation->update(num_slots);
+			CPPUNIT_ASSERT_EQUAL(false, reservation->getReservationTable(center_freq1).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(false, reservation->getReservationTable(center_freq2).getCurrentSlot() == now);
 			
 			now += num_slots;
 			
-			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq1).getCurrentSlot() == now);
-			CPPUNIT_ASSERT_EQUAL(true, manager->getReservationTable(center_freq2).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation->getReservationTable(center_freq1).getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation->getReservationTable(center_freq2).getCurrentSlot() == now);
 		}
 	
 	CPPUNIT_TEST_SUITE(ReservationManagerTests);
