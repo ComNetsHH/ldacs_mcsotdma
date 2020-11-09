@@ -20,7 +20,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 		L2Packet* packet;
 		L2Header* header;
 		TestPayload* payload;
-		IcaoId id = IcaoId(42);
+		LinkId id = LinkId(42);
 		unsigned int offset = 10;
 		unsigned short length_current = 11, length_next = 12;
 		unsigned int timeout = 13;
@@ -77,7 +77,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
 			
 			// So add a unicast header, setting the packet destination.
-			IcaoId dest_id = IcaoId(100);
+			LinkId dest_id = LinkId(100);
 			bool use_arq = true;
 			unsigned int arq_seqno = 101, arq_ack_no = 102, arq_ack_slot = 103;
 			L2HeaderUnicast unicast_header = L2HeaderUnicast(dest_id, use_arq, arq_seqno, arq_ack_no, arq_ack_slot);
@@ -91,7 +91,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 				exception_occurred = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(false, exception_occurred);
-			CPPUNIT_ASSERT_EQUAL(QueueManager::link_required, result1);
+			CPPUNIT_ASSERT_EQUAL(QueueManager::enqueued_new_p2p, result1);
 			CPPUNIT_ASSERT_EQUAL(QueueManager::enqueued_p2p, result2);
 		}
 		

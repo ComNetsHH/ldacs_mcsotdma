@@ -7,7 +7,7 @@
 
 #include <map>
 #include <queue>
-#include "IcaoId.hpp"
+#include "LinkId.hpp"
 #include "L2Packet.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -16,9 +16,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class QueueManager {
 		public:
+			/** Outcome from pushing a packet to this manager. */
 			enum Result {
-				/** A new P2P link should be set up. */
-				link_required,
+				/** A new P2P queue was created. Indicates that a link should be set up. */
+				enqueued_new_p2p,
 				/** An existing P2P queue was added to. */
 				enqueued_p2p,
 				/** The BC queue was added to. */
@@ -31,7 +32,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			Result push(const L2Packet* packet);
 		
 		protected:
-			std::map<IcaoId, std::queue<const L2Packet*>*> queue_map;
+			std::map<LinkId, std::queue<const L2Packet*>*> queue_map;
 	};
 }
 

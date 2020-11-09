@@ -28,7 +28,7 @@ class L2PacketTests : public CppUnit::TestFixture {
 		}
 		
 		void testAddPayload() {
-			IcaoId id_src = IcaoId(42), id_dest = IcaoId(43);
+			LinkId id_src = LinkId(42), id_dest = LinkId(43);
 			unsigned int offset = 12;
 			unsigned short length_current = 13;
 			unsigned short length_next = 10;
@@ -79,7 +79,7 @@ class L2PacketTests : public CppUnit::TestFixture {
 		}
 		
 		void testUnicastPayload() {
-			IcaoId id_src = IcaoId(42), id_dest = IcaoId(43);
+			LinkId id_src = LinkId(42), id_dest = LinkId(43);
 			unsigned int offset = 12;
 			unsigned short length_current = 13;
 			unsigned short length_next = 10;
@@ -103,7 +103,7 @@ class L2PacketTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(false, exception_occurred);
 			
 			// Shouldn't be able to add a unicast header to a different destination.
-			IcaoId id_dest_2 = IcaoId(44);
+			LinkId id_dest_2 = LinkId(44);
 			L2HeaderUnicast second_unicast_header = L2HeaderUnicast(id_dest_2, use_arq, arq_seqno, arq_ack_no, arq_ack_slot);
 			exception_occurred = false;
 			try {
@@ -115,7 +115,7 @@ class L2PacketTests : public CppUnit::TestFixture {
 		}
 		
 		void testBroadcastPayload() {
-			IcaoId id_src = IcaoId(42), id_dest = IcaoId(43);
+			LinkId id_src = LinkId(42), id_dest = LinkId(43);
 			unsigned int offset = 12;
 			unsigned short length_current = 13;
 			unsigned short length_next = 10;

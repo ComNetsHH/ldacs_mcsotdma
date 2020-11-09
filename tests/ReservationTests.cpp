@@ -11,12 +11,12 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 class ReservationTests : public CppUnit::TestFixture {
 	private:
 		Reservation* reservation;
-		IcaoId* owner;
+		LinkId* owner;
 		int id = 42;
 	
 	public:
 		void setUp() override {
-			owner = new IcaoId(id);
+			owner = new LinkId(id);
 			reservation = new Reservation(*owner);
 		}
 		
@@ -27,7 +27,7 @@ class ReservationTests : public CppUnit::TestFixture {
 		
 		void testBasics() {
 			CPPUNIT_ASSERT(reservation->getOwner() == *owner);
-			CPPUNIT_ASSERT(reservation->getOwner() != IcaoId(id+1));
+			CPPUNIT_ASSERT(reservation->getOwner() != LinkId(id+1));
 			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::UNSET);
 			reservation->setAction(Reservation::Action::TX);
 			CPPUNIT_ASSERT(reservation->getAction() != Reservation::Action::UNSET);

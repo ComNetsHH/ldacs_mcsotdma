@@ -8,13 +8,13 @@
 #include <stdexcept>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
-	class IcaoId {
+	class LinkId {
 		public:
-			explicit IcaoId(int id) : id(id) {}
+			explicit LinkId(int id) : id(id) {}
 			
-			IcaoId(const IcaoId& other)	= default;
+			LinkId(const LinkId& other)	= default;
 			
-			bool operator!=(const IcaoId& other) const {
+			bool operator!=(const LinkId& other) const {
 				return !(*this == other);
 			}
 			
@@ -26,19 +26,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				return this->id;
 			}
 			
-			bool operator==(const IcaoId& other) const {
+			bool operator==(const LinkId& other) const {
 				return this->id == other.id;
 			}
-			bool operator<(const IcaoId& other) const {
+			bool operator<(const LinkId& other) const {
 				return this->id < other.id;
 			}
-			bool operator<=(const IcaoId& other) const {
+			bool operator<=(const LinkId& other) const {
 				return this->id <= other.id;
 			}
-			bool operator>(const IcaoId& other) const {
+			bool operator>(const LinkId& other) const {
 				return this->id > other.id;
 			}
-			bool operator>=(const IcaoId& other) const {
+			bool operator>=(const LinkId& other) const {
 				return this->id >= other.id;
 			}
 		
@@ -47,9 +47,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	};
 	
 	/** Symbolic global ID that represents an unset ICAO ID. */
-	const IcaoId ICAO_ID_UNSET = IcaoId(-1);
+	const LinkId LINK_ID_UNSET = LinkId(-1);
 	/** Symbolic global ID that represents a broadcast. */
-	const IcaoId ICAO_ID_BROADCAST = IcaoId(-2);
+	const LinkId LINK_ID_BROADCAST = LinkId(-2);
 }
 
 #endif //TUHH_INTAIRNET_MC_SOTDMA_USERID_HPP

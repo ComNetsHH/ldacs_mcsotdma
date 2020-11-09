@@ -12,7 +12,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 class L2HeaderTests : public CppUnit::TestFixture {
 	private:
 		L2Header* header;
-		IcaoId id = IcaoId(42);
+		LinkId id = LinkId(42);
 		unsigned int offset = 12;
 		unsigned short length_current = 13;
 		unsigned short length_next = 10;
@@ -47,7 +47,7 @@ class L2HeaderTests : public CppUnit::TestFixture {
 		}
 		
 		void testUnicastHeader() {
-			IcaoId dest_id = IcaoId(99);
+			LinkId dest_id = LinkId(99);
 			bool use_arq = true;
 			unsigned int arq_seqno = 50;
 			unsigned int arq_ack_no = 51;
@@ -64,7 +64,7 @@ class L2HeaderTests : public CppUnit::TestFixture {
 			L2HeaderBase base_header = L2HeaderBase(id, offset, length_current, length_next, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint(70), base_header.getBits());
 			
-			IcaoId dest_id = IcaoId(99);
+			LinkId dest_id = LinkId(99);
 			bool use_arq = true;
 			unsigned int arq_seqno = 50;
 			unsigned int arq_ack_no = 51;
