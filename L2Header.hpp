@@ -39,13 +39,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	
 	class L2HeaderBase : public L2Header {
 		public:
-			L2HeaderBase(IcaoId icao_id, unsigned int offset, unsigned short length_current, unsigned short length_next, unsigned int timeout)
-			: L2Header(), icao_id(std::move(icao_id)), offset(offset), length_current(length_current), length_next(length_next), timeout(timeout) {
+			L2HeaderBase(const IcaoId& icao_id, unsigned int offset, unsigned short length_current, unsigned short length_next, unsigned int timeout)
+			: L2Header(), icao_id(icao_id), offset(offset), length_current(length_current), length_next(length_next), timeout(timeout) {
 				this->frame_type = FrameType::base;
+				if (icao_id == ICAO_ID_UNSET)
+					throw std::invalid_argument("Cannot instantiate a header with an unset ICAO ID.");
 			}
 			
-			/** Source ID. */
-			IcaoId icao_id;
 			/** Number of slots until this reservation is next transmitted. */
 			unsigned int offset;
 			/** Number of slots this frame occupies. */
@@ -63,25 +63,55 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				       + 8 /* timeout */
 				       + L2Header::getBits();
 			}
+			
+			const IcaoId& getId() const {
+				return this->icao_id;
+			}
+		
+		protected:
+			/** Source ID. */
+			const IcaoId icao_id;
 	};
 	
-	class L2HeaderBroadcast : public L2HeaderBase {
+	class L2HeaderBroadcast : public L2Header {
 		public:
-			L2HeaderBroadcast(IcaoId icao_id, unsigned int offset, unsigned short length_current, unsigned short length_next, unsigned int timeout)
-			: L2HeaderBase(std::move(icao_id), offset, length_current, length_next, timeout) {
+			L2HeaderBroadcast()
+			: L2Header() {
 				this->frame_type = FrameType::broadcast;
 			}
+			
+			unsigned int getBits() const override {
+				return L2Header::getBits();
+			}
 	};
 	
-	class L2HeaderUnicast : public L2HeaderBase {
+//	class L2HeaderBeacon : public L2Header {
+//		public:
+//			L2HeaderBeacon()
+//	};
+	
+	class L2HeaderUnicast : public L2Header {
 		public:
-			L2HeaderUnicast(IcaoId icao_src_id, IcaoId icao_dest_id, unsigned int offset, unsigned short length_current, unsigned short length_next, unsigned int timeout, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
-			: L2HeaderBase(std::move(icao_src_id), offset, length_current, length_next, timeout), icao_dest_id(std::move(icao_dest_id)), use_arq(use_arq), arq_seqno(arq_seqno), arq_ack_no(arq_ack_no), arq_ack_slot(arq_ack_slot) {
+			L2HeaderUnicast(const IcaoId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
+			: L2Header(), icao_dest_id(icao_dest_id), use_arq(use_arq), arq_seqno(arq_seqno), arq_ack_no(arq_ack_no), arq_ack_slot(arq_ack_slot) {
 				this->frame_type = FrameType::unicast;
+				if (icao_dest_id == ICAO_ID_UNSET)
+					throw std::invalid_argument("Cannot instantiate a header with an unset ICAO ID.");
 			}
 			
-			/** Destination ICAO ID. */
-			IcaoId icao_dest_id;
+			const IcaoId& getDestId() const {
+				return this->icao_dest_id;
+			}
+			
+			unsigned int getBits() const override {
+				return 1 /* Whether ARQ is used */
+				+ 8 /* ARQ sequence number */
+				+ 8 /* ARQ ACK number */
+				+ 8 /* ARQ slot indication number */
+				+ icao_dest_id.getBits() /* destination ID */
+				+ L2Header::getBits();
+			}
+			
 			/** Whether the ARQ protocol is followed for this transmission, i.e. acknowledgements are expected. */
 			bool use_arq;
 			/** ARQ sequence number. */
@@ -90,6 +120,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int arq_ack_no;
 			/** The offset to the next reserved slot where an acknowledgement is expected. */
 			unsigned int arq_ack_slot;
+		
+		protected:
+			/** Destination ICAO ID. */
+			const IcaoId icao_dest_id;
 	};
 	
 }

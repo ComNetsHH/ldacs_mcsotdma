@@ -8,6 +8,8 @@
 #include "ReservationManagerTests.cpp"
 #include "ReservationTests.cpp"
 #include "L2HeaderTests.cpp"
+#include "L2PacketTests.cpp"
+#include "QueueManagerTests.cpp"
 
 int main() {
 	CppUnit::TextUi::TestRunner runner;
@@ -16,5 +18,7 @@ int main() {
 	runner.addTest(ReservationManagerTests::suite());
 	runner.addTest(ReservationTests::suite());
 	runner.addTest(L2HeaderTests::suite());
+	runner.addTest(L2PacketTests::suite());
+	runner.addTest(QueueManagerTests::suite());
 	runner.run();
 }

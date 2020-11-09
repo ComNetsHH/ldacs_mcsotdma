@@ -9,14 +9,8 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_L2PACKET_HPP
 
 #include "L2Header.hpp"
-
-/**
- * Interface for a wrapper of around an upper-layer packet.
- */
-class Packet {
-	public:
-		virtual unsigned int getBits() const = 0;
-};
+#include <iostream>
+#include <string>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -27,29 +21,64 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class L2Packet {
 		public:
-			explicit L2Packet() : headers(), payloads() {}
+			/**
+			 * Interface for a wrapper of around an upper-layer packet.
+		    */
+			class Payload {
+				public:
+					virtual unsigned int getBits() const = 0;
+			};
 			
-			void addPayload(L2Header header, Packet* payload) {
+			explicit L2Packet() : headers(), payloads(), dest_id(ICAO_ID_UNSET) {}
+			
+			void addPayload(L2Header* header, Payload* payload) {
+				// Ensure that the first header is a base header.
+				if (headers.empty() && header->frame_type != L2Header::base)
+					throw std::invalid_argument("First header of a packet *must* be a base header.");
+				
+				// Ensure that later headers are *not* base headers.
+				if (!headers.empty() && header->frame_type == L2Header::base)
+					throw std::invalid_argument("Later headers of a packet cannot be a base header.");
+				
+				// Set the unicast destination ID if possible.
+				if (header->frame_type == L2Header::unicast) {
+					IcaoId header_dest_id = ((L2HeaderUnicast*) header)->getDestId();
+					// Sanity check that the destination ID is actually set.
+					if (header_dest_id == ICAO_ID_UNSET)
+						throw std::runtime_error("Cannot add a unicast header with an unset destination ID.");
+					// If currently there's no set destination, we set it now.
+					if (this->dest_id == ICAO_ID_UNSET)
+						this->dest_id = header_dest_id;
+					// If there is a set non-broadcast destination, it must be unicast.
+					// So if these differ, throw an error.
+					else if (this->dest_id != ICAO_ID_BROADCAST && header_dest_id != this->dest_id)
+						throw std::runtime_error("Cannot add a unicast header to this packet. It already has a destination ID. Current dest='" + std::to_string(this->dest_id.getId()) + "' header dest='" + std::to_string(header_dest_id.getId()) + "'.");
+				}
+				
+				// Set the broadcast destination ID if possible.
+				if (header->frame_type == L2HeaderUnicast::broadcast) {
+					// If currently there's no set destination, we set it now.
+					if (this->dest_id == ICAO_ID_UNSET)
+						this->dest_id = ICAO_ID_BROADCAST;
+					else
+						throw std::runtime_error("Cannot add a broadcast header to this packet. It already has a destination ID: '" + std::to_string(this->dest_id.getId()) + "'.");
+				}
+				
 				headers.push_back(header);
 				payloads.push_back(payload);
-			}
-			
-			void removePayload(size_t index) {
-				headers.erase(headers.begin() + index);
-				payloads.erase(payloads.begin() + index);
 			}
 			
 			/**
 			 * @return All payloads.
 			 */
-			const std::vector<Packet*>& getPayloads() {
+			const std::vector<Payload*>& getPayloads() {
 				return this->payloads;
 			}
 			
 			/**
 			 * @return All headers.
 			 */
-			const std::vector<L2Header>& getHeaders() {
+			const std::vector<L2Header*>& getHeaders() {
 				return this->headers;
 			}
 			
@@ -59,20 +88,43 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int getBits() const {
 				unsigned int bits = 0;
 				for (size_t i = 0; i < headers.size(); i++)
-					bits += headers.at(i).getBits() + payloads.at(i)->getBits();
+					bits += headers.at(i)->getBits() + payloads.at(i)->getBits();
 				return bits;
+			}
+			
+			/**
+			 * @return This packet's destination ID.
+			 */
+			const IcaoId& getDestination() const {
+				return this->dest_id;
 			}
 			
 		protected:
 			/**
 			 * Several headers can be concatenated to fill one packet.
 			 */
-			std::vector<L2Header> headers;
+			std::vector<L2Header*> headers;
 			
 			/**
 			 * Several payloads can be concatenated (with resp. headers) to fill one packet.
 			 */
-			std::vector<Packet*> payloads;
+			std::vector<Payload*> payloads;
+			
+			IcaoId dest_id;
+		
+		protected:
+			/**
+			 * Ensures that at least one header is present, which must be a base header.
+			 * @throws std::logic_error If no headers are present.
+			 * @throws std::runtime_error If first header is not a base header.
+			 */
+			void validateHeader() const {
+				if (headers.empty())
+					throw std::logic_error("No headers present.");
+				const L2Header* first_header = headers.at(0);
+				if (first_header->frame_type != L2Header::base)
+					throw std::runtime_error("First header is not a base header.");
+			}
 	};
 }
 
