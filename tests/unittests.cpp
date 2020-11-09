@@ -7,6 +7,7 @@
 #include "FrequencyChannelTests.cpp"
 #include "ReservationManagerTests.cpp"
 #include "ReservationTests.cpp"
+#include "L2HeaderTests.cpp"
 
 int main() {
 	CppUnit::TextUi::TestRunner runner;
@@ -14,5 +15,6 @@ int main() {
 	runner.addTest(FrequencyChannelTests::suite());
 	runner.addTest(ReservationManagerTests::suite());
 	runner.addTest(ReservationTests::suite());
+	runner.addTest(L2HeaderTests::suite());
 	runner.run();
 }
