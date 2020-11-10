@@ -27,6 +27,8 @@ TUHH_INTAIRNET_MCSOTDMA::QueueManager::push(const TUHH_INTAIRNET_MCSOTDMA::L2Pac
 		queue_map[destination_id] = queue;
 		if (destination_id == LINK_ID_BROADCAST)
 			result = Result::enqueued_bc; // First broadcast packet. No special result for this.
+		else if (destination_id == LINK_ID_BEACON)
+			result = Result::enqueued_beacon; // First beacon packet. No special result for this.
 		else
 			result = Result::enqueued_new_p2p; // First P2P packet of a new link. Indicates that a link must be set up!
 	// ... if it has been found, add to it.
@@ -34,6 +36,8 @@ TUHH_INTAIRNET_MCSOTDMA::QueueManager::push(const TUHH_INTAIRNET_MCSOTDMA::L2Pac
 		queue = (*iterator).second;
 		if (destination_id == LINK_ID_BROADCAST)
 			result = Result::enqueued_bc;
+		else if (destination_id == LINK_ID_BEACON)
+			result = Result::enqueued_beacon;
 		else
 			result = Result::enqueued_p2p;
 	}

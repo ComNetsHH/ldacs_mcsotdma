@@ -95,9 +95,25 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(QueueManager::enqueued_p2p, result2);
 		}
 		
+		void testPushBeaconPacket() {
+			// Add a beacon header, setting the packet destination.
+			L2HeaderBeacon beacon_header = L2HeaderBeacon(CPRPosition(1, 2, 3), true, 5, 1);
+			packet->addPayload(&beacon_header, payload);
+			bool exception_occurred = false;
+			QueueManager::Result result;
+			try {
+				result = queue_manager->push(packet); // should now work.
+			} catch (const std::exception& e) {
+				exception_occurred = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(false, exception_occurred);
+			CPPUNIT_ASSERT_EQUAL(QueueManager::enqueued_beacon, result);
+		}
+		
 		
 	CPPUNIT_TEST_SUITE(QueueManagerTests);
 		CPPUNIT_TEST(testPushBroadcastPacket);
 		CPPUNIT_TEST(testPushUnicastPackets);
+		CPPUNIT_TEST(testPushBeaconPacket);
 	CPPUNIT_TEST_SUITE_END();
 };
