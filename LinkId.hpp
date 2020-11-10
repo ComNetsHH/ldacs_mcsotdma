@@ -50,6 +50,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	const LinkId LINK_ID_UNSET = LinkId(-1);
 	/** Symbolic global ID that represents a broadcast. */
 	const LinkId LINK_ID_BROADCAST = LinkId(-2);
+	/** Symbolic global ID that represents a beacon (which is also a broadcast). */
+	const LinkId LINK_ID_BEACON = LinkId(-3);
 }
 
 #endif //TUHH_INTAIRNET_MC_SOTDMA_USERID_HPP

@@ -33,15 +33,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void addPayload(L2Header* header, Payload* payload) {
 				// Ensure that the first header is a base header.
-				if (headers.empty() && header->frame_type != L2Header::base)
+				if (headers.empty() && header->frame_type != L2Header::FrameType::base)
 					throw std::invalid_argument("First header of a packet *must* be a base header.");
 				
 				// Ensure that later headers are *not* base headers.
-				if (!headers.empty() && header->frame_type == L2Header::base)
+				if (!headers.empty() && header->frame_type == L2Header::FrameType::base)
 					throw std::invalid_argument("Later headers of a packet cannot be a base header.");
 				
 				// Set the unicast destination ID if possible.
-				if (header->frame_type == L2Header::unicast) {
+				if (header->frame_type == L2Header::FrameType::unicast) {
 					LinkId header_dest_id = ((L2HeaderUnicast*) header)->getDestId();
 					// Sanity check that the destination ID is actually set.
 					if (header_dest_id == LINK_ID_UNSET)
@@ -51,17 +51,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						this->dest_id = header_dest_id;
 					// If there is a set non-broadcast destination, it must be unicast.
 					// So if these differ, throw an error.
-					else if (this->dest_id != LINK_ID_BROADCAST && header_dest_id != this->dest_id)
-						throw std::runtime_error("Cannot add a unicast header to this packet. It already has a destination ID. Current dest='" + std::to_string(this->dest_id.getId()) + "' header dest='" + std::to_string(header_dest_id.getId()) + "'.");
+					else if (this->dest_id != LINK_ID_BROADCAST && this->dest_id != LINK_ID_BEACON && header_dest_id != this->dest_id)
+						throw std::runtime_error("Cannot add a unicast header to this packet. It already has a unicast destination ID. Current dest='" + std::to_string(this->dest_id.getId()) + "' header dest='" + std::to_string(header_dest_id.getId()) + "'.");
 				}
 				
 				// Set the broadcast destination ID if possible.
-				if (header->frame_type == L2HeaderUnicast::broadcast) {
+				if (header->frame_type == L2Header::FrameType::broadcast) {
 					// If currently there's no set destination, we set it now.
 					if (this->dest_id == LINK_ID_UNSET)
 						this->dest_id = LINK_ID_BROADCAST;
-					else
+					// If there already is a set destination, it may only be a beacon.
+					else if (this->dest_id != LINK_ID_BEACON)
 						throw std::runtime_error("Cannot add a broadcast header to this packet. It already has a destination ID: '" + std::to_string(this->dest_id.getId()) + "'.");
+				}
+				
+				// Set the beacon destination ID if possible.
+				if (header->frame_type == L2Header::FrameType::beacon) {
+					// If currently there's no set destination, we set it now.
+					if (this->dest_id == LINK_ID_UNSET)
+						this->dest_id = LINK_ID_BEACON;
+					// If there already is a set destination, throw an error, as beacon headers must come first.
+					else
+						throw std::runtime_error("Cannot add a beacon header to this packet. It already has a destination ID: '" + std::to_string(this->dest_id.getId()) + "'.");
 				}
 				
 				headers.push_back(header);
