@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include "LinkId.hpp"
+#include "CPRPosition.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -24,7 +25,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				link_establishment_request
 			};
 			
-			explicit L2Header()	: frame_type(FrameType::unset), crc_checksum(0) {}
+			explicit L2Header(L2Header::FrameType frame_type)	: frame_type(frame_type), crc_checksum(0) {}
 			
 			virtual unsigned int getBits() const {
 				return 3 /* frame type */
@@ -32,7 +33,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			/** This frame's type. */
-			FrameType frame_type;
+			const FrameType frame_type;
 			/** CRC checksum. */
 			unsigned int crc_checksum;
 	};
@@ -40,8 +41,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class L2HeaderBase : public L2Header {
 		public:
 			L2HeaderBase(const LinkId& icao_id, unsigned int offset, unsigned short length_current, unsigned short length_next, unsigned int timeout)
-			: L2Header(), icao_id(icao_id), offset(offset), length_current(length_current), length_next(length_next), timeout(timeout) {
-				this->frame_type = FrameType::base;
+			: L2Header(FrameType::base), icao_id(icao_id), offset(offset), length_current(length_current), length_next(length_next), timeout(timeout) {
 				if (icao_id == LINK_ID_UNSET)
 					throw std::invalid_argument("Cannot instantiate a header with an unset ICAO ID.");
 			}
@@ -76,25 +76,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class L2HeaderBroadcast : public L2Header {
 		public:
 			L2HeaderBroadcast()
-			: L2Header() {
-				this->frame_type = FrameType::broadcast;
-			}
+			: L2Header(FrameType::broadcast) {}
 			
 			unsigned int getBits() const override {
 				return L2Header::getBits();
 			}
 	};
 	
-//	class L2HeaderBeacon : public L2Header {
-//		public:
-//			L2HeaderBeacon()
-//	};
+	class L2HeaderBeacon : public L2Header {
+		public:
+			L2HeaderBeacon(const CPRPosition& position, bool is_cpr_odd, unsigned int num_hops_to_ground_station, unsigned short pos_quality)
+				: L2Header(L2Header::FrameType::beacon), position(position), is_cpr_odd(is_cpr_odd), num_hops_to_ground_station(num_hops_to_ground_station), pos_quality(pos_quality) {}
+			
+			CPRPosition position;
+			bool is_cpr_odd;
+			unsigned int num_hops_to_ground_station;
+			unsigned short pos_quality;
+			
+			unsigned int getBits() const override {
+				return position.getBits()
+				+ 1 /* odd/even identifier */
+				+ 5 /* number of hops to ground station */
+				+ 2 /* position quality */
+				+ L2Header::getBits();
+			}
+	};
 	
 	class L2HeaderUnicast : public L2Header {
 		public:
 			L2HeaderUnicast(const LinkId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
-			: L2Header(), icao_dest_id(icao_dest_id), use_arq(use_arq), arq_seqno(arq_seqno), arq_ack_no(arq_ack_no), arq_ack_slot(arq_ack_slot) {
-				this->frame_type = FrameType::unicast;
+			: L2Header(FrameType::unicast), icao_dest_id(icao_dest_id), use_arq(use_arq), arq_seqno(arq_seqno), arq_ack_no(arq_ack_no), arq_ack_slot(arq_ack_slot) {
 				if (icao_dest_id == LINK_ID_UNSET)
 					throw std::invalid_argument("Cannot instantiate a header with an unset ICAO ID.");
 			}

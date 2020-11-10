@@ -20,7 +20,7 @@ class L2HeaderTests : public CppUnit::TestFixture {
 	
 	public:
 		void setUp() override {
-			header = new L2Header();
+			header = new L2Header(L2Header::FrameType::unset);
 		}
 		
 		void tearDown() override {
@@ -75,8 +75,11 @@ class L2HeaderTests : public CppUnit::TestFixture {
 			L2HeaderBroadcast broadcast_header = L2HeaderBroadcast();
 			CPPUNIT_ASSERT_EQUAL(uint(19), broadcast_header.getBits());
 			
-			L2Header simple_header = L2Header();
+			L2Header simple_header = L2Header(L2Header::FrameType::unset);
 			CPPUNIT_ASSERT(simple_header.getBits() == broadcast_header.getBits());
+			
+			L2HeaderBeacon beacon_header = L2HeaderBeacon(CPRPosition(1, 2, 3), true, 12, 1);
+			CPPUNIT_ASSERT_EQUAL(uint(65), beacon_header.getBits());
 		}
 		
 	CPPUNIT_TEST_SUITE(L2HeaderTests);

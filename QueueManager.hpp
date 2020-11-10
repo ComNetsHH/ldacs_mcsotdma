@@ -18,12 +18,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			/** Outcome from pushing a packet to this manager. */
 			enum Result {
-				/** A new P2P queue was created. Indicates that a link should be set up. */
+				/** A new Point-to-Point queue was created. Indicates that a link should be set up. */
 				enqueued_new_p2p,
-				/** An existing P2P queue was added to. */
+				/** An existing Point-to-Point queue was added to. */
 				enqueued_p2p,
-				/** The BC queue was added to. */
-				enqueued_bc
+				/** The Broadcast queue was added to. */
+				enqueued_bc,
+				/** The Beacon queue was added to. */
+				enqueued_beacon
 			};
 			
 			QueueManager();
