@@ -9,8 +9,11 @@
 #include <queue>
 #include "IcaoId.hpp"
 #include "L2Packet.hpp"
+#include "ReservationManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
+	
+	class LinkManager;
 	
 	/**
 	 * The queue manager accepts upper layer packets and sorts them into link-specific queues.
@@ -35,9 +38,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			Result push(L2Packet* packet);
 			
 			L2Packet* dequeue(const IcaoId& link_id);
+			
+			/**
+			 * A connection to the ReservationManager is required, so that new links can manage their reservations.
+			 * @param manager
+			 */
+			void setReservationManager(ReservationManager* manager);
 		
 		protected:
 			std::map<IcaoId, std::queue<L2Packet*>*> queue_map;
+			std::map<IcaoId, LinkManager*> link_manager_map;
+			ReservationManager* reservation_manager = nullptr;
 	};
 }
 

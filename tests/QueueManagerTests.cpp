@@ -5,6 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../QueueManager.hpp"
+#include "../ReservationManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -24,6 +25,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 		unsigned int offset = 10;
 		unsigned short length_current = 11, length_next = 12;
 		unsigned int timeout = 13;
+		ReservationManager* reservation_manager;
 	
 	public:
 		void setUp() override {
@@ -33,6 +35,8 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			header = new L2HeaderBase(id, offset, length_current, length_next, timeout);
 			payload = new TestPayload();
 			packet->addPayload(header, payload);
+			reservation_manager = new ReservationManager(planning_horizon);
+			queue_manager->setReservationManager(reservation_manager);
 		}
 		
 		void tearDown() override {
@@ -40,6 +44,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			delete packet;
 			delete header;
 			delete payload;
+			delete reservation_manager;
 		}
 		
 		void testPushBroadcastPacket() {
@@ -60,6 +65,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			try {
 				result = queue_manager->push(packet); // should now work.
 			} catch (const std::exception& e) {
+				std::cout << e.what() << std::endl;
 				exception_occurred = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(false, exception_occurred);
@@ -88,6 +94,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 				result1 = queue_manager->push(packet); // Should require a new link.
 				result2 = queue_manager->push(packet); // Should just be enqueued (no new link required).
 			} catch (const std::exception& e) {
+				std::cout << e.what() << std::endl;
 				exception_occurred = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(false, exception_occurred);
@@ -104,6 +111,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			try {
 				result = queue_manager->push(packet); // should now work.
 			} catch (const std::exception& e) {
+				std::cout << e.what() << std::endl;
 				exception_occurred = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(false, exception_occurred);
