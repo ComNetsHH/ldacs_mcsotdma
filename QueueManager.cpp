@@ -55,9 +55,14 @@ QueueManager::Result QueueManager::push(::L2Packet* packet) {
 			result = Result::enqueued_beacon;
 		else
 			result = Result::enqueued_p2p;
+		// Also find the corresponding link manager.
+		link_manager = link_manager_map[destination_id];
 	}
 	
+	// Push the packet into the queue...
 	queue->push(packet);
+	// ... and notify the corresponding link manager.
+	link_manager->notifyOutgoing();
 	return result;
 }
 
