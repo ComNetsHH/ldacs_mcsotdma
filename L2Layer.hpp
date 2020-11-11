@@ -15,6 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class L2Layer {
 		public:
 			L2Layer(uint32_t reservation_planning_horizon);
+			virtual ~L2Layer();
 		
 		protected:
 			QueueManager* queue_manager;

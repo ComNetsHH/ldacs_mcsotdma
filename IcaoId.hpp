@@ -11,6 +11,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class IcaoId {
 		public:
 			explicit IcaoId(int id) : id(id) {}
+			virtual ~IcaoId() = default;
 			
 			IcaoId(const IcaoId& other)	= default;
 			

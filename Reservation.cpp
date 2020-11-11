@@ -25,3 +25,7 @@ void TUHH_INTAIRNET_MCSOTDMA::Reservation::setAction(TUHH_INTAIRNET_MCSOTDMA::Re
 }
 
 TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation() : Reservation(SYMBOLIC_ID_UNSET) {}
+
+TUHH_INTAIRNET_MCSOTDMA::Reservation::~Reservation() {
+
+}

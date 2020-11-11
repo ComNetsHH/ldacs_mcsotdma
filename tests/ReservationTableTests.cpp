@@ -26,20 +26,12 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		void testConstructor() {
 			bool exception_thrown = false;
 			try {
-				ReservationTable another_table = ReservationTable(255);
+				ReservationTable another_table = ReservationTable(2);
 			} catch (const std::exception& e) {
 				std::cout << e.what() << std::endl;
 				exception_thrown = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(false, exception_thrown);
-
-			try {
-				// Shouldn't be able to instantiate a table with that many slots.
-				ReservationTable another_table = ReservationTable(UINT32_MAX);
-			} catch (const std::exception& e) {
-				exception_thrown = true;
-			}
-			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
 		}
 		
 		void testPlanningHorizon() {

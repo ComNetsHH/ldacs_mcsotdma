@@ -28,10 +28,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			};
 			
 			Reservation(IcaoId owner, Action action);
-			
 			explicit Reservation(IcaoId owner);
-			
 			Reservation();
+			virtual ~Reservation();
 			
 			/**
 			 * @return The ID of the holder of this reserved slot.

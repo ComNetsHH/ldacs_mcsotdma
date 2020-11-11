@@ -111,3 +111,5 @@ uint64_t ReservationTable::convertOffsetToIndex(int32_t slot_offset) const {
 void ReservationTable::setLastUpdated(const Timestamp& timestamp) {
 	last_updated = timestamp;
 }
+
+ReservationTable::~ReservationTable() = default;

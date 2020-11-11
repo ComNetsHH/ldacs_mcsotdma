@@ -42,6 +42,10 @@ QueueManager::Result QueueManager::push(::L2Packet* packet) {
 			result = Result::enqueued_new_p2p; // First P2P packet of a new link. Indicates that a link must be set up!
 		// Also create a new link manager.
 		link_manager = new LinkManager(destination_id, *reservation_manager, *this);
+		std::pair<std::map<IcaoId, LinkManager*>::iterator, bool> other_insertion_result = link_manager_map.insert(std::map<IcaoId, LinkManager*>::value_type(destination_id, link_manager));
+		if (!other_insertion_result.second)
+			throw std::runtime_error("Attempted to insert a new link manager, but there already was one.");
+		
 	// ... if it has been found, add to it.
 	} else {
 		queue = (*iterator).second;
@@ -59,6 +63,8 @@ QueueManager::Result QueueManager::push(::L2Packet* packet) {
 
 QueueManager::~QueueManager() {
 	for (auto& it : queue_map)
+		delete it.second;
+	for (auto& it : link_manager_map)
 		delete it.second;
 }
 

@@ -26,6 +26,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			explicit ReservationTable(uint32_t planning_horizon);
 			
+			virtual ~ReservationTable();
+			
 			/**
 			 * @param slot_offset Offset to the current slot. Positive values for future slots, zero for the current slot and negative values for past slots.
 			 * @return Whether the specified slot is marked as idle.
