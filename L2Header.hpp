@@ -6,7 +6,7 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_L2HEADER_HPP
 
 #include <algorithm>
-#include "LinkId.hpp"
+#include "IcaoId.hpp"
 #include "CPRPosition.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -40,9 +40,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	
 	class L2HeaderBase : public L2Header {
 		public:
-			L2HeaderBase(const LinkId& icao_id, unsigned int offset, unsigned short length_current, unsigned short length_next, unsigned int timeout)
+			L2HeaderBase(const IcaoId& icao_id, unsigned int offset, unsigned short length_current, unsigned short length_next, unsigned int timeout)
 			: L2Header(FrameType::base), icao_id(icao_id), offset(offset), length_current(length_current), length_next(length_next), timeout(timeout) {
-				if (icao_id == LINK_ID_UNSET)
+				if (icao_id == SYMBOLIC_ID_UNSET)
 					throw std::invalid_argument("Cannot instantiate a header with an unset ICAO ID.");
 			}
 			
@@ -64,13 +64,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				       + L2Header::getBits();
 			}
 			
-			const LinkId& getId() const {
+			const IcaoId& getId() const {
 				return this->icao_id;
 			}
 		
 		protected:
 			/** Source ID. */
-			const LinkId icao_id;
+			const IcaoId icao_id;
 	};
 	
 	class L2HeaderBroadcast : public L2Header {
@@ -104,13 +104,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	
 	class L2HeaderUnicast : public L2Header {
 		public:
-			L2HeaderUnicast(const LinkId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
+			L2HeaderUnicast(const IcaoId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
 			: L2Header(FrameType::unicast), icao_dest_id(icao_dest_id), use_arq(use_arq), arq_seqno(arq_seqno), arq_ack_no(arq_ack_no), arq_ack_slot(arq_ack_slot) {
-				if (icao_dest_id == LINK_ID_UNSET)
+				if (icao_dest_id == SYMBOLIC_ID_UNSET)
 					throw std::invalid_argument("Cannot instantiate a header with an unset ICAO ID.");
 			}
 			
-			const LinkId& getDestId() const {
+			const IcaoId& getDestId() const {
 				return this->icao_dest_id;
 			}
 			
@@ -134,7 +134,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		protected:
 			/** Destination ICAO ID. */
-			const LinkId icao_dest_id;
+			const IcaoId icao_dest_id;
 	};
 	
 }

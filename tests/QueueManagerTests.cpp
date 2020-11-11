@@ -20,7 +20,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 		L2Packet* packet;
 		L2Header* header;
 		TestPayload* payload;
-		LinkId id = LinkId(42);
+		IcaoId id = IcaoId(42);
 		unsigned int offset = 10;
 		unsigned short length_current = 11, length_next = 12;
 		unsigned int timeout = 13;
@@ -77,7 +77,7 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
 			
 			// So add a unicast header, setting the packet destination.
-			LinkId dest_id = LinkId(100);
+			IcaoId dest_id = IcaoId(100);
 			bool use_arq = true;
 			unsigned int arq_seqno = 101, arq_ack_no = 102, arq_ack_slot = 103;
 			L2HeaderUnicast unicast_header = L2HeaderUnicast(dest_id, use_arq, arq_seqno, arq_ack_no, arq_ack_slot);
@@ -110,10 +110,49 @@ class QueueManagerTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(QueueManager::enqueued_beacon, result);
 		}
 		
+		void testDequeue() {
+			// Enqueue a broadcast packet.
+			L2HeaderBroadcast broadcast_header = L2HeaderBroadcast();
+			packet->addPayload(&broadcast_header, payload);
+			queue_manager->push(packet);
+			
+			// Shouldn't be able to dequeue a unicast packet.
+			bool exception_occurred = false;
+			try {
+				queue_manager->dequeue(IcaoId(1));
+			} catch (const std::exception& e) {
+				exception_occurred = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+			
+			// Shouldn't be able to dequeue a beacon packet.
+			exception_occurred = false;
+			try {
+				queue_manager->dequeue(SYMBOLIC_LINK_ID_BEACON);
+			} catch (const std::exception& e) {
+				exception_occurred = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+			
+			// Should be able to dequeue the broadcast packet.
+			L2Packet* dequeued_packet = queue_manager->dequeue(SYMBOLIC_LINK_ID_BROADCAST);
+			CPPUNIT_ASSERT_EQUAL(packet, dequeued_packet);
+			
+			// Should not be able to dequeue another broadcast packet.
+			exception_occurred = false;
+			try {
+				queue_manager->dequeue(SYMBOLIC_LINK_ID_BROADCAST);
+			} catch (const std::exception& e) {
+				exception_occurred = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+		}
+		
 		
 	CPPUNIT_TEST_SUITE(QueueManagerTests);
 		CPPUNIT_TEST(testPushBroadcastPacket);
 		CPPUNIT_TEST(testPushUnicastPackets);
 		CPPUNIT_TEST(testPushBeaconPacket);
+		CPPUNIT_TEST(testDequeue);
 	CPPUNIT_TEST_SUITE_END();
 };

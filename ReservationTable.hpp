@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdint>
 #include "Timestamp.hpp"
+#include "Reservation.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -57,11 +58,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			uint32_t getPlanningHorizon() const;
 			
 			/**
-			 * Marks the slot at 'offset' as either utilized or idle.
+			 * Marks the slot at 'offset' with a reservation.
 			 * @param slot_offset
-			 * @param utilized
+			 * @param reservation
 			 */
-			void mark(int32_t slot_offset, bool utilized);
+			void mark(int32_t slot_offset, Reservation reservation);
 			
 			/**
 			 * @param start Slot offset that marks the earliest opportunity.
@@ -93,7 +94,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * @return Reference to the internally-used slot utilization vector.
 			 */
-			const std::vector<bool>& getVec() const;
+			const std::vector<Reservation>& getVec() const;
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;
@@ -110,7 +111,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 		protected:
 			/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */
-			std::vector<bool> slot_utilization_vec;
+			std::vector<Reservation> slot_utilization_vec;
 			/** Specifies the number of slots this reservation table holds values for both into the future and into the past. In total, twice the planning horizon is covered. */
 			const uint32_t planning_horizon;
 			/** OMNeT++ has discrete points in time that can be represented by a 64-bit number. This keeps track of that moment in time where this table was last updated. */

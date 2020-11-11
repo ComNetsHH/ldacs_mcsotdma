@@ -9,40 +9,43 @@
 #include <iostream>
 #include "ReservationTable.hpp"
 
-TUHH_INTAIRNET_MCSOTDMA::ReservationTable::ReservationTable(uint32_t planning_horizon)
-	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<bool>(uint64_t(planning_horizon * 2 + 1))), last_updated() {
+using namespace TUHH_INTAIRNET_MCSOTDMA;
+
+ReservationTable::ReservationTable(uint32_t planning_horizon)
+	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<Reservation>(uint64_t(planning_horizon * 2 + 1))), last_updated() {
 	// The planning horizon denotes how many slots we want to be able to look into future and past.
 	// Since the current moment in time must also be represented, we need planning_horizon*2+1 values.
 	// If we use UINT32_MAX, then we wouldn't be able to store 2*UINT32_MAX+1 in UINT64, so throw an exception if this is attempted.
 	if (planning_horizon == UINT32_MAX)
-		throw std::invalid_argument("Cannot instantiate a reservation table with a planning horizon of UINT32_MAX. It must be one slot less.");
+		throw std::invalid_argument("Cannot instantiate a reservation table with a planning horizon of UINT32_MAX. It must be at least one slot less.");
+	// In practice, allocating even much less results in a std::bad_alloc anyway...
 }
 
-uint32_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getPlanningHorizon() const {
+uint32_t ReservationTable::getPlanningHorizon() const {
 	return this->planning_horizon;
 }
 
-void TUHH_INTAIRNET_MCSOTDMA::ReservationTable::mark(int32_t slot_offset, bool utilized) {
+void ReservationTable::mark(int32_t slot_offset, Reservation reservation) {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("Reservation table planning horizon smaller than queried slot offset!");
 	// 0 to p-1 for p past slots
 	// p is the current slot
 	// p+1 to 2p+1 for p future slots
 	// where p is the planning horizon
-	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = utilized;
+	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isUtilized(int32_t slot_offset) const {
+bool ReservationTable::isUtilized(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("Reservation table planning horizon smaller than queried offset!");
-	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
+	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() != Reservation::Action::IDLE;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t slot_offset) const {
+bool ReservationTable::isIdle(int32_t slot_offset) const {
 	return !this->isUtilized(slot_offset);
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t start, uint32_t length) const {
+bool ReservationTable::isIdle(int32_t start, uint32_t length) const {
 	if (length == 1)
 		return this->isUtilized(start);
 	if (!this->isValid(start, length))
@@ -56,12 +59,12 @@ bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isIdle(int32_t start, uint32_t l
 	return true;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isUtilized(int32_t start, uint32_t length) const {
+bool ReservationTable::isUtilized(int32_t start, uint32_t length) const {
 	// A slot range is utilized if any slot within is utilized.
 	return !this->isIdle(start, length);
 }
 
-int32_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length) const {
+int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length) const {
 	if (!isValid(start, length))
 		throw std::invalid_argument("Invalid slot range!");
 	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
@@ -71,40 +74,40 @@ int32_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::findEarliestIdleRange(int32_t
 	throw std::runtime_error("No idle slot range of specified length found.");
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isValid(int32_t slot_offset) const {
+bool ReservationTable::isValid(int32_t slot_offset) const {
 	return abs(slot_offset) <= this->planning_horizon; // can't move more than one horizon into either direction of time.
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::ReservationTable::isValid(int32_t start, uint32_t length) const {
+bool ReservationTable::isValid(int32_t start, uint32_t length) const {
 	if (length == 1)
 		return this->isValid(start);
 	return isValid(start) && isValid(start + length - 1);
 }
 
-const TUHH_INTAIRNET_MCSOTDMA::Timestamp& TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getCurrentSlot() const {
+const Timestamp& ReservationTable::getCurrentSlot() const {
 	return this->last_updated;
 }
 
-void TUHH_INTAIRNET_MCSOTDMA::ReservationTable::update(uint64_t num_slots) {
+void ReservationTable::update(uint64_t num_slots) {
 	// Shift all elements to the front, old ones are overwritten.
 	std::move(this->slot_utilization_vec.begin() + num_slots, this->slot_utilization_vec.end(), this->slot_utilization_vec.begin());
 	// All new elements are initialized as idle.
 	auto it = slot_utilization_vec.end() - 1;
 	for (size_t i = 0; i < num_slots; i++)
-		(*it--) = false;
+		(*it--) = Reservation(SYMBOLIC_ID_UNSET);
 	last_updated += num_slots;
 }
 
-const std::vector<bool>& TUHH_INTAIRNET_MCSOTDMA::ReservationTable::getVec() const {
+const std::vector<Reservation>& ReservationTable::getVec() const {
 	return this->slot_utilization_vec;
 }
 
-uint64_t TUHH_INTAIRNET_MCSOTDMA::ReservationTable::convertOffsetToIndex(int32_t slot_offset) const {
+uint64_t ReservationTable::convertOffsetToIndex(int32_t slot_offset) const {
 	// The vector has planning_horizon-many past slots, one current slot, and planning_horizon-many future slots.
 	// So planning_horizon+0 indicates the current slot, which is the basis for this relative access.
 	return planning_horizon + slot_offset;
 }
 
-void TUHH_INTAIRNET_MCSOTDMA::ReservationTable::setLastUpdated(const TUHH_INTAIRNET_MCSOTDMA::Timestamp& timestamp) {
+void ReservationTable::setLastUpdated(const Timestamp& timestamp) {
 	last_updated = timestamp;
 }

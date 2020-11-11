@@ -7,10 +7,11 @@
 
 #include <map>
 #include <queue>
-#include "LinkId.hpp"
+#include "IcaoId.hpp"
 #include "L2Packet.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
+	
 	/**
 	 * The queue manager accepts upper layer packets and sorts them into link-specific queues.
 	 */
@@ -31,10 +32,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			QueueManager();
 			virtual ~QueueManager();
 			
-			Result push(const L2Packet* packet);
+			Result push(L2Packet* packet);
+			
+			L2Packet* dequeue(const IcaoId& link_id);
 		
 		protected:
-			std::map<LinkId, std::queue<const L2Packet*>*> queue_map;
+			std::map<IcaoId, std::queue<L2Packet*>*> queue_map;
 	};
 }
 

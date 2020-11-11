@@ -13,10 +13,10 @@
 
 int main() {
 	CppUnit::TextUi::TestRunner runner;
+	runner.addTest(ReservationTests::suite());
 	runner.addTest(ReservationTableTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
 	runner.addTest(ReservationManagerTests::suite());
-	runner.addTest(ReservationTests::suite());
 	runner.addTest(L2HeaderTests::suite());
 	runner.addTest(L2PacketTests::suite());
 	runner.addTest(QueueManagerTests::suite());

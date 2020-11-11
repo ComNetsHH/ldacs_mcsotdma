@@ -4,39 +4,42 @@
 
 #include "QueueManager.hpp"
 
-TUHH_INTAIRNET_MCSOTDMA::QueueManager::QueueManager() : queue_map() {
+using namespace TUHH_INTAIRNET_MCSOTDMA;
+
+QueueManager::QueueManager() : queue_map() {
 
 }
 
-TUHH_INTAIRNET_MCSOTDMA::QueueManager::Result
-TUHH_INTAIRNET_MCSOTDMA::QueueManager::push(const TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) {
-	const LinkId& destination_id = packet->getDestination();
+QueueManager::Result QueueManager::push(::L2Packet* packet) {
+	const IcaoId& destination_id = packet->getDestination();
 	// Sanity check that the destination is set. Without it we cannot determine the corresponding queue.
-	if (destination_id == LINK_ID_UNSET)
+	if (destination_id == SYMBOLIC_ID_UNSET)
 		throw std::runtime_error("QueueManager received a packet with an unset destination.");
 	
 	Result result;
 	
 	// Try to find the corresponding queue...
 	auto iterator = queue_map.find(destination_id);
-	std::queue<const L2Packet*>* queue;
+	std::queue<L2Packet*>* queue;
 	// ... if it has not been found, create a new one.
 	if (iterator == queue_map.end()) {
 		// Create a new queue. It'll be deleted through the destructor.
-		queue = new std::queue<const L2Packet*>();
-		queue_map[destination_id] = queue;
-		if (destination_id == LINK_ID_BROADCAST)
+		queue = new std::queue<L2Packet*>();
+		std::pair<std::map<IcaoId, std::queue<L2Packet*>*>::iterator, bool> insertion_result = queue_map.insert(std::map<IcaoId, std::queue<L2Packet*>*>::value_type(destination_id, queue));
+		if (!insertion_result.second)
+			throw std::runtime_error("Attempted to insert a new queue, but there already was one.");
+		if (destination_id == SYMBOLIC_LINK_ID_BROADCAST)
 			result = Result::enqueued_bc; // First broadcast packet. No special result for this.
-		else if (destination_id == LINK_ID_BEACON)
+		else if (destination_id == SYMBOLIC_LINK_ID_BEACON)
 			result = Result::enqueued_beacon; // First beacon packet. No special result for this.
 		else
 			result = Result::enqueued_new_p2p; // First P2P packet of a new link. Indicates that a link must be set up!
 	// ... if it has been found, add to it.
 	} else {
 		queue = (*iterator).second;
-		if (destination_id == LINK_ID_BROADCAST)
+		if (destination_id == SYMBOLIC_LINK_ID_BROADCAST)
 			result = Result::enqueued_bc;
-		else if (destination_id == LINK_ID_BEACON)
+		else if (destination_id == SYMBOLIC_LINK_ID_BEACON)
 			result = Result::enqueued_beacon;
 		else
 			result = Result::enqueued_p2p;
@@ -46,9 +49,21 @@ TUHH_INTAIRNET_MCSOTDMA::QueueManager::push(const TUHH_INTAIRNET_MCSOTDMA::L2Pac
 	return result;
 }
 
-TUHH_INTAIRNET_MCSOTDMA::QueueManager::~QueueManager() {
+QueueManager::~QueueManager() {
 	for (auto& it : queue_map)
 		delete it.second;
+}
+
+L2Packet* QueueManager::dequeue(const IcaoId& link_id) {
+	auto iterator = queue_map.find(link_id);
+	if (iterator == queue_map.end())
+		throw std::invalid_argument("QueueManager::dequeue has no queue for link ID '" + std::to_string(link_id.getId()) + "'.");
+	auto queue = (*iterator).second;
+	if (queue->empty())
+		throw std::runtime_error("QueueManager::dequeue on empty queue.");
+	L2Packet* packet = queue->front();
+	queue->pop();
+	return packet;
 }
 
 

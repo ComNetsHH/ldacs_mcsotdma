@@ -26,15 +26,16 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		void testConstructor() {
 			bool exception_thrown = false;
 			try {
-				ReservationTable another_table(UINT32_MAX - 1);
+				ReservationTable another_table = ReservationTable(255);
 			} catch (const std::exception& e) {
+				std::cout << e.what() << std::endl;
 				exception_thrown = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(false, exception_thrown);
-			
+
 			try {
 				// Shouldn't be able to instantiate a table with that many slots.
-				ReservationTable another_table(UINT32_MAX);
+				ReservationTable another_table = ReservationTable(UINT32_MAX);
 			} catch (const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -45,19 +46,20 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			// Planning horizon should be the same as specified.
 			CPPUNIT_ASSERT_EQUAL(planning_horizon, table->getPlanningHorizon());
 			// Number of slots should be twice the planning horizon plus: once for future, once for past slots, and one for the current slot.
-			const std::vector<bool>& vec = table->getVec();
+			const std::vector<Reservation>& vec = table->getVec();
 			CPPUNIT_ASSERT_EQUAL(2*planning_horizon+1, (uint32_t) vec.size());
 		}
 		
 		void testValidSlot() {
 			// Even though this class is a friend class of ReservationTable, my compiler won't allow me to access protected functions.
 			// Hence I will test ReservationTable::isValid(...) through the mark function.
+			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
 			
 			// Entire planning horizon, both negative and positive, should be valid.
 			for (int32_t offset = -int32_t(this->planning_horizon); offset <= int32_t(this->planning_horizon); offset++) {
 				bool exception_thrown = false;
 				try {
-					table->mark(offset, true);
+					table->mark(offset, reservation);
 				} catch (const std::exception& e) {
 					exception_thrown = true;
 				}
@@ -69,7 +71,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			for (int32_t offset = -int32_t(this->planning_horizon - move_into_invalid_range); offset < -int32_t(this->planning_horizon); offset++) {
 				bool exception_thrown = false;
 				try {
-					table->mark(offset, true);
+					table->mark(offset, reservation);
 				} catch (const std::exception& e) {
 					exception_thrown = true;
 				}
@@ -78,7 +80,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			for (int32_t offset = int32_t(this->planning_horizon + move_into_invalid_range); offset > int32_t(this->planning_horizon); offset--) {
 				bool exception_thrown = false;
 				try {
-					table->mark(offset, true);
+					table->mark(offset, reservation);
 				} catch (const std::exception& e) {
 					exception_thrown = true;
 				}
@@ -140,20 +142,23 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testMarking() {
+			Reservation busy_reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
+			Reservation idle_reservation = Reservation(IcaoId(1), Reservation::Action::IDLE);
 			int32_t slot_offset = 0;
 			CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(slot_offset));
-			table->mark(slot_offset, true);
+			table->mark(slot_offset, busy_reservation);
 			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(slot_offset));
-			table->mark(slot_offset, false);
+			table->mark(slot_offset, idle_reservation);
 			CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(slot_offset));
 			slot_offset = -1;
-			table->mark(slot_offset, true);
+			table->mark(slot_offset, busy_reservation);
 			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(slot_offset));
 			CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(slot_offset + 1));
 			CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(slot_offset + 2));
 		}
 		
 		void testIdleRange() {
+			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
 			uint32_t length = 2;
 			// Negative range.
 			for (int32_t start_range = -int32_t(planning_horizon); start_range < -length; start_range++) {
@@ -161,7 +166,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 				CPPUNIT_ASSERT_EQUAL(true, table->isIdle(start_range, length));
 				// Mark every second starting point as utilized for the second for-loop.
 				if (start_range % 2 == 0)
-					table->mark(start_range, true);
+					table->mark(start_range, reservation);
 			}
 			// Everything so far should now be regarded as utilized.
 			for (int32_t start_range = -int32_t(planning_horizon); start_range < -length - 1; start_range++) {
@@ -174,7 +179,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			for (int32_t start_range = -length; start_range <= 0; start_range++) {
 				CPPUNIT_ASSERT_EQUAL(true, table->isIdle(start_range, length));
 				if (start_range % 2 == 0)
-					table->mark(start_range, true);
+					table->mark(start_range, reservation);
 			}
 			// Should now be utilized.
 			for (int32_t start_range = -length; start_range <= 0; start_range++) {
@@ -189,7 +194,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 				CPPUNIT_ASSERT_EQUAL(true, table->isIdle(start_range, length));
 				// Mark every second starting point as utilized for the second for-loop.
 				if (start_range % 2 == 0)
-					table->mark(start_range, true);
+					table->mark(start_range, reservation);
 			}
 			// Everything so far should now be regarded as utilized.
 			for (int32_t start_range = 1; start_range < this->planning_horizon - int32_t(length); start_range++) {
@@ -200,6 +205,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testFindIdleRange() {
+			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
 			int32_t start = int32_t(planning_horizon) - 2;
 			// start + length exceeds planning horizon ...
 			uint32_t length = 4;
@@ -232,17 +238,17 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			// But starting in the p
 			int32_t idle_slot_range_start = table->findEarliestIdleRange(0, 5);
 			CPPUNIT_ASSERT_EQUAL(int32_t(0), idle_slot_range_start);
-			table->mark(0, true);
+			table->mark(0, reservation);
 			// x00000
 			// 012345
 			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
 			CPPUNIT_ASSERT_EQUAL(int32_t(1), idle_slot_range_start);
-			table->mark(5, true);
+			table->mark(5, reservation);
 			// x0000x0000
 			// 0123456789
 			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
 			CPPUNIT_ASSERT_EQUAL(int32_t(6), idle_slot_range_start);
-			table->mark(11, true);
+			table->mark(11, reservation);
 			// x0000x00000x0
 			// 0123456789012
 			idle_slot_range_start = table->findEarliestIdleRange(0, 5);
@@ -252,8 +258,9 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testUpdate() {
+			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
 			CPPUNIT_ASSERT_EQUAL(true, table->isIdle(0, planning_horizon));
-			table->mark(planning_horizon, true);
+			table->mark(planning_horizon, reservation);
 			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(0, planning_horizon + 1));
 			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(planning_horizon));
 			table->update(1);

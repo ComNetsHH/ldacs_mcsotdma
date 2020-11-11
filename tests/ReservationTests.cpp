@@ -11,30 +11,36 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 class ReservationTests : public CppUnit::TestFixture {
 	private:
 		Reservation* reservation;
-		LinkId* owner;
 		int id = 42;
+		IcaoId owner = IcaoId(id);
 	
 	public:
 		void setUp() override {
-			owner = new LinkId(id);
-			reservation = new Reservation(*owner);
+			reservation = new Reservation(owner);
 		}
 		
 		void tearDown() override {
 			delete reservation;
-			delete owner;
+		}
+		
+		void testConstructors() {
+			Reservation res1 = Reservation();
+			Reservation res2 = Reservation(owner);
+			Reservation res3 = Reservation(owner, Reservation::Action::IDLE);
+			std::vector<Reservation> vec = std::vector<Reservation>(10000);
 		}
 		
 		void testBasics() {
-			CPPUNIT_ASSERT(reservation->getOwner() == *owner);
-			CPPUNIT_ASSERT(reservation->getOwner() != LinkId(id+1));
-			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::UNSET);
+			CPPUNIT_ASSERT(reservation->getOwner() == owner);
+			CPPUNIT_ASSERT(reservation->getOwner() != IcaoId(id+1));
+			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::IDLE);
 			reservation->setAction(Reservation::Action::TX);
-			CPPUNIT_ASSERT(reservation->getAction() != Reservation::Action::UNSET);
+			CPPUNIT_ASSERT(reservation->getAction() != Reservation::Action::IDLE);
 			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::TX);
 		}
 		
 	CPPUNIT_TEST_SUITE(ReservationTests);
+		CPPUNIT_TEST(testConstructors);
 		CPPUNIT_TEST(testBasics);
 	CPPUNIT_TEST_SUITE_END();
 };
