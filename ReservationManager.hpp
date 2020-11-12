@@ -30,6 +30,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			FrequencyChannel& getFreqChannel(uint64_t center_frequency);
 			ReservationTable& getReservationTable(uint64_t center_frequency);
+			ReservationTable& getReservationTable(const FrequencyChannel& channel);
 			
 			/**
 			 * Calls update() function on each reservation table.

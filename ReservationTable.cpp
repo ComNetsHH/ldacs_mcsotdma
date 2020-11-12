@@ -12,7 +12,7 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 ReservationTable::ReservationTable(uint32_t planning_horizon)
-	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<Reservation>(uint64_t(planning_horizon * 2 + 1))), last_updated() {
+	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<Reservation>(uint64_t(planning_horizon * 2 + 1))), last_updated(), num_idle_future_slots(planning_horizon + 1) {
 	// The planning horizon denotes how many slots we want to be able to look into future and past.
 	// Since the current moment in time must also be represented, we need planning_horizon*2+1 values.
 	// If we use UINT32_MAX, then we wouldn't be able to store 2*UINT32_MAX+1 in UINT64, so throw an exception if this is attempted.
@@ -28,11 +28,10 @@ uint32_t ReservationTable::getPlanningHorizon() const {
 void ReservationTable::mark(int32_t slot_offset, Reservation reservation) {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("Reservation table planning horizon smaller than queried slot offset!");
-	// 0 to p-1 for p past slots
-	// p is the current slot
-	// p+1 to 2p+1 for p future slots
-	// where p is the planning horizon
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
+	// Update the number of idle slots.
+	if (reservation.getAction() != Reservation::Action::IDLE)
+		num_idle_future_slots--;
 }
 
 bool ReservationTable::isUtilized(int32_t slot_offset) const {
@@ -89,12 +88,20 @@ const Timestamp& ReservationTable::getCurrentSlot() const {
 }
 
 void ReservationTable::update(uint64_t num_slots) {
+	// Count the number of busy slots that go out of scope on the time domain.
+	uint64_t num_busy_slots = 0;
+	for (auto it = slot_utilization_vec.begin(); it < slot_utilization_vec.begin() + num_slots; it++) {
+		Reservation reservation = *it;
+		if (reservation.getAction() != Reservation::Action::IDLE)
+			num_busy_slots++;
+	}
+	num_idle_future_slots += num_busy_slots; // As these go out of scope, we may have more idle slots now.
+	
 	// Shift all elements to the front, old ones are overwritten.
 	std::move(this->slot_utilization_vec.begin() + num_slots, this->slot_utilization_vec.end(), this->slot_utilization_vec.begin());
 	// All new elements are initialized as idle.
-	auto it = slot_utilization_vec.end() - 1;
-	for (size_t i = 0; i < num_slots; i++)
-		(*it--) = Reservation(SYMBOLIC_ID_UNSET);
+	for (auto it = slot_utilization_vec.end() - 1; it >= slot_utilization_vec.end() - num_slots; it--)
+		*it = Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::IDLE);
 	last_updated += num_slots;
 }
 
@@ -110,6 +117,10 @@ uint64_t ReservationTable::convertOffsetToIndex(int32_t slot_offset) const {
 
 void ReservationTable::setLastUpdated(const Timestamp& timestamp) {
 	last_updated = timestamp;
+}
+
+uint64_t ReservationTable::getNumIdleSlots() const {
+	return this->num_idle_future_slots;
 }
 
 ReservationTable::~ReservationTable() = default;

@@ -34,3 +34,7 @@ void ReservationManager::update(uint64_t num_slots) {
 	for (auto& pair : reservation_tables)
 		pair.second.update(num_slots);
 }
+
+ReservationTable& ReservationManager::getReservationTable(const FrequencyChannel& channel) {
+	return this->getReservationTable(channel.getCenterFrequency());
+}

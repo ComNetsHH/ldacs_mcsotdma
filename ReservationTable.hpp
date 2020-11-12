@@ -97,6 +97,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Reference to the internally-used slot utilization vector.
 			 */
 			const std::vector<Reservation>& getVec() const;
+			
+			/**
+			 * @return The number of *future* slots that are marked as idle.
+			 */
+			uint64_t getNumIdleSlots() const;
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;
@@ -118,6 +123,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const uint32_t planning_horizon;
 			/** OMNeT++ has discrete points in time that can be represented by a 64-bit number. This keeps track of that moment in time where this table was last updated. */
 			Timestamp last_updated;
+			/** The ReservationTable keeps track of the idle slots it currently has, so that different tables are easily compared for their capacity of new reservations. */
+			uint64_t num_idle_future_slots;
 	};
 }
 

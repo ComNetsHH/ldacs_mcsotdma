@@ -10,8 +10,10 @@
 #include "L2HeaderTests.cpp"
 #include "L2PacketTests.cpp"
 #include "QueueManagerTests.cpp"
+#include "../coutdebug.hpp"
 
 int main() {
+	coutd.setVerbose(false);
 	CppUnit::TextUi::TestRunner runner;
 	runner.addTest(ReservationTests::suite());
 	runner.addTest(ReservationTableTests::suite());

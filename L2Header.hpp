@@ -22,7 +22,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				beacon,
 				broadcast,
 				unicast,
-				link_establishment_request
+				link_establishment_request,
+				link_establishment_reply
 			};
 			
 			explicit L2Header(L2Header::FrameType frame_type)	: frame_type(frame_type), crc_checksum(0) {}
@@ -104,11 +105,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	
 	class L2HeaderUnicast : public L2Header {
 		public:
-			L2HeaderUnicast(const IcaoId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
-			: L2Header(FrameType::unicast), icao_dest_id(icao_dest_id), use_arq(use_arq), arq_seqno(arq_seqno), arq_ack_no(arq_ack_no), arq_ack_slot(arq_ack_slot) {
+			L2HeaderUnicast(const IcaoId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot, FrameType frame_type)
+			: L2Header(frame_type), icao_dest_id(icao_dest_id), use_arq(use_arq), arq_seqno(arq_seqno), arq_ack_no(arq_ack_no), arq_ack_slot(arq_ack_slot) {
 				if (icao_dest_id == SYMBOLIC_ID_UNSET)
 					throw std::invalid_argument("Cannot instantiate a header with an unset ICAO ID.");
+				if (frame_type != FrameType::unicast && frame_type != FrameType::link_establishment_reply && frame_type != FrameType::link_establishment_request)
+					throw std::invalid_argument("Cannot instantiate a unicast header with a non-unicast type.");
 			}
+			
+			L2HeaderUnicast(const IcaoId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
+				: L2HeaderUnicast(icao_dest_id, use_arq, arq_seqno, arq_ack_no, arq_ack_slot, FrameType::unicast) {}
 			
 			const IcaoId& getDestId() const {
 				return this->icao_dest_id;
@@ -135,6 +141,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		protected:
 			/** Destination ICAO ID. */
 			const IcaoId icao_dest_id;
+	};
+	
+	class L2HeaderLinkEstablishmentRequest : public L2HeaderUnicast {
+		public:
+			L2HeaderLinkEstablishmentRequest(const IcaoId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
+				: L2HeaderUnicast(icao_dest_id, use_arq, arq_seqno, arq_ack_no, arq_ack_slot, FrameType::link_establishment_request) {}
+	};
+	
+	class L2HeaderLinkEstablishmentReply : public L2HeaderUnicast {
+		public:
+			L2HeaderLinkEstablishmentReply(const IcaoId& icao_dest_id, bool use_arq, unsigned int arq_seqno, unsigned int arq_ack_no, unsigned int arq_ack_slot)
+					: L2HeaderUnicast(icao_dest_id, use_arq, arq_seqno, arq_ack_no, arq_ack_slot, FrameType::link_establishment_reply) {}
 	};
 	
 }

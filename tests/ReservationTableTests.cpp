@@ -250,7 +250,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testUpdate() {
-			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
+			Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::IDLE);
 			CPPUNIT_ASSERT_EQUAL(true, table->isIdle(0, planning_horizon));
 			table->mark(planning_horizon, reservation);
 			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(0, planning_horizon + 1));
@@ -291,6 +291,10 @@ class ReservationTableTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT_EQUAL(false, table->getCurrentSlot() == now);
 			now += 13;
 			CPPUNIT_ASSERT_EQUAL(true, table->getCurrentSlot() == now);
+		}
+		
+		void testNumIdleSlots() {
+		
 		}
 	
 	CPPUNIT_TEST_SUITE(ReservationTableTests);
