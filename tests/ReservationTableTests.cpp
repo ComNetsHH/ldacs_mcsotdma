@@ -250,7 +250,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testUpdate() {
-			Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::IDLE);
+			Reservation reservation = Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY);
 			CPPUNIT_ASSERT_EQUAL(true, table->isIdle(0, planning_horizon));
 			table->mark(planning_horizon, reservation);
 			CPPUNIT_ASSERT_EQUAL(true, table->isUtilized(0, planning_horizon + 1));
