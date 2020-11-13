@@ -46,7 +46,7 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	L2Packet* request;
 	L2HeaderLinkEstablishmentRequest* header = new L2HeaderLinkEstablishmentRequest(link_id, use_arq, 0, 0, 0); // TODO link to actual ARQ and set reasonable ARQ params here
 	ProposalPayload* payload = new ProposalPayload();
-	
+	return request;
 }
 
 bool LinkManager::isUsingArq() const {

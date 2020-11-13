@@ -15,12 +15,12 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	reservation_tables.push_back(table);
 }
 
-FrequencyChannel& ReservationManager::getFreqChannel(size_t index) {
-	return *frequency_channels.at(index);
+FrequencyChannel* ReservationManager::getFreqChannel(size_t index) {
+	return frequency_channels.at(index);
 }
 
-ReservationTable& ReservationManager::getReservationTable(size_t index) {
-	return *reservation_tables.at(index);
+ReservationTable* ReservationManager::getReservationTable(size_t index) {
+	return reservation_tables.at(index);
 }
 
 void ReservationManager::update(uint64_t num_slots) {
@@ -37,4 +37,14 @@ ReservationManager::~ReservationManager() {
 
 size_t ReservationManager::getNumEntries() const {
     return frequency_channels.size();
+}
+
+ReservationTable* ReservationManager::getLeastUtilizedReservationTable() {
+    // Keeping an up-to-date priority queue is less efficient than manually searching through all channels upon request,
+    // because reservations are made very often, while finding the least utilized table is needed relatively rarely.
+    ReservationTable* least_used_table = reservation_tables.at(0);
+    for (auto it = reservation_tables.begin() + 1; it < reservation_tables.end(); it++)
+        if (least_used_table->getNumIdleSlots() < (*it)->getNumIdleSlots())
+            least_used_table = *it;
+    return least_used_table;
 }

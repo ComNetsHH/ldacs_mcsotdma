@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <map>
+#include <queue>
 #include "ReservationTable.hpp"
 #include "FrequencyChannel.hpp"
 
@@ -28,8 +29,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			void addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
 			
-			FrequencyChannel& getFreqChannel(size_t index);
-			ReservationTable& getReservationTable(size_t index);
+			FrequencyChannel* getFreqChannel(size_t index);
+			ReservationTable* getReservationTable(size_t index);
 			
 			/**
 			 * Calls update() function on each reservation table.
@@ -37,7 +38,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			void update(uint64_t num_slots);
 
+			/**
+			 * @return Number of frequency channels and corresponding reservation tables that are managed.
+			 */
 			size_t getNumEntries() const;
+
+			/**
+			 * Looks through all reservation tables to find the one with most idle slots, so its complexity is O(n).
+			 * @return A pointer to the least utilized reservation table according to its reported number of idle slots.
+			 */
+			ReservationTable* getLeastUtilizedReservationTable();
 
 		protected:
 			/** Number of slots to remember both in the past and in the future. */
