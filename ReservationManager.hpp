@@ -18,6 +18,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class ReservationManager {
 		public:
 			explicit ReservationManager(uint32_t planning_horizon);
+			virtual ~ReservationManager();
 			
 			/**
 			 * Adds a frequency channel and corresponding reservation table.
@@ -26,24 +27,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param bandwidth
 			 */
 			void addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
-			void removeFrequencyChannel(uint64_t center_frequency);
 			
-			FrequencyChannel& getFreqChannel(uint64_t center_frequency);
-			ReservationTable& getReservationTable(uint64_t center_frequency);
-			ReservationTable& getReservationTable(const FrequencyChannel& channel);
+			FrequencyChannel& getFreqChannel(size_t index);
+			ReservationTable& getReservationTable(size_t index);
 			
 			/**
 			 * Calls update() function on each reservation table.
 			 * @param num_slots
 			 */
 			void update(uint64_t num_slots);
+
+			size_t getNumEntries() const;
+
 		protected:
 			/** Number of slots to remember both in the past and in the future. */
 			uint32_t planning_horizon;
-			/** Maps center frequency to FrequencyChannel object. */
-			std::map<uint64_t, TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel> frequency_channels;
-			/** Maps center frequency to reservation table. */
-			std::map<uint64_t, TUHH_INTAIRNET_MCSOTDMA::ReservationTable> reservation_tables;
+			/** Keeps frequency channels in the same order as reservation_tables. */
+			std::vector<TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel*> frequency_channels;
+			/** Keeps reservation table in the same order as frequency_channels. */
+			std::vector<TUHH_INTAIRNET_MCSOTDMA::ReservationTable*> reservation_tables;
 	};
 	
 }

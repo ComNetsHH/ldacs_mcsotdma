@@ -6,35 +6,35 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), reservation_tables() {
-
-}
+ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), reservation_tables() {}
 
 void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth) {
-	auto table = std::map<uint64_t, ReservationTable>::value_type(center_frequency, ReservationTable(this->planning_horizon));
-	reservation_tables.insert(table);
-	auto channel = std::map<uint64_t, FrequencyChannel>::value_type(center_frequency, FrequencyChannel(is_p2p, center_frequency, bandwidth));
-	frequency_channels.insert(channel);
+	FrequencyChannel* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
+	frequency_channels.push_back(channel);
+	ReservationTable* table = new ReservationTable(this->planning_horizon);
+	reservation_tables.push_back(table);
 }
 
-FrequencyChannel& ReservationManager::getFreqChannel(uint64_t center_frequency) {
-	return frequency_channels.at(center_frequency);
+FrequencyChannel& ReservationManager::getFreqChannel(size_t index) {
+	return *frequency_channels.at(index);
 }
 
-ReservationTable& ReservationManager::getReservationTable(uint64_t center_frequency) {
-	return reservation_tables.at(center_frequency);
-}
-
-void ReservationManager::removeFrequencyChannel(uint64_t center_frequency) {
-	reservation_tables.erase(center_frequency);
-	frequency_channels.erase(center_frequency);
+ReservationTable& ReservationManager::getReservationTable(size_t index) {
+	return *reservation_tables.at(index);
 }
 
 void ReservationManager::update(uint64_t num_slots) {
-	for (auto& pair : reservation_tables)
-		pair.second.update(num_slots);
+	for (ReservationTable* table : reservation_tables)
+		table->update(num_slots);
 }
 
-ReservationTable& ReservationManager::getReservationTable(const FrequencyChannel& channel) {
-	return this->getReservationTable(channel.getCenterFrequency());
+ReservationManager::~ReservationManager() {
+    for (FrequencyChannel* channel : frequency_channels)
+        delete channel;
+    for (ReservationTable* table : reservation_tables)
+        delete table;
+}
+
+size_t ReservationManager::getNumEntries() const {
+    return frequency_channels.size();
 }
