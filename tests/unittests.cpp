@@ -3,6 +3,9 @@
 //
 
 #include <cppunit/ui/text/TestRunner.h>
+#include <cppunit/TestResult.h>
+#include <cppunit/TestResultCollector.h>
+#include <cppunit/BriefTestProgressListener.h>
 #include "ReservationTableTests.cpp"
 #include "FrequencyChannelTests.cpp"
 #include "ReservationManagerTests.cpp"
@@ -14,7 +17,13 @@
 
 int main() {
 	coutd.setVerbose(false);
+	CppUnit::TestResult result;
+	CppUnit::TestResultCollector collectedResults;
+	CppUnit::BriefTestProgressListener progress;
 	CppUnit::TextUi::TestRunner runner;
+	result.addListener(&collectedResults);
+	result.addListener(&progress);
+	
 	runner.addTest(ReservationTests::suite());
 	runner.addTest(ReservationTableTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
@@ -22,5 +31,7 @@ int main() {
 	runner.addTest(L2HeaderTests::suite());
 	runner.addTest(L2PacketTests::suite());
 	runner.addTest(QueueManagerTests::suite());
-	runner.run();
+	
+	runner.run(result);
+	return collectedResults.wasSuccessful() ? 0 : 1;
 }
