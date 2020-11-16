@@ -10,7 +10,6 @@
 #include "FrequencyChannelTests.cpp"
 #include "ReservationManagerTests.cpp"
 #include "ReservationTests.cpp"
-#include "QueueManagerTests.cpp"
 #include "../coutdebug.hpp"
 
 int main() {
@@ -26,7 +25,6 @@ int main() {
 	runner.addTest(ReservationTableTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
 	runner.addTest(ReservationManagerTests::suite());
-	runner.addTest(QueueManagerTests::suite());
 	
 	runner.run(result);
 	return collectedResults.wasSuccessful() ? 0 : 1;

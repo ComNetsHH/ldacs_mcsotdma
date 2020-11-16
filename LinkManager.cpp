@@ -7,10 +7,10 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-LinkManager::LinkManager(const MacId& link_id, ReservationManager& reservation_manager, QueueManager& queue_manager)
+LinkManager::LinkManager(const MacId& link_id, ReservationManager& reservation_manager, MCSOTDMA_Mac& mac)
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-	queue_manager(queue_manager) {}
+	  mac(mac) {}
 
 const MacId& LinkManager::getLinkId() const {
 	return this->link_id;
@@ -44,18 +44,11 @@ void LinkManager::notifyIncoming(L2Packet* incoming_packet) {
 
 L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	L2Packet* request;
-	L2HeaderLinkEstablishmentRequest* header = new L2HeaderLinkEstablishmentRequest(link_id, use_arq, 0, 0, 0); // TODO link to actual ARQ and set reasonable ARQ params here
-	ProposalPayload* payload = new ProposalPayload();
+//	L2HeaderLinkEstablishmentRequest* header = new L2HeaderLinkEstablishmentRequest(link_id, use_arq, 0, 0, 0); // TODO link to actual ARQ and set reasonable ARQ params here
+//	ProposalPayload* payload = new ProposalPayload();
 	return request;
 }
 
-bool LinkManager::isUsingArq() const {
-	return use_arq;
-}
-
-void LinkManager::setUseArq(bool value) {
-	this->use_arq = value;
-}
 
 unsigned int LinkManager::getNumSlotsToReserve() const {
 	return this->num_slots_to_reserve;

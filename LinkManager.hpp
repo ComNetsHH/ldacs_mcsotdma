@@ -7,8 +7,8 @@
 
 #include "MacId.hpp"
 #include <L2Packet.hpp>
-#include "QueueManager.hpp"
 #include "ReservationManager.hpp"
+#include "MCSOTDMA_Mac.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -37,7 +37,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				awaiting_reply
 			};
 			
-			LinkManager(const MacId& link_id, ReservationManager& reservation_manager, QueueManager& queue_manager);
+			LinkManager(const MacId& link_id, ReservationManager& reservation_manager, MCSOTDMA_Mac& mac);
 			
 			/**
 			 * @return The link ID that is managed.
@@ -53,10 +53,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * When a packet on this link comes in, the LinkManager is notified.
 			 */
 			void notifyIncoming(L2Packet* incoming_packet);
-			
-			bool isUsingArq() const;
-			
-			void setUseArq(bool value);
 			
 			/**
 			 * @return The number of slots that should be reserved when a new link is established.
@@ -76,14 +72,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const MacId link_id;
 			/** Points to the reservation table of this link. */
 			ReservationManager& reservation_manager;
-			/** Points to the queue manager, so that packets can be dequeued when transmission comes up. */
-			QueueManager& queue_manager;
+			/** Points to the MAC sublayer. */
+			MCSOTDMA_Mac& mac;
 			/** Link establishment status. */
 			Status link_establishment_status;
-			/** A link is assigned on one particular frequency channel. It may be nullptr until the link_establishment status is link_established. */
+			/** A link is assigned on one particular frequency channel. It may be nullptr unless the link_establishment status is `link_established`. */
 			FrequencyChannel* current_channel = nullptr;
-			/** Whether to use ARQ if this is a Point-to-Point link. */
-			bool use_arq = true;
 			/** Another component may define the number of slots that should be reserved for this link. This is based off the expected traffic load. */
 			unsigned int num_slots_to_reserve = 1;
 	};
