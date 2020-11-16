@@ -12,7 +12,7 @@ class ReservationTests : public CppUnit::TestFixture {
 	private:
 		Reservation* reservation;
 		int id = 42;
-		IcaoId owner = IcaoId(id);
+		MacId owner = MacId(id);
 	
 	public:
 		void setUp() override {
@@ -32,7 +32,7 @@ class ReservationTests : public CppUnit::TestFixture {
 		
 		void testBasics() {
 			CPPUNIT_ASSERT(reservation->getOwner() == owner);
-			CPPUNIT_ASSERT(reservation->getOwner() != IcaoId(id+1));
+			CPPUNIT_ASSERT(reservation->getOwner() != MacId(id+1));
 			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::IDLE);
 			reservation->setAction(Reservation::Action::TX);
 			CPPUNIT_ASSERT(reservation->getAction() != Reservation::Action::IDLE);

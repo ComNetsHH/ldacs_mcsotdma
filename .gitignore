@@ -2,3 +2,5 @@
 cmake-build-debug/
 *.autosave.xopp
 *.xopp~
+glue-lib
+glue-lib-headers

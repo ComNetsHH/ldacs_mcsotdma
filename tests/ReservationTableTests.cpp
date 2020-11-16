@@ -45,7 +45,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		void testValidSlot() {
 			// Even though this class is a friend class of ReservationTable, my compiler won't allow me to access protected functions.
 			// Hence I will test ReservationTable::isValid(...) through the mark function.
-			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
+			Reservation reservation = Reservation(MacId(1), Reservation::Action::BUSY);
 			
 			// Entire planning horizon, both negative and positive, should be valid.
 			for (int32_t offset = -int32_t(this->planning_horizon); offset <= int32_t(this->planning_horizon); offset++) {
@@ -134,8 +134,8 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testMarking() {
-			Reservation busy_reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
-			Reservation idle_reservation = Reservation(IcaoId(1), Reservation::Action::IDLE);
+			Reservation busy_reservation = Reservation(MacId(1), Reservation::Action::BUSY);
+			Reservation idle_reservation = Reservation(MacId(1), Reservation::Action::IDLE);
 			int32_t slot_offset = 0;
 			CPPUNIT_ASSERT_EQUAL(false, table->isUtilized(slot_offset));
 			table->mark(slot_offset, busy_reservation);
@@ -150,7 +150,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testIdleRange() {
-			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
+			Reservation reservation = Reservation(MacId(1), Reservation::Action::BUSY);
 			uint32_t length = 2;
 			// Negative range.
 			for (int32_t start_range = -int32_t(planning_horizon); start_range < -length; start_range++) {
@@ -197,7 +197,7 @@ class ReservationTableTests : public CppUnit::TestFixture {
 		}
 		
 		void testFindIdleRange() {
-			Reservation reservation = Reservation(IcaoId(1), Reservation::Action::BUSY);
+			Reservation reservation = Reservation(MacId(1), Reservation::Action::BUSY);
 			int32_t start = int32_t(planning_horizon) - 2;
 			// start + length exceeds planning horizon ...
 			uint32_t length = 4;

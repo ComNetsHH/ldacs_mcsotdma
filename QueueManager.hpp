@@ -7,7 +7,7 @@
 
 #include <map>
 #include <queue>
-#include "IcaoId.hpp"
+#include "MacId.hpp"
 #include "L2Packet.hpp"
 #include "ReservationManager.hpp"
 
@@ -37,7 +37,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			Result push(L2Packet* packet);
 			
-			L2Packet* dequeue(const IcaoId& link_id);
+			L2Packet* dequeue(const MacId& link_id);
 			
 			/**
 			 * A connection to the ReservationManager is required, so that new links can manage their reservations.
@@ -46,8 +46,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void setReservationManager(ReservationManager* manager);
 		
 		protected:
-			std::map<IcaoId, std::queue<L2Packet*>*> queue_map;
-			std::map<IcaoId, LinkManager*> link_manager_map;
+			std::map<MacId, std::queue<L2Packet*>*> queue_map;
+			std::map<MacId, LinkManager*> link_manager_map;
 			ReservationManager* reservation_manager = nullptr;
 	};
 }

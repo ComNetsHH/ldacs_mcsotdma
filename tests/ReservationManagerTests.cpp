@@ -83,13 +83,13 @@ class ReservationManagerTests : public CppUnit::TestFixture {
             ReservationTable* table2 = reservation_manager->getReservationTable(1);
 
             // Mark one slot as busy in table1.
-            table1->mark(0, Reservation(IcaoId(0), Reservation::Action::BUSY));
+            table1->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
             ReservationTable* least_utilized_table = reservation_manager->getLeastUtilizedReservationTable();
             CPPUNIT_ASSERT_EQUAL(table2, least_utilized_table); // table2 contains more idle slots now.
 
             // Now mark *two* slots busy in table2.
-            table2->mark(0, Reservation(IcaoId(0), Reservation::Action::BUSY));
-            table2->mark(1, Reservation(IcaoId(0), Reservation::Action::BUSY));
+            table2->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
+            table2->mark(1, Reservation(MacId(0), Reservation::Action::BUSY));
             least_utilized_table = reservation_manager->getLeastUtilizedReservationTable();
             CPPUNIT_ASSERT_EQUAL(table1, least_utilized_table); // table1 contains more idle slots now.
 		}

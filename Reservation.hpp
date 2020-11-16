@@ -5,7 +5,7 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_RESERVATION_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_RESERVATION_HPP
 
-#include "IcaoId.hpp"
+#include "MacId.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -27,15 +27,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				TX
 			};
 			
-			Reservation(IcaoId owner, Action action);
-			explicit Reservation(IcaoId owner);
+			Reservation(MacId owner, Action action);
+			explicit Reservation(MacId owner);
 			Reservation();
 			virtual ~Reservation();
 			
 			/**
 			 * @return The ID of the holder of this reserved slot.
 			 */
-			const IcaoId& getOwner() const;
+			const MacId& getOwner() const;
 			
 			/**
 			 * @return If the owner of the reservation is the current user, then the action shall define whether the
@@ -46,7 +46,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void setAction(Action action);
 		
 		protected:
-			IcaoId owner;
+			MacId owner;
 			Action action;
 	};
 }

@@ -5,8 +5,8 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP
 
-#include "IcaoId.hpp"
-#include "L2Packet.hpp"
+#include "MacId.hpp"
+#include <L2Packet.hpp>
 #include "QueueManager.hpp"
 #include "ReservationManager.hpp"
 
@@ -37,12 +37,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				awaiting_reply
 			};
 			
-			LinkManager(const IcaoId& link_id, ReservationManager& reservation_manager, QueueManager& queue_manager);
+			LinkManager(const MacId& link_id, ReservationManager& reservation_manager, QueueManager& queue_manager);
 			
 			/**
 			 * @return The link ID that is managed.
 			 */
-			const IcaoId& getLinkId() const;
+			const MacId& getLinkId() const;
 			
 			/**
 			 * After the QueueManager has enqueued an upper-layer packet, the corresponding LinkManager is notified.
@@ -73,7 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 		protected:
 			/** The link ID that is managed. */
-			const IcaoId link_id;
+			const MacId link_id;
 			/** Points to the reservation table of this link. */
 			ReservationManager& reservation_manager;
 			/** Points to the queue manager, so that packets can be dequeued when transmission comes up. */

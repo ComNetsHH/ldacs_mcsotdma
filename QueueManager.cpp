@@ -16,7 +16,7 @@ QueueManager::Result QueueManager::push(::L2Packet* packet) {
 	if (this->reservation_manager == nullptr)
 		throw std::runtime_error("QueueManager cannot accept any packets until a ReservationManager has been assigned using setReservationManager(...).");
 	
-	const IcaoId& destination_id = packet->getDestination();
+	const MacId& destination_id = packet->getDestination();
 	// Sanity check that the destination is set. Without it we cannot determine the corresponding queue.
 	if (destination_id == SYMBOLIC_ID_UNSET)
 		throw std::runtime_error("QueueManager received a packet with an unset destination.");
@@ -31,7 +31,7 @@ QueueManager::Result QueueManager::push(::L2Packet* packet) {
 	if (iterator == queue_map.end()) {
 		// Create a new queue. It'll be deleted through the destructor.
 		queue = new std::queue<L2Packet*>();
-		std::pair<std::map<IcaoId, std::queue<L2Packet*>*>::iterator, bool> insertion_result = queue_map.insert(std::map<IcaoId, std::queue<L2Packet*>*>::value_type(destination_id, queue));
+		std::pair<std::map<MacId, std::queue<L2Packet*>*>::iterator, bool> insertion_result = queue_map.insert(std::map<MacId, std::queue<L2Packet*>*>::value_type(destination_id, queue));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert a new queue, but there already was one.");
 		if (destination_id == SYMBOLIC_LINK_ID_BROADCAST)
@@ -42,7 +42,7 @@ QueueManager::Result QueueManager::push(::L2Packet* packet) {
 			result = Result::enqueued_new_p2p; // First P2P packet of a new link. Indicates that a link must be set up!
 		// Also create a new link manager.
 		link_manager = new LinkManager(destination_id, *reservation_manager, *this);
-		std::pair<std::map<IcaoId, LinkManager*>::iterator, bool> other_insertion_result = link_manager_map.insert(std::map<IcaoId, LinkManager*>::value_type(destination_id, link_manager));
+		std::pair<std::map<MacId, LinkManager*>::iterator, bool> other_insertion_result = link_manager_map.insert(std::map<MacId, LinkManager*>::value_type(destination_id, link_manager));
 		if (!other_insertion_result.second)
 			throw std::runtime_error("Attempted to insert a new link manager, but there already was one.");
 		
@@ -73,7 +73,7 @@ QueueManager::~QueueManager() {
 		delete it.second;
 }
 
-L2Packet* QueueManager::dequeue(const IcaoId& link_id) {
+L2Packet* QueueManager::dequeue(const MacId& link_id) {
 	auto iterator = queue_map.find(link_id);
 	if (iterator == queue_map.end())
 		throw std::invalid_argument("QueueManager::dequeue has no queue for link ID '" + std::to_string(link_id.getId()) + "'.");

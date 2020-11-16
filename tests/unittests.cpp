@@ -10,8 +10,6 @@
 #include "FrequencyChannelTests.cpp"
 #include "ReservationManagerTests.cpp"
 #include "ReservationTests.cpp"
-#include "L2HeaderTests.cpp"
-#include "L2PacketTests.cpp"
 #include "QueueManagerTests.cpp"
 #include "../coutdebug.hpp"
 
@@ -28,8 +26,6 @@ int main() {
 	runner.addTest(ReservationTableTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
 	runner.addTest(ReservationManagerTests::suite());
-	runner.addTest(L2HeaderTests::suite());
-	runner.addTest(L2PacketTests::suite());
 	runner.addTest(QueueManagerTests::suite());
 	
 	runner.run(result);
