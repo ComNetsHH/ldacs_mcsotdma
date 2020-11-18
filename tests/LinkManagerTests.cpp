@@ -5,6 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManager.hpp"
+#include "../coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -35,7 +36,7 @@ class LinkManagerTests : public CppUnit::TestFixture {
 			unsigned int num_bits = initial_bits;
 			double sum = 0;
 			// Fill up the window.
-			for (size_t i = 0; i < link_manager->getTrafficEstimateWindowSize() - 1; i++) {
+			for (size_t i = 0; i < link_manager->getTrafficEstimateWindowSize(); i++) {
 				link_manager->notifyIncoming(num_bits);
 				sum += num_bits;
 				num_bits += initial_bits;
@@ -45,7 +46,7 @@ class LinkManagerTests : public CppUnit::TestFixture {
 			link_manager->notifyIncoming(num_bits);
 			sum -= initial_bits;
 			sum += num_bits;
-			CPPUNIT_ASSERT_EQUAL(sum / (link_manager->getTrafficEstimateWindowSize() - 1), link_manager->getCurrentTrafficEstimate());
+			CPPUNIT_ASSERT_EQUAL(sum / (link_manager->getTrafficEstimateWindowSize()), link_manager->getCurrentTrafficEstimate());
 		}
 	
 	CPPUNIT_TEST_SUITE(LinkManagerTests);

@@ -41,13 +41,14 @@ void LinkManager::notifyOutgoing() {
 void LinkManager::notifyIncoming(unsigned int num_bits) {
 	// Update the moving average traffic estimate.
 	// If the window hasn't been filled yet.
-	if (traffic_estimate_index < traffic_estimate_num_values - 1) {
+	if (traffic_estimate_index <= traffic_estimate_num_values - 1) {
 		traffic_estimate_queue_lengths.at(traffic_estimate_index) = num_bits;
 		traffic_estimate_index++;
 	// If it has, kick out an old value.
 	} else {
-		for (size_t i = 1; i < traffic_estimate_queue_lengths.size(); i++)
+		for (size_t i = 1; i < traffic_estimate_queue_lengths.size(); i++) {
 			traffic_estimate_queue_lengths.at(i - 1) = traffic_estimate_queue_lengths.at(i);
+		}
 		traffic_estimate_queue_lengths.at(traffic_estimate_queue_lengths.size() - 1) = num_bits;
 	}
 }
