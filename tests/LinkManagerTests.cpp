@@ -5,6 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManager.hpp"
+#include "../MCSOTDMA_Mac.hpp"
 #include "../coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
@@ -20,8 +21,8 @@ class LinkManagerTests : public CppUnit::TestFixture {
 	public:
 		void setUp() override {
 			reservation_manager = new ReservationManager(planning_horizon);
-			mac = new MCSOTDMA_Mac(*reservation_manager);
-			link_manager = new LinkManager(id, *reservation_manager, *mac);
+			mac = new MCSOTDMA_Mac(reservation_manager);
+			link_manager = new LinkManager(id, reservation_manager, mac);
 		}
 		
 		void tearDown() override {
@@ -37,13 +38,13 @@ class LinkManagerTests : public CppUnit::TestFixture {
 			double sum = 0;
 			// Fill up the window.
 			for (size_t i = 0; i < link_manager->getTrafficEstimateWindowSize(); i++) {
-				link_manager->notifyIncoming(num_bits);
+				link_manager->notifyOutgoing(num_bits);
 				sum += num_bits;
 				num_bits += initial_bits;
 				CPPUNIT_ASSERT_EQUAL(sum / (i+1), link_manager->getCurrentTrafficEstimate());
 			}
 			// Now it's full, so the next input will kick out the first value.
-			link_manager->notifyIncoming(num_bits);
+			link_manager->notifyOutgoing(num_bits);
 			sum -= initial_bits;
 			sum += num_bits;
 			CPPUNIT_ASSERT_EQUAL(sum / (link_manager->getTrafficEstimateWindowSize()), link_manager->getCurrentTrafficEstimate());

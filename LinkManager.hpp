@@ -8,9 +8,10 @@
 #include "MacId.hpp"
 #include <L2Packet.hpp>
 #include "ReservationManager.hpp"
-#include "MCSOTDMA_Mac.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
+	
+	class MCSOTDMA_Mac;
 	
 	/**
 	 * A LinkManager is responsible for a single communication link.
@@ -37,7 +38,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				awaiting_reply
 			};
 			
-			LinkManager(const MacId& link_id, ReservationManager& reservation_manager, MCSOTDMA_Mac& mac);
+			LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
 			
 			/**
 			 * @return The link ID that is managed.
@@ -45,26 +46,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const MacId& getLinkId() const;
 			
 			/**
-			 * After the QueueManager has enqueued an upper-layer packet, the corresponding LinkManager is notified.
+			 * When a new packet for this link comes in from the upper layers, this notifies the LinkManager.
 			 */
-			void notifyOutgoing();
+			void notifyOutgoing(unsigned long num_bits);
 			
 			/**
-			 * When a packet on this link comes in, the LinkManager is notified.
+			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
 			 */
-			void notifyIncoming(unsigned int num_bits);
+			void notifyIncoming(unsigned long num_bits);
 			
 			/**
-			 * @return The number of slots that should be reserved when a new link is established.
+			 * @param num_candidate_channels Number of distinct frequency channels that should be proposed.
+			 * @param num_candidate_slots Number of distinct time slots per frequency channel that should be proposed.
 			 */
-			unsigned int getNumSlotsToReserve() const;
-			
-			/**
-			 * @param num_slots The number of slots that should be reserved when a new link is established.
-			 */
-			void setNumSlotsToReserver(const unsigned int& num_slots);
-			
-			void setProposalDimension(unsigned int num_channels, unsigned int num_slots);
+			void setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots);
 			
 			/**
 			 * @return The number of frequency channels that will be proposed when a new link request is prepared.
@@ -85,13 +80,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		protected:
 			L2Packet* prepareLinkEstablishmentRequest();
 			
+			/**
+			 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.
+			 */
+			unsigned long estimateCurrentNumSlots() const;
+			
 		protected:
 			/** The link ID that is managed. */
 			const MacId link_id;
 			/** Points to the reservation table of this link. */
-			ReservationManager& reservation_manager;
+			ReservationManager* reservation_manager;
 			/** Points to the MAC sublayer. */
-			MCSOTDMA_Mac& mac;
+			MCSOTDMA_Mac* mac;
 			/** Link establishment status. */
 			Status link_establishment_status;
 			/** A link is assigned on one particular frequency channel. It may be nullptr unless the link_establishment status is `link_established`. */

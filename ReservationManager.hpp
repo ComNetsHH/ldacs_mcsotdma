@@ -18,10 +18,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class ReservationManager {
 		public:
-			
 			/**
 			 * Implements a comparison of ReservationTables. One table is 'smaller' than another if it has fewer idle slots.
-			 * It is used to construct a priority_queue on the tables.
+			 * It is used to construct a priority_queue of the tables.
 			 */
 			class ReservationTableComparison {
 				public:
@@ -29,6 +28,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						return tbl1->getNumIdleSlots() < tbl2->getNumIdleSlots();
 					}
 			};
+			
 		public:
 			explicit ReservationManager(uint32_t planning_horizon);
 			virtual ~ReservationManager();
@@ -61,6 +61,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			ReservationTable* getLeastUtilizedReservationTable();
 			
+			/**
+			 * @return A priority_queue of the ReservationTables, so that the least-utilized table lies on top.
+			 */
 			std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison> getSortedReservationTables() const;
 
 		protected:

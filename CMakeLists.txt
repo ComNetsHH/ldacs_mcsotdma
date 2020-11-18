@@ -6,7 +6,7 @@ add_subdirectory(glue-lib-headers) # Gives access to the librar's CMakeLists.txt
 include_directories(glue-lib-headers) # Includes the library header files, i.e. -I <dir>
 
 # MC-SOTDMA source files.
-set(MCSOTDMA_SRC ReservationTable.cpp ReservationTable.hpp ReservationManager.cpp ReservationManager.hpp FrequencyChannel.cpp FrequencyChannel.hpp Timestamp.hpp Reservation.cpp Reservation.hpp CPRPosition.hpp LinkManager.cpp LinkManager.hpp coutdebug.cpp coutdebug.hpp MCSOTDMA_Mac.cpp MCSOTDMA_Mac.hpp)
+set(MCSOTDMA_SRC ReservationTable.cpp ReservationTable.hpp ReservationManager.cpp ReservationManager.hpp FrequencyChannel.cpp FrequencyChannel.hpp Timestamp.hpp Reservation.cpp Reservation.hpp CPRPosition.hpp LinkManager.cpp LinkManager.hpp coutdebug.cpp coutdebug.hpp MCSOTDMA_Mac.cpp MCSOTDMA_Mac.hpp BCLinkManager.cpp BCLinkManager.hpp)
 # MC-SOTDMA unittest files.
 set(MCSOTDMA_TEST_SRC tests/unittests.cpp tests/ReservationTableTests.cpp tests/ReservationManagerTests.cpp tests/FrequencyChannelTests.cpp tests/ReservationTests.cpp tests/LinkManagerTests.cpp)
 

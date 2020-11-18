@@ -9,6 +9,7 @@
 #include <L2Packet.hpp>
 #include <IArq.hpp>
 #include "ReservationManager.hpp"
+#include "LinkManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -17,9 +18,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class MCSOTDMA_Mac : public IMac {
 		public:
-			explicit MCSOTDMA_Mac(ReservationManager& reservation_manager);
+			explicit MCSOTDMA_Mac(ReservationManager* reservation_manager);
+			virtual ~MCSOTDMA_Mac();
 			
-			void notifyOutgoing(unsigned int num_bits, const MacId& mac_id) override;
+			void notifyOutgoing(unsigned long num_bits, const MacId& mac_id) override;
 			
 			void passToLower(L2Packet* packet) override;
 			
@@ -29,12 +31,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Whether the specified link should be ARQ protected.
 			 */
 			bool shouldLinkBeArqProtected(const MacId& mac_id) const;
+			
+			/**
+			 * Queres the PHY layer below.
+			 * @return The current data rate in bits per slot.
+			 */
+			unsigned long getCurrentDatarate() const;
 		
 		protected:
 			/** Keeps track of transmission resource reservations. */
-			ReservationManager& reservation_manager;
-			/** Interface to the upper sublayer. */
-			IArq* upper_layer = nullptr;
+			ReservationManager* reservation_manager;
+			/** Maps links to their link managers. */
+			std::map<MacId, LinkManager*> link_managers;
 	};
 }
 
