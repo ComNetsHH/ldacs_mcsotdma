@@ -14,9 +14,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			FrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
 			
-			const uint64_t getCenterFrequency() const;
+			uint64_t getCenterFrequency() const;
 			
-			const uint64_t getBandwidth() const;
+			uint64_t getBandwidth() const;
 			
 			bool isPointToPointChannel() const;
 			

@@ -93,10 +93,41 @@ class ReservationManagerTests : public CppUnit::TestFixture {
             least_utilized_table = reservation_manager->getLeastUtilizedReservationTable();
             CPPUNIT_ASSERT_EQUAL(table1, least_utilized_table); // table1 contains more idle slots now.
 		}
+		
+		void testGetSortedReservationTables() {
+			bool p2p_channel = true;
+			uint64_t center_freq1 = 1000, center_freq2 = center_freq1 + 1, center_freq3 = center_freq2 + 1;
+			uint64_t bandwidth = 500;
+			reservation_manager->addFrequencyChannel(p2p_channel, center_freq1, bandwidth);
+			reservation_manager->addFrequencyChannel(p2p_channel, center_freq2, bandwidth);
+			reservation_manager->addFrequencyChannel(p2p_channel, center_freq3, bandwidth);
+			
+			ReservationTable* table1 = reservation_manager->getReservationTable(0); // No busy slots.
+			ReservationTable* table2 = reservation_manager->getReservationTable(1); // Three busy slots.
+			table2->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
+			table2->mark(1, Reservation(MacId(0), Reservation::Action::BUSY));
+			table2->mark(2, Reservation(MacId(0), Reservation::Action::BUSY));
+			ReservationTable* table3 = reservation_manager->getReservationTable(2); // Two busy slots.
+			table3->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
+			table3->mark(1, Reservation(MacId(0), Reservation::Action::BUSY));
+			
+			auto queue = reservation_manager->getSortedReservationTables();
+			ReservationTable* table = queue.top();
+			CPPUNIT_ASSERT(table == table1);
+			queue.pop();
+			table = queue.top();
+			CPPUNIT_ASSERT(table == table3);
+			queue.pop();
+			table = queue.top();
+			CPPUNIT_ASSERT(table == table2);
+			queue.pop();
+			CPPUNIT_ASSERT_EQUAL(true, queue.empty());
+		}
 	
 	CPPUNIT_TEST_SUITE(ReservationManagerTests);
 		CPPUNIT_TEST(testAddFreqChannel);
 		CPPUNIT_TEST(testUpdate);
         CPPUNIT_TEST(testGetLeastUtilizedReservationTable);
+		CPPUNIT_TEST(testGetSortedReservationTables);
 	CPPUNIT_TEST_SUITE_END();
 };

@@ -48,3 +48,11 @@ ReservationTable* ReservationManager::getLeastUtilizedReservationTable() {
             least_used_table = *it;
     return least_used_table;
 }
+
+std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison>
+ReservationManager::getSortedReservationTables() const {
+	auto queue = std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationTableComparison>();
+	for (auto it = reservation_tables.begin(); it < reservation_tables.end(); it++)
+		queue.push(*it);
+	return queue;
+}

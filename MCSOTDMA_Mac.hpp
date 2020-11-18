@@ -7,6 +7,7 @@
 
 #include <IMac.hpp>
 #include <L2Packet.hpp>
+#include <IArq.hpp>
 #include "ReservationManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -16,13 +17,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class MCSOTDMA_Mac : public IMac {
 		public:
+			explicit MCSOTDMA_Mac(ReservationManager& reservation_manager);
+			
 			void notifyOutgoing(unsigned int num_bits, const MacId& mac_id) override;
 			
 			void passToLower(L2Packet* packet) override;
+			
+			/**
+			 * Queries the ARQ sublayer above.
+			 * @param mac_id
+			 * @return Whether the specified link should be ARQ protected.
+			 */
+			bool shouldLinkBeArqProtected(const MacId& mac_id) const;
 		
 		protected:
 			/** Keeps track of transmission resource reservations. */
 			ReservationManager& reservation_manager;
+			/** Interface to the upper sublayer. */
+			IArq* upper_layer = nullptr;
 	};
 }
 
