@@ -35,7 +35,7 @@ void TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::passToLower(TUHH_INTAIRNET_MCSOTDMA:
 
 bool TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::shouldLinkBeArqProtected(const TUHH_INTAIRNET_MCSOTDMA::MacId& mac_id) const {
 	if (this->upper_layer == nullptr)
-		throw std::runtime_error("Cannot query the ARQ sublayer because it has not been set yet (nullptr).");
+		throw std::runtime_error("MCSOTDMA_Mac cannot query the ARQ sublayer because it has not been set yet (nullptr).");
 	return this->upper_layer->shouldLinkBeArqProtected(mac_id);
 }
 
@@ -46,6 +46,11 @@ TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::MCSOTDMA_Mac(TUHH_INTAIRNET_MCSOTDMA::Res
 
 unsigned long TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::getCurrentDatarate() const {
 	if (this->lower_layer == nullptr)
-		throw std::runtime_error("Cannot query the PHY layer because it has not been set yet (nullptr).");
+		throw std::runtime_error("MCSOTDMA_Mac cannot query the PHY layer because it has not been set yet (nullptr).");
 	return lower_layer->getCurrentDatarate();
+}
+
+TUHH_INTAIRNET_MCSOTDMA::LinkManager*
+TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::getLinkManager(const TUHH_INTAIRNET_MCSOTDMA::MacId& id) {
+	return link_managers.at(id);
 }

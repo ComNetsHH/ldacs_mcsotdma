@@ -9,10 +9,18 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), reservation_tables() {}
 
 void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth) {
-	FrequencyChannel* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
-	frequency_channels.push_back(channel);
-	ReservationTable* table = new ReservationTable(this->planning_horizon);
-	reservation_tables.push_back(table);
+	auto* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
+	auto* table = new ReservationTable(this->planning_horizon);
+	if (is_p2p) {
+		frequency_channels.push_back(channel);
+		reservation_tables.push_back(table);
+	} else {
+		if (broadcast_frequency_channel == nullptr && broadcast_reservation_table == nullptr) {
+			broadcast_frequency_channel = channel;
+			broadcast_reservation_table = table;
+		} else
+			throw std::invalid_argument("ReservationManager::addFrequencyChannel called for broadcast channel, but there's already one configured.");
+	}
 }
 
 FrequencyChannel* ReservationManager::getFreqChannel(size_t index) {
@@ -33,13 +41,15 @@ ReservationManager::~ReservationManager() {
         delete channel;
     for (ReservationTable* table : reservation_tables)
         delete table;
+    delete broadcast_reservation_table;
+    delete broadcast_frequency_channel;
 }
 
 size_t ReservationManager::getNumEntries() const {
     return frequency_channels.size();
 }
 
-ReservationTable* ReservationManager::getLeastUtilizedReservationTable() {
+ReservationTable* ReservationManager::getLeastUtilizedP2PReservationTable() {
     // Keeping an up-to-date priority queue is less efficient than manually searching through all channels upon request,
     // because reservations are made very often, while finding the least utilized table is needed relatively rarely.
     ReservationTable* least_used_table = reservation_tables.at(0);
@@ -50,9 +60,20 @@ ReservationTable* ReservationManager::getLeastUtilizedReservationTable() {
 }
 
 std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison>
-ReservationManager::getSortedReservationTables() const {
+ReservationManager::getSortedP2PReservationTables() const {
+	if (reservation_tables.begin() == reservation_tables.end())
+		throw std::runtime_error("ReservationManager::getSortedP2PReservationTables called, but no ReservationTables are present.");
 	auto queue = std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationTableComparison>();
-	for (auto it = reservation_tables.begin(); it < reservation_tables.end(); it++)
+	for (auto it = reservation_tables.begin(); it < reservation_tables.end(); it++) {
 		queue.push(*it);
+	}
 	return queue;
+}
+
+FrequencyChannel* ReservationManager::getBroadcastFreqChannel() {
+	return this->broadcast_frequency_channel;
+}
+
+ReservationTable* ReservationManager::getBroadcastReservationTable() {
+	return this->broadcast_reservation_table;
 }

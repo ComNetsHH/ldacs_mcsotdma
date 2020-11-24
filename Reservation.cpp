@@ -26,6 +26,12 @@ void TUHH_INTAIRNET_MCSOTDMA::Reservation::setAction(TUHH_INTAIRNET_MCSOTDMA::Re
 
 TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation() : Reservation(SYMBOLIC_ID_UNSET) {}
 
-TUHH_INTAIRNET_MCSOTDMA::Reservation::~Reservation() {
+TUHH_INTAIRNET_MCSOTDMA::Reservation::~Reservation() = default;
 
+void TUHH_INTAIRNET_MCSOTDMA::Reservation::setCreator(TUHH_INTAIRNET_MCSOTDMA::LinkManager* creator) {
+	this->creator = creator;
+}
+
+TUHH_INTAIRNET_MCSOTDMA::LinkManager* TUHH_INTAIRNET_MCSOTDMA::Reservation::getCreator() {
+	return this->creator;
 }

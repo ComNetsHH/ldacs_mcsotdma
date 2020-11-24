@@ -29,6 +29,56 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			virtual ~ReservationTable();
 			
 			/**
+			 * Marks the slot at 'offset' with a reservation.
+			 * @param slot_offset
+			 * @param reservation
+			 */
+			Reservation* mark(int32_t slot_offset, const Reservation& reservation);
+			
+			/**
+			 * Progress time for this reservation table. Old values are dropped, new values are added.
+			 * Also increments the last_updated timestamp by by num_slots.
+			 * @param num_slots The number of slots that have passed since the last update.
+			 */
+			void update(uint64_t num_slots);
+			
+			/**
+			 * @return The number of *future* slots that are marked as idle.
+			 */
+			uint64_t getNumIdleSlots() const;
+			
+			/**
+			 * @return The last time this table was updated.
+			 */
+			const Timestamp& getCurrentSlot() const;
+			
+			/**
+			 * Attempts to find a number of candidate slots.
+			 * @param min_offset The minimum offset in time for any candidate slot.
+			 * @param num_candidates The number of candidate slots that should be found.
+			 * @param range_length The number of slots that should be idle for each range that starts at the returned offsets.
+			 * @return The start slots of each candidate. The size of the returned container should be checked to ensure that enough candidates were found.
+			 */
+			std::vector<int32_t> findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length) const;
+		
+		protected:
+			bool isValid(int32_t slot_offset) const;
+			
+			bool isValid(int32_t start, uint32_t length) const;
+			
+			/**
+			 * Sets what this table regards as the current moment in time.
+			 * Should be used just once at the start - calls to 'update()' will increment the timestamp henceforth.
+			 * @param timestamp
+			 */
+			void setLastUpdated(const Timestamp& timestamp);
+			
+			/**
+			 * @return Reference to the internally-used slot utilization vector.
+			 */
+			const std::vector<Reservation>& getVec() const;
+			
+			/**
 			 * @param slot_offset Offset to the current slot. Positive values for future slots, zero for the current slot and negative values for past slots.
 			 * @return Whether the specified slot is marked as idle.
 			 */
@@ -60,11 +110,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			uint32_t getPlanningHorizon() const;
 			
 			/**
-			 * Marks the slot at 'offset' with a reservation.
+			 * The slot_utilization_vec keeps both historic, current and future values.
+			 * A logical signed integer can represent past values through negative, current through zero, and future through positive values.
 			 * @param slot_offset
-			 * @param reservation
+			 * @return The index that can be used to address the corresponding value indicated by the logical offset.
 			 */
-			void mark(int32_t slot_offset, Reservation reservation);
+			uint64_t convertOffsetToIndex(int32_t slot_offset) const;
 			
 			/**
 			 * @param start Slot offset that marks the earliest opportunity.
@@ -73,48 +124,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @throws runtime_error If no suitable slot range can be found.
 			 */
 			int32_t findEarliestIdleRange(int32_t start, uint32_t length) const;
-			
-			/**
-			 * @return The last time this table was updated.
-			 */
-			const Timestamp& getCurrentSlot() const;
-			
-			/**
-			 * Progress time for this reservation table. Old values are dropped, new values are added.
-			 * Also increments the last_updated timestamp by by num_slots.
-			 * @param num_slots The number of slots that have passed since the last update.
-			 */
-			void update(uint64_t num_slots);
-			
-			/**
-			 * Sets what this table regards as the current moment in time.
-			 * Should be used just once at the start - calls to 'update()' will increment the timestamp henceforth.
-			 * @param timestamp
-			 */
-			void setLastUpdated(const Timestamp& timestamp);
-			
-			/**
-			 * @return Reference to the internally-used slot utilization vector.
-			 */
-			const std::vector<Reservation>& getVec() const;
-			
-			/**
-			 * @return The number of *future* slots that are marked as idle.
-			 */
-			uint64_t getNumIdleSlots() const;
-		
-		protected:
-			bool isValid(int32_t slot_offset) const;
-			
-			bool isValid(int32_t start, uint32_t length) const;
-			
-			/**
-			 * The slot_utilization_vec keeps both historic, current and future values.
-			 * A logical signed integer can represent past values through negative, current through zero, and future through positive values.
-			 * @param slot_offset
-			 * @return The index that can be used to address the corresponding value indicated by the logical offset.
-			 */
-			uint64_t convertOffsetToIndex(int32_t slot_offset) const;
 			
 		protected:
 			/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */

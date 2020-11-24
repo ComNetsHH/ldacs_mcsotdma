@@ -24,7 +24,7 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 		}
 		
 		void testAddFreqChannel() {
-			bool p2p_channel = false;
+			bool p2p_channel = true;
 			uint64_t center_freq = 1000;
 			uint64_t bandwidth = 500;
 			
@@ -52,7 +52,7 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 		}
 		
 		void testUpdate() {
-			bool p2p_channel = false;
+			bool p2p_channel = true;
 			uint64_t center_freq1 = 1000, center_freq2 = center_freq1 + 1;
 			uint64_t bandwidth = 500;
 			reservation_manager->addFrequencyChannel(p2p_channel, center_freq1, bandwidth);
@@ -84,17 +84,26 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 
             // Mark one slot as busy in table1.
             table1->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
-            ReservationTable* least_utilized_table = reservation_manager->getLeastUtilizedReservationTable();
+            ReservationTable* least_utilized_table = reservation_manager->getLeastUtilizedP2PReservationTable();
             CPPUNIT_ASSERT_EQUAL(table2, least_utilized_table); // table2 contains more idle slots now.
 
             // Now mark *two* slots busy in table2.
             table2->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
             table2->mark(1, Reservation(MacId(0), Reservation::Action::BUSY));
-            least_utilized_table = reservation_manager->getLeastUtilizedReservationTable();
+            least_utilized_table = reservation_manager->getLeastUtilizedP2PReservationTable();
             CPPUNIT_ASSERT_EQUAL(table1, least_utilized_table); // table1 contains more idle slots now.
 		}
 		
 		void testGetSortedReservationTables() {
+			// Should throw error if no reservation tables are present.
+			bool exception_occurred = false;
+			try {
+				reservation_manager->getSortedP2PReservationTables();
+			} catch (const std::exception& e) {
+				exception_occurred = true;
+			}
+			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+			// Add reservation tables.
 			bool p2p_channel = true;
 			uint64_t center_freq1 = 1000, center_freq2 = center_freq1 + 1, center_freq3 = center_freq2 + 1;
 			uint64_t bandwidth = 500;
@@ -111,7 +120,7 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			table3->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
 			table3->mark(1, Reservation(MacId(0), Reservation::Action::BUSY));
 			
-			auto queue = reservation_manager->getSortedReservationTables();
+			auto queue = reservation_manager->getSortedP2PReservationTables();
 			ReservationTable* table = queue.top();
 			CPPUNIT_ASSERT(table == table1);
 			queue.pop();

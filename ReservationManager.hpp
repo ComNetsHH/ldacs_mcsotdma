@@ -43,6 +43,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			FrequencyChannel* getFreqChannel(size_t index);
 			ReservationTable* getReservationTable(size_t index);
+			FrequencyChannel* getBroadcastFreqChannel();
+			ReservationTable* getBroadcastReservationTable();
 			
 			/**
 			 * Calls update() function on each reservation table.
@@ -56,15 +58,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			size_t getNumEntries() const;
 
 			/**
-			 * Looks through all reservation tables to find the one with most idle slots, so its complexity is O(n).
+			 * Looks through all P2P reservation tables to find the one with most idle slots, so its complexity is O(n).
 			 * @return A pointer to the least utilized reservation table according to its reported number of idle slots.
 			 */
-			ReservationTable* getLeastUtilizedReservationTable();
+			ReservationTable* getLeastUtilizedP2PReservationTable();
 			
 			/**
-			 * @return A priority_queue of the ReservationTables, so that the least-utilized table lies on top.
+			 * @return A priority_queue of the P2P ReservationTables, so that the least-utilized table lies on top.
 			 */
-			std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison> getSortedReservationTables() const;
+			std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison> getSortedP2PReservationTables() const;
 
 		protected:
 			/** Number of slots to remember both in the past and in the future. */
@@ -73,6 +75,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel*> frequency_channels;
 			/** Keeps reservation table in the same order as frequency_channels. */
 			std::vector<TUHH_INTAIRNET_MCSOTDMA::ReservationTable*> reservation_tables;
+			/** A single broadcast frequency channel is kept. */
+			FrequencyChannel* broadcast_frequency_channel = nullptr;
+			/** A single broadcast channel reservation table is kept. */
+			ReservationTable* broadcast_reservation_table = nullptr;
 	};
 	
 }

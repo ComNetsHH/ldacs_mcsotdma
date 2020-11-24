@@ -21,33 +21,23 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << "LinkManager::notifyOutgoing on link '" << link_id.getId() << "'";
 	
 	// Update the moving average traffic estimate.
-	// If the window hasn't been filled yet.
-	if (traffic_estimate_index <= traffic_estimate_num_values - 1) {
-		traffic_estimate_queue_lengths.at(traffic_estimate_index) = num_bits;
-		traffic_estimate_index++;
-		// If it has, kick out an old value.
-	} else {
-		for (size_t i = 1; i < traffic_estimate_queue_lengths.size(); i++) {
-			traffic_estimate_queue_lengths.at(i - 1) = traffic_estimate_queue_lengths.at(i);
-		}
-		traffic_estimate_queue_lengths.at(traffic_estimate_queue_lengths.size() - 1) = num_bits;
-	}
+	updateTrafficEstimate(num_bits);
 	
 	// Check establishment status.
 	// If the link is established...
 	if (link_establishment_status == Status::link_established) {
-		coutd << " is already established";
+		coutd << ": link already established";
 	// If the link is not yet established...
 	} else {
 		// ... and we've created the request and are just waiting for a reply ...
 		if (link_establishment_status == Status::awaiting_reply) {
-			coutd << " is awaiting reply. Doing nothing." << std::endl;
+			coutd << ": link is being established and currently awaiting reply. Doing nothing." << std::endl;
 			// ... then do nothing.
 			return;
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
-			coutd << " starting link establishment" << std::endl;
-			
+			coutd << ": link is not establisehd. Starting link establishment" << std::endl;
+			L2Packet* request = prepareLinkEstablishmentRequest();
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_not_established) + "'.");
 		}
@@ -69,13 +59,13 @@ double LinkManager::getCurrentTrafficEstimate() const {
 }
 
 L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
-	L2Packet* request;
+	L2Packet* request = new L2Packet();
 	// Query ARQ sublayer whether this link should be ARQ protected.
 	bool link_should_be_arq_protected = mac->shouldLinkBeArqProtected(this->link_id);
 	// Instantiate header.
 	auto* header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
 	// Find resource proposals.
-	auto sorted_reservation_tables = reservation_manager->getSortedReservationTables(); // these are sorted by the number of idle slots, with the most idle on top.
+	auto sorted_reservation_tables = reservation_manager->getSortedP2PReservationTables(); // these are sorted by the number of idle slots, with the most idle on top.
 	size_t num_channels_considered = 1;
 	
 	ReservationTable* table = sorted_reservation_tables.top();
@@ -107,6 +97,24 @@ unsigned long LinkManager::estimateCurrentNumSlots() const {
 	unsigned long traffic_estimate = (unsigned long) getCurrentTrafficEstimate(); // in bits.
 	unsigned long datarate = mac->getCurrentDatarate(); // in bits/slot.
 	return traffic_estimate / datarate;
+}
+
+unsigned int LinkManager::getNumPendingReservations() const {
+	return this->num_pending_reservations;
+}
+
+void LinkManager::updateTrafficEstimate(unsigned long num_bits) {
+	// If the window hasn't been filled yet.
+	if (traffic_estimate_index <= traffic_estimate_num_values - 1) {
+		traffic_estimate_queue_lengths.at(traffic_estimate_index) = num_bits;
+		traffic_estimate_index++;
+	// If it has, kick out an old value.
+	} else {
+		for (size_t i = 1; i < traffic_estimate_queue_lengths.size(); i++) {
+			traffic_estimate_queue_lengths.at(i - 1) = traffic_estimate_queue_lengths.at(i);
+		}
+		traffic_estimate_queue_lengths.at(traffic_estimate_queue_lengths.size() - 1) = num_bits;
+	}
 }
 
 unsigned int LinkManager::ProposalPayload::getBits() const {

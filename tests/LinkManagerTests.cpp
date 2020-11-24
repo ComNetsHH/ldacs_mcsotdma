@@ -7,50 +7,76 @@
 #include "../LinkManager.hpp"
 #include "../MCSOTDMA_Mac.hpp"
 #include "../coutdebug.hpp"
+#include <IArq.hpp>
 
-using namespace TUHH_INTAIRNET_MCSOTDMA;
-
-class LinkManagerTests : public CppUnit::TestFixture {
-	private:
-		LinkManager* link_manager;
-		ReservationManager* reservation_manager;
-		MCSOTDMA_Mac* mac;
-		MacId id = MacId(0);
-		uint32_t planning_horizon = 128;
-	
-	public:
-		void setUp() override {
-			reservation_manager = new ReservationManager(planning_horizon);
-			mac = new MCSOTDMA_Mac(reservation_manager);
-			link_manager = new LinkManager(id, reservation_manager, mac);
-		}
+namespace TUHH_INTAIRNET_MCSOTDMA {
+	class LinkManagerTests : public CppUnit::TestFixture {
+		private:
+			LinkManager* link_manager;
+			ReservationManager* reservation_manager;
+			MCSOTDMA_Mac* mac;
+			MacId id = MacId(0);
+			uint32_t planning_horizon = 128;
+			uint64_t center_frequency1 = 1000, center_frequency2 = 2000, center_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
+			class ARQLayer : public IArq {
+				public:
+					void notifyOutgoing(unsigned int num_bits, const MacId& mac_id) override {
+						throw std::runtime_error("not implemented");
+					}
+					
+					L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
+						throw std::runtime_error("not implemented");
+					}
+					
+					bool shouldLinkBeArqProtected(const MacId& mac_id) const override {
+						return true;
+					}
+			};
+			ARQLayer* arq_layer;
 		
-		void tearDown() override {
-			delete reservation_manager;
-			delete mac;
-			delete link_manager;
-		}
-		
-		void testTrafficEstimate() {
-			CPPUNIT_ASSERT_EQUAL(0.0, link_manager->getCurrentTrafficEstimate());
-			unsigned int initial_bits = 10;
-			unsigned int num_bits = initial_bits;
-			double sum = 0;
-			// Fill up the window.
-			for (size_t i = 0; i < link_manager->getTrafficEstimateWindowSize(); i++) {
-				link_manager->notifyOutgoing(num_bits);
-				sum += num_bits;
-				num_bits += initial_bits;
-				CPPUNIT_ASSERT_EQUAL(sum / (i+1), link_manager->getCurrentTrafficEstimate());
+		public:
+			void setUp() override {
+				reservation_manager = new ReservationManager(planning_horizon);
+				reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
+				reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
+				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
+				reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
+				mac = new MCSOTDMA_Mac(reservation_manager);
+				link_manager = new LinkManager(id, reservation_manager, mac);
+				arq_layer = new ARQLayer();
+				mac->setUpperLayer(arq_layer);
+				arq_layer->setLowerLayer(mac);
 			}
-			// Now it's full, so the next input will kick out the first value.
-			link_manager->notifyOutgoing(num_bits);
-			sum -= initial_bits;
-			sum += num_bits;
-			CPPUNIT_ASSERT_EQUAL(sum / (link_manager->getTrafficEstimateWindowSize()), link_manager->getCurrentTrafficEstimate());
-		}
-	
-	CPPUNIT_TEST_SUITE(LinkManagerTests);
-		CPPUNIT_TEST(testTrafficEstimate);
-	CPPUNIT_TEST_SUITE_END();
-};
+			
+			void tearDown() override {
+				delete reservation_manager;
+				delete mac;
+				delete link_manager;
+				delete arq_layer;
+			}
+			
+			void testTrafficEstimate() {
+				coutd.setVerbose(true);
+				CPPUNIT_ASSERT_EQUAL(0.0, link_manager->getCurrentTrafficEstimate());
+				unsigned int initial_bits = 10;
+				unsigned int num_bits = initial_bits;
+				double sum = 0;
+				// Fill up the window.
+				for (size_t i = 0; i < link_manager->getTrafficEstimateWindowSize(); i++) {
+					link_manager->updateTrafficEstimate(num_bits);
+					sum += num_bits;
+					num_bits += initial_bits;
+					CPPUNIT_ASSERT_EQUAL(sum / (i+1), link_manager->getCurrentTrafficEstimate());
+				}
+				// Now it's full, so the next input will kick out the first value.
+				link_manager->updateTrafficEstimate(num_bits);
+				sum -= initial_bits;
+				sum += num_bits;
+				CPPUNIT_ASSERT_EQUAL(sum / (link_manager->getTrafficEstimateWindowSize()), link_manager->getCurrentTrafficEstimate());
+			}
+		
+		CPPUNIT_TEST_SUITE(LinkManagerTests);
+			CPPUNIT_TEST(testTrafficEstimate);
+		CPPUNIT_TEST_SUITE_END();
+	};
+}

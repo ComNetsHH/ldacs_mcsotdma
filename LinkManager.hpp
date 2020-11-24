@@ -18,6 +18,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 * It is notified by a QueueManager of new packets, and utilizes a ReservationManager to make slot reservations.
 	 */
 	class LinkManager {
+			
+		friend class LinkManagerTests;
+			
 		public:
 			class ProposalPayload : L2Packet::Payload {
 				public:
@@ -76,6 +79,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double getCurrentTrafficEstimate() const;
 			
 			const unsigned int& getTrafficEstimateWindowSize() const;
+			
+			/**
+			 * @return The number of slot reservations that have been made but are yet to arrive.
+			 */
+			unsigned int getNumPendingReservations() const;
 		
 		protected:
 			L2Packet* prepareLinkEstablishmentRequest();
@@ -85,10 +93,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			unsigned long estimateCurrentNumSlots() const;
 			
+			void updateTrafficEstimate(unsigned long num_bits);
+			
 		protected:
-			/** The link ID that is managed. */
+			/** The communication partner's ID, whose link is managed. */
 			const MacId link_id;
-			/** Points to the reservation table of this link. */
+			/** Points to the reservation manager. */
 			ReservationManager* reservation_manager;
 			/** Points to the MAC sublayer. */
 			MCSOTDMA_Mac* mac;
@@ -108,6 +118,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<unsigned long long> traffic_estimate_queue_lengths;
 			/** Keeps track of the index that should be updated next in the `traffic_estimate_queue_lengths`. */
 			size_t traffic_estimate_index = 0;
+			/** Keeps track of the number of slot reservations that have been made but are yet to arrive. */
+			unsigned int num_pending_reservations = 0;
 	};
 }
 

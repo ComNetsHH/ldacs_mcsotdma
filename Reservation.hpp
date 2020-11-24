@@ -8,6 +8,8 @@
 #include "MacId.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
+	
+	class LinkManager;
 
 	/**
 	 * A Reservation can be associated to time slots and is used to denote owner(s) of a communication link.
@@ -33,7 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			virtual ~Reservation();
 			
 			/**
-			 * @return The ID of the holder of this reserved slot.
+			 * @return The MAC ID of whoever holds this reservation.
 			 */
 			const MacId& getOwner() const;
 			
@@ -44,10 +46,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const Action& getAction() const;
 			
 			void setAction(Action action);
+			
+			/**
+			 * Sets a pointer to the LinkManager that created this reservation.
+			 * @param creator
+			 */
+			void setCreator(LinkManager* creator);
+			/**
+			 * @return The LinkManager that created this reservation.
+			 */
+			LinkManager* getCreator();
 		
 		protected:
+			/** Reservations are made by MAC nodes, so hold the ID of this reservation's holder. */
 			MacId owner;
 			Action action;
+			LinkManager* creator = nullptr;
 	};
 }
 

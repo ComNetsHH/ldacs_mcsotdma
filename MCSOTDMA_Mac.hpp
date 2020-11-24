@@ -37,6 +37,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The current data rate in bits per slot.
 			 */
 			unsigned long getCurrentDatarate() const;
+			
+			/**
+			 * @param id
+			 * @return The LinkManager that manages the given 'id'.
+			 */
+			LinkManager* getLinkManager(const MacId& id);
 		
 		protected:
 			/** Keeps track of transmission resource reservations. */

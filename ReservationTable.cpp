@@ -25,13 +25,17 @@ uint32_t ReservationTable::getPlanningHorizon() const {
 	return this->planning_horizon;
 }
 
-void ReservationTable::mark(int32_t slot_offset, Reservation reservation) {
+Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& reservation) {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("Reservation table planning horizon smaller than queried slot offset!");
+	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() == Reservation::Action::IDLE;
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
 	// Update the number of idle slots.
 	if (reservation.getAction() != Reservation::Action::IDLE)
 		num_idle_future_slots--;
+	else if (!currently_idle) // changing from non-idle to idle
+		num_idle_future_slots++;
+	return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
 }
 
 bool ReservationTable::isUtilized(int32_t slot_offset) const {
@@ -121,6 +125,27 @@ void ReservationTable::setLastUpdated(const Timestamp& timestamp) {
 
 uint64_t ReservationTable::getNumIdleSlots() const {
 	return this->num_idle_future_slots;
+}
+
+std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offset, unsigned int num_candidates,
+                                                          unsigned int range_length) const {
+	std::vector<int32_t> start_slots;
+	int32_t last_offset = min_offset;
+	for (size_t i = 0; i < num_candidates; i++) {
+		// Try to find another slot range.
+		try {
+			int32_t start_slot = findEarliestIdleRange(last_offset, range_length);
+			start_slots.push_back(start_slot);
+			last_offset = start_slot + 1; // Next attempt, look later than current one.
+		} catch (const std::runtime_error& e) {
+			// This is thrown if no idle range can be found.
+			break; // Stop if no more ranges can be found.
+		} catch (const std::invalid_argument& e) {
+			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
+			break; // Stop if no more ranges can be found.
+		}
+	}
+	return start_slots;
 }
 
 ReservationTable::~ReservationTable() = default;
