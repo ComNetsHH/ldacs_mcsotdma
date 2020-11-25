@@ -60,6 +60,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The start slots of each candidate. The size of the returned container should be checked to ensure that enough candidates were found.
 			 */
 			std::vector<int32_t> findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length) const;
+			
+			/**
+			 * @param start_offset The minimum slot offset to start the search.
+			 * @param reservation
+			 * @return The slot offset until the earliest reservation that corresponds to the one provided.
+			 * @throws std::runtime_error If no reservation of this kind is found.
+			 */
+			int32_t findEarliestOffset(const int32_t start_offset, const Reservation& reservation) const;
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;

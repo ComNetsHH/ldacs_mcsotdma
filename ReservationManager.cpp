@@ -6,7 +6,7 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), reservation_tables() {}
+ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), frequency_channels(), reservation_tables() {}
 
 void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth) {
 	auto* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
@@ -61,8 +61,6 @@ ReservationTable* ReservationManager::getLeastUtilizedP2PReservationTable() {
 
 std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison>
 ReservationManager::getSortedP2PReservationTables() const {
-	if (reservation_tables.begin() == reservation_tables.end())
-		throw std::runtime_error("ReservationManager::getSortedP2PReservationTables called, but no ReservationTables are present.");
 	auto queue = std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationTableComparison>();
 	for (auto it = reservation_tables.begin(); it < reservation_tables.end(); it++) {
 		queue.push(*it);

@@ -36,7 +36,12 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 			return;
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
-			coutd << ": link is not establisehd. Starting link establishment" << std::endl;
+			coutd << ": link is not established. Starting link establishment" << std::endl;
+			
+			int32_t next_broadcast_offset = reservation_manager->getBroadcastReservationTable()->findEarliestOffset(int32_t(0), Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::Action::TX));
+			
+			// and use the slot number + 1 as minimum offset
+			
 			L2Packet* request = prepareLinkEstablishmentRequest();
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_not_established) + "'.");
@@ -64,13 +69,20 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	bool link_should_be_arq_protected = mac->shouldLinkBeArqProtected(this->link_id);
 	// Instantiate header.
 	auto* header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
-	// Find resource proposals.
-	auto sorted_reservation_tables = reservation_manager->getSortedP2PReservationTables(); // these are sorted by the number of idle slots, with the most idle on top.
-	size_t num_channels_considered = 1;
-	
-	ReservationTable* table = sorted_reservation_tables.top();
+	// Find resource proposals...
+	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
+	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
+	// ... until we have considered the target number of channels ...
+	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
+		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
+			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " but there are no more.");
+		// ... get the next reservation table ...
+		ReservationTable* table = table_priority_queue.top();
+//		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->)
+		table_priority_queue.pop();
+	}
 	unsigned long required_num_slots = estimateCurrentNumSlots();
-//	table->findEarliestIdleRange()
+	
 	
 //	ProposalPayload* payload = new ProposalPayload();
 	return request;
@@ -115,6 +127,12 @@ void LinkManager::updateTrafficEstimate(unsigned long num_bits) {
 		}
 		traffic_estimate_queue_lengths.at(traffic_estimate_queue_lengths.size() - 1) = num_bits;
 	}
+}
+
+int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const Reservation& reservation) const {
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("LinkManager::getEarliestReservationSlotOffset has an unset reservation table.");
+	return current_reservation_table->findEarliestOffset(start_slot, reservation);
 }
 
 unsigned int LinkManager::ProposalPayload::getBits() const {

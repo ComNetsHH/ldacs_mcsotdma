@@ -84,6 +84,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The number of slot reservations that have been made but are yet to arrive.
 			 */
 			unsigned int getNumPendingReservations() const;
+			
+			/**
+			 * @param start_slot The minimum slot offset to start the search.
+			 * @param reservation
+			 * @return The slot offset until the earliest reservation that corresponds to the one provided.
+			 * @throws std::runtime_error If no reservation of this kind is found.
+			 */
+			int32_t getEarliestReservationSlotOffset(int32_t start_slot, const Reservation& reservation) const;
 		
 		protected:
 			L2Packet* prepareLinkEstablishmentRequest();
@@ -106,8 +114,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			Status link_establishment_status;
 			/** A link is assigned on one particular frequency channel. It may be nullptr unless the link_establishment status is `link_established`. */
 			FrequencyChannel* current_channel = nullptr;
-			/** Another component may define the number of slots that should be reserved for this link. This is based off the expected traffic load. */
-			unsigned int num_slots_to_reserve = 1;
+			/** A link is assigned on one particular frequency channel's reservation table. It may be nullptr unless the link_establishment status is `link_established`. */
+			ReservationTable* current_reservation_table = nullptr;
+			/** The minimum number of slots a proposed slot should be in the future. */
+			const int32_t minimum_slot_offset_for_new_slot_reservations = 1;
 			/** The number of frequency channels that should be proposed when a new link request is prepared. */
 			unsigned int num_proposed_channels = 2;
 			/** The number of time slots that should be proposed when a new link request is prepared. */

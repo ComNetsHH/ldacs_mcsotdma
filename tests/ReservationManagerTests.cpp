@@ -95,14 +95,8 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 		}
 		
 		void testGetSortedReservationTables() {
-			// Should throw error if no reservation tables are present.
-			bool exception_occurred = false;
-			try {
-				reservation_manager->getSortedP2PReservationTables();
-			} catch (const std::exception& e) {
-				exception_occurred = true;
-			}
-			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+			// Should get an empty queue if no tables are present.
+			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getSortedP2PReservationTables().empty());
 			// Add reservation tables.
 			bool p2p_channel = true;
 			uint64_t center_freq1 = 1000, center_freq2 = center_freq1 + 1, center_freq3 = center_freq2 + 1;

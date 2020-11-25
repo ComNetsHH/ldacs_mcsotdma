@@ -47,21 +47,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void setAction(Action action);
 			
-			/**
-			 * Sets a pointer to the LinkManager that created this reservation.
-			 * @param creator
-			 */
-			void setCreator(LinkManager* creator);
-			/**
-			 * @return The LinkManager that created this reservation.
-			 */
-			LinkManager* getCreator();
+			bool operator==(const Reservation& other) const;
+			bool operator!=(const Reservation& other) const;
 		
 		protected:
 			/** Reservations are made by MAC nodes, so hold the ID of this reservation's holder. */
 			MacId owner;
 			Action action;
-			LinkManager* creator = nullptr;
 	};
 }
 

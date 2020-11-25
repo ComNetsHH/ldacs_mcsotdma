@@ -143,9 +143,18 @@ std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offse
 		} catch (const std::invalid_argument& e) {
 			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
 			break; // Stop if no more ranges can be found.
-		}
+		} // all other exceptions should still end execution
 	}
 	return start_slots;
+}
+
+int32_t ReservationTable::findEarliestOffset(const int32_t start_offset, const Reservation& reservation) const {
+	for (uint32_t i = start_offset; i < planning_horizon; i++) {
+		const Reservation& current_reservation = slot_utilization_vec.at(convertOffsetToIndex(i));
+		if (reservation == current_reservation)
+			return i;
+	}
+	throw std::runtime_error("ReservationTable::findEarliestOffset finds no scheduled reservation from present to future.");
 }
 
 ReservationTable::~ReservationTable() = default;

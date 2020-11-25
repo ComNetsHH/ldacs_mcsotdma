@@ -39,8 +39,20 @@ class ReservationTests : public CppUnit::TestFixture {
 			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::TX);
 		}
 		
+		void testEqualityOperator() {
+			reservation->setAction(Reservation::Action::RX);
+			Reservation other_reservation = Reservation(owner, Reservation::Action::RX);
+			CPPUNIT_ASSERT(other_reservation == *reservation);
+			other_reservation.setAction(Reservation::Action::TX);
+			CPPUNIT_ASSERT(other_reservation != *reservation);
+			other_reservation.setAction(Reservation::Action::RX);
+			Reservation another_reservation = Reservation(MacId(id+1), Reservation::Action::RX);
+			CPPUNIT_ASSERT(another_reservation != *reservation);
+		}
+		
 	CPPUNIT_TEST_SUITE(ReservationTests);
 		CPPUNIT_TEST(testConstructors);
 		CPPUNIT_TEST(testBasics);
+		CPPUNIT_TEST(testEqualityOperator);
 	CPPUNIT_TEST_SUITE_END();
 };

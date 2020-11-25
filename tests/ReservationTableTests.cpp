@@ -349,6 +349,34 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(int32_t(8), candidate_slots.at(2));
 				CPPUNIT_ASSERT_EQUAL(int32_t(14), candidate_slots.at(3));
 			}
+			
+			void testFindEarliestOffset() {
+				int32_t offset1 = 10, offset2 = offset1 + 2, offset3 = offset2 + 1;
+				CPPUNIT_ASSERT(offset1 < planning_horizon); // otherwise this test won't work
+				CPPUNIT_ASSERT(offset2 < planning_horizon); // otherwise this test won't work
+				Reservation reservation = Reservation(MacId(0), Reservation::Action::TX);
+				table->mark(offset1, reservation);
+				table->mark(offset2, reservation);
+				CPPUNIT_ASSERT_EQUAL(offset1, table->findEarliestOffset(int32_t(0), reservation));
+				CPPUNIT_ASSERT_EQUAL(offset2, table->findEarliestOffset(int32_t(offset1 + 1), reservation));
+				
+				bool exception_occurred = false;
+				try {
+					table->findEarliestOffset(int32_t(offset3), reservation);
+				} catch (const std::runtime_error& e) {
+					exception_occurred = true;
+				}
+				CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+				
+				exception_occurred = false;
+				reservation.setAction(Reservation::Action::RX);
+				try {
+					table->findEarliestOffset(int32_t(offset3), reservation);
+				} catch (const std::runtime_error& e) {
+					exception_occurred = true;
+				}
+				CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -363,6 +391,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testNumIdleSlots);
 			CPPUNIT_TEST(testFindCandidateSlotsAllIdle);
 			CPPUNIT_TEST(testFindCandidateSlotsComplicated);
+			CPPUNIT_TEST(testFindEarliestOffset);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	
