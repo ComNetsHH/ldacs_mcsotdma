@@ -343,6 +343,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length);
 				// We should only be able to find 4 candidates.
 				CPPUNIT_ASSERT_EQUAL(size_t(4), candidate_slots.size());
+				// And these should be the following starting slots:
+				CPPUNIT_ASSERT_EQUAL(int32_t(1), candidate_slots.at(0));
+				CPPUNIT_ASSERT_EQUAL(int32_t(7), candidate_slots.at(1));
+				CPPUNIT_ASSERT_EQUAL(int32_t(8), candidate_slots.at(2));
+				CPPUNIT_ASSERT_EQUAL(int32_t(14), candidate_slots.at(3));
 			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
