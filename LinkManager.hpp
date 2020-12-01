@@ -22,14 +22,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class LinkManagerTests;
 			
 		public:
-			class ProposalPayload : L2Packet::Payload {
+			class ProposalPayload : public L2Packet::Payload {
 				public:
-					unsigned int getBits() const override;
+					ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : num_freq_channels(num_freq_channels), num_candidates(num_slots), num_slots_per_candidate(1) {}
+					
+					unsigned int getBits() const override {
+						return 8*num_freq_channels // 1B per frequency channel
+						+ 8*num_candidates // 1B per candidate
+						+ 8; // 1B to denote candidate slot length
+					}
 				
 				protected:
 					std::vector<FrequencyChannel> proposed_channels;
-					/** Pairs of <start_slot, num_slots>. */
-					std::vector<std::pair<unsigned int, unsigned int>> proposed_slots;
+					/** Starting slots. */
+					std::vector<unsigned int> proposed_slots;
+					/** Target number of frequency channels to propose. */
+					unsigned int num_freq_channels;
+					/** Target number of candidates per frequency channel. */
+					unsigned int num_candidates;
+					/** Number of slots to reserve. */
+					unsigned int num_slots_per_candidate;
 			};
 			
 			enum Status {
@@ -102,6 +114,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		protected:
 			L2Packet* prepareLinkEstablishmentRequest();
+			
+			void computeProposal(L2Packet* request);
 			
 			/**
 			 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.

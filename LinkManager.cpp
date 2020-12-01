@@ -2,6 +2,7 @@
 // Created by Sebastian Lindner on 10.11.20.
 //
 
+#include <cassert>
 #include "LinkManager.hpp"
 #include "coutdebug.hpp"
 #include "MCSOTDMA_Mac.hpp"
@@ -37,12 +38,11 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
 			coutd << ": link is not established. Starting link establishment" << std::endl;
-			
-			int32_t next_broadcast_offset = reservation_manager->getBroadcastReservationTable()->findEarliestOffset(int32_t(0), Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::Action::TX));
-			
-			// and use the slot number + 1 as minimum offset
-			
+			// Prepare a link request and inject it into the RLC sublayer above.
 			L2Packet* request = prepareLinkEstablishmentRequest();
+			mac->injectIntoUpper(request);
+			// We are now awaiting a reply.
+			this->link_establishment_status = Status::awaiting_reply;
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_not_established) + "'.");
 		}
@@ -67,24 +67,13 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	L2Packet* request = new L2Packet();
 	// Query ARQ sublayer whether this link should be ARQ protected.
 	bool link_should_be_arq_protected = mac->shouldLinkBeArqProtected(this->link_id);
-	// Instantiate header.
-	auto* header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
-	// Find resource proposals...
-	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
-	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
-	// ... until we have considered the target number of channels ...
-	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
-		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
-			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " but there are no more.");
-		// ... get the next reservation table ...
-		ReservationTable* table = table_priority_queue.top();
-//		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->)
-		table_priority_queue.pop();
-	}
-	unsigned long required_num_slots = estimateCurrentNumSlots();
-	
-	
-//	ProposalPayload* payload = new ProposalPayload();
+	// Instantiate base header.
+	auto* base_header = new L2HeaderBase(this->getLinkId(), 0, 0, 0, 0);
+	request->addPayload(base_header, nullptr);
+	// Instantiate request header.
+	auto* request_header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
+	auto* body = new ProposalPayload(this->getProposalNumChannels(), this->getProposalNumSlots());
+	request->addPayload(request_header, body);
 	return request;
 }
 
@@ -139,8 +128,21 @@ void LinkManager::notifyOnOutgoingPacket(TUHH_INTAIRNET_MCSOTDMA::L2Packet* pack
 	throw std::runtime_error("not implemeted");
 }
 
-unsigned int LinkManager::ProposalPayload::getBits() const {
-	// Should calculate bits from number of channels * number of slots.
-	// But how many bits per (f, t)-pair?
-	throw std::runtime_error("not implemented");
+void LinkManager::computeProposal(L2Packet* request) {
+	// Find resource proposals...
+	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
+	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
+	// ... until we have considered the target number of channels ...
+	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
+		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
+			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " but there are no more.");
+		// ... get the next reservation table ...
+		ReservationTable* table = table_priority_queue.top();
+//		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->)
+		table_priority_queue.pop();
+	}
+	unsigned long required_num_slots = estimateCurrentNumSlots();
+
+
+//	ProposalPayload* payload = new ProposalPayload();
 }
