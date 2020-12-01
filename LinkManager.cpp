@@ -97,7 +97,7 @@ const unsigned int& LinkManager::getTrafficEstimateWindowSize() const {
 unsigned long LinkManager::estimateCurrentNumSlots() const {
 	unsigned long traffic_estimate = (unsigned long) getCurrentTrafficEstimate(); // in bits.
 	unsigned long datarate = mac->getCurrentDatarate(); // in bits/slot.
-	return traffic_estimate / datarate;
+	return traffic_estimate / datarate; // in slots.
 }
 
 unsigned int LinkManager::getNumPendingReservations() const {
@@ -129,20 +129,30 @@ void LinkManager::notifyOnOutgoingPacket(TUHH_INTAIRNET_MCSOTDMA::L2Packet* pack
 }
 
 void LinkManager::computeProposal(L2Packet* request) {
+//	assert(request->getHeaders().size() == 2 && "There should be a base header and the request header.");
+	assert(request->getPayloads().size() == 2 && "There should be a nullptr base payload and the request payload.");
+//	auto* proposal_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
+	auto* proposal_body = (ProposalPayload*) request->getPayloads().at(1);
+	
 	// Find resource proposals...
 	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
 	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
 	// ... until we have considered the target number of channels ...
+	unsigned long required_num_slots = estimateCurrentNumSlots();
+	proposal_body->num_slots_per_candidate = this->num_proposed_slots;
 	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
 		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
-			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " but there are no more.");
+			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
-//		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->)
 		table_priority_queue.pop();
+		// ... and try to find candidate slots.
+		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, this->num_proposed_slots, required_num_slots);
+		
+		// Fill proposal.
+		proposal_body->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.
+		proposal_body->num_candidates.push_back(candidate_slots.size()); // Number of candidates (could be fewer than the target).
+		for (int32_t slot : candidate_slots) // The candidate slots.
+			proposal_body->proposed_slots.push_back(slot);
 	}
-	unsigned long required_num_slots = estimateCurrentNumSlots();
-
-
-//	ProposalPayload* payload = new ProposalPayload();
 }

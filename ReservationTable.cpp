@@ -157,4 +157,12 @@ int32_t ReservationTable::findEarliestOffset(const int32_t start_offset, const R
 	throw std::runtime_error("ReservationTable::findEarliestOffset finds no scheduled reservation from present to future.");
 }
 
+void ReservationTable::linkFrequencyChannel(FrequencyChannel* channel) {
+	this->freq_channel = channel;
+}
+
+const FrequencyChannel* ReservationTable::getLinkedChannel() const {
+	return freq_channel;
+}
+
 ReservationTable::~ReservationTable() = default;

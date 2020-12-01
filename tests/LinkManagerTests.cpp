@@ -120,10 +120,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// And the LinkManager status should've updated.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
 			}
+			
+			void testComputeProposal() {
+				testNewLinkEstablishment();
+				L2Packet* request = rlc_layer->injections.at(0);
+				link_manager->computeProposal(request);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
 			CPPUNIT_TEST(testNewLinkEstablishment);
+			CPPUNIT_TEST(testComputeProposal);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

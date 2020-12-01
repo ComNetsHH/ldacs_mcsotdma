@@ -11,6 +11,7 @@ ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_hor
 void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth) {
 	auto* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
 	auto* table = new ReservationTable(this->planning_horizon);
+	table->linkFrequencyChannel(channel);
 	if (is_p2p) {
 		frequency_channels.push_back(channel);
 		reservation_tables.push_back(table);

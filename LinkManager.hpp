@@ -7,6 +7,7 @@
 
 #include "MacId.hpp"
 #include <L2Packet.hpp>
+#include <cmath>
 #include "ReservationManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -24,22 +25,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			class ProposalPayload : public L2Packet::Payload {
 				public:
-					ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : num_freq_channels(num_freq_channels), num_candidates(num_slots), num_slots_per_candidate(1) {}
+					ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : target_num_channels(num_freq_channels), target_num_slots(num_slots), num_slots_per_candidate(1) {
+						if (target_num_slots > pow(2, 4))
+							throw std::runtime_error("Cannot encode more than 16 candidate slots.");
+					}
 					
 					unsigned int getBits() const override {
-						return 8*num_freq_channels // 1B per frequency channel
-						+ 8*num_candidates // 1B per candidate
+						return 8 * target_num_channels // 1B per frequency channel
+						+ 8*target_num_slots // 1B per candidate
+						+ 4*target_num_slots // number of actual candidates per channel
 						+ 8; // 1B to denote candidate slot length
 					}
-				
-				protected:
-					std::vector<FrequencyChannel> proposed_channels;
+					
+					std::vector<const FrequencyChannel*> proposed_channels;
 					/** Starting slots. */
 					std::vector<unsigned int> proposed_slots;
+					/** Actual number of candidates per frequency channel. */
+					std::vector<unsigned int> num_candidates;
 					/** Target number of frequency channels to propose. */
-					unsigned int num_freq_channels;
-					/** Target number of candidates per frequency channel. */
-					unsigned int num_candidates;
+					unsigned int target_num_channels;
+					/** Target number of slots to propose. */
+					unsigned int target_num_slots;
 					/** Number of slots to reserve. */
 					unsigned int num_slots_per_candidate;
 			};
@@ -115,6 +121,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		protected:
 			L2Packet* prepareLinkEstablishmentRequest();
 			
+			/**
+			 * Fills the header and payload of the given 'request' with a current proposal.
+			 * @param request
+			 */
 			void computeProposal(L2Packet* request);
 			
 			/**

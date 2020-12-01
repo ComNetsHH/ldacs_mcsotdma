@@ -9,6 +9,7 @@
 #include <cstdint>
 #include "Timestamp.hpp"
 #include "Reservation.hpp"
+#include "FrequencyChannel.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -68,6 +69,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @throws std::runtime_error If no reservation of this kind is found.
 			 */
 			int32_t findEarliestOffset(const int32_t start_offset, const Reservation& reservation) const;
+			
+			void linkFrequencyChannel(FrequencyChannel* channel);
+			
+			const FrequencyChannel* getLinkedChannel() const;
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;
@@ -142,6 +147,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			Timestamp last_updated;
 			/** The ReservationTable keeps track of the idle slots it currently has, so that different tables are easily compared for their capacity of new reservations. */
 			uint64_t num_idle_future_slots;
+			FrequencyChannel* freq_channel = nullptr;
 	};
 }
 

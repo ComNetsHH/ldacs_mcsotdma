@@ -4,6 +4,7 @@
 
 #include "MCSOTDMA_Mac.hpp"
 #include <IPhy.hpp>
+#include <cassert>
 
 TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 	for (auto& pair : link_managers)
@@ -45,8 +46,7 @@ TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::MCSOTDMA_Mac(TUHH_INTAIRNET_MCSOTDMA::Res
 }
 
 unsigned long TUHH_INTAIRNET_MCSOTDMA::MCSOTDMA_Mac::getCurrentDatarate() const {
-	if (this->lower_layer == nullptr)
-		throw std::runtime_error("MCSOTDMA_Mac cannot query the PHY layer because it has not been set yet (nullptr).");
+	assert(lower_layer && "MCSOTDMA_Mac::getCurrentDatarate for unset PHY layer.");
 	return lower_layer->getCurrentDatarate();
 }
 
