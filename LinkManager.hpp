@@ -17,7 +17,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 * A LinkManager is responsible for a single communication link.
 	 * It is notified by a QueueManager of new packets, and utilizes a ReservationManager to make slot reservations.
 	 */
-	class LinkManager {
+	class LinkManager : public L2PacketSentCallback {
 			
 		friend class LinkManagerTests;
 			
@@ -92,6 +92,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @throws std::runtime_error If no reservation of this kind is found.
 			 */
 			int32_t getEarliestReservationSlotOffset(int32_t start_slot, const Reservation& reservation) const;
+			
+			/**
+			 * From L2PacketSentCallback interface: when a packet leaves the layer, the LinkManager may be notified.
+			 * This is used for link requests, so that the status can be changed when the request has been sent.
+			 * @param packet
+			 */
+			void notifyOnOutgoingPacket(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
 		
 		protected:
 			L2Packet* prepareLinkEstablishmentRequest();

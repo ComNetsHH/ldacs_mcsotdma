@@ -135,6 +135,10 @@ int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const 
 	return current_reservation_table->findEarliestOffset(start_slot, reservation);
 }
 
+void LinkManager::notifyOnOutgoingPacket(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) {
+	throw std::runtime_error("not implemeted");
+}
+
 unsigned int LinkManager::ProposalPayload::getBits() const {
 	// Should calculate bits from number of channels * number of slots.
 	// But how many bits per (f, t)-pair?

@@ -29,8 +29,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				TX
 			};
 			
-			Reservation(MacId owner, Action action);
-			explicit Reservation(MacId owner);
+			Reservation(const MacId& owner, Action action);
+			explicit Reservation(const MacId& owner);
 			Reservation();
 			virtual ~Reservation();
 			
