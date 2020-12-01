@@ -9,6 +9,7 @@
 #include "../coutdebug.hpp"
 #include <IArq.hpp>
 #include <IRlc.hpp>
+#include <IPhy.hpp>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class LinkManagerTests : public CppUnit::TestFixture {
@@ -19,6 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MacId id = MacId(0);
 			uint32_t planning_horizon = 128;
 			uint64_t center_frequency1 = 1000, center_frequency2 = 2000, center_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
+			unsigned long num_bits_going_out = 1024;
 			
 			class ARQLayer : public IArq {
 				public:
@@ -58,6 +60,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					std::vector<L2Packet*> injections;
 			};
 			RLCLayer* rlc_layer;
+			
+			class PHYLayer : public IPhy {
+				public:
+					explicit PHYLayer(unsigned long datarate) : datarate(datarate) {}
+					
+					void receiveFromUpper(unsigned int num_bits, L2Packet* data, unsigned int center_frequency) override {
+					
+					}
+					
+					unsigned long getCurrentDatarate() const override {
+						return datarate;
+					}
+					
+					unsigned long datarate;
+			};
+			PHYLayer* phy_layer;
 		
 		public:
 			void setUp() override {
@@ -74,6 +92,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				rlc_layer = new RLCLayer();
 				rlc_layer->setLowerLayer(arq_layer);
 				arq_layer->setUpperLayer(rlc_layer);
+				phy_layer = new PHYLayer(num_bits_going_out / 2);
+				phy_layer->setUpperLayer(mac);
+				mac->setLowerLayer(phy_layer);
 			}
 			
 			void tearDown() override {
@@ -82,6 +103,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				delete link_manager;
 				delete arq_layer;
 				delete rlc_layer;
+				delete phy_layer;
 			}
 			
 			void testTrafficEstimate() {
@@ -110,8 +132,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_establishment_status);
 				CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->injections.size());
 				// Now inform the LinkManager of new data for this link.
-				unsigned long num_bits = 1024;
-				link_manager->notifyOutgoing(num_bits);
+				link_manager->notifyOutgoing(num_bits_going_out);
 				// The RLC should've received a link request.
 				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->injections.size());
 				CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer->injections.at(0)->getHeaders().size());
@@ -125,6 +146,31 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				testNewLinkEstablishment();
 				L2Packet* request = rlc_layer->injections.at(0);
 				link_manager->computeProposal(request);
+				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
+				auto* proposal = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
+				
+				// Should've considered several distinct frequency channels.
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), proposal->proposed_channels.size());
+				for (size_t i = 1; i < proposal->proposed_channels.size(); i++) {
+					const FrequencyChannel* channel0 = proposal->proposed_channels.at(i-1);
+					const FrequencyChannel* channel1 = proposal->proposed_channels.at(i);
+					CPPUNIT_ASSERT(channel1->getCenterFrequency() != channel0->getCenterFrequency());
+				}
+				
+				// Should've considered a number of candidate slots per frequency channel.
+				for (auto num_slots_in_this_candidate : proposal->num_candidates) {
+					// Since all are idle, we should've found the target number each time.
+					CPPUNIT_ASSERT_EQUAL(link_manager->num_proposed_slots, num_slots_in_this_candidate);
+				}
+				// and so the grand total should be the number of proposed slots times the number of proposed channels.
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels * link_manager->num_proposed_slots), proposal->proposed_slots.size());
+				
+				// To have a look...
+//				coutd.setVerbose(true);
+//				for (unsigned int slot : proposal->proposed_slots)
+//					coutd << slot << " ";
+//				coutd << std::endl;
+//				coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);

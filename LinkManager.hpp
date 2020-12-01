@@ -83,15 +83,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots);
 			
 			/**
-			 * @return The number of frequency channels that will be proposed when a new link request is prepared.
-			 */
-			unsigned int getProposalNumChannels() const;
-			/**
-			 * @return The number of time slots that will be proposed when a new link request is prepared.
-			 */
-			unsigned int getProposalNumSlots() const;
-			
-			/**
 			 * @return The current, computed traffic estimate from a moving average over some window of past values.
 			 */
 			double getCurrentTrafficEstimate() const;

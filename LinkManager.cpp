@@ -72,7 +72,7 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	request->addPayload(base_header, nullptr);
 	// Instantiate request header.
 	auto* request_header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
-	auto* body = new ProposalPayload(this->getProposalNumChannels(), this->getProposalNumSlots());
+	auto* body = new ProposalPayload(this->num_proposed_channels, this->num_proposed_slots);
 	request->addPayload(request_header, body);
 	return request;
 }
@@ -80,14 +80,6 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 void LinkManager::setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots) {
 	this->num_proposed_channels = num_candidate_channels;
 	this->num_proposed_slots = num_candidate_slots;
-}
-
-unsigned int LinkManager::getProposalNumChannels() const {
-	return this->num_proposed_channels;
-}
-
-unsigned int LinkManager::getProposalNumSlots() const {
-	return this->num_proposed_slots;
 }
 
 const unsigned int& LinkManager::getTrafficEstimateWindowSize() const {
