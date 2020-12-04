@@ -47,10 +47,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ReservationTable* getBroadcastReservationTable();
 			
 			/**
-			 * Calls update() function on each reservation table.
+			 * Calls update() function on each ReservationTable.
 			 * @param num_slots
 			 */
 			void update(uint64_t num_slots);
+			
+			/**
+			 * Fetches current reservations from each ReservationTable.
+			 */
+			std::vector<std::pair<Reservation, const FrequencyChannel*>> collectCurrentReservations();
 
 			/**
 			 * @return Number of frequency channels and corresponding reservation tables that are managed.

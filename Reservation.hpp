@@ -32,6 +32,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			Reservation(const MacId& owner, Action action);
 			explicit Reservation(const MacId& owner);
 			Reservation();
+			Reservation(const Reservation& other);
 			virtual ~Reservation();
 			
 			/**
@@ -55,6 +56,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MacId owner;
 			Action action;
 	};
+	
+	inline std::ostream & operator<<(std::ostream & stream, const Reservation& reservation) {
+		std::string action;
+		switch (reservation.getAction()) {
+			case Reservation::BUSY:
+				action = "BUSY";
+				break;
+			case Reservation::RX:
+				action = "RX";
+				break;
+			case Reservation::TX:
+				action = "TX";
+				break;
+			case Reservation::IDLE:
+				action = "IDLE";
+				break;
+		}
+		action += "@" + std::to_string(reservation.getOwner().getId());
+		return stream << action;
+	}
 }
 
 

@@ -44,13 +44,26 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 			// We are now awaiting a reply.
 			this->link_establishment_status = Status::awaiting_reply;
 		} else {
-			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_not_established) + "'.");
+			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_establishment_status) + "'.");
 		}
 	}
 }
 
-void LinkManager::notifyIncoming(unsigned long num_bits) {
-		throw std::runtime_error("not implemented");
+void LinkManager::receiveFromLower(L2Packet* packet) {
+	// Check if this is the reply to a link request.
+	if (packet->getHeaders().size() == 2) { // base + link reply
+		L2Header* header = packet->getHeaders().at(1);
+		if (header == nullptr)
+			throw std::invalid_argument("LinkManager::receiveFromLower received nullptr header.");
+		// If it really is, then process it.
+		if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
+			processLinkEstablishmentReply(packet);
+			delete packet;
+			return;
+		}
+	}
+	// All non-reply packets are passed up.
+	mac->passToUpper(packet);
 }
 
 double LinkManager::getCurrentTrafficEstimate() const {
@@ -64,7 +77,7 @@ double LinkManager::getCurrentTrafficEstimate() const {
 }
 
 L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
-	L2Packet* request = new L2Packet();
+	auto* request = new L2Packet();
 	// Query ARQ sublayer whether this link should be ARQ protected.
 	bool link_should_be_arq_protected = mac->shouldLinkBeArqProtected(this->link_id);
 	// Instantiate base header.
@@ -116,22 +129,32 @@ int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const 
 	return current_reservation_table->findEarliestOffset(start_slot, reservation);
 }
 
-void LinkManager::notifyOnOutgoingPacket(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) {
-	throw std::runtime_error("not implemeted");
+void LinkManager::notifyPacketBeingSent(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) {
+	// This callback is used only for link requests, so ensure that this is a link request.
+	if (packet->getHeaders().size() != 2)
+		throw std::invalid_argument("LinkManager::notifyPacketBeingSent packet doesn't have two headers.");
+	if (packet->getHeaders().at(1)->frame_type != L2Header::FrameType::link_establishment_request)
+		throw std::invalid_argument("LinkManager::notifyPacketBeingSent packet is not a link request.");
+	// Compute and put in a proposal.
+	ProposalPayload* proposal = computeProposal(packet);
+	if (packet->getPayloads().at(1) != nullptr)
+		throw std::invalid_argument("LinkManager::notifyPacketBeingSent would overwrite an existing proposal payload.");
+	packet->getPayloads().at(1) = proposal;
+	// Remember the proposal.
+	if (this->last_proposal != nullptr)
+		throw std::runtime_error("LinkManager::notifyPacketBeingSent called, proposal computed, but there's already a saved proposal which would now be overwritten.");
+	this->last_proposal = new ProposalPayload(*proposal);
 }
 
-void LinkManager::computeProposal(L2Packet* request) {
-//	assert(request->getHeaders().size() == 2 && "There should be a base header and the request header.");
+LinkManager::ProposalPayload* LinkManager::computeProposal(L2Packet* request) {
 	assert(request->getPayloads().size() == 2 && "There should be a nullptr base payload and the request payload.");
-//	auto* proposal_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
-	auto* proposal_body = (ProposalPayload*) request->getPayloads().at(1);
+	auto* proposal = new ProposalPayload(num_proposed_channels, num_proposed_slots);
 	
 	// Find resource proposals...
 	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
 	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
 	// ... until we have considered the target number of channels ...
 	unsigned long required_num_slots = estimateCurrentNumSlots();
-	proposal_body->num_slots_per_candidate = this->num_proposed_slots;
 	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
 		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
 			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
@@ -142,9 +165,29 @@ void LinkManager::computeProposal(L2Packet* request) {
 		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, this->num_proposed_slots, required_num_slots);
 		
 		// Fill proposal.
-		proposal_body->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.
-		proposal_body->num_candidates.push_back(candidate_slots.size()); // Number of candidates (could be fewer than the target).
+		proposal->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.
+		proposal->num_candidates.push_back(candidate_slots.size()); // Number of candidates (could be fewer than the target).
 		for (int32_t slot : candidate_slots) // The candidate slots.
-			proposal_body->proposed_slots.push_back(slot);
+			proposal->proposed_slots.push_back(slot);
 	}
+	return proposal;
+}
+
+void LinkManager::processLinkEstablishmentReply(L2Packet* reply) {
+	// Make sure we're expecting a reply.
+	if (link_establishment_status != Status::awaiting_reply) {
+		std::string status = link_establishment_status == Status::link_not_established ? "link_not_established" : "link_established";
+		throw std::runtime_error("LinkManager for ID '" + std::to_string(link_id.getId()) + "' received a link reply but its state is '" + status + "'.");
+	}
+	// The link has now been established!
+	// So update the status.
+	link_establishment_status = Status::link_established;
+	// And mark the reservations.
+	if (this->last_proposal == nullptr)
+		throw std::runtime_error("LinkManager::processLinkEstablishmentReply for no remembered proposal.");
+	
+}
+
+void LinkManager::onTransmissionSlot() {
+	throw std::runtime_error("not implemented");
 }

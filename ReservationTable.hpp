@@ -54,6 +54,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const Timestamp& getCurrentSlot() const;
 			
 			/**
+			 * @return The current reservation.
+			 */
+			const Reservation& getCurrentReservation() const;
+			
+			/**
 			 * Attempts to find a number of candidate slots.
 			 * @param min_offset The minimum offset in time for any candidate slot.
 			 * @param num_candidates The number of candidate slots that should be found.

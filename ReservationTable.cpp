@@ -165,4 +165,8 @@ const FrequencyChannel* ReservationTable::getLinkedChannel() const {
 	return freq_channel;
 }
 
+const Reservation& ReservationTable::getCurrentReservation() const {
+	return getVec().at(convertOffsetToIndex(0));
+}
+
 ReservationTable::~ReservationTable() = default;

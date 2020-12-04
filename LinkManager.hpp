@@ -30,6 +30,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 							throw std::runtime_error("Cannot encode more than 16 candidate slots.");
 					}
 					
+					/** Copy constructor. */
+					ProposalPayload(const ProposalPayload& other)
+						: proposed_channels(other.proposed_channels), proposed_slots(other.proposed_slots), num_candidates(other.num_candidates),
+						target_num_channels(other.target_num_channels), target_num_slots(other.target_num_slots), num_slots_per_candidate(other.num_slots_per_candidate) {}
+					
 					unsigned int getBits() const override {
 						return 8 * target_num_channels // 1B per frequency channel
 						+ 8*target_num_slots // 1B per candidate
@@ -71,10 +76,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			void notifyOutgoing(unsigned long num_bits);
 			
+			void onTransmissionSlot();
+			
 			/**
 			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
 			 */
-			void notifyIncoming(unsigned long num_bits);
+			void receiveFromLower(L2Packet* packet);
 			
 			/**
 			 * @param num_candidate_channels Number of distinct frequency channels that should be proposed.
@@ -104,19 +111,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * From L2PacketSentCallback interface: when a packet leaves the layer, the LinkManager may be notified.
-			 * This is used for link requests, so that the status can be changed when the request has been sent.
+			 * This is used to set header fields, and to compute link request proposals.
 			 * @param packet
 			 */
-			void notifyOnOutgoingPacket(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
+			void notifyPacketBeingSent(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
 		
 		protected:
 			L2Packet* prepareLinkEstablishmentRequest();
+			
+			void processLinkEstablishmentReply(L2Packet* reply);
 			
 			/**
 			 * Fills the header and payload of the given 'request' with a current proposal.
 			 * @param request
 			 */
-			void computeProposal(L2Packet* request);
+			LinkManager::ProposalPayload* computeProposal(L2Packet* request);
 			
 			/**
 			 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.
@@ -152,6 +161,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			size_t traffic_estimate_index = 0;
 			/** Keeps track of the number of slot reservations that have been made but are yet to arrive. */
 			unsigned int num_pending_reservations = 0;
+			/** Keeps a copy of the last proposal, so that reservations can be made when the proposal is accepted. */
+			LinkManager::ProposalPayload* last_proposal = nullptr;
 	};
 }
 

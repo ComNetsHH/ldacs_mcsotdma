@@ -18,12 +18,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class MCSOTDMA_Mac : public IMac {
 		public:
+			friend class MCSOTDMA_MacTests;
+			
 			explicit MCSOTDMA_Mac(ReservationManager* reservation_manager);
 			virtual ~MCSOTDMA_Mac();
 			
 			void notifyOutgoing(unsigned long num_bits, const MacId& mac_id) override;
 			
-			void passToLower(L2Packet* packet) override;
+			void passToLower(L2Packet* packet, unsigned int center_frequency) override;
 			
 			/**
 			 * Queries the ARQ sublayer above.
@@ -43,12 +45,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The LinkManager that manages the given 'id'.
 			 */
 			LinkManager* getLinkManager(const MacId& id);
+			
+			void passToUpper(L2Packet* packet) override;
+			
+			/** Notify this MAC that time has passed. */
+			void update(uint64_t num_slots);
 		
 		protected:
+			/**
+			 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.
+			 * @param channel
+			 */
+			virtual void onReceptionSlot(const FrequencyChannel* channel) = 0;
+			
 			/** Keeps track of transmission resource reservations. */
 			ReservationManager* reservation_manager;
 			/** Maps links to their link managers. */
 			std::map<MacId, LinkManager*> link_managers;
+			const size_t num_transmitters = 1, num_receivers = 2;
 	};
 }
 

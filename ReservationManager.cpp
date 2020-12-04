@@ -76,3 +76,12 @@ FrequencyChannel* ReservationManager::getBroadcastFreqChannel() {
 ReservationTable* ReservationManager::getBroadcastReservationTable() {
 	return this->broadcast_reservation_table;
 }
+
+std::vector<std::pair<Reservation, const FrequencyChannel*>> ReservationManager::collectCurrentReservations() {
+	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations;
+	for (ReservationTable* table : reservation_tables) {
+		auto reservation = std::pair<Reservation, const FrequencyChannel*>(table->getCurrentReservation(), table->getLinkedChannel());
+		reservations.push_back(reservation);
+	}
+	return reservations;
+}

@@ -16,11 +16,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		private:
 			LinkManager* link_manager;
 			ReservationManager* reservation_manager;
-			MCSOTDMA_Mac* mac;
 			MacId id = MacId(0);
 			uint32_t planning_horizon = 128;
 			uint64_t center_frequency1 = 1000, center_frequency2 = 2000, center_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
 			unsigned long num_bits_going_out = 1024;
+			
+			class MACLayer : public MCSOTDMA_Mac {
+				public:
+					explicit MACLayer(ReservationManager* manager) : MCSOTDMA_Mac(manager) {}
+				
+				protected:
+					void onReceptionSlot(const FrequencyChannel* channel) override {
+						// do nothing.
+					}
+			};
+			MACLayer* mac;
 			
 			class ARQLayer : public IArq {
 				public:
@@ -35,6 +45,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					bool shouldLinkBeArqProtected(const MacId& mac_id) const override {
 						return true;
 					}
+					
+					void receiveFromLower(L2Packet* packet) override {
+					
+					}
+					
+					void notifyAboutNewLink(const MacId& id) override {
+					
+					}
+					
+					void notifyAboutRemovedLink(const MacId& id) override {
+					
+					}
+				
+				protected:
+					void processIncomingHeader(L2Packet* incoming_packet) override {
+					
+					}
 			};
 			ARQLayer* arq_layer;
 			
@@ -45,16 +72,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 							delete packet;
 					}
 					
-					void receiveFromUpper(L3Packet* data) override {
-						throw std::runtime_error("not implemented");
+					void receiveFromUpper(L3Packet* data, MacId dest, PacketPriority priority) override {
+					
 					}
 					
-					void receiveInjectionFromLower(L2Packet* packet) override {
+					void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
 						injections.push_back(packet);
 					}
 					
 					L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
 						throw std::runtime_error("not implemented");
+					}
+					
+					void receiveFromLower(L2Packet* packet) override {
+					
 					}
 					
 					std::vector<L2Packet*> injections;
@@ -65,7 +96,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				public:
 					explicit PHYLayer(unsigned long datarate) : datarate(datarate) {}
 					
-					void receiveFromUpper(unsigned int num_bits, L2Packet* data, unsigned int center_frequency) override {
+					void receiveFromUpper(L2Packet* data, unsigned int center_frequency) override {
 					
 					}
 					
@@ -84,7 +115,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				mac = new MCSOTDMA_Mac(reservation_manager);
+				mac = new MACLayer(reservation_manager);
 				link_manager = new LinkManager(id, reservation_manager, mac);
 				arq_layer = new ARQLayer();
 				mac->setUpperLayer(arq_layer);
@@ -145,9 +176,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testComputeProposal() {
 				testNewLinkEstablishment();
 				L2Packet* request = rlc_layer->injections.at(0);
-				link_manager->computeProposal(request);
+				LinkManager::ProposalPayload* proposal = link_manager->computeProposal(request);
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
-				auto* proposal = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
 				
 				// Should've considered several distinct frequency channels.
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), proposal->proposed_channels.size());

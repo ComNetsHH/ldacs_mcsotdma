@@ -8,6 +8,13 @@ TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation(const TUHH_INTAIRNET_MCSOTDMA:
                                                   TUHH_INTAIRNET_MCSOTDMA::Reservation::Action action)
                                                   : owner(owner), action(action) {}
 
+TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation() : Reservation(SYMBOLIC_ID_UNSET) {}
+
+TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation(const TUHH_INTAIRNET_MCSOTDMA::Reservation& other)
+		: Reservation(other.owner, other.action) {}
+
+TUHH_INTAIRNET_MCSOTDMA::Reservation::~Reservation() = default;
+
 const TUHH_INTAIRNET_MCSOTDMA::MacId& TUHH_INTAIRNET_MCSOTDMA::Reservation::getOwner() const {
 	return this->owner;
 }
@@ -21,10 +28,6 @@ TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation(const TUHH_INTAIRNET_MCSOTDMA:
 void TUHH_INTAIRNET_MCSOTDMA::Reservation::setAction(TUHH_INTAIRNET_MCSOTDMA::Reservation::Action action) {
 	this->action = action;
 }
-
-TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation() : Reservation(SYMBOLIC_ID_UNSET) {}
-
-TUHH_INTAIRNET_MCSOTDMA::Reservation::~Reservation() = default;
 
 bool TUHH_INTAIRNET_MCSOTDMA::Reservation::operator==(const TUHH_INTAIRNET_MCSOTDMA::Reservation& other) const {
 	return other.action == this->action && other.owner == this->owner;
