@@ -120,8 +120,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param packet
 			 */
 			void notifyPacketBeingSent(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
+			
+			/**
+			 * @param reservation_timeout Number of repetitions a reservation remains valid for.
+			 */
+			void setReservationTimeout(unsigned int reservation_timeout);
+			
+			/**
+			 * @param reservation_offset Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions.
+			 */
+			void setReservationOffset(unsigned int reservation_offset);
 		
 		protected:
+			
+			/**
+			 * Prepares a link request and injects it into the upper layers.
+			 */
+			void requestNewLink();
+			
 			/**
 			 * Upon a transmission slot, the link establishment request payload must be computed.
 			 * @return The modified data packet, now containing the request payload.
@@ -141,9 +157,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkManager::ProposalPayload* computeProposal(L2Packet* request);
 			
 			/**
-			 * @return A header specific to the link this manager manages.
+			 * Checks validity and delegates to set{Base,Beacon,Broadcast,Unicast,Request}HeaderFields.
+			 * @param header The header whose fields shall be set.
 			 */
-			L2Header* setHeader() const;
+			void setHeaderFields(L2Header* header);
+			void setBaseHeaderFields(L2HeaderBase* header);
+			void setBeaconHeaderFields(L2HeaderBeacon* header) const;
+			void setBroadcastHeaderFields(L2HeaderBroadcast* header) const;
+			void setUnicastHeaderFields(L2HeaderUnicast* header) const;
+			void setRequestHeaderFields(L2HeaderLinkEstablishmentRequest* header) const;
 			
 			/**
 			 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.
@@ -181,6 +203,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int num_pending_reservations = 0;
 			/** Keeps a copy of the last proposal, so that reservations can be made when the proposal is accepted. */
 			LinkManager::ProposalPayload* last_proposal = nullptr;
+			/** Number of repetitions a reservation remains valid for. */
+			unsigned int current_reservation_timeout = 16, reservation_timeout = 16;
+			/** When a reservation timeout reaches this threshold, a new link request is prepared. */
+			const unsigned int TIMEOUT_THRESHOLD_TRIGGER = 3;
+			/** Number of slots occupied per transmission burst. */
+			unsigned short current_reservation_slot_length = 0;
+			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
+			unsigned int current_reservation_offset = 10;
 	};
 }
 

@@ -37,12 +37,8 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 			return;
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
-			coutd << ": link is not established. Starting link establishment" << std::endl;
-			// Prepare a link request and inject it into the RLC sublayer above.
-			L2Packet* request = prepareLinkEstablishmentRequest();
-			mac->injectIntoUpper(request);
-			// We are now awaiting a reply.
-			this->link_establishment_status = Status::awaiting_reply;
+			coutd << ": link is not established." << std::endl;
+			requestNewLink();
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_establishment_status) + "'.");
 		}
@@ -76,12 +72,24 @@ double LinkManager::getCurrentTrafficEstimate() const {
 	return traffic_estimate_index < traffic_estimate_num_values ? moving_average / ((double) traffic_estimate_index) : moving_average / ((double) traffic_estimate_num_values);
 }
 
+void LinkManager::requestNewLink() {
+	coutd << "requesting new link... ";
+	// Prepare a link request and inject it into the RLC sublayer above.
+	L2Packet* request = prepareLinkEstablishmentRequest();
+	coutd << "prepared link establishment request... ";
+	mac->injectIntoUpper(request);
+	coutd << "injected into upper layer... ";
+	// We are now awaiting a reply.
+	this->link_establishment_status = Status::awaiting_reply;
+	coutd << "updated status." << std::endl;
+}
+
 L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	auto* request = new L2Packet();
 	// Query ARQ sublayer whether this link should be ARQ protected.
 	bool link_should_be_arq_protected = mac->shouldLinkBeArqProtected(this->link_id);
 	// Instantiate base header.
-	auto* base_header = new L2HeaderBase(this->getLinkId(), 0, 0, 0, 0);
+	auto* base_header = new L2HeaderBase(this->getLinkId(), 0, 0, 0);
 	request->addPayload(base_header, nullptr);
 	// Instantiate request header.
 	auto* request_header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
@@ -185,7 +193,7 @@ void LinkManager::processLinkEstablishmentReply(L2Packet* reply) {
 	// And mark the reservations.
 	if (this->last_proposal == nullptr)
 		throw std::runtime_error("LinkManager::processLinkEstablishmentReply for no remembered proposal.");
-	
+	current_reservation_slot_length = last_proposal->num_slots_per_candidate;
 }
 
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
@@ -195,9 +203,102 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	unsigned long num_bits = datarate * num_slots; // bits
 	// Query ARQ for a new segment.
 	coutd << "requesting " << num_bits << " bits." << std::endl;
-	return mac->requestSegment(num_bits, getLinkId());
+	L2Packet* segment = mac->requestSegment(num_bits, getLinkId());
+	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionSlot received segment with <=1 headers.");
+	for (L2Header* header : segment->getHeaders())
+		setHeaderFields(header);
+	if (current_reservation_timeout == TIMEOUT_THRESHOLD_TRIGGER) {
+		coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
+		requestNewLink();
+	}
+	return segment;
 }
 
-L2Header* LinkManager::setHeader() const {
-	throw std::runtime_error("LinkManager::setHeader not implemented");
+void LinkManager::setHeaderFields(L2Header* header) {
+	// Check frame type (it's const and cannot be changed).
+	// Beacon and Broadcast LinkManagers...
+	const L2Header::FrameType& type = header->frame_type;
+	if (link_id == SYMBOLIC_LINK_ID_BEACON || link_id == SYMBOLIC_LINK_ID_BROADCAST) {
+		// ... may send beacons, broadcasts, unicasts, link requests
+		if (type != L2Header::FrameType::base
+		&& type != L2Header::FrameType::beacon
+		&& type != L2Header::FrameType::broadcast
+		&& type != L2Header::FrameType::unicast
+		&& type != L2Header::FrameType::link_establishment_request)
+			throw std::invalid_argument("Broadcast LinkManager::setHeaderFields received unexpected header.");
+	// P2P LinkManagers...
+	} else {
+		// ... may send unicasts, link requests
+		if (type != L2Header::FrameType::base
+		&& type != L2Header::FrameType::unicast
+	    && type != L2Header::FrameType::link_establishment_request)
+			throw std::invalid_argument("P2P LinkManager::setHeaderFields received unexpected header.");
+	}
+	
+	switch (type) {
+		case L2Header::base:
+			setBaseHeaderFields((L2HeaderBase*) header);
+			break;
+		case L2Header::beacon:
+			setBeaconHeaderFields((L2HeaderBeacon*) header);
+			break;
+		case L2Header::broadcast:
+			setBroadcastHeaderFields((L2HeaderBroadcast*) header);
+			break;
+		case L2Header::unicast:
+			setUnicastHeaderFields((L2HeaderUnicast*) header);
+			break;
+		case L2Header::link_establishment_request:
+			setRequestHeaderFields((L2HeaderLinkEstablishmentRequest*) header);
+			break;
+		default:
+			throw std::invalid_argument("LinkManager::setHeaderFields for unsupported frame type: " + std::to_string(header->frame_type));
+	}
+}
+
+void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
+	coutd << "-> setting base header fields:";
+	header->icao_id = mac->getMacId();
+	coutd << " icao_id=" << this->link_id;
+	header->offset = this->current_reservation_offset;
+	coutd << " offset=" << this->current_reservation_offset;
+	header->length_next = this->current_reservation_slot_length;
+	coutd << " length_next=" << this->current_reservation_slot_length;
+	header->timeout = this->current_reservation_timeout;
+	coutd << " timeout=" << this->current_reservation_timeout;
+	current_reservation_timeout = current_reservation_timeout - 1;
+	coutd << std::endl;
+}
+
+void LinkManager::setBeaconHeaderFields(L2HeaderBeacon* header) const {
+	coutd << "-> setting beacon header fields" << std::endl;
+	header->num_hops_to_ground_station = mac->getNumHopsToGS();
+	coutd << " num_hops=" << header->num_hops_to_ground_station;
+}
+
+void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
+	coutd << "-> setting broadcast header fields" << std::endl;
+	throw std::runtime_error("LinkManager::setBroadcastHeaderFields not implemented");
+}
+
+void LinkManager::setUnicastHeaderFields(L2HeaderUnicast* header) const {
+	coutd << "-> setting unicast header fields:";
+	if (link_establishment_status != Status::link_established)
+		throw std::runtime_error("LinkManager::setUnicastHeaderFields for an unestablished link.");
+	coutd << " icao_dest_id=" << link_id;
+	header->icao_dest_id = link_id;
+	coutd << std::endl;
+}
+
+void LinkManager::setRequestHeaderFields(L2HeaderLinkEstablishmentRequest* header) const {
+	coutd << "-> setting link establishment request header fields" << std::endl;
+	throw std::runtime_error("LinkManager::setRequestHeaderFields not implemented");
+}
+
+void LinkManager::setReservationTimeout(unsigned int reservation_timeout) {
+	this->reservation_timeout = reservation_timeout;
+}
+
+void LinkManager::setReservationOffset(unsigned int reservation_offset) {
+	this->current_reservation_offset = reservation_offset;
 }

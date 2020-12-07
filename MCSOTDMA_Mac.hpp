@@ -20,25 +20,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			friend class MCSOTDMA_MacTests;
 			
-			explicit MCSOTDMA_Mac(ReservationManager* reservation_manager);
-			virtual ~MCSOTDMA_Mac();
+			MCSOTDMA_Mac(const MacId& id, ReservationManager* reservation_manager);
+			~MCSOTDMA_Mac() override;
 			
 			void notifyOutgoing(unsigned long num_bits, const MacId& mac_id) override;
 			
 			void passToLower(L2Packet* packet, unsigned int center_frequency) override;
-			
-			/**
-			 * Queries the ARQ sublayer above.
-			 * @param mac_id
-			 * @return Whether the specified link should be ARQ protected.
-			 */
-			bool shouldLinkBeArqProtected(const MacId& mac_id) const;
-			
-			/**
-			 * Queres the PHY layer below.
-			 * @return The current data rate in bits per slot.
-			 */
-			unsigned long getCurrentDatarate() const;
 			
 			/**
 			 * @param id

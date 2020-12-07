@@ -5,108 +5,23 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManager.hpp"
-#include "../MCSOTDMA_Mac.hpp"
-#include "../coutdebug.hpp"
-#include <IArq.hpp>
-#include <IRlc.hpp>
-#include <IPhy.hpp>
+#include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class LinkManagerTests : public CppUnit::TestFixture {
 		private:
 			LinkManager* link_manager;
 			ReservationManager* reservation_manager;
-			MacId id = MacId(0);
+			MacId own_id = MacId(42);
+			MacId communication_partner_id = MacId(43);
 			uint32_t planning_horizon = 128;
 			uint64_t center_frequency1 = 1000, center_frequency2 = 2000, center_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
-			unsigned long num_bits_going_out = 1024;
-			
-			class MACLayer : public MCSOTDMA_Mac {
-				public:
-					explicit MACLayer(ReservationManager* manager) : MCSOTDMA_Mac(manager) {}
-				
-				protected:
-					void onReceptionSlot(const FrequencyChannel* channel) override {
-						// do nothing.
-					}
-			};
+			unsigned long num_bits_going_out = 800*100;
 			MACLayer* mac;
-			
-			class ARQLayer : public IArq {
-				public:
-					void notifyOutgoing(unsigned int num_bits, const MacId& mac_id) override {
-						throw std::runtime_error("not implemented");
-					}
-					
-					L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
-						throw std::runtime_error("not implemented");
-					}
-					
-					bool shouldLinkBeArqProtected(const MacId& mac_id) const override {
-						return true;
-					}
-					
-					void receiveFromLower(L2Packet* packet) override {
-					
-					}
-					
-					void notifyAboutNewLink(const MacId& id) override {
-					
-					}
-					
-					void notifyAboutRemovedLink(const MacId& id) override {
-					
-					}
-				
-				protected:
-					void processIncomingHeader(L2Packet* incoming_packet) override {
-					
-					}
-			};
 			ARQLayer* arq_layer;
-			
-			class RLCLayer : public IRlc {
-				public:
-					virtual ~RLCLayer() {
-						for (auto* packet : injections)
-							delete packet;
-					}
-					
-					void receiveFromUpper(L3Packet* data, MacId dest, PacketPriority priority) override {
-					
-					}
-					
-					void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
-						injections.push_back(packet);
-					}
-					
-					L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
-						throw std::runtime_error("not implemented");
-					}
-					
-					void receiveFromLower(L2Packet* packet) override {
-					
-					}
-					
-					std::vector<L2Packet*> injections;
-			};
 			RLCLayer* rlc_layer;
-			
-			class PHYLayer : public IPhy {
-				public:
-					explicit PHYLayer(unsigned long datarate) : datarate(datarate) {}
-					
-					void receiveFromUpper(L2Packet* data, unsigned int center_frequency) override {
-					
-					}
-					
-					unsigned long getCurrentDatarate() const override {
-						return datarate;
-					}
-					
-					unsigned long datarate;
-			};
 			PHYLayer* phy_layer;
+			NetworkLayer* net_layer;
 		
 		public:
 			void setUp() override {
@@ -115,15 +30,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				mac = new MACLayer(reservation_manager);
-				link_manager = new LinkManager(id, reservation_manager, mac);
+				mac = new MACLayer(own_id, reservation_manager);
+				link_manager = new LinkManager(communication_partner_id, reservation_manager, mac);
 				arq_layer = new ARQLayer();
 				mac->setUpperLayer(arq_layer);
 				arq_layer->setLowerLayer(mac);
-				rlc_layer = new RLCLayer();
+				net_layer = new NetworkLayer();
+				rlc_layer = new RLCLayer(own_id);
+				net_layer->setLowerLayer(rlc_layer);
+				rlc_layer->setUpperLayer(net_layer);
 				rlc_layer->setLowerLayer(arq_layer);
 				arq_layer->setUpperLayer(rlc_layer);
-				phy_layer = new PHYLayer(num_bits_going_out / 2);
+				phy_layer = new PHYLayer();
 				phy_layer->setUpperLayer(mac);
 				mac->setLowerLayer(phy_layer);
 			}
@@ -135,6 +53,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				delete arq_layer;
 				delete rlc_layer;
 				delete phy_layer;
+				delete net_layer;
 			}
 			
 			void testTrafficEstimate() {
@@ -158,7 +77,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testNewLinkEstablishment() {
 				// It must a be a P2P link.
-				CPPUNIT_ASSERT(id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON);
+				CPPUNIT_ASSERT(own_id != SYMBOLIC_LINK_ID_BROADCAST && own_id != SYMBOLIC_LINK_ID_BEACON);
 				// Initially the link should not be established.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_establishment_status);
 				CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->injections.size());
@@ -204,11 +123,91 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 				delete proposal;
 			}
+			
+			void testNewLinkRequest() {
+				CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::link_not_established);
+				link_manager->requestNewLink();
+				CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::awaiting_reply);
+				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->injections.size());
+				L2Packet* request = rlc_layer->injections.at(0);
+				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+				CPPUNIT_ASSERT(request->getHeaders().at(0)->frame_type == L2Header::base);
+				CPPUNIT_ASSERT(request->getHeaders().at(1)->frame_type == L2Header::link_establishment_request);
+			}
+			
+			void testTransmissionSlotOnUnestablishedLink() {
+				bool exception_thrown = false;
+				try {
+					link_manager->onTransmissionSlot(1);
+				} catch (const std::exception& e) {
+					exception_thrown = true;
+				}
+				CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+			}
+			
+			void testOnTransmissionSlot() {
+				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
+				// Transmission slots should only occur for established links.
+				link_manager->link_establishment_status = LinkManager::link_established;
+				link_manager->onTransmissionSlot(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
+			}
+			
+			void testTriggerNewLinkRequest() {
+				// Next transmission should trigger a new request.
+				// Transmission slots should only occur for established links.
+				link_manager->link_establishment_status = LinkManager::link_established;
+				link_manager->current_reservation_timeout = link_manager->TIMEOUT_THRESHOLD_TRIGGER + 1;
+				link_manager->onTransmissionSlot(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->injections.size());
+				L2Packet* request = rlc_layer->injections.at(0);
+				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+				CPPUNIT_ASSERT(request->getHeaders().at(0)->frame_type == L2Header::base);
+				CPPUNIT_ASSERT(request->getHeaders().at(1)->frame_type == L2Header::link_establishment_request);
+			}
+			
+			void testSetBaseHeader() {
+				L2HeaderBase header = L2HeaderBase();
+				link_manager->setHeaderFields(&header);
+				CPPUNIT_ASSERT_EQUAL(own_id, header.icao_id);
+				CPPUNIT_ASSERT_EQUAL(link_manager->current_reservation_offset, header.offset);
+				CPPUNIT_ASSERT_EQUAL(link_manager->current_reservation_slot_length, header.length_next);
+				CPPUNIT_ASSERT_EQUAL(link_manager->current_reservation_timeout + 1, header.timeout);
+			}
+			
+			void testSetBeaconHeader() {
+				L2HeaderBeacon header = L2HeaderBeacon();
+				LinkManager broadcast_link_manager = LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac);
+				broadcast_link_manager.setHeaderFields(&header);
+				unsigned int num_hops = net_layer->getNumHopsToGroundStation();
+				CPPUNIT_ASSERT_EQUAL(num_hops, header.num_hops_to_ground_station);
+				// Shouldn't try to set a beacon header with a P2P link manager.
+				bool exception_thrown = false;
+				try {
+					link_manager->setHeaderFields(&header);
+				} catch (const std::exception& e) {
+					exception_thrown = true;
+				}
+				CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+			}
+			
+			void testSetUnicastHeader() {
+				L2HeaderUnicast header = L2HeaderUnicast(L2Header::FrameType::unicast);
+				link_manager->link_establishment_status = LinkManager::link_established;
+				link_manager->setHeaderFields(&header);
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.icao_dest_id);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
 			CPPUNIT_TEST(testNewLinkEstablishment);
 			CPPUNIT_TEST(testComputeProposal);
+			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
+			CPPUNIT_TEST(testNewLinkRequest);
+			CPPUNIT_TEST(testTriggerNewLinkRequest);
+			CPPUNIT_TEST(testSetBaseHeader);
+			CPPUNIT_TEST(testSetBeaconHeader);
+			CPPUNIT_TEST(testSetUnicastHeader);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

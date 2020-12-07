@@ -9,7 +9,7 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(ReservationManager* reservation_manager)	: reservation_manager(reservation_manager) {}
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, ReservationManager* reservation_manager) : IMac(id), reservation_manager(reservation_manager) {}
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 	for (auto& pair : link_managers)
@@ -41,16 +41,6 @@ void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {
 	assert(lower_layer && "MCSOTDMA_Mac's lower layer is unset.");
 	lower_layer->receiveFromUpper(packet, center_frequency);
-}
-
-bool MCSOTDMA_Mac::shouldLinkBeArqProtected(const MacId& mac_id) const {
-	assert(upper_layer && "MCSOTDMA_Mac's upper layer is unset.");
-	return this->upper_layer->shouldLinkBeArqProtected(mac_id);
-}
-
-unsigned long MCSOTDMA_Mac::getCurrentDatarate() const {
-	assert(lower_layer && "MCSOTDMA_Mac::getCurrentDatarate for unset PHY layer.");
-	return lower_layer->getCurrentDatarate();
 }
 
 LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
