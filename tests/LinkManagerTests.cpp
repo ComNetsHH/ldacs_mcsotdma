@@ -201,6 +201,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //					coutd << slot << " ";
 //				coutd << std::endl;
 //				coutd.setVerbose(false);
+
+				delete proposal;
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);

@@ -21,12 +21,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			class PHYLayer : public IPhy {
 				public:
 					void receiveFromUpper(L2Packet* data, unsigned int center_frequency) override {
-						throw std::runtime_error("not implemented");
+						if (data == nullptr)
+							throw std::invalid_argument("PHY::receiveFromUpper(nullptr)");
+						coutd << "PHY::receiveFromUpper(" << data->getBits() << "bits, " << center_frequency << "kHz)" << std::endl;
+						outgoing_packets.push_back(data);
 					}
 					
 					unsigned long getCurrentDatarate() const override {
-						return 0;
+						return 800; // 100B/slot
 					}
+					
+					~PHYLayer() override {
+						for (L2Packet* packet : outgoing_packets)
+							delete packet;
+					}
+					
+					std::vector<L2Packet*> outgoing_packets;
 			};
 			PHYLayer* phy;
 			
@@ -49,7 +59,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					
 					L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
 						coutd << "ARQ::requestSegment" << std::endl;
-						return nullptr;
+						return upper_layer->requestSegment(num_bits, mac_id);
 					}
 					
 					bool shouldLinkBeArqProtected(const MacId& mac_id) const override {
@@ -73,6 +83,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			class RLCLayer : public IRlc {
 				public:
+				
+				class RLCPayload : public L2Packet::Payload {
+					public:
+						explicit RLCPayload(unsigned int num_bits) : num_bits(num_bits) {}
+						
+						unsigned int getBits() const override {
+							return num_bits;
+						}
+						
+					protected:
+						unsigned int num_bits;
+				};
+					
+					explicit RLCLayer(const MacId& own_id) : own_id(own_id) {}
+					
+					virtual ~RLCLayer() {
+						for (L2Packet* packet : injections)
+							delete packet;
+					}
+					
 					void receiveFromUpper(L3Packet* data, MacId dest, PacketPriority priority) override {
 					
 					}
@@ -83,18 +113,30 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					
 					void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
 						coutd << "RLC received injection." << std::endl;
+						injections.push_back(packet);
 					}
 					
 					L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
-						return nullptr;
+						coutd << "RLC::requestSegment" << std::endl;
+						auto* segment = new L2Packet();
+						auto* base_header = new L2HeaderBase(own_id, 0, 0, 0, 0);
+						auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0), 0);
+						segment->addPayload(base_header, new RLCPayload(0));
+						segment->addPayload(unicast_header, new RLCPayload(num_bits - base_header->getBits() - unicast_header->getBits()));
+						return segment;
 					}
+					
+					std::vector<L2Packet*> injections;
+				protected:
+					MacId own_id;
 			};
 			RLCLayer* rlc;
 			
 			uint32_t planning_horizon = 128;
-			uint64_t p2p_frequency1 = 1000, p2p_frequency2 = 2000, p2p_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
+			uint64_t p2p_frequency1 = 1000, p2p_frequency2 = p2p_frequency1 + 180, p2p_frequency3 = p2p_frequency2 + 180, bc_frequency = p2p_frequency2 + 180, bandwidth = 500;
 			ReservationManager* reservation_manager;
 			MacId communication_partner_id = MacId(42);
+			MacId own_id = MacId(41);
 		
 		public:
 			void setUp() override {
@@ -113,7 +155,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				arq->setLowerLayer(mac);
 				mac->setUpperLayer(arq);
 				// RLC
-				rlc = new RLCLayer();
+				rlc = new RLCLayer(own_id);
 				arq->setUpperLayer(rlc);
 				rlc->setLowerLayer(arq);
 			}
@@ -139,16 +181,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void testMakeReservation() {
+				// No injected link request yet.
+				CPPUNIT_ASSERT_EQUAL(size_t(0), rlc->injections.size());
 				mac->notifyOutgoing(1024, communication_partner_id);
 				CPPUNIT_ASSERT(mac->getLinkManager(communication_partner_id)->link_establishment_status == LinkManager::Status::awaiting_reply);
+				// Now there should be one.
+				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc->injections.size());
 			}
 			
 			void testUpdate() {
 				testMakeReservation();
-				coutd.setVerbose(true);
+//				coutd.setVerbose(true);
+				// No outgoing packets yet.
+				CPPUNIT_ASSERT_EQUAL(size_t(0), phy->outgoing_packets.size());
 				reservation_manager->getReservationTable(0)->mark(1, Reservation(MacId(42), Reservation::Action::TX));
 				mac->update(1);
-				coutd.setVerbose(false);
+				// Now there should be one.
+				CPPUNIT_ASSERT_EQUAL(size_t(1), phy->outgoing_packets.size());
+//				coutd.setVerbose(false);
 			}
 		
 		

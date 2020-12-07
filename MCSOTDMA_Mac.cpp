@@ -71,12 +71,14 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	// Fetch all reservations of the current time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	coutd << "processing " << reservations.size() << " reservations..." << std::endl;
+	coutd.increaseIndent();
 	size_t num_txs = 0, num_rxs = 0;
 	for (const std::pair<Reservation, const FrequencyChannel*>& pair : reservations) {
 		const Reservation& reservation = pair.first;
 		const FrequencyChannel* channel = pair.second;
-		coutd << "\t" << reservation << std::endl;
 		
+		coutd << reservation << std::endl;
+		coutd.increaseIndent();
 		switch (reservation.getAction()) {
 			case Reservation::IDLE:
 				// No user is utilizing this slot.
@@ -113,9 +115,13 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 					throw std::runtime_error("MCSOTDMA_Mac::update caught exception while looking for the corresponding LinkManager: " + std::string(e.what()));
 				}
 				// Tell it about the transmission slot.
-				L2Packet* outgoing_packet = link_manager->onTransmissionSlot(reservation.getNumRemainingTxSlots());
+				unsigned int num_tx_slots = reservation.getNumRemainingTxSlots() + 1;
+				L2Packet* outgoing_packet = link_manager->onTransmissionSlot(num_tx_slots);
 				passToLower(outgoing_packet, channel->getCenterFrequency());
 				break;
 		}
+		coutd.decreaseIndent();
+		coutd << std::endl;
 	}
+	coutd.decreaseIndent();
 }

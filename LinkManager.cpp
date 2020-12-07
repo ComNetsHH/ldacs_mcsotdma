@@ -189,11 +189,13 @@ void LinkManager::processLinkEstablishmentReply(L2Packet* reply) {
 }
 
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
+	coutd << "LinkManager::onTransmissionSlot... ";
 	// Query PHY for the current datarate.
 	unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
 	unsigned long num_bits = datarate * num_slots; // bits
 	// Query ARQ for a new segment.
-	L2Packet* packet = mac->requestSegment(num_bits, getLinkId());
+	coutd << "requesting " << num_bits << " bits." << std::endl;
+	return mac->requestSegment(num_bits, getLinkId());
 }
 
 L2Header* LinkManager::setHeader() const {

@@ -11,6 +11,7 @@
 class coutdebug {
 	private:
 		bool verbose;
+		unsigned int num_indents = 0;
 	
 	public:
 		explicit coutdebug(bool verbose);
@@ -19,9 +20,24 @@ class coutdebug {
 		
 		bool isVerbose();
 		
-		template<class T> coutdebug& operator <<(const T &x) {
-			if (verbose)
+		void increaseIndent() {
+			num_indents++;
+			std::cout << "\t";
+		}
+		
+		void decreaseIndent() {
+			num_indents--;
+			flush();
+		}
+		
+		void setIndent(unsigned int num_indents) {
+			this->num_indents = num_indents;
+		}
+		
+		template<class T> coutdebug& operator<<(const T &x) {
+			if (verbose) {
 				std::cout << x;
+			}
 			return *this;
 		}
 		
@@ -35,8 +51,11 @@ class coutdebug {
 		
 		// Define what to do when std::endl is passed to coutd.
 		coutdebug& operator<<(StandardEndLine endl) {
-			if (verbose)
+			if (verbose) {
 				endl(std::cout);
+				for (unsigned int i = 0; i < num_indents; i++)
+					std::cout << "\t";
+			}
 			return *this;
 		}
 };
