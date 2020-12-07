@@ -25,10 +25,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				BUSY,
 				/** Reservation for me, and I should *listen* during this slot. */
 				RX,
-				/** Reservation for me, and I should *transmit* during this slot. */
-				TX
+				/** Reservation for me, and I should *start to transmit* during this slot. */
+				TX,
+				/** Reservation for me, and I should *continue transmitting* during this slot. */
+				TX_CONT
 			};
 			
+			/**
+			 * @param owner
+			 * @param action
+			 * @param num_remaining_tx_slots For a continuous transmission burst, the number of slots *after* this one that should also be used
+			 * for this transmission burst, may be incorporated into a Reservation.
+			 */
+			Reservation(const MacId& owner, Action action, unsigned int num_remaining_tx_slots);
 			Reservation(const MacId& owner, Action action);
 			explicit Reservation(const MacId& owner);
 			Reservation();
@@ -45,8 +54,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * slot is used for reception (RX) or transmission (TX). For other users it'll be unset (UNSET).
 			 */
 			const Action& getAction() const;
-			
 			void setAction(Action action);
+			
+			/**
+			 * @return Number of remaining slots this transmission burst continues for.
+			 */
+			unsigned int getNumRemainingTxSlots() const;
+			
+			/**
+			 * @param num_slots The number of slots this transmission burst continues for.
+			 */
+			void setNumRemainingTxSlots(const unsigned int& num_slots);
 			
 			bool operator==(const Reservation& other) const;
 			bool operator!=(const Reservation& other) const;
@@ -55,11 +73,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Reservations are made by MAC nodes, so hold the ID of this reservation's holder. */
 			MacId owner;
 			Action action;
+			/** In case of a transmission, this keeps the number of remaining slots for this transmission burst. */
+			unsigned int num_remaining_tx_slots = 0;
 	};
 	
 	inline std::ostream & operator<<(std::ostream & stream, const Reservation& reservation) {
 		std::string action;
 		switch (reservation.getAction()) {
+			case Reservation::IDLE:
+				action = "IDLE";
+				break;
 			case Reservation::BUSY:
 				action = "BUSY";
 				break;
@@ -69,12 +92,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			case Reservation::TX:
 				action = "TX";
 				break;
-			case Reservation::IDLE:
-				action = "IDLE";
+			case Reservation::TX_CONT:
+				action = "TX_CONT";
 				break;
 		}
-		action += "@" + std::to_string(reservation.getOwner().getId());
-		return stream << action;
+		action += "@";
+		return stream << action << reservation.getOwner();
 	}
 }
 

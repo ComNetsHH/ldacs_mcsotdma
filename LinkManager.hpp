@@ -21,6 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class LinkManager : public L2PacketSentCallback {
 			
 		friend class LinkManagerTests;
+		friend class MCSOTDMA_MacTests;
 			
 		public:
 			class ProposalPayload : public L2Packet::Payload {
@@ -76,7 +77,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			void notifyOutgoing(unsigned long num_bits);
 			
-			void onTransmissionSlot();
+			/**
+			 * @param num_slots Number of consecutive slots that may be used for this transmission.
+			 * @return A data packet that should now be sent.
+			 */
+			L2Packet* onTransmissionSlot(unsigned int num_slots);
 			
 			/**
 			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
@@ -117,8 +122,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void notifyPacketBeingSent(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
 		
 		protected:
+			/**
+			 * Upon a transmission slot, the link establishment request payload must be computed.
+			 * @return The modified data packet, now containing the request payload.
+			 */
 			L2Packet* prepareLinkEstablishmentRequest();
 			
+			/**
+			 * When a link establishment reply comes in from the PHY, this processes it.
+			 * @param reply
+			 */
 			void processLinkEstablishmentReply(L2Packet* reply);
 			
 			/**
@@ -126,6 +139,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param request
 			 */
 			LinkManager::ProposalPayload* computeProposal(L2Packet* request);
+			
+			/**
+			 * @return A header specific to the link this manager manages.
+			 */
+			L2Header* setHeader() const;
 			
 			/**
 			 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.

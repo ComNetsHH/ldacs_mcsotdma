@@ -94,6 +94,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			uint32_t planning_horizon = 128;
 			uint64_t p2p_frequency1 = 1000, p2p_frequency2 = 2000, p2p_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
 			ReservationManager* reservation_manager;
+			MacId communication_partner_id = MacId(42);
 		
 		public:
 			void setUp() override {
@@ -137,8 +138,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				coutd.setVerbose(false);
 			}
 			
+			void testMakeReservation() {
+				mac->notifyOutgoing(1024, communication_partner_id);
+				CPPUNIT_ASSERT(mac->getLinkManager(communication_partner_id)->link_establishment_status == LinkManager::Status::awaiting_reply);
+			}
+			
 			void testUpdate() {
+				testMakeReservation();
 				coutd.setVerbose(true);
+				reservation_manager->getReservationTable(0)->mark(1, Reservation(MacId(42), Reservation::Action::TX));
 				mac->update(1);
 				coutd.setVerbose(false);
 			}
@@ -146,6 +154,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testLinkManagerCreation);
+			CPPUNIT_TEST(testMakeReservation);
 			CPPUNIT_TEST(testUpdate);
 		CPPUNIT_TEST_SUITE_END();
 	};

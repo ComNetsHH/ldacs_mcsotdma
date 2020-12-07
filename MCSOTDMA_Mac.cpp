@@ -86,6 +86,11 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 				// Some other user is utilizing this slot.
 				// Nothing to do.
 				break;
+			case Reservation::TX_CONT:
+				// Transmission has already started, so a transmitter is busy.
+				num_txs++;
+				// Nothing else to do.
+				break;
 			case Reservation::RX:
 				// Ensure that we have not too many receptions scheduled.
 				num_rxs++;
@@ -108,7 +113,8 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 					throw std::runtime_error("MCSOTDMA_Mac::update caught exception while looking for the corresponding LinkManager: " + std::string(e.what()));
 				}
 				// Tell it about the transmission slot.
-				link_manager->onTransmissionSlot();
+				L2Packet* outgoing_packet = link_manager->onTransmissionSlot(reservation.getNumRemainingTxSlots());
+				passToLower(outgoing_packet, channel->getCenterFrequency());
 				break;
 		}
 	}

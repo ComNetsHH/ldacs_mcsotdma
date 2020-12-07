@@ -2,37 +2,51 @@
 // Created by Sebastian Lindner on 04.11.20.
 //
 
+#include <cassert>
 #include "Reservation.hpp"
 
-TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation(const TUHH_INTAIRNET_MCSOTDMA::MacId& owner,
-                                                  TUHH_INTAIRNET_MCSOTDMA::Reservation::Action action)
-                                                  : owner(owner), action(action) {}
+using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation() : Reservation(SYMBOLIC_ID_UNSET) {}
+Reservation::Reservation(const MacId& owner, Reservation::Action action, unsigned int num_remaining_tx_slots) : owner(owner), action(action), num_remaining_tx_slots(num_remaining_tx_slots) {
+	assert(num_remaining_tx_slots == 0 || (action == Action::TX || action == Action::TX_CONT) && "A multi-slot reservation must be for transmission actions.");
+}
 
-TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation(const TUHH_INTAIRNET_MCSOTDMA::Reservation& other)
-		: Reservation(other.owner, other.action) {}
+Reservation::Reservation(const MacId& owner, Reservation::Action action) : Reservation(owner, action, 0) {}
 
-TUHH_INTAIRNET_MCSOTDMA::Reservation::~Reservation() = default;
+Reservation::Reservation(const Reservation& other) : owner(other.owner), action(other.action), num_remaining_tx_slots(other.num_remaining_tx_slots) {}
 
-const TUHH_INTAIRNET_MCSOTDMA::MacId& TUHH_INTAIRNET_MCSOTDMA::Reservation::getOwner() const {
+Reservation::Reservation() : Reservation(SYMBOLIC_ID_UNSET) {}
+
+Reservation::Reservation(const MacId& owner) : Reservation(owner, Action::IDLE) {}
+
+Reservation::~Reservation() = default;
+
+const MacId& Reservation::getOwner() const {
 	return this->owner;
 }
 
-const TUHH_INTAIRNET_MCSOTDMA::Reservation::Action& TUHH_INTAIRNET_MCSOTDMA::Reservation::getAction() const {
+const Reservation::Action& Reservation::getAction() const {
 	return this->action;
 }
 
-TUHH_INTAIRNET_MCSOTDMA::Reservation::Reservation(const TUHH_INTAIRNET_MCSOTDMA::MacId& owner) : owner(owner), action(Action::IDLE) {}
-
-void TUHH_INTAIRNET_MCSOTDMA::Reservation::setAction(TUHH_INTAIRNET_MCSOTDMA::Reservation::Action action) {
+void Reservation::setAction(Reservation::Action action) {
 	this->action = action;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::Reservation::operator==(const TUHH_INTAIRNET_MCSOTDMA::Reservation& other) const {
+bool Reservation::operator==(const Reservation& other) const {
 	return other.action == this->action && other.owner == this->owner;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::Reservation::operator!=(const TUHH_INTAIRNET_MCSOTDMA::Reservation& other) const {
+bool Reservation::operator!=(const Reservation& other) const {
 	return !(*this == other);
 }
+
+unsigned int Reservation::getNumRemainingTxSlots() const {
+	return this->num_remaining_tx_slots;
+}
+
+void Reservation::setNumRemainingTxSlots(const unsigned int& num_slots) {
+	assert(action == Action::TX || action == Action::TX_CONT);
+	this->num_remaining_tx_slots = num_slots;
+}
+

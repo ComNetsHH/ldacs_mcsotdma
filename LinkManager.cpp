@@ -188,6 +188,14 @@ void LinkManager::processLinkEstablishmentReply(L2Packet* reply) {
 	
 }
 
-void LinkManager::onTransmissionSlot() {
-	throw std::runtime_error("not implemented");
+L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
+	// Query PHY for the current datarate.
+	unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
+	unsigned long num_bits = datarate * num_slots; // bits
+	// Query ARQ for a new segment.
+	L2Packet* packet = mac->requestSegment(num_bits, getLinkId());
+}
+
+L2Header* LinkManager::setHeader() const {
+	throw std::runtime_error("LinkManager::setHeader not implemented");
 }

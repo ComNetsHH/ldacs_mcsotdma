@@ -377,6 +377,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 				CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
 			}
+			
+			void testMultiSlotTransmissionReservation() {
+				uint32_t num_cont_slots = 4; // 5 slots in total
+				Reservation reservation = Reservation(MacId(42), Reservation::Action::TX, num_cont_slots);
+				table->mark(0, reservation);
+				for (uint32_t t = 0; t < planning_horizon; t++) {
+					if (t == 0)
+						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::TX);
+					else if (t <= num_cont_slots)
+						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::TX_CONT);
+					else
+						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+				}
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -392,6 +406,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testFindCandidateSlotsAllIdle);
 			CPPUNIT_TEST(testFindCandidateSlotsComplicated);
 			CPPUNIT_TEST(testFindEarliestOffset);
+			CPPUNIT_TEST(testMultiSlotTransmissionReservation);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

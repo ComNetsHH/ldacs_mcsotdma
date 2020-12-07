@@ -35,6 +35,11 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		num_idle_future_slots--;
 	else if (!currently_idle) // changing from non-idle to idle
 		num_idle_future_slots++;
+	// If this is a multi-slot transmission reservation, set the following ones, too.
+	if (reservation.getNumRemainingTxSlots() > 0) {
+		Reservation next_reservation = Reservation(reservation.getOwner(), Reservation::Action::TX_CONT, reservation.getNumRemainingTxSlots() - 1);
+		mark(slot_offset + 1, next_reservation);
+	}
 	return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
 }
 
@@ -165,8 +170,8 @@ const FrequencyChannel* ReservationTable::getLinkedChannel() const {
 	return freq_channel;
 }
 
-const Reservation& ReservationTable::getCurrentReservation() const {
-	return getVec().at(convertOffsetToIndex(0));
+const Reservation& ReservationTable::getReservation(int offset) const {
+	return getVec().at(convertOffsetToIndex(offset));
 }
 
 ReservationTable::~ReservationTable() = default;
