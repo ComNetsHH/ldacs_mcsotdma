@@ -198,6 +198,8 @@ void LinkManager::processLinkEstablishmentReply(L2Packet* reply) {
 
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	coutd << "LinkManager::onTransmissionSlot... ";
+	if (link_establishment_status != Status::link_established)
+		throw std::runtime_error("LinkManager::onTransmissionSlot for an unestablished link.");
 	// Query PHY for the current datarate.
 	unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
 	unsigned long num_bits = datarate * num_slots; // bits
@@ -283,8 +285,6 @@ void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
 
 void LinkManager::setUnicastHeaderFields(L2HeaderUnicast* header) const {
 	coutd << "-> setting unicast header fields:";
-	if (link_establishment_status != Status::link_established)
-		throw std::runtime_error("LinkManager::setUnicastHeaderFields for an unestablished link.");
 	coutd << " icao_dest_id=" << link_id;
 	header->icao_dest_id = link_id;
 	coutd << std::endl;

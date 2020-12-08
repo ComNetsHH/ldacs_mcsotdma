@@ -79,21 +79,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testUpdate() {
 				testMakeReservation();
-				coutd.setVerbose(true);
+//				coutd.setVerbose(true);
 				// No outgoing packets yet.
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy->outgoing_packets.size());
-				reservation_manager->getReservationTable(0)->mark(1, Reservation(MacId(42), Reservation::Action::TX));
+				LinkManager* link_manager = mac->getLinkManager(communication_partner_id);
+				link_manager->link_establishment_status = LinkManager::link_established;
+				reservation_manager->getReservationTable(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
 				mac->update(1);
 				// Now there should be one.
 				CPPUNIT_ASSERT_EQUAL(size_t(1), phy->outgoing_packets.size());
-				coutd.setVerbose(false);
+//				coutd.setVerbose(false);
 			}
 		
 		
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testLinkManagerCreation);
 			CPPUNIT_TEST(testMakeReservation);
-//			CPPUNIT_TEST(testUpdate);
+			CPPUNIT_TEST(testUpdate);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	
