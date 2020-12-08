@@ -46,19 +46,57 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void LinkManager::receiveFromLower(L2Packet* packet) {
-	// Check if this is the reply to a link request.
-	if (packet->getHeaders().size() == 2) { // base + link reply
-		L2Header* header = packet->getHeaders().at(1);
-		if (header == nullptr)
-			throw std::invalid_argument("LinkManager::receiveFromLower received nullptr header.");
-		// If it really is, then process it.
-		if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
-			processLinkEstablishmentReply(packet);
-			delete packet;
-			return;
+	coutd << "LinkManager(" << link_id.getId() << ")::receiveFromLower... ";
+	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
+	// Go through all header and payload pairs...
+	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
+		L2Header* header = packet->getHeaders().at(i);
+		L2Packet::Payload* payload = packet->getPayloads().at(i);
+		switch (header->frame_type) {
+			case L2Header::base:
+				coutd << "processing base header... ";
+				processBase((L2HeaderBase*) header);
+				break;
+			case L2Header::link_establishment_reply:
+				coutd << "processing link establishment reply... ";
+				processLinkEstablishmentReply((L2HeaderLinkEstablishmentReply*) header);
+				// Delete and set to nullptr s.t. upper layers can easily ignore them.
+				delete header;
+				header = nullptr;
+				delete payload;
+				payload = nullptr;
+				coutd << std::endl;
+				break;
+			case L2Header::link_establishment_request:
+				coutd << "processing link establishment request... ";
+				assert(payload && "LinkManager::receiveFromLower for nullptr ProposalPayload*");
+				processLinkEstablishmentRequest((L2HeaderLinkEstablishmentRequest*) header, (ProposalPayload*) payload);
+				break;
+			case L2Header::beacon:
+				coutd << "processing beacon... ";
+				assert(payload && "LinkManager::receiveFromLower for nullptr BeaconPayload*");
+				processBeacon((L2HeaderBeacon*) header, (BeaconPayload*) payload);
+				// Delete and set to nullptr s.t. upper layers can easily ignore them.
+				delete header;
+				header = nullptr;
+				delete payload;
+				payload = nullptr;
+				coutd << std::endl;
+				break;
+			case L2Header::unicast:
+				coutd <<"processing unicast... ";
+				processUnicast((L2HeaderUnicast*) header);
+				break;
+			case L2Header::broadcast:
+				coutd <<"processing broadcast... ";
+				processBroadcast((L2HeaderBroadcast*) header);
+				break;
+			default:
+				throw std::invalid_argument("LinkManager::receiveFromLower for an unexpected header type.");
 		}
 	}
-	// All non-reply packets are passed up.
+	// After processing, the packet is passed to the upper layer.
+	coutd << "passing to upper layer." << std::endl;
 	mac->passToUpper(packet);
 }
 
@@ -181,21 +219,6 @@ LinkManager::ProposalPayload* LinkManager::computeProposal(L2Packet* request) {
 	return proposal;
 }
 
-void LinkManager::processLinkEstablishmentReply(L2Packet* reply) {
-	// Make sure we're expecting a reply.
-	if (link_establishment_status != Status::awaiting_reply) {
-		std::string status = link_establishment_status == Status::link_not_established ? "link_not_established" : "link_established";
-		throw std::runtime_error("LinkManager for ID '" + std::to_string(link_id.getId()) + "' received a link reply but its state is '" + status + "'.");
-	}
-	// The link has now been established!
-	// So update the status.
-	link_establishment_status = Status::link_established;
-	// And mark the reservations.
-	if (this->last_proposal == nullptr)
-		throw std::runtime_error("LinkManager::processLinkEstablishmentReply for no remembered proposal.");
-	current_reservation_slot_length = last_proposal->num_slots_per_candidate;
-}
-
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	coutd << "LinkManager::onTransmissionSlot... ";
 	if (link_establishment_status != Status::link_established)
@@ -273,14 +296,14 @@ void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
 }
 
 void LinkManager::setBeaconHeaderFields(L2HeaderBeacon* header) const {
-	coutd << "-> setting beacon header fields" << std::endl;
+	coutd << "-> setting beacon header fields:";
 	header->num_hops_to_ground_station = mac->getNumHopsToGS();
 	coutd << " num_hops=" << header->num_hops_to_ground_station;
 }
 
 void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
 	coutd << "-> setting broadcast header fields" << std::endl;
-	throw std::runtime_error("LinkManager::setBroadcastHeaderFields not implemented");
+	// no fields.
 }
 
 void LinkManager::setUnicastHeaderFields(L2HeaderUnicast* header) const {
@@ -302,3 +325,41 @@ void LinkManager::setReservationTimeout(unsigned int reservation_timeout) {
 void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 	this->current_reservation_offset = reservation_offset;
 }
+
+void LinkManager::processBeacon(L2HeaderBeacon* header, LinkManager::BeaconPayload* payload) {
+	throw std::runtime_error("LinkManager::processBeacon not implemented");
+}
+
+void LinkManager::processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header,
+                                                  LinkManager::ProposalPayload* payload) {
+	throw std::runtime_error("LinkManager::processLinkEstablishmentRequest not implemented");
+}
+
+void LinkManager::processLinkEstablishmentReply(L2HeaderLinkEstablishmentReply* header) {
+	// Make sure we're expecting a reply.
+	if (link_establishment_status != Status::awaiting_reply) {
+		std::string status = link_establishment_status == Status::link_not_established ? "link_not_established" : "link_established";
+		throw std::runtime_error("LinkManager for ID '" + std::to_string(link_id.getId()) + "' received a link reply but its state is '" + status + "'.");
+	}
+	// The link has now been established!
+	// So update the status.
+	link_establishment_status = Status::link_established;
+	// And mark the reservations.
+	if (this->last_proposal == nullptr)
+		throw std::runtime_error("LinkManager::processLinkEstablishmentReply for no remembered proposal.");
+	current_reservation_slot_length = last_proposal->num_slots_per_candidate;
+}
+
+void LinkManager::processBroadcast(L2HeaderBroadcast* header) {
+	throw std::runtime_error("LinkManager::processBroadcast not implemented");
+}
+
+void LinkManager::processUnicast(L2HeaderUnicast* header) {
+	throw std::runtime_error("LinkManager::processUnicast not implemented");
+}
+
+void LinkManager::processBase(L2HeaderBase* header) {
+	throw std::runtime_error("LinkManager::processBase not implemented");
+}
+
+

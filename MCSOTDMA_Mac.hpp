@@ -27,6 +27,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void passToLower(L2Packet* packet, unsigned int center_frequency) override;
 			
+			void receiveFromLower(L2Packet* packet, const MacId& id) override;
+			
 			/**
 			 * @param id
 			 * @return The LinkManager that manages the given 'id'.
@@ -44,6 +46,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param channel
 			 */
 			virtual void onReceptionSlot(const FrequencyChannel* channel) = 0;
+			
+			LinkManager* instantiateLinkManager(const MacId& id);
 			
 			/** Keeps track of transmission resource reservations. */
 			ReservationManager* reservation_manager;

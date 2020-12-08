@@ -24,6 +24,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_MacTests;
 			
 		public:
+			
+			/**
+			 * Implements a link establishment request payload that encodes proposed frequency channels and slots.
+			 */
 			class ProposalPayload : public L2Packet::Payload {
 				public:
 					ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : target_num_channels(num_freq_channels), target_num_slots(num_slots), num_slots_per_candidate(1) {
@@ -54,6 +58,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					unsigned int target_num_slots;
 					/** Number of slots to reserve. */
 					unsigned int num_slots_per_candidate;
+			};
+			
+			/**
+			 * Implements a beacon payload that encodes a user's reservations.
+			 */
+			class BeaconPayload : public L2Packet::Payload {
+				public:
+					unsigned int getBits() const override {
+						return 1;
+					}
 			};
 			
 			enum Status {
@@ -145,10 +159,42 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			L2Packet* prepareLinkEstablishmentRequest();
 			
 			/**
-			 * When a link establishment reply comes in from the PHY, this processes it.
-			 * @param reply
+			 * When a link estabishment request comes in from the PHY, this processes it.
+			 * @param header
+			 * @param payload
 			 */
-			void processLinkEstablishmentReply(L2Packet* reply);
+			void processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header, ProposalPayload* payload);
+			
+			/**
+			 * When a link establishment reply comes in from the PHY, this processes it.
+			 * @param header
+			 */
+			void processLinkEstablishmentReply(L2HeaderLinkEstablishmentReply* header);
+			
+			/**
+			 * When a beacon packet comes in from the PHY, this processes it.
+			 * @param header
+			 * @param payload
+			 */
+			void processBeacon(L2HeaderBeacon* header, BeaconPayload* payload);
+			
+			/**
+			 * When a broadcast packet comes in from the PHY, this processes it.
+			 * @param header
+			 */
+			void processBroadcast(L2HeaderBroadcast* header);
+			
+			/**
+			 * When a unicast packet comes in from the PHY, this processes it.
+			 * @param header
+			 */
+			void processUnicast(L2HeaderUnicast* header);
+			
+			/**
+			 * Processes the base header of each incoming packet.
+			 * @param header
+			 */
+			void processBase(L2HeaderBase* header);
 			
 			/**
 			 * Fills the header and payload of the given 'request' with a current proposal.
