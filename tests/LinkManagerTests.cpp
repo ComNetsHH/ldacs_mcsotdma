@@ -197,6 +197,46 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				link_manager->setHeaderFields(&header);
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.icao_dest_id);
 			}
+			
+			void testSetRequestHeader() {
+				L2HeaderLinkEstablishmentRequest header = L2HeaderLinkEstablishmentRequest();
+				link_manager->setHeaderFields(&header);
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.icao_dest_id);
+			}
+			
+			void testProcessIncomingBase() {
+				// Assign a reservation table.
+				ReservationTable* table = reservation_manager->getReservationTable(0);
+				link_manager->current_reservation_table = table;
+				// Prepare incoming packet.
+				L2Packet packet = L2Packet();
+				unsigned int offset = 5, length_next = 2, timeout = 3;
+				auto* base_header = new L2HeaderBase(communication_partner_id, offset, length_next, timeout);
+				packet.addPayload(base_header, nullptr);
+				// Have the LinkManager process it.
+				link_manager->receiveFromLower(&packet);
+				// Ensure that the slots were marked.
+				for (size_t i = 0; i < timeout; i++) {
+					const Reservation& reservation = table->getReservation((i + 1) * offset);
+					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getOwner());
+					CPPUNIT_ASSERT_EQUAL(Reservation::TX, reservation.getAction());
+					CPPUNIT_ASSERT_EQUAL(length_next - 1, reservation.getNumRemainingTxSlots());
+					for (unsigned int j = 1; j < length_next; j++) {
+						const Reservation& cont_reservation = table->getReservation((i+1) * offset + j);
+						CPPUNIT_ASSERT_EQUAL(communication_partner_id, cont_reservation.getOwner());
+						CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT,cont_reservation.getAction());
+						CPPUNIT_ASSERT_EQUAL(length_next - 1 - j, cont_reservation.getNumRemainingTxSlots());
+					}
+					
+				}
+			}
+			
+			void testProcessIncomingLinkEstablishmentRequest() {
+				L2Packet* request_packet = link_manager->prepareLinkEstablishmentRequest();
+				coutd.setVerbose(true);
+				link_manager->receiveFromLower(request_packet);
+				coutd.setVerbose(false);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -208,6 +248,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testSetBaseHeader);
 			CPPUNIT_TEST(testSetBeaconHeader);
 			CPPUNIT_TEST(testSetUnicastHeader);
+			CPPUNIT_TEST(testSetRequestHeader);
+			CPPUNIT_TEST(testProcessIncomingBase);
+//			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
