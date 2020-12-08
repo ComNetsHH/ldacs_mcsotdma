@@ -55,11 +55,11 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 		switch (header->frame_type) {
 			case L2Header::base:
 				coutd << "processing base header -> ";
-				processBase((L2HeaderBase*) header);
+				processIncomingBase((L2HeaderBase*&) header);
 				break;
 			case L2Header::link_establishment_reply:
 				coutd << "processing link establishment reply -> ";
-				processLinkEstablishmentReply((L2HeaderLinkEstablishmentReply*) header);
+				processIncomingLinkEstablishmentReply((L2HeaderLinkEstablishmentReply*&) header);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -69,11 +69,12 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 				break;
 			case L2Header::link_establishment_request:
 				coutd << "processing link establishment request -> ";
-				processLinkEstablishmentRequest((L2HeaderLinkEstablishmentRequest*) header, (ProposalPayload*) payload);
+				processIncomingLinkEstablishmentRequest((L2HeaderLinkEstablishmentRequest*&) header,
+				                                        (ProposalPayload*&) payload);
 				break;
 			case L2Header::beacon:
 				coutd << "processing beacon -> ";
-				processBeacon((L2HeaderBeacon*) header, (BeaconPayload*) payload);
+				processIncomingBeacon((L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -83,11 +84,11 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 				break;
 			case L2Header::unicast:
 				coutd <<"processing unicast -> ";
-				processUnicast((L2HeaderUnicast*) header);
+				processIncomingUnicast((L2HeaderUnicast*&) header, payload);
 				break;
 			case L2Header::broadcast:
 				coutd <<"processing broadcast -> ";
-				processBroadcast((L2HeaderBroadcast*) header);
+				processIncomingBroadcast((L2HeaderBroadcast*&) header);
 				break;
 			default:
 				throw std::invalid_argument("LinkManager::receiveFromLower for an unexpected header type.");
@@ -300,9 +301,9 @@ void LinkManager::setBeaconHeaderFields(L2HeaderBeacon* header) const {
 }
 
 void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
-	coutd << "-> setting broadcast header fields";
+	coutd << "-> setting broadcast header fields:";
 	// no fields.
-	coutd << " ";
+	coutd << " none ";
 }
 
 void LinkManager::setUnicastHeaderFields(L2HeaderUnicast* header) const {
@@ -327,17 +328,17 @@ void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 	this->current_reservation_offset = reservation_offset;
 }
 
-void LinkManager::processBeacon(L2HeaderBeacon* header, LinkManager::BeaconPayload* payload) {
-	assert(payload && "LinkManager::processBeacon for nullptr BeaconPayload*");
-	throw std::runtime_error("LinkManager::processBeacon not implemented");
+void LinkManager::processIncomingBeacon(L2HeaderBeacon*& header, BeaconPayload*& payload) {
+	assert(payload && "LinkManager::processIncomingBeacon for nullptr BeaconPayload*");
+	throw std::runtime_error("LinkManager::processIncomingBeacon not implemented");
 }
 
-std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header,
-                                                  LinkManager::ProposalPayload* payload) {
-	assert(payload && "LinkManager::processLinkEstablishmentRequest for nullptr ProposalPayload*");
+std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::processIncomingLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest*& header,
+                                                                                                                   ProposalPayload*& payload) {
+	assert(payload && "LinkManager::processIncomingLinkEstablishmentRequest for nullptr ProposalPayload*");
 	const MacId& dest_id = header->icao_dest_id;
 	if (payload->proposed_channels.empty())
-		throw std::invalid_argument("LinkManager::processLinkEstablishmentRequest for an empty proposal.");
+		throw std::invalid_argument("LinkManager::processIncomingLinkEstablishmentRequest for an empty proposal.");
 	
 	// Go through all proposed channels...
 	std::vector<std::pair<const FrequencyChannel*, unsigned int>> viable_candidates;
@@ -362,7 +363,7 @@ std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::proce
 	return viable_candidates;
 }
 
-void LinkManager::processLinkEstablishmentReply(L2HeaderLinkEstablishmentReply* header) {
+void LinkManager::processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header) {
 	// Make sure we're expecting a reply.
 	if (link_establishment_status != Status::awaiting_reply) {
 		std::string status = link_establishment_status == Status::link_not_established ? "link_not_established" : "link_established";
@@ -373,19 +374,29 @@ void LinkManager::processLinkEstablishmentReply(L2HeaderLinkEstablishmentReply* 
 	link_establishment_status = Status::link_established;
 	// And mark the reservations.
 	if (this->last_proposal == nullptr)
-		throw std::runtime_error("LinkManager::processLinkEstablishmentReply for no remembered proposal.");
+		throw std::runtime_error("LinkManager::processIncomingLinkEstablishmentReply for no remembered proposal.");
 	current_reservation_slot_length = last_proposal->num_slots_per_candidate;
 }
 
-void LinkManager::processBroadcast(L2HeaderBroadcast* header) {
-	throw std::runtime_error("LinkManager::processBroadcast not implemented");
+void LinkManager::processIncomingBroadcast(L2HeaderBroadcast*& header) {
+	// Nothing to do on this layer.
 }
 
-void LinkManager::processUnicast(L2HeaderUnicast* header) {
-	throw std::runtime_error("LinkManager::processUnicast not implemented");
+void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+	// Make sure we're the recipient.
+	const MacId& recipient_id = header->icao_dest_id;
+	// If we're not...
+	if (recipient_id != mac->getMacId()) {
+		coutd << "unicast not intended for us -> deleting it";
+		// ... delete header and payload, s.t. upper layers don't attempt to process it.
+		delete header;
+		header = nullptr;
+		delete payload;
+		payload = nullptr;
+	}
 }
 
-void LinkManager::processBase(L2HeaderBase* header) {
+void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int timeout = header->timeout;
 	unsigned int length_next = header->length_next;
 	unsigned int offset = header->offset;

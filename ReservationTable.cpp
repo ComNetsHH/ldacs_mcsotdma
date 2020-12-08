@@ -59,11 +59,9 @@ bool ReservationTable::isIdle(int32_t start, uint32_t length) const {
 	if (!this->isValid(start, length))
 		throw std::invalid_argument("Invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
 	// A slot range is idle if ALL slots within are idle.
-	for (int32_t slot = start; slot < start + int32_t(length); slot++) {
- 		if (isUtilized(slot)) {
-		    return false;
-	    }
-	}
+	for (int32_t slot = start; slot < start + int32_t(length); slot++)
+ 		if (isUtilized(slot))
+		    return false; // so a single busy one fails the check
 	return true;
 }
 

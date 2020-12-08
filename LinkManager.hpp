@@ -164,38 +164,39 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param payload
 			 * @return Out of the proposed (freq. channel, slot offset) candidates, those candidates are returned that are idle for us.
 			 */
-			std::vector<std::pair<const FrequencyChannel*, unsigned int>> processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header, ProposalPayload* payload);
+			std::vector<std::pair<const FrequencyChannel*, unsigned int>> processIncomingLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest*& header, ProposalPayload*& payload);
 			
 			/**
 			 * When a link establishment reply comes in from the PHY, this processes it.
 			 * @param header
 			 */
-			void processLinkEstablishmentReply(L2HeaderLinkEstablishmentReply* header);
+			void processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header);
 			
 			/**
 			 * When a beacon packet comes in from the PHY, this processes it.
 			 * @param header
 			 * @param payload
 			 */
-			void processBeacon(L2HeaderBeacon* header, BeaconPayload* payload);
+			void processIncomingBeacon(L2HeaderBeacon*& header, BeaconPayload*& payload);
 			
 			/**
 			 * When a broadcast packet comes in from the PHY, this processes it.
 			 * @param header
 			 */
-			void processBroadcast(L2HeaderBroadcast* header);
+			void processIncomingBroadcast(L2HeaderBroadcast*& header);
 			
 			/**
 			 * When a unicast packet comes in from the PHY, this processes it.
 			 * @param header
+			 * @param payload
 			 */
-			void processUnicast(L2HeaderUnicast* header);
+			void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
 			
 			/**
 			 * Processes the base header of each incoming packet.
 			 * @param header
 			 */
-			void processBase(L2HeaderBase* header);
+			void processIncomingBase(L2HeaderBase*& header);
 			
 			/**
 			 * Fills the header and payload of the given 'request' with a current proposal.

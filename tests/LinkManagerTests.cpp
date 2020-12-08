@@ -237,16 +237,44 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				ReservationTable* table = reservation_manager->getReservationTableByIndex(0);
 				link_manager->current_reservation_table = table;
 				// Prepare a link establishment request.
-				coutd.setVerbose(true);
+//				coutd.setVerbose(true);
 				// Set this link as established.
 				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
 				request->getPayloads().at(1) = link_manager->computeProposal();
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
 				auto body = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
-				auto viable_candidates = link_manager->processLinkEstablishmentRequest(header, body);
+				auto viable_candidates = link_manager->processIncomingLinkEstablishmentRequest(header, body);
 				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->num_proposed_channels * link_manager->num_proposed_slots, viable_candidates.size());
-				coutd.setVerbose(false);
+//				coutd.setVerbose(false);
+			}
+			
+			void testProcessIncomingUnicast() {
+				// Assign a reservation table.
+				ReservationTable* table = reservation_manager->getReservationTableByIndex(0);
+				link_manager->current_reservation_table = table;
+				// When we receive a packet intended for us...
+				L2Packet* unicast_packet_intended_for_us = rlc_layer->requestSegment(phy_layer->getCurrentDatarate(), own_id);
+				auto* header_for_us = (L2HeaderUnicast*) unicast_packet_intended_for_us->getHeaders().at(1);
+				L2Packet::Payload* payload_for_us = unicast_packet_intended_for_us->getPayloads().at(1);
+				CPPUNIT_ASSERT(header_for_us != nullptr);
+				CPPUNIT_ASSERT(payload_for_us != nullptr);
+				link_manager->processIncomingUnicast(header_for_us, payload_for_us);
+				// ... then they should just remain for processing on the upper layers.
+				CPPUNIT_ASSERT(header_for_us != nullptr);
+				CPPUNIT_ASSERT(payload_for_us != nullptr);
+				
+				// When we receive a packet *not* intended for us...
+				L2Packet* unicast_packet_not_intended_for_us = rlc_layer->requestSegment(phy_layer->getCurrentDatarate(), own_id);
+				auto* header_not_for_us = ((L2HeaderUnicast*) unicast_packet_not_intended_for_us->getHeaders().at(1));
+				header_not_for_us->icao_dest_id = communication_partner_id;
+				L2Packet::Payload* payload_not_for_us = unicast_packet_not_intended_for_us->getPayloads().at(1);
+				CPPUNIT_ASSERT(unicast_packet_not_intended_for_us->getHeaders().at(1) != nullptr);
+				CPPUNIT_ASSERT(payload_not_for_us != nullptr);
+				link_manager->processIncomingUnicast((L2HeaderUnicast*&) unicast_packet_not_intended_for_us->getHeaders().at(1), payload_not_for_us);
+				// ... then they should be deleted s.t. upper layers don't attempt to process them.
+				CPPUNIT_ASSERT(unicast_packet_not_intended_for_us->getHeaders().at(1) == nullptr);
+				CPPUNIT_ASSERT(payload_not_for_us == nullptr);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
@@ -263,6 +291,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testSetRequestHeader);
 			CPPUNIT_TEST(testProcessIncomingBase);
 			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
+			CPPUNIT_TEST(testProcessIncomingUnicast);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
