@@ -15,6 +15,8 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	if (is_p2p) {
 		frequency_channels.push_back(channel);
 		reservation_tables.push_back(table);
+		p2p_channel_map[channel] = frequency_channels.size() - 1;
+		p2p_table_map[table] = reservation_tables.size() - 1;
 	} else {
 		if (broadcast_frequency_channel == nullptr && broadcast_reservation_table == nullptr) {
 			broadcast_frequency_channel = channel;
@@ -24,11 +26,11 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	}
 }
 
-FrequencyChannel* ReservationManager::getFreqChannel(size_t index) {
+FrequencyChannel* ReservationManager::getFreqChannelByIndex(size_t index) {
 	return frequency_channels.at(index);
 }
 
-ReservationTable* ReservationManager::getReservationTable(size_t index) {
+ReservationTable* ReservationManager::getReservationTableByIndex(size_t index) {
 	return reservation_tables.at(index);
 }
 
@@ -84,4 +86,22 @@ std::vector<std::pair<Reservation, const FrequencyChannel*>> ReservationManager:
 		reservations.push_back(reservation);
 	}
 	return reservations;
+}
+
+FrequencyChannel* ReservationManager::getFreqChannel(const ReservationTable* table) {
+	FrequencyChannel* channel;
+	if (table == broadcast_reservation_table)
+		channel = broadcast_frequency_channel;
+	else
+		channel = frequency_channels.at(p2p_table_map.at(table));
+	return channel;
+}
+
+ReservationTable* ReservationManager::getReservationTable(const FrequencyChannel* channel) {
+	ReservationTable* table;
+	if (channel == broadcast_frequency_channel)
+		table = broadcast_reservation_table;
+	else
+		table = reservation_tables.at(p2p_channel_map.at(channel));
+	return table;
 }

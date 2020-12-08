@@ -79,23 +79,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void linkFrequencyChannel(FrequencyChannel* channel);
 			
 			const FrequencyChannel* getLinkedChannel() const;
-		
-		protected:
-			bool isValid(int32_t slot_offset) const;
-			
-			bool isValid(int32_t start, uint32_t length) const;
-			
-			/**
-			 * Sets what this table regards as the current moment in time.
-			 * Should be used just once at the start - calls to 'update()' will increment the timestamp henceforth.
-			 * @param timestamp
-			 */
-			void setLastUpdated(const Timestamp& timestamp);
-			
-			/**
-			 * @return Reference to the internally-used slot utilization vector.
-			 */
-			const std::vector<Reservation>& getVec() const;
 			
 			/**
 			 * @param slot_offset Offset to the current slot. Positive values for future slots, zero for the current slot and negative values for past slots.
@@ -122,6 +105,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Whether the specified slot range is utilized.
 			 */
 			bool isUtilized(int32_t start, uint32_t length) const;
+		
+		protected:
+			bool isValid(int32_t slot_offset) const;
+			
+			bool isValid(int32_t start, uint32_t length) const;
+			
+			/**
+			 * Sets what this table regards as the current moment in time.
+			 * Should be used just once at the start - calls to 'update()' will increment the timestamp henceforth.
+			 * @param timestamp
+			 */
+			void setLastUpdated(const Timestamp& timestamp);
+			
+			/**
+			 * @return Reference to the internally-used slot utilization vector.
+			 */
+			const std::vector<Reservation>& getVec() const;
 			
 			/**
 			 * @return Number of slots this table keeps values for in either direction of time.

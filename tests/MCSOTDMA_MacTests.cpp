@@ -84,10 +84,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy->outgoing_packets.size());
 				LinkManager* link_manager = mac->getLinkManager(communication_partner_id);
 				link_manager->link_establishment_status = LinkManager::link_established;
-				reservation_manager->getReservationTable(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
+				reservation_manager->getReservationTableByIndex(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
 				mac->update(1);
 				// Now there should be one.
 				CPPUNIT_ASSERT_EQUAL(size_t(1), phy->outgoing_packets.size());
+				CPPUNIT_ASSERT(phy->outgoing_packets.at(0)->getBits() <= phy->getCurrentDatarate());
 //				coutd.setVerbose(false);
 			}
 		

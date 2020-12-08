@@ -95,7 +95,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testComputeProposal() {
 				testNewLinkEstablishment();
 				L2Packet* request = rlc_layer->injections.at(0);
-				LinkManager::ProposalPayload* proposal = link_manager->computeProposal(request);
+				LinkManager::ProposalPayload* proposal = link_manager->computeProposal();
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
 				
 				// Should've considered several distinct frequency channels.
@@ -149,8 +149,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
 				// Transmission slots should only occur for established links.
 				link_manager->link_establishment_status = LinkManager::link_established;
-				link_manager->onTransmissionSlot(1);
-				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
+				L2Packet* packet = link_manager->onTransmissionSlot(1);
+				CPPUNIT_ASSERT(packet != nullptr);
+				delete packet;
 			}
 			
 			void testTriggerNewLinkRequest() {
@@ -206,7 +207,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testProcessIncomingBase() {
 				// Assign a reservation table.
-				ReservationTable* table = reservation_manager->getReservationTable(0);
+				ReservationTable* table = reservation_manager->getReservationTableByIndex(0);
 				link_manager->current_reservation_table = table;
 				// Prepare incoming packet.
 				L2Packet packet = L2Packet();
@@ -232,9 +233,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void testProcessIncomingLinkEstablishmentRequest() {
-				L2Packet* request_packet = link_manager->prepareLinkEstablishmentRequest();
+				// Assign a reservation table.
+				ReservationTable* table = reservation_manager->getReservationTableByIndex(0);
+				link_manager->current_reservation_table = table;
+				// Prepare a link establishment request.
 				coutd.setVerbose(true);
-				link_manager->receiveFromLower(request_packet);
+				// Set this link as established.
+				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
+				request->getPayloads().at(1) = link_manager->computeProposal();
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
+				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
+				auto body = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
+				auto viable_candidates = link_manager->processLinkEstablishmentRequest(header, body);
+				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->num_proposed_channels * link_manager->num_proposed_slots, viable_candidates.size());
 				coutd.setVerbose(false);
 			}
 		
@@ -244,13 +255,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testComputeProposal);
 			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
 			CPPUNIT_TEST(testNewLinkRequest);
+			CPPUNIT_TEST(testOnTransmissionSlot);
 			CPPUNIT_TEST(testTriggerNewLinkRequest);
 			CPPUNIT_TEST(testSetBaseHeader);
 			CPPUNIT_TEST(testSetBeaconHeader);
 			CPPUNIT_TEST(testSetUnicastHeader);
 			CPPUNIT_TEST(testSetRequestHeader);
 			CPPUNIT_TEST(testProcessIncomingBase);
-//			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
+			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

@@ -69,12 +69,10 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 				break;
 			case L2Header::link_establishment_request:
 				coutd << "processing link establishment request -> ";
-				assert(payload && "LinkManager::receiveFromLower for nullptr ProposalPayload*");
 				processLinkEstablishmentRequest((L2HeaderLinkEstablishmentRequest*) header, (ProposalPayload*) payload);
 				break;
 			case L2Header::beacon:
 				coutd << "processing beacon -> ";
-				assert(payload && "LinkManager::receiveFromLower for nullptr BeaconPayload*");
 				processBeacon((L2HeaderBeacon*) header, (BeaconPayload*) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
@@ -175,25 +173,22 @@ int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const 
 	return current_reservation_table->findEarliestOffset(start_slot, reservation);
 }
 
-void LinkManager::notifyPacketBeingSent(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) {
+void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
 	// This callback is used only for link requests, so ensure that this is a link request.
-	if (packet->getHeaders().size() != 2)
-		throw std::invalid_argument("LinkManager::notifyPacketBeingSent packet doesn't have two headers.");
-	if (packet->getHeaders().at(1)->frame_type != L2Header::FrameType::link_establishment_request)
-		throw std::invalid_argument("LinkManager::notifyPacketBeingSent packet is not a link request.");
-	// Compute and put in a proposal.
-	ProposalPayload* proposal = computeProposal(packet);
-	if (packet->getPayloads().at(1) != nullptr)
-		throw std::invalid_argument("LinkManager::notifyPacketBeingSent would overwrite an existing proposal payload.");
-	packet->getPayloads().at(1) = proposal;
-	// Remember the proposal.
-	if (this->last_proposal != nullptr)
-		throw std::runtime_error("LinkManager::notifyPacketBeingSent called, proposal computed, but there's already a saved proposal which would now be overwritten.");
-	this->last_proposal = new ProposalPayload(*proposal);
+	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
+		L2Header* header = packet->getHeaders().at(i);
+		if (header->frame_type == L2Header::link_establishment_request) {
+			// Compute a current proposal.
+			packet->getPayloads().at(i) = computeProposal();
+			// Remember the proposal.
+			if (this->last_proposal != nullptr)
+				throw std::runtime_error("LinkManager::notifyPacketBeingSent called, proposal computed, but there's already a saved proposal which would now be overwritten.");
+			this->last_proposal = new ProposalPayload(*((ProposalPayload*) packet->getPayloads().at(i)));
+		}
+	}
 }
 
-LinkManager::ProposalPayload* LinkManager::computeProposal(L2Packet* request) {
-	assert(request->getPayloads().size() == 2 && "There should be a nullptr base payload and the request payload.");
+LinkManager::ProposalPayload* LinkManager::computeProposal() {
 	auto* proposal = new ProposalPayload(num_proposed_channels, num_proposed_slots);
 	
 	// Find resource proposals...
@@ -287,38 +282,41 @@ void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
 	coutd << " icao_id=" << this->link_id;
 	header->offset = this->current_reservation_offset;
 	coutd << " offset=" << this->current_reservation_offset;
+	if (this->current_reservation_slot_length == 0)
+		throw std::runtime_error("LinkManager::setBaseHeaderFields attempted to set next_length to zero.");
 	header->length_next = this->current_reservation_slot_length;
 	coutd << " length_next=" << this->current_reservation_slot_length;
 	header->timeout = this->current_reservation_timeout;
 	coutd << " timeout=" << this->current_reservation_timeout;
 	current_reservation_timeout = current_reservation_timeout - 1;
-	coutd << std::endl;
+	coutd << " ";
 }
 
 void LinkManager::setBeaconHeaderFields(L2HeaderBeacon* header) const {
 	coutd << "-> setting beacon header fields:";
 	header->num_hops_to_ground_station = mac->getNumHopsToGS();
 	coutd << " num_hops=" << header->num_hops_to_ground_station;
+	coutd << " ";
 }
 
 void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
 	coutd << "-> setting broadcast header fields";
 	// no fields.
-	coutd << std::endl;
+	coutd << " ";
 }
 
 void LinkManager::setUnicastHeaderFields(L2HeaderUnicast* header) const {
 	coutd << "-> setting unicast header fields:";
 	coutd << " icao_dest_id=" << link_id;
 	header->icao_dest_id = link_id;
-	coutd << std::endl;
+	coutd << " ";
 }
 
 void LinkManager::setRequestHeaderFields(L2HeaderLinkEstablishmentRequest* header) const {
-	coutd << "-> setting link establishment request header fields" << std::endl;
+	coutd << "-> setting link establishment request header fields: ";
 	coutd << " icao_dest_id=" << link_id;
 	header->icao_dest_id = link_id;
-	coutd << std::endl;
+	coutd << " ";
 }
 
 void LinkManager::setReservationTimeout(unsigned int reservation_timeout) {
@@ -330,12 +328,38 @@ void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 }
 
 void LinkManager::processBeacon(L2HeaderBeacon* header, LinkManager::BeaconPayload* payload) {
+	assert(payload && "LinkManager::processBeacon for nullptr BeaconPayload*");
 	throw std::runtime_error("LinkManager::processBeacon not implemented");
 }
 
-void LinkManager::processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header,
+std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header,
                                                   LinkManager::ProposalPayload* payload) {
-	throw std::runtime_error("LinkManager::processLinkEstablishmentRequest not implemented");
+	assert(payload && "LinkManager::processLinkEstablishmentRequest for nullptr ProposalPayload*");
+	const MacId& dest_id = header->icao_dest_id;
+	if (payload->proposed_channels.empty())
+		throw std::invalid_argument("LinkManager::processLinkEstablishmentRequest for an empty proposal.");
+	
+	// Go through all proposed channels...
+	std::vector<std::pair<const FrequencyChannel*, unsigned int>> viable_candidates;
+	for (size_t i = 0; i < payload->proposed_channels.size(); i++) {
+		const FrequencyChannel* channel = payload->proposed_channels.at(i);
+		coutd << " -> proposed channel " << channel->getCenterFrequency() << "kHz:";
+		// ... and all slots proposed on this channel ...
+		unsigned int num_candidates_on_this_channel = payload->num_candidates.at(i);
+		for (size_t j = 0; j < num_candidates_on_this_channel; j++) {
+			unsigned int slot_offset = payload->proposed_slots.at(j);
+			coutd << " @" << slot_offset;
+			// ... and check if they're idle for us ...
+			ReservationTable* table = reservation_manager->getReservationTable(channel);
+			// ... if they are, then save them.
+			if (table->isIdle(slot_offset, payload->num_slots_per_candidate)) {
+				coutd << " (viable)";
+				viable_candidates.emplace_back(channel, slot_offset);
+			} else
+				coutd << " (busy)";
+		}
+	}
+	return viable_candidates;
 }
 
 void LinkManager::processLinkEstablishmentReply(L2HeaderLinkEstablishmentReply* header) {

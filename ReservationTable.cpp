@@ -55,7 +55,7 @@ bool ReservationTable::isIdle(int32_t slot_offset) const {
 
 bool ReservationTable::isIdle(int32_t start, uint32_t length) const {
 	if (length == 1)
-		return this->isUtilized(start);
+		return this->isIdle(start);
 	if (!this->isValid(start, length))
 		throw std::invalid_argument("Invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
 	// A slot range is idle if ALL slots within are idle.

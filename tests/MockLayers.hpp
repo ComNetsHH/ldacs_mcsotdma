@@ -25,7 +25,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			unsigned long getCurrentDatarate() const override {
-				return 800; // 100B/slot
+				return 1600; // 200B/slot
 			}
 			
 			~PHYLayer() override {
@@ -116,12 +116,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
 				coutd << "RLC::requestSegment... ";
-				auto* segment = new L2Packet();
-				auto* base_header = new L2HeaderBase(own_id, 0, 0, 0);
-				auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0), 0);
-				segment->addPayload(base_header, new RLCPayload(0));
-				segment->addPayload(unicast_header, new RLCPayload(num_bits - base_header->getBits() - unicast_header->getBits()));
-				return segment;
+				if (injections.empty()) {
+					coutd << "returning new unicast... ";
+					auto* segment = new L2Packet();
+					auto* base_header = new L2HeaderBase(own_id, 0, 0, 0);
+					auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0), 0);
+					segment->addPayload(base_header, new RLCPayload(0));
+					segment->addPayload(unicast_header,
+					                    new RLCPayload(num_bits - base_header->getBits() - unicast_header->getBits()));
+					return segment;
+				} else {
+					coutd << "returning injection... ";
+					L2Packet* injection = injections.at(injections.size() - 1);
+					injections.pop_back();
+					return injection;
+				}
 			}
 			
 			std::vector<L2Packet*> injections;

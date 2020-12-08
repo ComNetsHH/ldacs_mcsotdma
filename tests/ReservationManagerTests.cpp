@@ -31,7 +31,7 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			// Fetching it now should throw an exception.
 			bool exception_thrown = false;
 			try {
-				const FrequencyChannel* channel = reservation_manager->getFreqChannel(0);
+				const FrequencyChannel* channel = reservation_manager->getFreqChannelByIndex(0);
 			} catch(const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -43,8 +43,8 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			// Now we should be able to get both reservation table and frequency channel.
 			exception_thrown = false;
 			try {
-				const FrequencyChannel* channel = reservation_manager->getFreqChannel(0);
-				const ReservationTable* table = reservation_manager->getReservationTable(0);
+				const FrequencyChannel* channel = reservation_manager->getFreqChannelByIndex(0);
+				const ReservationTable* table = reservation_manager->getReservationTableByIndex(0);
 			} catch(const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -58,18 +58,18 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			reservation_manager->addFrequencyChannel(p2p_channel, center_freq1, bandwidth);
 			reservation_manager->addFrequencyChannel(p2p_channel, center_freq2, bandwidth);
 			Timestamp now = Timestamp();
-			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTable(0)->getCurrentSlot() == now);
-			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTable(1)->getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTableByIndex(0)->getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTableByIndex(1)->getCurrentSlot() == now);
 			
 			uint64_t num_slots = 5;
 			reservation_manager->update(num_slots);
-			CPPUNIT_ASSERT_EQUAL(false, reservation_manager->getReservationTable(0)->getCurrentSlot() == now);
-			CPPUNIT_ASSERT_EQUAL(false, reservation_manager->getReservationTable(1)->getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(false, reservation_manager->getReservationTableByIndex(0)->getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(false, reservation_manager->getReservationTableByIndex(1)->getCurrentSlot() == now);
 			
 			now += num_slots;
 			
-			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTable(0)->getCurrentSlot() == now);
-			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTable(1)->getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTableByIndex(0)->getCurrentSlot() == now);
+			CPPUNIT_ASSERT_EQUAL(true, reservation_manager->getReservationTableByIndex(1)->getCurrentSlot() == now);
 		}
 
 		void testGetLeastUtilizedReservationTable() {
@@ -79,8 +79,8 @@ class ReservationManagerTests : public CppUnit::TestFixture {
             reservation_manager->addFrequencyChannel(p2p_channel, center_freq1, bandwidth);
             reservation_manager->addFrequencyChannel(p2p_channel, center_freq2, bandwidth);
 
-            ReservationTable* table1 = reservation_manager->getReservationTable(0);
-            ReservationTable* table2 = reservation_manager->getReservationTable(1);
+            ReservationTable* table1 = reservation_manager->getReservationTableByIndex(0);
+            ReservationTable* table2 = reservation_manager->getReservationTableByIndex(1);
 
             // Mark one slot as busy in table1.
             table1->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
@@ -105,12 +105,12 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			reservation_manager->addFrequencyChannel(p2p_channel, center_freq2, bandwidth);
 			reservation_manager->addFrequencyChannel(p2p_channel, center_freq3, bandwidth);
 			
-			ReservationTable* table1 = reservation_manager->getReservationTable(0); // No busy slots.
-			ReservationTable* table2 = reservation_manager->getReservationTable(1); // Three busy slots.
+			ReservationTable* table1 = reservation_manager->getReservationTableByIndex(0); // No busy slots.
+			ReservationTable* table2 = reservation_manager->getReservationTableByIndex(1); // Three busy slots.
 			table2->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
 			table2->mark(1, Reservation(MacId(0), Reservation::Action::BUSY));
 			table2->mark(2, Reservation(MacId(0), Reservation::Action::BUSY));
-			ReservationTable* table3 = reservation_manager->getReservationTable(2); // Two busy slots.
+			ReservationTable* table3 = reservation_manager->getReservationTableByIndex(2); // Two busy slots.
 			table3->mark(0, Reservation(MacId(0), Reservation::Action::BUSY));
 			table3->mark(1, Reservation(MacId(0), Reservation::Action::BUSY));
 			
@@ -126,11 +126,32 @@ class ReservationManagerTests : public CppUnit::TestFixture {
 			queue.pop();
 			CPPUNIT_ASSERT_EQUAL(true, queue.empty());
 		}
+		
+		void testGetByPointer() {
+			uint64_t freq1 = 1000, freq2 = 2000, bc_freq = 3000, bandwidth = 500;
+			reservation_manager->addFrequencyChannel(true, freq1, bandwidth);
+			reservation_manager->addFrequencyChannel(true, freq2, bandwidth);
+			reservation_manager->addFrequencyChannel(false, bc_freq, bandwidth);
+			FrequencyChannel *channel1 = reservation_manager->getFreqChannelByIndex(0),
+								*channel2 = reservation_manager->getFreqChannelByIndex(1),
+								*bc_channel = reservation_manager->getBroadcastFreqChannel();
+			ReservationTable *table1 = reservation_manager->getReservationTableByIndex(0),
+								*table2 = reservation_manager->getReservationTableByIndex(1),
+								*bc_table = reservation_manager->getBroadcastReservationTable();
+			CPPUNIT_ASSERT(channel1 == reservation_manager->getFreqChannel(table1));
+			CPPUNIT_ASSERT(channel2 == reservation_manager->getFreqChannel(table2));
+			CPPUNIT_ASSERT(bc_channel == reservation_manager->getFreqChannel(bc_table));
+			
+			CPPUNIT_ASSERT(table1 == reservation_manager->getReservationTable(channel1));
+			CPPUNIT_ASSERT(table2 == reservation_manager->getReservationTable(channel2));
+			CPPUNIT_ASSERT(bc_table == reservation_manager->getReservationTable(bc_channel));
+		}
 	
 	CPPUNIT_TEST_SUITE(ReservationManagerTests);
 		CPPUNIT_TEST(testAddFreqChannel);
 		CPPUNIT_TEST(testUpdate);
         CPPUNIT_TEST(testGetLeastUtilizedReservationTable);
 		CPPUNIT_TEST(testGetSortedReservationTables);
+		CPPUNIT_TEST(testGetByPointer);
 	CPPUNIT_TEST_SUITE_END();
 };

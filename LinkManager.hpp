@@ -162,8 +162,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * When a link estabishment request comes in from the PHY, this processes it.
 			 * @param header
 			 * @param payload
+			 * @return Out of the proposed (freq. channel, slot offset) candidates, those candidates are returned that are idle for us.
 			 */
-			void processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header, ProposalPayload* payload);
+			std::vector<std::pair<const FrequencyChannel*, unsigned int>> processLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest* header, ProposalPayload* payload);
 			
 			/**
 			 * When a link establishment reply comes in from the PHY, this processes it.
@@ -198,9 +199,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * Fills the header and payload of the given 'request' with a current proposal.
-			 * @param request
 			 */
-			LinkManager::ProposalPayload* computeProposal(L2Packet* request);
+			LinkManager::ProposalPayload* computeProposal();
 			
 			/**
 			 * Checks validity and delegates to set{Base,Beacon,Broadcast,Unicast,Request}HeaderFields.
@@ -250,11 +250,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Keeps a copy of the last proposal, so that reservations can be made when the proposal is accepted. */
 			LinkManager::ProposalPayload* last_proposal = nullptr;
 			/** Number of repetitions a reservation remains valid for. */
-			unsigned int current_reservation_timeout = 16, reservation_timeout = 16;
+			unsigned int current_reservation_timeout = 1, reservation_timeout = 1;
 			/** When a reservation timeout reaches this threshold, a new link request is prepared. */
-			const unsigned int TIMEOUT_THRESHOLD_TRIGGER = 3;
+			const int TIMEOUT_THRESHOLD_TRIGGER = -1;
 			/** Number of slots occupied per transmission burst. */
-			unsigned short current_reservation_slot_length = 0;
+			unsigned short current_reservation_slot_length = 1;
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
 			unsigned int current_reservation_offset = 10;
 	};
