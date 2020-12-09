@@ -39,7 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/** Notify this MAC that time has passed. */
 			void update(uint64_t num_slots);
-		
+			
 		protected:
 			/**
 			 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.

@@ -190,4 +190,27 @@ ReservationTable* ReservationTable::getTxReservations(const MacId& id) const {
 	return table;
 }
 
+void ReservationTable::integrateTxReservations(const ReservationTable* other) {
+	if (other->planning_horizon != this->planning_horizon)
+		throw std::invalid_argument("ReservationTable::integrateTxReservations where other table doesn't have the same dimension!");
+	for (size_t i = 0; i < slot_utilization_vec.size(); i++) {
+		const Reservation& reservation = other->slot_utilization_vec.at(i);
+		if (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT)
+			slot_utilization_vec.at(i) = Reservation(reservation);
+	}
+}
+
+bool ReservationTable::operator==(const ReservationTable& other) const {
+	if (other.planning_horizon != this->planning_horizon || slot_utilization_vec.size() != other.slot_utilization_vec.size())
+		return false;
+	for (size_t i = 0; i < slot_utilization_vec.size(); i++)
+		if (slot_utilization_vec.at(i) != other.slot_utilization_vec.at(i))
+			return false;
+	return true;
+}
+
+bool ReservationTable::operator!=(const ReservationTable& other) const {
+	return !((*this) == other);
+}
+
 ReservationTable::~ReservationTable() = default;

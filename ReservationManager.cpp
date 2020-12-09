@@ -2,6 +2,7 @@
 // Created by Sebastian Lindner on 14.10.20.
 //
 
+#include <cassert>
 #include "ReservationManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
@@ -104,4 +105,47 @@ ReservationTable* ReservationManager::getReservationTable(const FrequencyChannel
 	else
 		table = reservation_tables.at(p2p_channel_map.at(channel));
 	return table;
+}
+
+std::vector<std::pair<FrequencyChannel, ReservationTable*>>
+ReservationManager::getTxReservations(const MacId& id) const {
+	assert(broadcast_frequency_channel && broadcast_reservation_table && "ReservationManager::getTxReservations for unset broadcast channel / reservation table.");
+	auto local_reservations = std::vector<std::pair<FrequencyChannel, ReservationTable*>>();
+	local_reservations.emplace_back(FrequencyChannel(*broadcast_frequency_channel), broadcast_reservation_table->getTxReservations(id));
+	for (auto p2p_channel : frequency_channels) {
+		auto reservation_table = reservation_tables.at(p2p_channel_map.at(p2p_channel));
+		auto tx_reservation_table = reservation_table->getTxReservations(id);
+		local_reservations.emplace_back(FrequencyChannel(*p2p_channel), tx_reservation_table);
+	}
+	return local_reservations;
+}
+
+void ReservationManager::updateTables(const std::vector<std::pair<FrequencyChannel, ReservationTable*>>& reservations) {
+	for (const auto& pair : reservations) {
+		// For every frequency channel encoded in 'reservations'...
+		const FrequencyChannel& remote_channel = pair.first;
+		// ... look for the local equivalent...
+		FrequencyChannel* local_channel = matchFrequencyChannel(remote_channel);
+		if (local_channel != nullptr) {
+			// ... fetch the corresponding reservation table...
+			ReservationTable* table = getReservationTable(local_channel);
+			// ... and mark all slots as busy
+			const ReservationTable* remote_table = pair.second;
+			try {
+				table->integrateTxReservations(remote_table);
+			} catch (const std::exception& e) {
+				throw std::invalid_argument("ReservationManager::updateTables couldn't integrate remote table: " + std::string(e.what()));
+			}
+		} else
+			throw std::invalid_argument("ReservationManager::updateTables couldn't match remote channel @" + std::to_string(remote_channel.getCenterFrequency()) + "kHz to a local one.");
+	}
+}
+
+FrequencyChannel* ReservationManager::matchFrequencyChannel(const FrequencyChannel& other) const {
+	if (*broadcast_frequency_channel == other)
+		return broadcast_frequency_channel;
+	for (FrequencyChannel* channel : frequency_channels)
+		if (*channel == other)
+			return channel;
+	return nullptr;
 }

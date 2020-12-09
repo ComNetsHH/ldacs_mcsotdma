@@ -7,6 +7,11 @@
 TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::FrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth)
 	: is_p2p(is_p2p), center_frequency(center_frequency), bandwidth(bandwidth), is_blacklisted(false) {}
 
+TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::FrequencyChannel(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other)
+	: FrequencyChannel(other.is_p2p, other.center_frequency, other.bandwidth) {
+	is_blacklisted = other.is_blacklisted;
+}
+
 uint64_t TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::getCenterFrequency() const {
 	return this->center_frequency;
 }

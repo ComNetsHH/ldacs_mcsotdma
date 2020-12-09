@@ -65,9 +65,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			class BeaconPayload : public L2Packet::Payload {
 				public:
-					unsigned int getBits() const override {
-						return 1;
+					static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8;
+					
+					explicit BeaconPayload(const MacId& beacon_owner_id) : beacon_owner_id(beacon_owner_id) {}
+					~BeaconPayload() override {
+						for (const auto& pair : local_reservations)
+							delete pair.second;
 					}
+					
+					unsigned int getBits() const override {
+						unsigned int bits = 0;
+						for (auto pair : local_reservations) {
+							bits += pair.second->countReservedTxSlots(beacon_owner_id) * BITS_PER_SLOT;
+							bits += BITS_PER_CHANNEL;
+						}
+						return bits;
+					}
+					
+					std::vector<std::pair<FrequencyChannel, ReservationTable*>> local_reservations;
+					const MacId beacon_owner_id;
 			};
 			
 			enum Status {
@@ -159,6 +175,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			L2Packet* prepareLinkEstablishmentRequest();
 			
 			/**
+			 * @return A new beacon.
+			 */
+			L2Packet* prepareBeacon();
+			
+			/**
 			 * When a link estabishment request comes in from the PHY, this processes it.
 			 * @param header
 			 * @param payload
@@ -174,10 +195,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * When a beacon packet comes in from the PHY, this processes it.
+			 * @oaram origin_id
 			 * @param header
 			 * @param payload
 			 */
-			void processIncomingBeacon(L2HeaderBeacon*& header, BeaconPayload*& payload);
+			void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
 			
 			/**
 			 * When a broadcast packet comes in from the PHY, this processes it.
@@ -195,13 +217,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * Processes the base header of each incoming packet.
 			 * @param header
+			 * @return The originator's ID.
 			 */
-			void processIncomingBase(L2HeaderBase*& header);
+			MacId processIncomingBase(L2HeaderBase*& header);
 			
 			/**
-			 * Fills the header and payload of the given 'request' with a current proposal.
+			 * @return A payload that should accompany a link request.
 			 */
-			LinkManager::ProposalPayload* computeProposal();
+			LinkManager::ProposalPayload* computeRequestProposal() const;
+			
+			/**
+			 * Encodes this user's reserved transmission slots.
+			 * @param max_bits Maximum number of bits this payload should encompass.
+			 * @return
+			 */
+			LinkManager::BeaconPayload* computeBeaconPayload(unsigned long max_bits) const;
 			
 			/**
 			 * Checks validity and delegates to set{Base,Beacon,Broadcast,Unicast,Request}HeaderFields.
@@ -253,7 +283,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Number of repetitions a reservation remains valid for. */
 			unsigned int current_reservation_timeout = 1, reservation_timeout = 1;
 			/** When a reservation timeout reaches this threshold, a new link request is prepared. */
-			const int TIMEOUT_THRESHOLD_TRIGGER = -1;
+			int TIMEOUT_THRESHOLD_TRIGGER = -1;
 			/** Number of slots occupied per transmission burst. */
 			unsigned short current_reservation_slot_length = 1;
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */

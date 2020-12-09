@@ -17,6 +17,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 * For one user, the Reservation Manager provides a wrapper for managing reservation tables for each logical frequency channel.
 	 */
 	class ReservationManager {
+			
+			friend class ReservationManagerTests;
+			friend class LinkManagerTests;
+			friend class MCSOTDMA_MacTests;
+			
 		public:
 			/**
 			 * Implements a comparison of ReservationTables. One table is 'smaller' than another if it has fewer idle slots.
@@ -75,8 +80,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return A priority_queue of the P2P ReservationTables, so that the least-utilized table lies on top.
 			 */
 			std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison> getSortedP2PReservationTables() const;
+			
+			/**
+			 * @param id
+			 * @return For every managed FrequencyChannel, a new ReservationTable is instantiated that contains all TX and TX_CONT reservations owned by 'id'.
+			 */
+			std::vector<std::pair<FrequencyChannel, ReservationTable*>> getTxReservations(const MacId& id) const;
+			void updateTables(const std::vector<std::pair<FrequencyChannel, ReservationTable*>>& reservations);
 
 		protected:
+			
+			/**
+			 * Searches through 'frequency_channels' for one that equals 'other'.
+			 * @param other
+			 * @return A pointer to the local instance that corresponds to 'other'.
+			 */
+			FrequencyChannel* matchFrequencyChannel(const FrequencyChannel& other) const;
+			
 			/** Number of slots to remember both in the past and in the future. */
 			uint32_t planning_horizon;
 			/** Keeps frequency channels in the same order as reservation_tables. */

@@ -117,6 +117,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return A new ReservationTable that contains all TX and TX_CONT reservations owned by 'id'.
 			 */
 			ReservationTable* getTxReservations(const MacId& id) const;
+			
+			/**
+			 * @return Number of slots this table keeps values for in either direction of time.
+			 */
+			uint32_t getPlanningHorizon() const;
+			
+			/**
+			 * Copies all TX and TX_CONT reservations from 'other' into this ReservationTable.
+			 * @param other
+			 */
+			void integrateTxReservations(const ReservationTable* other);
+			
+			/**
+			 * @param other
+			 * @return True if all reservations match.
+			 */
+			bool operator==(const ReservationTable& other) const;
+			
+			/**
+			 * @param other
+			 * @return False if all reservations match.
+			 */
+			bool operator!=(const ReservationTable& other) const;
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;
@@ -134,11 +157,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Reference to the internally-used slot utilization vector.
 			 */
 			const std::vector<Reservation>& getVec() const;
-			
-			/**
-			 * @return Number of slots this table keeps values for in either direction of time.
-			 */
-			uint32_t getPlanningHorizon() const;
 			
 			/**
 			 * The slot_utilization_vec keeps both historic, current and future values.

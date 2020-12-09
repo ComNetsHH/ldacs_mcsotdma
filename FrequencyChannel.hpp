@@ -13,6 +13,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class FrequencyChannel {
 		public:
 			FrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
+			FrequencyChannel(const FrequencyChannel& other);
 			
 			uint64_t getCenterFrequency() const;
 			

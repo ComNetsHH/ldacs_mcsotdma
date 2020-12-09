@@ -49,13 +49,14 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 	coutd << "LinkManager(" << link_id.getId() << ")::receiveFromLower... ";
 	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
 	// Go through all header and payload pairs...
+	MacId origin_id = SYMBOLIC_ID_UNSET;
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		L2Header* header = packet->getHeaders().at(i);
 		L2Packet::Payload* payload = packet->getPayloads().at(i);
 		switch (header->frame_type) {
 			case L2Header::base:
 				coutd << "processing base header -> ";
-				processIncomingBase((L2HeaderBase*&) header);
+				origin_id = processIncomingBase((L2HeaderBase*&) header);
 				break;
 			case L2Header::link_establishment_reply:
 				coutd << "processing link establishment reply -> ";
@@ -74,7 +75,7 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 				break;
 			case L2Header::beacon:
 				coutd << "processing beacon -> ";
-				processIncomingBeacon((L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
+				processIncomingBeacon(origin_id, (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -126,13 +127,30 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	// Query ARQ sublayer whether this link should be ARQ protected.
 	bool link_should_be_arq_protected = mac->shouldLinkBeArqProtected(this->link_id);
 	// Instantiate base header.
-	auto* base_header = new L2HeaderBase(this->getLinkId(), 0, 0, 0);
+	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
 	request->addPayload(base_header, nullptr);
 	// Instantiate request header.
 	auto* request_header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
 	auto* body = new ProposalPayload(this->num_proposed_channels, this->num_proposed_slots);
 	request->addPayload(request_header, body);
 	return request;
+}
+
+L2Packet* LinkManager::prepareBeacon() {
+	auto* beacon = new L2Packet();
+	// Base header.
+	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
+	// Beacon header.
+	CPRPosition pos = mac->getPosition(mac->getMacId());
+	auto* beacon_header = new L2HeaderBeacon(pos, pos.odd, mac->getNumHopsToGS(), mac->getPositionQuality(mac->getMacId()));
+	// Beacon payload.
+	unsigned long max_bits = mac->getCurrentDatarate();
+	max_bits -= (base_header->getBits() + beacon_header->getBits());
+	auto* beacon_payload = computeBeaconPayload(max_bits);
+	// Put it together.
+	beacon->addPayload(base_header, nullptr);
+	beacon->addPayload(beacon_header, beacon_payload);
+	return beacon;
 }
 
 void LinkManager::setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots) {
@@ -180,7 +198,7 @@ void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
 		L2Header* header = packet->getHeaders().at(i);
 		if (header->frame_type == L2Header::link_establishment_request) {
 			// Compute a current proposal.
-			packet->getPayloads().at(i) = computeProposal();
+			packet->getPayloads().at(i) = computeRequestProposal();
 			// Remember the proposal.
 			if (this->last_proposal != nullptr)
 				throw std::runtime_error("LinkManager::notifyPacketBeingSent called, proposal computed, but there's already a saved proposal which would now be overwritten.");
@@ -189,7 +207,7 @@ void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
 	}
 }
 
-LinkManager::ProposalPayload* LinkManager::computeProposal() {
+LinkManager::ProposalPayload* LinkManager::computeRequestProposal() const {
 	auto* proposal = new ProposalPayload(num_proposed_channels, num_proposed_slots);
 	
 	// Find resource proposals...
@@ -213,6 +231,16 @@ LinkManager::ProposalPayload* LinkManager::computeProposal() {
 			proposal->proposed_slots.push_back(slot);
 	}
 	return proposal;
+}
+
+LinkManager::BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
+	auto* payload = new BeaconPayload(mac->getMacId());
+	// Fetch all local transmission reservations and copy it into the payload.
+	payload->local_reservations = reservation_manager->getTxReservations(mac->getMacId());
+	//!TODO kick out values until max_bits is met!
+	if (payload->getBits() > max_bits)
+		throw std::runtime_error("LinkManager::computeBeaconPayload doesn't kick out values, and we exceed the allowed number of bits.");
+	return payload;
 }
 
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
@@ -289,7 +317,12 @@ void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
 	coutd << " length_next=" << this->current_reservation_slot_length;
 	header->timeout = this->current_reservation_timeout;
 	coutd << " timeout=" << this->current_reservation_timeout;
-	current_reservation_timeout = current_reservation_timeout - 1;
+	if (link_id != SYMBOLIC_LINK_ID_BROADCAST) {
+		if (current_reservation_timeout > 0)
+			current_reservation_timeout = current_reservation_timeout - 1;
+		else
+			throw std::runtime_error("LinkManager::setBaseHeaderFields reached timeout of zero.");
+	}
 	coutd << " ";
 }
 
@@ -328,9 +361,16 @@ void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 	this->current_reservation_offset = reservation_offset;
 }
 
-void LinkManager::processIncomingBeacon(L2HeaderBeacon*& header, BeaconPayload*& payload) {
+void LinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
 	assert(payload && "LinkManager::processIncomingBeacon for nullptr BeaconPayload*");
-	
+	if (origin_id == SYMBOLIC_ID_UNSET)
+		throw std::invalid_argument("LinkManager::processIncomingBeacon for an unset ID.");
+	// Update the neighbor position.
+	mac->updatePosition(origin_id, CPRPosition(header->position.latitude, header->position.longitude, header->position.altitude, header->is_cpr_odd), header->pos_quality);
+	// Update neighbor's report of how many hops they need to the ground station.
+	mac->reportNumHopsToGS(origin_id, header->num_hops_to_ground_station);
+	// Parse the beacon payload to learn about this user's resource utilization.
+	reservation_manager->updateTables(payload->local_reservations);
 }
 
 std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::processIncomingLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest*& header,
@@ -351,7 +391,7 @@ std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::proce
 			unsigned int slot_offset = payload->proposed_slots.at(j);
 			coutd << " @" << slot_offset;
 			// ... and check if they're idle for us ...
-			ReservationTable* table = reservation_manager->getReservationTable(channel);
+			const ReservationTable* table = reservation_manager->getReservationTable(channel);
 			// ... if they are, then save them.
 			if (table->isIdle(slot_offset, payload->num_slots_per_candidate)) {
 				coutd << " (viable)";
@@ -396,18 +436,18 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 	}
 }
 
-void LinkManager::processIncomingBase(L2HeaderBase*& header) {
+MacId LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int timeout = header->timeout;
 	unsigned int length_next = header->length_next;
 	unsigned int offset = header->offset;
 	coutd << "timeout=" << timeout << " length_next=" << length_next << " offset=" << offset << " -> ";
-	const MacId& communication_partner_id = header->icao_id;
+	const MacId& origin_id = header->icao_id;
 	if (current_reservation_table == nullptr) {
 		coutd << "unset reservation table -> ignore; ";
 	} else {
 		coutd << "marking next " << timeout << " reservations:";
 		unsigned int remaining_tx_slots = length_next - 1;
-		Reservation reservation = Reservation(communication_partner_id, Reservation::TX, remaining_tx_slots);
+		Reservation reservation = Reservation(origin_id, Reservation::TX, remaining_tx_slots);
 		for (size_t i = 0; i < timeout; i++) {
 			int32_t current_offset = (i+1) * offset;
 			current_reservation_table->mark(current_offset, reservation);
@@ -415,6 +455,7 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 		}
 		coutd << " -> ";
 	}
+	return origin_id;
 }
 
 
