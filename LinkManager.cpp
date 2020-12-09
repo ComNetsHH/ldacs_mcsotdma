@@ -136,23 +136,6 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	return request;
 }
 
-L2Packet* LinkManager::prepareBeacon() {
-	auto* beacon = new L2Packet();
-	// Base header.
-	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
-	// Beacon header.
-	CPRPosition pos = mac->getPosition(mac->getMacId());
-	auto* beacon_header = new L2HeaderBeacon(pos, pos.odd, mac->getNumHopsToGS(), mac->getPositionQuality(mac->getMacId()));
-	// Beacon payload.
-	unsigned long max_bits = mac->getCurrentDatarate();
-	max_bits -= (base_header->getBits() + beacon_header->getBits());
-	auto* beacon_payload = computeBeaconPayload(max_bits);
-	// Put it together.
-	beacon->addPayload(base_header, nullptr);
-	beacon->addPayload(beacon_header, beacon_payload);
-	return beacon;
-}
-
 void LinkManager::setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots) {
 	this->num_proposed_channels = num_candidate_channels;
 	this->num_proposed_slots = num_candidate_slots;
@@ -233,7 +216,7 @@ LinkManager::ProposalPayload* LinkManager::computeRequestProposal() const {
 	return proposal;
 }
 
-LinkManager::BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
+BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 	auto* payload = new BeaconPayload(mac->getMacId());
 	// Fetch all local transmission reservations and copy it into the payload.
 	payload->local_reservations = reservation_manager->getTxReservations(mac->getMacId());
@@ -264,27 +247,7 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 }
 
 void LinkManager::setHeaderFields(L2Header* header) {
-	// Check frame type (it's const and cannot be changed).
-	// Beacon and Broadcast LinkManagers...
-	const L2Header::FrameType& type = header->frame_type;
-	if (link_id == SYMBOLIC_LINK_ID_BEACON || link_id == SYMBOLIC_LINK_ID_BROADCAST) {
-		// ... may send beacons, broadcasts, unicasts, link requests
-		if (type != L2Header::FrameType::base
-		&& type != L2Header::FrameType::beacon
-		&& type != L2Header::FrameType::broadcast
-		&& type != L2Header::FrameType::unicast
-		&& type != L2Header::FrameType::link_establishment_request)
-			throw std::invalid_argument("Broadcast LinkManager::setHeaderFields received unexpected header.");
-	// P2P LinkManagers...
-	} else {
-		// ... may send unicasts, link requests
-		if (type != L2Header::FrameType::base
-		&& type != L2Header::FrameType::unicast
-	    && type != L2Header::FrameType::link_establishment_request)
-			throw std::invalid_argument("P2P LinkManager::setHeaderFields received unexpected header.");
-	}
-	
-	switch (type) {
+	switch (header->frame_type) {
 		case L2Header::base:
 			setBaseHeaderFields((L2HeaderBase*) header);
 			break;
@@ -327,16 +290,11 @@ void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
 }
 
 void LinkManager::setBeaconHeaderFields(L2HeaderBeacon* header) const {
-	coutd << "-> setting beacon header fields:";
-	header->num_hops_to_ground_station = mac->getNumHopsToGS();
-	coutd << " num_hops=" << header->num_hops_to_ground_station;
-	coutd << " ";
+	throw std::runtime_error("P2P LinkManager shouldn't set beacon header fields.");
 }
 
 void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
-	coutd << "-> setting broadcast header fields:";
-	// no fields.
-	coutd << " none ";
+	throw std::runtime_error("P2P LinkManager shouldn't set broadcast header fields.");
 }
 
 void LinkManager::setUnicastHeaderFields(L2HeaderUnicast* header) const {
@@ -362,15 +320,7 @@ void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 }
 
 void LinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	assert(payload && "LinkManager::processIncomingBeacon for nullptr BeaconPayload*");
-	if (origin_id == SYMBOLIC_ID_UNSET)
-		throw std::invalid_argument("LinkManager::processIncomingBeacon for an unset ID.");
-	// Update the neighbor position.
-	mac->updatePosition(origin_id, CPRPosition(header->position.latitude, header->position.longitude, header->position.altitude, header->is_cpr_odd), header->pos_quality);
-	// Update neighbor's report of how many hops they need to the ground station.
-	mac->reportNumHopsToGS(origin_id, header->num_hops_to_ground_station);
-	// Parse the beacon payload to learn about this user's resource utilization.
-	reservation_manager->updateTables(payload->local_reservations);
+	throw std::runtime_error("Non-broadcast LinkManager got a beacon to process.");
 }
 
 std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::processIncomingLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest*& header,

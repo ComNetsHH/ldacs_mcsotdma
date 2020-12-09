@@ -180,9 +180,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testSetBeaconHeader() {
 				L2HeaderBeacon header = L2HeaderBeacon();
 				LinkManager broadcast_link_manager = LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac);
-				broadcast_link_manager.setHeaderFields(&header);
-				unsigned int num_hops = net_layer->getNumHopsToGroundStation();
-				CPPUNIT_ASSERT_EQUAL(num_hops, header.num_hops_to_ground_station);
 				// Shouldn't try to set a beacon header with a P2P link manager.
 				bool exception_thrown = false;
 				try {
@@ -277,25 +274,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT(unicast_packet_not_intended_for_us->getHeaders().at(1) == nullptr);
 				CPPUNIT_ASSERT(payload_not_for_us == nullptr);
 			}
-			
-			void testProcessIncomingBeacon() {
-				Reservation reservation = Reservation(own_id, Reservation::TX);
-				ReservationTable* tbl = reservation_manager->getReservationTableByIndex(0);
-				tbl->mark(3, reservation);
-				CPPUNIT_ASSERT(tbl->getReservation(3) == reservation);
-				// This beacon should encapsulate the just-made reservation.
-				L2Packet* beacon = link_manager->prepareBeacon();
-				// Let's undo the reservation.
-				tbl->mark(3, Reservation());
-				CPPUNIT_ASSERT(tbl->getReservation(3) != reservation);
-				// Now we receive the beacon.
-				auto* beacon_header = (L2HeaderBeacon*) beacon->getHeaders().at(1);
-				auto* beacon_payload = (LinkManager::BeaconPayload*) beacon->getPayloads().at(1);
-				link_manager->processIncomingBeacon(MacId(10), beacon_header, beacon_payload);
-				// So the reservation should be made again.
-				CPPUNIT_ASSERT(tbl->getReservation(3) == reservation);
-				delete beacon;
-			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -312,7 +290,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testProcessIncomingBase);
 			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
 			CPPUNIT_TEST(testProcessIncomingUnicast);
-			CPPUNIT_TEST(testProcessIncomingBeacon);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

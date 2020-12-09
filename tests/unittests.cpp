@@ -11,6 +11,7 @@
 #include "../coutdebug.hpp"
 #include "LinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
+#include "BCLinkManagerTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
@@ -21,6 +22,7 @@ int main() {
 	runner.addTest(FrequencyChannelTests::suite());
 	runner.addTest(ReservationManagerTests::suite());
 	runner.addTest(LinkManagerTests::suite());
+	runner.addTest(BCLinkManagerTests::suite());
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	
 	runner.run();

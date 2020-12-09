@@ -9,13 +9,28 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
+	class MCSOTDMA_Mac;
+	
 	/**
 	 * The Broadcast Channel (BC) Link Manager.
 	 */
 	class BCLinkManager : public LinkManager {
-		
+			
+		friend class BCLinkManagerTests;
+			
+		public:
+			BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
+			
 		protected:
-		
+			/**
+			 * @return A new beacon.
+			 */
+			L2Packet* prepareBeacon();
+			
+			void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
+			
+			void setBeaconHeaderFields(L2HeaderBeacon* header) const override;
+			void setBroadcastHeaderFields(L2HeaderBroadcast* header) const override;
 	};
 }
 

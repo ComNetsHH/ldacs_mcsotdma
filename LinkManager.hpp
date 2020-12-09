@@ -9,6 +9,7 @@
 #include <L2Packet.hpp>
 #include <cmath>
 #include "ReservationManager.hpp"
+#include "BeaconPayload.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -21,6 +22,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class LinkManager : public L2PacketSentCallback {
 			
 		friend class LinkManagerTests;
+		friend class BCLinkManagerTests;
 		friend class MCSOTDMA_MacTests;
 			
 		public:
@@ -58,32 +60,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					unsigned int target_num_slots;
 					/** Number of slots to reserve. */
 					unsigned int num_slots_per_candidate;
-			};
-			
-			/**
-			 * Implements a beacon payload that encodes a user's reservations.
-			 */
-			class BeaconPayload : public L2Packet::Payload {
-				public:
-					static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8;
-					
-					explicit BeaconPayload(const MacId& beacon_owner_id) : beacon_owner_id(beacon_owner_id) {}
-					~BeaconPayload() override {
-						for (const auto& pair : local_reservations)
-							delete pair.second;
-					}
-					
-					unsigned int getBits() const override {
-						unsigned int bits = 0;
-						for (auto pair : local_reservations) {
-							bits += pair.second->countReservedTxSlots(beacon_owner_id) * BITS_PER_SLOT;
-							bits += BITS_PER_CHANNEL;
-						}
-						return bits;
-					}
-					
-					std::vector<std::pair<FrequencyChannel, ReservationTable*>> local_reservations;
-					const MacId beacon_owner_id;
 			};
 			
 			enum Status {
@@ -175,11 +151,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			L2Packet* prepareLinkEstablishmentRequest();
 			
 			/**
-			 * @return A new beacon.
-			 */
-			L2Packet* prepareBeacon();
-			
-			/**
 			 * When a link estabishment request comes in from the PHY, this processes it.
 			 * @param header
 			 * @param payload
@@ -199,7 +170,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param header
 			 * @param payload
 			 */
-			void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
+			virtual void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
 			
 			/**
 			 * When a broadcast packet comes in from the PHY, this processes it.
@@ -231,7 +202,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param max_bits Maximum number of bits this payload should encompass.
 			 * @return
 			 */
-			LinkManager::BeaconPayload* computeBeaconPayload(unsigned long max_bits) const;
+			BeaconPayload* computeBeaconPayload(unsigned long max_bits) const;
 			
 			/**
 			 * Checks validity and delegates to set{Base,Beacon,Broadcast,Unicast,Request}HeaderFields.
@@ -239,8 +210,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			void setHeaderFields(L2Header* header);
 			void setBaseHeaderFields(L2HeaderBase* header);
-			void setBeaconHeaderFields(L2HeaderBeacon* header) const;
-			void setBroadcastHeaderFields(L2HeaderBroadcast* header) const;
+			virtual void setBeaconHeaderFields(L2HeaderBeacon* header) const;
+			virtual void setBroadcastHeaderFields(L2HeaderBroadcast* header) const;
 			void setUnicastHeaderFields(L2HeaderUnicast* header) const;
 			void setRequestHeaderFields(L2HeaderLinkEstablishmentRequest* header) const;
 			
