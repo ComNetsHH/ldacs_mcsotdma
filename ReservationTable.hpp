@@ -105,6 +105,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Whether the specified slot range is utilized.
 			 */
 			bool isUtilized(int32_t start, uint32_t length) const;
+			
+			/**
+			 * @param id
+			 * @return The number of TX or TX_CONT reservations that belong to the user with 'id'.
+			 */
+			unsigned long countReservedTxSlots(const MacId& id) const;
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;

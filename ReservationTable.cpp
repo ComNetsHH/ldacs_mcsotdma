@@ -172,4 +172,12 @@ const Reservation& ReservationTable::getReservation(int offset) const {
 	return getVec().at(convertOffsetToIndex(offset));
 }
 
+unsigned long ReservationTable::countReservedTxSlots(const MacId& id) const {
+	unsigned long counter = 0;
+	for (const Reservation& reservation : slot_utilization_vec)
+		if (reservation.getOwner() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+			counter++;
+	return counter;
+}
+
 ReservationTable::~ReservationTable() = default;

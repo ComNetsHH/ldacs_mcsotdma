@@ -391,6 +391,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
 				}
 			}
+			
+			void testCountReservedTxSlots() {
+				MacId id = MacId(42);
+				CPPUNIT_ASSERT_EQUAL(ulong(0), table->countReservedTxSlots(id));
+				unsigned long marked = 7;
+				for (unsigned long i = 0; i < marked; i++)
+					table->mark(i, Reservation(id, Reservation::TX));
+				CPPUNIT_ASSERT_EQUAL(marked, table->countReservedTxSlots(id));
+				table->mark(marked, Reservation(id, Reservation::IDLE)); // doesn't count
+				CPPUNIT_ASSERT_EQUAL(marked, table->countReservedTxSlots(id));
+				table->mark(marked + 1, Reservation(id, Reservation::BUSY)); // doesn't count
+				CPPUNIT_ASSERT_EQUAL(marked, table->countReservedTxSlots(id));
+				table->mark(marked + 2, Reservation(id, Reservation::TX_CONT)); // *does* count
+				CPPUNIT_ASSERT_EQUAL(marked + 1, table->countReservedTxSlots(id));
+				// Another user's reservations shouldn't be counted.
+				MacId other_id = MacId(id.getId() + 1);
+				table->mark(marked + 3, Reservation(other_id, Reservation::TX));
+				table->mark(marked + 4, Reservation(other_id, Reservation::TX_CONT));
+				table->mark(marked + 5, Reservation(other_id, Reservation::IDLE));
+				table->mark(marked + 6, Reservation(other_id, Reservation::BUSY));
+				CPPUNIT_ASSERT_EQUAL(marked + 1, table->countReservedTxSlots(id));
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -407,6 +429,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testFindCandidateSlotsComplicated);
 			CPPUNIT_TEST(testFindEarliestOffset);
 			CPPUNIT_TEST(testMultiSlotTransmissionReservation);
+			CPPUNIT_TEST(testCountReservedTxSlots);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	
