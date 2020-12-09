@@ -139,6 +139,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int getNumHopsToGroundStation() const override {
 				return 3;
 			}
+			
+			void reportNumHopsToGS(const MacId& id, unsigned int num_hops) override {
+				num_hops_to_GS_map[id] = num_hops;
+			}
+			
+			std::map<MacId, unsigned int> num_hops_to_GS_map;
 	};
 	
 }
