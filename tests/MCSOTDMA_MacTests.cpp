@@ -95,7 +95,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testPositions() {
 				// Should be able to get your own position.
 				bool exception_thrown = false;
-				CPRPosition pos = CPRPosition(1, 2, 3);
+				CPRPosition pos = CPRPosition(1, 2, 3, true);
 				CPPUNIT_ASSERT(mac->position_map[mac->id] != pos);
 				try {
 					pos = mac->getPosition(own_id);
