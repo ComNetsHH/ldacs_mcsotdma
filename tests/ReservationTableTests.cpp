@@ -413,6 +413,34 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(marked + 6, Reservation(other_id, Reservation::BUSY));
 				CPPUNIT_ASSERT_EQUAL(marked + 1, table->countReservedTxSlots(id));
 			}
+			
+			void testGetTxReservations() {
+				MacId id1 = MacId(42), id2 = MacId(43);
+				for (int i = 3; i < 7; i++)
+					table->mark(i, Reservation(id1, Reservation::Action::TX));
+				for (int i = 12; i < 22; i++)
+					table->mark(i, Reservation(id2, Reservation::Action::TX));
+				table->mark(0, Reservation(id1, Reservation::BUSY));
+				table->mark(1, Reservation(id2, Reservation::BUSY));
+				ReservationTable* tbl1 = table->getTxReservations(id1);
+				for (int i = 0; i < planning_horizon; i++) {
+					if (i >= 3 && i < 7)
+						CPPUNIT_ASSERT_EQUAL(id1, tbl1->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+					else
+						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, tbl1->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+				}
+				
+				ReservationTable* tbl2 = table->getTxReservations(id2);
+				for (int i = 0; i < planning_horizon; i++) {
+					if (i >= 12 && i < 22)
+						CPPUNIT_ASSERT_EQUAL(id2, tbl2->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+					else
+						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, tbl2->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+				}
+				
+				delete tbl1;
+				delete tbl2;
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -430,6 +458,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testFindEarliestOffset);
 			CPPUNIT_TEST(testMultiSlotTransmissionReservation);
 			CPPUNIT_TEST(testCountReservedTxSlots);
+			CPPUNIT_TEST(testGetTxReservations);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

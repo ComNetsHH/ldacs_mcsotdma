@@ -180,4 +180,14 @@ unsigned long ReservationTable::countReservedTxSlots(const MacId& id) const {
 	return counter;
 }
 
+ReservationTable* ReservationTable::getTxReservations(const MacId& id) const {
+	auto* table = new ReservationTable(this->planning_horizon);
+	for (size_t i = 0; i < slot_utilization_vec.size(); i++) {
+		const Reservation& reservation = slot_utilization_vec.at(i);
+		if (reservation.getOwner() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+			table->slot_utilization_vec.at(i) = Reservation(reservation);
+	}
+	return table;
+}
+
 ReservationTable::~ReservationTable() = default;

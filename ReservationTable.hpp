@@ -111,6 +111,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The number of TX or TX_CONT reservations that belong to the user with 'id'.
 			 */
 			unsigned long countReservedTxSlots(const MacId& id) const;
+			
+			/**
+			 * @param id
+			 * @return A new ReservationTable that contains all TX and TX_CONT reservations owned by 'id'.
+			 */
+			ReservationTable* getTxReservations(const MacId& id) const;
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;
