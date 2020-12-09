@@ -39,10 +39,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MACLayer : public MCSOTDMA_Mac {
 		public:
 			explicit MACLayer(const MacId& id, ReservationManager* manager) : MCSOTDMA_Mac(id, manager) {}
-			
-			CPRPosition getPosition() const override {
-				return CPRPosition(10, 11, 12);
-			}
 		
 		protected:
 			void onReceptionSlot(const FrequencyChannel* channel) override {

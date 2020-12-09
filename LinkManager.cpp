@@ -330,7 +330,7 @@ void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 
 void LinkManager::processIncomingBeacon(L2HeaderBeacon*& header, BeaconPayload*& payload) {
 	assert(payload && "LinkManager::processIncomingBeacon for nullptr BeaconPayload*");
-	throw std::runtime_error("LinkManager::processIncomingBeacon not implemented");
+	
 }
 
 std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::processIncomingLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest*& header,

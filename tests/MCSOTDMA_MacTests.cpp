@@ -91,12 +91,34 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT(phy->outgoing_packets.at(0)->getBits() <= phy->getCurrentDatarate());
 //				coutd.setVerbose(false);
 			}
+			
+			void testPositions() {
+				// Should be able to get your own position.
+				bool exception_thrown = false;
+				CPRPosition pos = CPRPosition(1, 2, 3);
+				CPPUNIT_ASSERT(mac->position_map[mac->id] != pos);
+				try {
+					pos = mac->getPosition(own_id);
+				} catch (const std::exception& e) {
+					exception_thrown = true;
+				}
+				CPPUNIT_ASSERT_EQUAL(false, exception_thrown);
+				CPPUNIT_ASSERT(mac->position_map[mac->id] == pos);
+				// Shouldn't be able to get some other user's position, who we've never heard of.
+				try {
+					pos = mac->getPosition(communication_partner_id);
+				} catch (const std::exception& e) {
+					exception_thrown = true;
+				}
+				CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+			}
 		
 		
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testLinkManagerCreation);
 			CPPUNIT_TEST(testMakeReservation);
 			CPPUNIT_TEST(testUpdate);
+			CPPUNIT_TEST(testPositions);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

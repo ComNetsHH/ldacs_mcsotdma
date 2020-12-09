@@ -54,6 +54,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Maps links to their link managers. */
 			std::map<MacId, LinkManager*> link_managers;
 			const size_t num_transmitters = 1, num_receivers = 2;
+			/** Holds the current belief of neighbor positions. */
+			std::map<MacId, CPRPosition> position_map;
 	};
 }
 
