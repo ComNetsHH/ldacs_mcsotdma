@@ -271,7 +271,7 @@ LinkManager::ProposalPayload* LinkManager::computeRequestProposal() const {
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
 		// ... and try to find candidate slots.
-		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, this->num_proposed_slots, required_num_slots);
+		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, this->num_proposed_slots, required_num_slots, true);
 		
 		// Fill proposal.
 		proposal->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.

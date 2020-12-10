@@ -208,7 +208,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				uint32_t length = 4;
 				bool exception_thrown = false;
 				try {
-					table->findEarliestIdleRange(start, length);
+					table->findEarliestIdleRange(start, length, false);
 				} catch (const std::invalid_argument& e) {
 					exception_thrown = true;
 				}
@@ -219,7 +219,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				length = 3;
 				exception_thrown = false;
 				try {
-					int32_t start_of_idle_range = table->findEarliestIdleRange(start, length);
+					int32_t start_of_idle_range = table->findEarliestIdleRange(start, length, false);
 					CPPUNIT_ASSERT_EQUAL(start, start_of_idle_range);
 				} catch (const std::exception& e) {
 					exception_thrown = true;
@@ -229,28 +229,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				
 				// Starting at 'now' works too.
 				start = 0;
-				int32_t start_of_idle_range = table->findEarliestIdleRange(start, length);
+				int32_t start_of_idle_range = table->findEarliestIdleRange(start, length, false);
 				CPPUNIT_ASSERT_EQUAL(start, start_of_idle_range);
 				
 				// But starting in the p
-				int32_t idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+				int32_t idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(0), idle_slot_range_start);
 				table->mark(0, reservation);
 				// x00000
 				// 012345
-				idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(1), idle_slot_range_start);
 				table->mark(5, reservation);
 				// x0000x0000
 				// 0123456789
-				idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(6), idle_slot_range_start);
 				table->mark(11, reservation);
 				// x0000x00000x0
 				// 0123456789012
-				idle_slot_range_start = table->findEarliestIdleRange(0, 5);
+				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(6), idle_slot_range_start);
-				idle_slot_range_start = table->findEarliestIdleRange(7, 5);
+				idle_slot_range_start = table->findEarliestIdleRange(7, 5, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(12), idle_slot_range_start);
 			}
 			
@@ -321,7 +321,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
 				unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
 				// At first, all slots are free.
-				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length);
+				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false);
 				// So we should have no problem finding enough candidates.
 				CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 				// And these should be consecutive slots starting at 0.
@@ -340,7 +340,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(19, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
 				table->mark(20, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
 				table->mark(25, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length);
+				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false);
 				// We should only be able to find 4 candidates.
 				CPPUNIT_ASSERT_EQUAL(size_t(4), candidate_slots.size());
 				// And these should be the following starting slots:

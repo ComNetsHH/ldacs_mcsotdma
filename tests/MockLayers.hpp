@@ -12,11 +12,14 @@
 #include "../coutdebug.hpp"
 #include "../ReservationManager.hpp"
 #include "../MCSOTDMA_Mac.hpp"
+#include "../MCSOTDMA_Phy.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
-	class PHYLayer : public IPhy {
+	class PHYLayer : public MCSOTDMA_Phy {
 		public:
+			explicit PHYLayer(uint32_t planning_horizon) : MCSOTDMA_Phy(planning_horizon) {}
+			
 			void receiveFromUpper(L2Packet* data, unsigned int center_frequency) override {
 				if (data == nullptr)
 					throw std::invalid_argument("PHY::receiveFromUpper(nullptr)");

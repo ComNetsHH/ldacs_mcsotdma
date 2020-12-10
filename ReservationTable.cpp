@@ -92,15 +92,40 @@ bool ReservationTable::isUtilized(int32_t start, uint32_t length) const {
 	return !this->isIdle(start, length);
 }
 
-int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length) const {
+int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter) const {
+	if (consider_transmitter && phy_table == nullptr)
+		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_transmitter==true for unset PHY table.");
 	if (!isValid(start, length))
 		throw std::invalid_argument("Invalid slot range!");
 	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
-		if (this->isIdle(i, length))
-			return i;
+		if (this->isIdle(i, length)) {
+			if (!consider_transmitter)
+				return i;
+			else {
+				if (!phy_table->anyTxReservations(i, length))
+					return i;
+			}
+		}
 	}
-	throw std::runtime_error("No idle slot range of specified length found.");
+	throw std::range_error("No idle slot range of specified length found.");
 }
+
+//int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter) const {
+//	if (consider_transmitter && !phy_table)
+//		throw std::runtime_error("ReservationTable::findEarliestIdleRange that should consider the transmitter with an unset phy_table.");
+//	if (!isValid(start, length))
+//		throw std::invalid_argument("Invalid slot range!");
+//	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
+//		// Is this table idle?
+//		if (this->isIdle(i, length)) {
+//			if (!consider_transmitter) // Don't care about an idle transmitter?
+//				return i; // Just return the slot since this table is idle.
+//			else if (!phy_table->anyTxReservations(i, length)) // Do care? Then check whether it is idle, too.
+//				return i;
+//		}
+//	}
+//	throw std::runtime_error("ReservationTable::findEarliestIdleRange found no idle slot range of specified length.");
+//}
 
 bool ReservationTable::isValid(int32_t slot_offset) const {
 	return abs(slot_offset) <= this->planning_horizon; // can't move more than one horizon into either direction of time.
@@ -153,16 +178,16 @@ uint64_t ReservationTable::getNumIdleSlots() const {
 }
 
 std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offset, unsigned int num_candidates,
-                                                          unsigned int range_length) const {
+                                                          unsigned int range_length, bool consider_transmitter) const {
 	std::vector<int32_t> start_slots;
 	int32_t last_offset = min_offset;
 	for (size_t i = 0; i < num_candidates; i++) {
 		// Try to find another slot range.
 		try {
-			int32_t start_slot = findEarliestIdleRange(last_offset, range_length);
+			int32_t start_slot = findEarliestIdleRange(last_offset, range_length, consider_transmitter);
 			start_slots.push_back(start_slot);
 			last_offset = start_slot + 1; // Next attempt, look later than current one.
-		} catch (const std::runtime_error& e) {
+		} catch (const std::range_error& e) {
 			// This is thrown if no idle range can be found.
 			break; // Stop if no more ranges can be found.
 		} catch (const std::invalid_argument& e) {

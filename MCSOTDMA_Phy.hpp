@@ -18,6 +18,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			bool isTransmitterIdle(unsigned int slot_offset, unsigned int num_slots) const override;
 			
 			void update(uint64_t num_slots);
+			
+			ReservationTable* getTransmitterReservationTable();
 		
 		protected:
 			/** Is notified by MAC ReservationTables of their reservations. */

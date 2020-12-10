@@ -31,7 +31,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		public:
 			void setUp() override {
+				phy_layer = new PHYLayer(planning_horizon);
 				reservation_manager = new ReservationManager(planning_horizon);
+				reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
 				reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
@@ -47,9 +49,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				rlc_layer->setUpperLayer(net_layer);
 				rlc_layer->setLowerLayer(arq_layer);
 				arq_layer->setUpperLayer(rlc_layer);
-				phy_layer = new PHYLayer();
 				phy_layer->setUpperLayer(mac);
 				mac->setLowerLayer(phy_layer);
+				
 			}
 			
 			void tearDown() override {
