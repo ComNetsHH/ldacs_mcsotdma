@@ -22,7 +22,8 @@ class coutdebug {
 		
 		void increaseIndent() {
 			num_indents++;
-			std::cout << "\t";
+			if (verbose)
+				std::cout << "\t";
 		}
 		
 		void decreaseIndent() {
