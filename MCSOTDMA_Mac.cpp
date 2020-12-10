@@ -4,6 +4,7 @@
 
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
+#include "BCLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
 
@@ -112,20 +113,34 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, const MacId& mac_id) {
 }
 
 LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
+	if (id == getMacId()) {
+		throw std::invalid_argument("MCSOTDMA_Mac::getLinkManager for own MAC ID.");
+	}
+	// Beacon should be treated like Broadcast.
+	MacId internal_id = MacId(id);
+	if (internal_id == SYMBOLIC_LINK_ID_BEACON)
+		internal_id = SYMBOLIC_LINK_ID_BROADCAST;
+	
 	// Look for an existing link manager...
-	auto it = link_managers.find(id);
+	auto it = link_managers.find(internal_id);
 	LinkManager* link_manager;
 	// ... if there already is one ...
 	if (it != link_managers.end()) {
 		link_manager = (*it).second;
-		coutd << "found existing LinkManager(" << id.getId() << ") ";
+		coutd << "found existing LinkManager(" << internal_id.getId() << ") ";
 	// ... if there's none ...
 	} else {
-		link_manager = new LinkManager(id, reservation_manager, this);
-		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(id, link_manager));
+		// Auto-assign broadcast channel
+		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
+			link_manager = new BCLinkManager(internal_id, reservation_manager, this);
+			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
+		} else
+			link_manager = new LinkManager(internal_id, reservation_manager, this);
+		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
-		coutd << "instantiated new LinkManager(" << id.getId() << ") ";
+		coutd << "instantiated new LinkManager(" << internal_id.getId() << ") ";
+		
 	}
 	return link_manager;
 }

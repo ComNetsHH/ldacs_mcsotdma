@@ -47,7 +47,15 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void LinkManager::receiveFromLower(L2Packet* packet) {
-	coutd << "LinkManager(" << link_id.getId() << ")::receiveFromLower... ";
+	coutd << "LinkManager(" << link_id << ")::receiveFromLower... ";
+	coutd << "a packet from '" << packet->getOrigin() << "' ";
+	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
+		coutd << "to '" << packet->getDestination() << " ";
+		if (packet->getDestination() == mac->getMacId())
+			coutd << "(us)' -> ";
+		else
+			coutd << "' -> ";
+	}
 	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
 	// Go through all header and payload pairs...
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
@@ -140,7 +148,7 @@ void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
 		// ... schedule it.
 		if (current_reservation_table->isUtilized(slot_offset))
 			throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
-		current_reservation_table->mark(slot_offset, Reservation(mac->getMacId(), Reservation::Action::TX));
+		current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
 		control_messages[absolute_slot] = reply;
 		coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
 	}
@@ -286,6 +294,20 @@ BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	coutd << "LinkManager::onTransmissionSlot... ";
+	L2Packet* segment;
+	// Prioritize link reply control messages.
+	if (!control_messages.empty()) {
+		auto it = control_messages.find(mac->getCurrentSlot());
+		if (it != control_messages.end()) {
+			if (num_slots > 1) // this shouldn't happen
+				throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
+			coutd << "sending control message." << std::endl;
+			segment = (*it).second;
+			control_messages.erase(mac->getCurrentSlot());
+			return segment;
+		}
+	}
+	// Non-control messages can only be sent on established links.
 	if (link_establishment_status != Status::link_established)
 		throw std::runtime_error("LinkManager::onTransmissionSlot for an unestablished link.");
 	// Query PHY for the current datarate.
@@ -293,14 +315,16 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	unsigned long num_bits = datarate * num_slots; // bits
 	// Query ARQ for a new segment.
 	coutd << "requesting " << num_bits << " bits." << std::endl;
-	L2Packet* segment = mac->requestSegment(num_bits, getLinkId());
-	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionSlot received segment with <=1 headers.");
+	segment = mac->requestSegment(num_bits, getLinkId());
+	assert(segment->getHeaders().size() > 1 &&
+	       "LinkManager::onTransmissionSlot received segment with <=1 headers.");
 	for (L2Header* header : segment->getHeaders())
 		setHeaderFields(header);
 	if (current_reservation_timeout == TIMEOUT_THRESHOLD_TRIGGER) {
 		coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
 		requestNewLink();
 	}
+	
 	return segment;
 }
 

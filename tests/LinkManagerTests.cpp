@@ -274,6 +274,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT(payload_not_for_us == nullptr);
 			}
 			
+			void testPrepareLinkEstablishmentRequest() {
+				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, request->getDestination());
+				CPPUNIT_ASSERT_EQUAL(own_id, request->getOrigin());
+			}
+			
 			void testPrepareLinkReply() {
 				L2Packet* reply = link_manager->prepareLinkEstablishmentReply(communication_partner_id);
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
@@ -281,15 +287,30 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void testReplyToRequest() {
-				// Assign a reservation table.
-				ReservationTable* table = reservation_manager->reservation_tables.at(0);
-				link_manager->current_reservation_table = table;
+				// Assign as BC link manager.
+				LinkManager* bc_manager = mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 				// Prepare a link establishment request.
-				coutd.setVerbose(true);
-				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
-				request->getPayloads().at(1) = link_manager->computeRequestProposal();
-				link_manager->receiveFromLower(request);
-				coutd.setVerbose(false);
+//				coutd.setVerbose(true);
+				L2Packet* request = bc_manager->prepareLinkEstablishmentRequest();
+				request->getPayloads().at(1) = bc_manager->computeRequestProposal();
+				// Hackily set it as if this request came from our communication partner.
+				((L2HeaderBase*) request->getHeaders().at(0))->icao_id = communication_partner_id;
+				request->originator_id = communication_partner_id;
+				((L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1))->icao_dest_id = own_id;
+				request->dest_id = own_id;
+				// Receive it on the BC.
+				bc_manager->receiveFromLower(request);
+				// Fetch the now-instantiated P2P manager.
+				LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
+				// And increment time until it has sent the reply.
+				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
+				while (!p2p_manager->control_messages.empty())
+					mac->update(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
+				L2Packet* reply = phy_layer->outgoing_packets.at(0);
+				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
+//				coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
@@ -307,6 +328,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testProcessIncomingBase);
 			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
 			CPPUNIT_TEST(testProcessIncomingUnicast);
+			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
 			CPPUNIT_TEST(testPrepareLinkReply);
 			CPPUNIT_TEST(testReplyToRequest);
 		CPPUNIT_TEST_SUITE_END();

@@ -52,13 +52,17 @@ void BCLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
 }
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
-	: LinkManager(link_id, reservation_manager, mac) {}
+	: LinkManager(link_id, reservation_manager, mac) {
+	link_establishment_status = link_established;
+}
 
 void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
+	LinkManager::notifyOutgoing(num_bits);
 	// must implement broadcast slot selection
 }
 
 L2Packet* BCLinkManager::onTransmissionSlot(unsigned int num_slots) {
+	return LinkManager::onTransmissionSlot(num_slots);
 	// must differentiate between beacon and broadcast slots
 	// and schedule new beacon slots if necessary
 }
