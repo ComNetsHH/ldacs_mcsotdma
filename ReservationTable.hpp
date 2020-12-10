@@ -74,7 +74,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The slot offset until the earliest reservation that corresponds to the one provided.
 			 * @throws std::runtime_error If no reservation of this kind is found.
 			 */
-			int32_t findEarliestOffset(const int32_t start_offset, const Reservation& reservation) const;
+			int32_t findEarliestOffset(int32_t start_offset, const Reservation& reservation) const;
 			
 			void linkFrequencyChannel(FrequencyChannel* channel);
 			
@@ -91,6 +91,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Whether the specified slot is marked as utilized.
 			 */
 			bool isUtilized(int32_t slot_offset) const;
+			
+			bool anyTxReservations(int32_t slot_offset) const;
+			
+			bool anyTxReservations(int32_t start, uint32_t length) const;
 			
 			/**
 			 * @param start Slot offset that marks the beginning of the range of slots.
@@ -140,6 +144,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return False if all reservations match.
 			 */
 			bool operator!=(const ReservationTable& other) const;
+			
+			void linkPhyTable(ReservationTable* phy_table);
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;
@@ -184,6 +190,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** The ReservationTable keeps track of the idle slots it currently has, so that different tables are easily compared for their capacity of new reservations. */
 			uint64_t num_idle_future_slots;
 			FrequencyChannel* freq_channel = nullptr;
+			/**
+			 * The ReservationTable on the PHY layer may be linked, so that all TX reservations are forwarded to it.
+			 * With this, the PHY layer is aware of all slots during which the transmitter will be busy.
+			 */
+			ReservationTable* phy_table = nullptr;
 	};
 }
 

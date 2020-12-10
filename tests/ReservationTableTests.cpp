@@ -453,6 +453,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				other.integrateTxReservations(table);
 				CPPUNIT_ASSERT(other.getReservation(offset) == reservation);
 			}
+			
+			void testAnyTxReservations() {
+				MacId id = MacId(42);
+				int32_t offset = 5;
+				Reservation reservation = Reservation(id, Reservation::Action::TX);
+				CPPUNIT_ASSERT_EQUAL(false, table->anyTxReservations(0, 2*offset));
+				table->mark(offset, reservation);
+				CPPUNIT_ASSERT_EQUAL(true, table->anyTxReservations(0, 2*offset));
+				table->mark(offset, Reservation(id, Reservation::IDLE));
+				CPPUNIT_ASSERT_EQUAL(false, table->anyTxReservations(0, 2*offset));
+				table->mark(offset, Reservation(id, Reservation::BUSY));
+				CPPUNIT_ASSERT_EQUAL(false, table->anyTxReservations(0, 2*offset));
+				table->mark(offset, Reservation(id, Reservation::TX_CONT));
+				CPPUNIT_ASSERT_EQUAL(true, table->anyTxReservations(0, 2*offset));
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -472,6 +487,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testCountReservedTxSlots);
 			CPPUNIT_TEST(testGetTxReservations);
 			CPPUNIT_TEST(testIntegrateTxReservations);
+			CPPUNIT_TEST(testAnyTxReservations);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

@@ -35,6 +35,9 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		num_idle_future_slots--;
 	else if (!currently_idle) // changing from non-idle to idle
 		num_idle_future_slots++;
+	// If a PHY transmission table is linked, mark it there, too.
+	if (phy_table != nullptr)
+		phy_table->mark(slot_offset, reservation);
 	// If this is a multi-slot transmission reservation, set the following ones, too.
 	if (reservation.getNumRemainingTxSlots() > 0) {
 		Reservation next_reservation = Reservation(reservation.getOwner(), Reservation::Action::TX_CONT, reservation.getNumRemainingTxSlots() - 1);
@@ -45,8 +48,27 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 
 bool ReservationTable::isUtilized(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
-		throw std::invalid_argument("Reservation table planning horizon smaller than queried offset!");
+		throw std::invalid_argument("ReservationTable::isUtilized for planning horizon smaller than queried offset!");
 	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() != Reservation::Action::IDLE;
+}
+
+bool ReservationTable::anyTxReservations(int32_t slot_offset) const {
+	if (!this->isValid(slot_offset))
+		throw std::invalid_argument("ReservationTable::anyTxReservations for planning horizon smaller than queried offset!");
+	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() == Reservation::Action::TX
+		|| this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() == Reservation::Action::TX_CONT;
+}
+
+bool ReservationTable::anyTxReservations(int32_t start, uint32_t length) const {
+	if (length == 1)
+		return anyTxReservations(start);
+	if (!this->isValid(start, length))
+		throw std::invalid_argument("ReservationTable::anyTxReservations invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
+	// A slot range contains a TX or TX_CONT if any slot does
+	for (int32_t slot = start; slot < start + int32_t(length); slot++)
+		if (anyTxReservations(slot))
+			return true; // so a single busy one fails the check
+	return false;
 }
 
 bool ReservationTable::isIdle(int32_t slot_offset) const {
@@ -57,7 +79,7 @@ bool ReservationTable::isIdle(int32_t start, uint32_t length) const {
 	if (length == 1)
 		return this->isIdle(start);
 	if (!this->isValid(start, length))
-		throw std::invalid_argument("Invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
+		throw std::invalid_argument("ReservationTable::isIdle invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
 	// A slot range is idle if ALL slots within are idle.
 	for (int32_t slot = start; slot < start + int32_t(length); slot++)
  		if (isUtilized(slot))
@@ -151,7 +173,7 @@ std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offse
 	return start_slots;
 }
 
-int32_t ReservationTable::findEarliestOffset(const int32_t start_offset, const Reservation& reservation) const {
+int32_t ReservationTable::findEarliestOffset(int32_t start_offset, const Reservation& reservation) const {
 	for (uint32_t i = start_offset; i < planning_horizon; i++) {
 		const Reservation& current_reservation = slot_utilization_vec.at(convertOffsetToIndex(i));
 		if (reservation == current_reservation)
@@ -211,6 +233,10 @@ bool ReservationTable::operator==(const ReservationTable& other) const {
 
 bool ReservationTable::operator!=(const ReservationTable& other) const {
 	return !((*this) == other);
+}
+
+void ReservationTable::linkPhyTable(ReservationTable* phy_table) {
+	this->phy_table = phy_table;
 }
 
 ReservationTable::~ReservationTable() = default;
