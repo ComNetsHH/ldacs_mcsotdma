@@ -3,6 +3,7 @@
 //
 
 #include <cassert>
+#include <random>
 #include "LinkManager.hpp"
 #include "coutdebug.hpp"
 #include "MCSOTDMA_Mac.hpp"
@@ -54,26 +55,12 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 		L2Header* header = packet->getHeaders().at(i);
 		L2Packet::Payload* payload = packet->getPayloads().at(i);
 		switch (header->frame_type) {
-			case L2Header::base:
+			case L2Header::base: {
 				coutd << "processing base header -> ";
 				origin_id = processIncomingBase((L2HeaderBase*&) header);
 				break;
-			case L2Header::link_establishment_reply:
-				coutd << "processing link establishment reply -> ";
-				processIncomingLinkEstablishmentReply((L2HeaderLinkEstablishmentReply*&) header);
-				// Delete and set to nullptr s.t. upper layers can easily ignore them.
-				delete header;
-				header = nullptr;
-				delete payload;
-				payload = nullptr;
-				coutd << std::endl;
-				break;
-			case L2Header::link_establishment_request:
-				coutd << "processing link establishment request -> ";
-				processIncomingLinkEstablishmentRequest((L2HeaderLinkEstablishmentRequest*&) header,
-				                                        (ProposalPayload*&) payload);
-				break;
-			case L2Header::beacon:
+			}
+			case L2Header::beacon: {
 				coutd << "processing beacon -> ";
 				processIncomingBeacon(origin_id, (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
@@ -83,16 +70,42 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 				payload = nullptr;
 				coutd << std::endl;
 				break;
-			case L2Header::unicast:
+			}
+			case L2Header::broadcast: {
+				coutd << "processing broadcast -> ";
+				processIncomingBroadcast((L2HeaderBroadcast*&) header);
+				break;
+			}
+			case L2Header::unicast: {
 				coutd <<"processing unicast -> ";
 				processIncomingUnicast((L2HeaderUnicast*&) header, payload);
 				break;
-			case L2Header::broadcast:
-				coutd <<"processing broadcast -> ";
-				processIncomingBroadcast((L2HeaderBroadcast*&) header);
+			}
+			case L2Header::link_establishment_request: {
+				coutd << "processing link establishment request -> ";
+				auto viable_candidates = processIncomingLinkEstablishmentRequest(
+						(L2HeaderLinkEstablishmentRequest*&) header,
+						(ProposalPayload*&) payload);
+				if (!viable_candidates.empty()) {
+					auto chosen_candidate = chooseCandidateSlot(viable_candidates);
+				} else
+					coutd << "no candidates viable. Doing nothing." << std::endl;
 				break;
-			default:
+			}
+			case L2Header::link_establishment_reply: {
+				coutd << "processing link establishment reply -> ";
+				processIncomingLinkEstablishmentReply((L2HeaderLinkEstablishmentReply*&) header);
+				// Delete and set to nullptr s.t. upper layers can easily ignore them.
+				delete header;
+				header = nullptr;
+				delete payload;
+				payload = nullptr;
+				coutd << std::endl;
+				break;
+			}
+			default: {
 				throw std::invalid_argument("LinkManager::receiveFromLower for an unexpected header type.");
+			}
 		}
 	}
 	// After processing, the packet is passed to the upper layer.
@@ -343,7 +356,7 @@ std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::proce
 			// ... and check if they're idle for us ...
 			const ReservationTable* table = reservation_manager->getReservationTable(channel);
 			// ... if they are, then save them.
-			if (table->isIdle(slot_offset, payload->num_slots_per_candidate)) {
+			if (table->isIdle(slot_offset, payload->num_slots_per_candidate) && mac->isTransmitterIdle(slot_offset, payload->num_slots_per_candidate)) {
 				coutd << " (viable)";
 				viable_candidates.emplace_back(channel, slot_offset);
 			} else
@@ -406,6 +419,21 @@ MacId LinkManager::processIncomingBase(L2HeaderBase*& header) {
 		coutd << " -> ";
 	}
 	return origin_id;
+}
+
+const std::pair<const FrequencyChannel*, unsigned int>& LinkManager::chooseCandidateSlot(
+		const std::vector<std::pair<const FrequencyChannel*, unsigned int>>& candidates) const {
+	if (candidates.empty())
+		throw std::invalid_argument("LinkManager::chooseCandidateSlot on empty candidates.");
+	// Choose randomly.
+	std::random_device random_device;
+	std::mt19937 generator(random_device());
+	std::uniform_int_distribution<> distribution(0, candidates.size() - 1);
+	return candidates.at(distribution(generator));
+}
+
+L2Packet* LinkManager::prepareLinkEstablishmentReply() {
+	return nullptr;
 }
 
 

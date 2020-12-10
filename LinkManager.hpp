@@ -80,14 +80,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * When a new packet for this link comes in from the upper layers, this notifies the LinkManager.
+			 * Applies P2P slot selection.
 			 */
-			void notifyOutgoing(unsigned long num_bits);
+			virtual void notifyOutgoing(unsigned long num_bits);
 			
 			/**
 			 * @param num_slots Number of consecutive slots that may be used for this transmission.
 			 * @return A data packet that should now be sent.
 			 */
-			L2Packet* onTransmissionSlot(unsigned int num_slots);
+			virtual L2Packet* onTransmissionSlot(unsigned int num_slots);
 			
 			/**
 			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
@@ -149,6 +150,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The modified data packet, now containing the request payload.
 			 */
 			L2Packet* prepareLinkEstablishmentRequest();
+			
+			/**
+			 * After a link request has been processed and a candidate chosen, this prepares a reply.
+			 * @return
+			 */
+			L2Packet* prepareLinkEstablishmentReply();
 			
 			/**
 			 * When a link estabishment request comes in from the PHY, this processes it.
@@ -221,6 +228,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned long estimateCurrentNumSlots() const;
 			
 			void updateTrafficEstimate(unsigned long num_bits);
+			
+			/**
+			 * When a link request has been received and viable candidates determined, this chooses one slot out of the viable candidates.
+			 * @param candidates (frequency channel, slot offset)-pairs that were both proposed and are idle for us.
+			 * @return A uniformly chosen candidate from 'candidates'.
+			 */
+			const std::pair<const FrequencyChannel*, unsigned int>& chooseCandidateSlot(const std::vector<std::pair<const FrequencyChannel*, unsigned int>>& candidates) const;
 			
 		protected:
 			/** The communication partner's ID, whose link is managed. */

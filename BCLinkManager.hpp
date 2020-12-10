@@ -21,6 +21,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
 			
+			/**
+			 * Applies broadcast slot selection.
+			 * @param num_bits
+			 */
+			void notifyOutgoing(unsigned long num_bits) override;
+			
+			/** Schedules initial beacon reservation. */
+			void startBeaconing();
+			
+			/**
+			 * Handles both broadcasts and beacons.
+			 * @param num_slots
+			 * @return A packet to send.
+			 */
+			L2Packet* onTransmissionSlot(unsigned int num_slots) override;
+		
 		protected:
 			/**
 			 * @return A new beacon.
@@ -31,6 +47,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void setBeaconHeaderFields(L2HeaderBeacon* header) const override;
 			void setBroadcastHeaderFields(L2HeaderBroadcast* header) const override;
+			
+			/** Number of slots in-between beacons. */
+			unsigned int beacon_slot_interval = 32,
+						 current_beacon_slot_interval = beacon_slot_interval;
 	};
 }
 
