@@ -81,7 +81,7 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 				break;
 			}
 			case L2Header::link_establishment_request: {
-				coutd << "processing link establishment request -> ";
+				coutd << "processing link establishment request";
 				auto viable_candidates = processIncomingLinkEstablishmentRequest(
 						(L2HeaderLinkEstablishmentRequest*&) header,
 						(ProposalPayload*&) payload);
@@ -98,8 +98,8 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 						scheduleLinkReply(reply, slot_offset);
 						coutd << "scheduled reply in " << slot_offset << " slots." << std::endl;
 					} else {
+						coutd << "passing on to corresponding LinkManager -> ";
 						mac->forwardLinkReply(reply, reply_channel, slot_offset);
-						coutd << "passed on to corresponding LinkManager, which scheduled the reply in " << slot_offset << " slots." << std::endl;
 					}
 				} else
 					coutd << "no candidates viable. Doing nothing." << std::endl;
@@ -138,8 +138,11 @@ void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
 		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
 	else {
 		// ... schedule it.
+		if (current_reservation_table->isUtilized(slot_offset))
+			throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
 		current_reservation_table->mark(slot_offset, Reservation(mac->getMacId(), Reservation::Action::TX));
 		control_messages[absolute_slot] = reply;
+		coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
 	}
 }
 
@@ -447,9 +450,10 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int offset = header->offset;
 	coutd << "timeout=" << timeout << " length_next=" << length_next << " offset=" << offset << " -> ";
 	if (current_reservation_table == nullptr) {
-		coutd << "unset reservation table -> ignore; ";
-	} else {
-		coutd << "marking next " << timeout << " reservations:";
+//		coutd << "unset reservation table -> ignore; ";
+		throw std::runtime_error("LinkManager::processIncomingBase for unset ReservationTable.");
+	} else if (timeout > 0) {
+		coutd << " marking next " << timeout << " reservations:";
 		unsigned int remaining_tx_slots = length_next - 1;
 		Reservation reservation = Reservation(header->icao_id, Reservation::TX, remaining_tx_slots);
 		for (size_t i = 0; i < timeout; i++) {

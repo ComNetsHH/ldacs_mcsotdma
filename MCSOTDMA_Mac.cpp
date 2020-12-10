@@ -118,14 +118,14 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	// ... if there already is one ...
 	if (it != link_managers.end()) {
 		link_manager = (*it).second;
-		coutd << "found existing LinkManager." << std::endl;
+		coutd << "found existing LinkManager(" << id.getId() << ") ";
 	// ... if there's none ...
 	} else {
 		link_manager = new LinkManager(id, reservation_manager, this);
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
-		coutd << "instantiated new LinkManager." << std::endl;
+		coutd << "instantiated new LinkManager(" << id.getId() << ") ";
 	}
 	return link_manager;
 }
