@@ -50,19 +50,18 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 	coutd << "LinkManager(" << link_id.getId() << ")::receiveFromLower... ";
 	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
 	// Go through all header and payload pairs...
-	MacId origin_id = SYMBOLIC_ID_UNSET;
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		L2Header* header = packet->getHeaders().at(i);
 		L2Packet::Payload* payload = packet->getPayloads().at(i);
 		switch (header->frame_type) {
 			case L2Header::base: {
 				coutd << "processing base header -> ";
-				origin_id = processIncomingBase((L2HeaderBase*&) header);
+				processIncomingBase((L2HeaderBase*&) header);
 				break;
 			}
 			case L2Header::beacon: {
 				coutd << "processing beacon -> ";
-				processIncomingBeacon(origin_id, (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
+				processIncomingBeacon(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -87,9 +86,28 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 						(L2HeaderLinkEstablishmentRequest*&) header,
 						(ProposalPayload*&) payload);
 				if (!viable_candidates.empty()) {
+					// Choose a candidate out of the set.
 					auto chosen_candidate = chooseCandidateSlot(viable_candidates);
+					coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
+					// Prepare a link reply.
+					L2Packet* reply = prepareLinkEstablishmentReply(packet->getOrigin());
+					const FrequencyChannel* reply_channel = chosen_candidate.first;
+					int32_t slot_offset = chosen_candidate.second;
+					// If this LinkManager manages the selected channel...
+					if (reply_channel == current_channel) {
+						scheduleLinkReply(reply, slot_offset);
+						coutd << "scheduled reply in " << slot_offset << " slots." << std::endl;
+					} else {
+						mac->forwardLinkReply(reply, reply_channel, slot_offset);
+						coutd << "passed on to corresponding LinkManager, which scheduled the reply in " << slot_offset << " slots." << std::endl;
+					}
 				} else
 					coutd << "no candidates viable. Doing nothing." << std::endl;
+				
+				delete header;
+				header = nullptr;
+				delete payload;
+				payload = nullptr;
 				break;
 			}
 			case L2Header::link_establishment_reply: {
@@ -111,6 +129,18 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 	// After processing, the packet is passed to the upper layer.
 	coutd << "passing to upper layer." << std::endl;
 	mac->passToUpper(packet);
+}
+
+void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
+	uint64_t absolute_slot = mac->getCurrentSlot() + slot_offset;
+	auto it = control_messages.find(absolute_slot);
+	if (it != control_messages.end())
+		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
+	else {
+		// ... schedule it.
+		current_reservation_table->mark(slot_offset, Reservation(mac->getMacId(), Reservation::Action::TX));
+		control_messages[absolute_slot] = reply;
+	}
 }
 
 double LinkManager::getCurrentTrafficEstimate() const {
@@ -411,18 +441,17 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 	}
 }
 
-MacId LinkManager::processIncomingBase(L2HeaderBase*& header) {
+void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int timeout = header->timeout;
 	unsigned int length_next = header->length_next;
 	unsigned int offset = header->offset;
 	coutd << "timeout=" << timeout << " length_next=" << length_next << " offset=" << offset << " -> ";
-	const MacId& origin_id = header->icao_id;
 	if (current_reservation_table == nullptr) {
 		coutd << "unset reservation table -> ignore; ";
 	} else {
 		coutd << "marking next " << timeout << " reservations:";
 		unsigned int remaining_tx_slots = length_next - 1;
-		Reservation reservation = Reservation(origin_id, Reservation::TX, remaining_tx_slots);
+		Reservation reservation = Reservation(header->icao_id, Reservation::TX, remaining_tx_slots);
 		for (size_t i = 0; i < timeout; i++) {
 			int32_t current_offset = (i+1) * offset;
 			current_reservation_table->mark(current_offset, reservation);
@@ -430,7 +459,6 @@ MacId LinkManager::processIncomingBase(L2HeaderBase*& header) {
 		}
 		coutd << " -> ";
 	}
-	return origin_id;
 }
 
 const std::pair<const FrequencyChannel*, unsigned int>& LinkManager::chooseCandidateSlot(
@@ -442,6 +470,13 @@ const std::pair<const FrequencyChannel*, unsigned int>& LinkManager::chooseCandi
 	std::mt19937 generator(random_device());
 	std::uniform_int_distribution<> distribution(0, candidates.size() - 1);
 	return candidates.at(distribution(generator));
+}
+
+void LinkManager::assign(const FrequencyChannel* channel) {
+	if (current_channel != nullptr || current_reservation_table != nullptr)
+		throw std::runtime_error("LinkManager reassignment not yet implemented!");
+	this->current_channel = channel;
+	this->current_reservation_table = reservation_manager->getReservationTable(channel);
 }
 
 

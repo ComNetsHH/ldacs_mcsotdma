@@ -137,6 +137,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param reservation_offset Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions.
 			 */
 			void setReservationOffset(unsigned int reservation_offset);
+			
+			/**
+			 * Assign both FrequencyChannel and corresponding ReservationTable.
+			 * @param channel
+			 */
+			void assign(const FrequencyChannel* channel);
+			
+			/**
+			 * Schedules a link reply.
+			 * @param reply
+			 * @param slot_offset
+			 */
+			void scheduleLinkReply(L2Packet* reply, int32_t slot_offset);
 		
 		protected:
 			
@@ -196,9 +209,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * Processes the base header of each incoming packet.
 			 * @param header
-			 * @return The originator's ID.
 			 */
-			MacId processIncomingBase(L2HeaderBase*& header);
+			void processIncomingBase(L2HeaderBase*& header);
 			
 			/**
 			 * @return A payload that should accompany a link request.
@@ -247,7 +259,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Link establishment status. */
 			Status link_establishment_status;
 			/** A link is assigned on one particular frequency channel. It may be nullptr unless the link_establishment status is `link_established`. */
-			FrequencyChannel* current_channel = nullptr;
+			const FrequencyChannel* current_channel = nullptr;
 			/** A link is assigned on one particular frequency channel's reservation table. It may be nullptr unless the link_establishment status is `link_established`. */
 			ReservationTable* current_reservation_table = nullptr;
 			/** The minimum number of slots a proposed slot should be in the future. */
@@ -275,7 +287,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
 			unsigned int current_reservation_offset = 10;
 			/** Link replies *must* be sent on specific slots. This container holds these bindings. */
-			std::map<Timestamp, L2Packet*> control_messages;
+			std::map<uint64_t , L2Packet*> control_messages;
 	};
 }
 

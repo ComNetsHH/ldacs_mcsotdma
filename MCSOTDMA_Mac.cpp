@@ -18,30 +18,13 @@ MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 
 void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
 	coutd << "MAC::notifyOutgoing(" << num_bits << ", " << mac_id.getId() << ")... ";
-	// Look for an existing link manager...
-	auto it = link_managers.find(mac_id);
-	LinkManager* link_manager;
-	// ... if there's none ...
-	if (it == link_managers.end()) {
-		link_manager = instantiateLinkManager(mac_id);
-		coutd << "instantiated new LinkManager." << std::endl;
-	// ... if there already is one ...
-	} else {
-		link_manager = (*it).second;
-		coutd << "found existing LinkManager." << std::endl;
-	}
-	
 	// Tell the manager of new data.
-	link_manager->notifyOutgoing(num_bits);
+	getLinkManager(mac_id)->notifyOutgoing(num_bits);
 }
 
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {
 	assert(lower_layer && "MCSOTDMA_Mac's lower layer is unset.");
 	lower_layer->receiveFromUpper(packet, center_frequency);
-}
-
-LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
-	return link_managers.at(id);
 }
 
 void MCSOTDMA_Mac::passToUpper(L2Packet* packet) {
@@ -122,25 +105,33 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 	coutd.decreaseIndent();
 }
 
-void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, const MacId& id) {
-	coutd << "MAC::receiveFromLower(" << id.getId() << ")... ";
-	auto it = link_managers.find(id);
-	LinkManager* link_manager;
-	// Received packet for an unmanaged link.
-	if (it == link_managers.end()) {
-		link_manager = instantiateLinkManager(id);
-		coutd << "instantiated new LinkManager." << std::endl;
-	} else {
-		link_manager = it->second;
-		coutd << "found existing LinkManager." << std::endl;
-	}
-	link_manager->receiveFromLower(packet);
+void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, const MacId& mac_id) {
+	coutd << "MAC::receiveFromLower(" << mac_id.getId() << ")... ";
+	auto it = link_managers.find(mac_id);
+	getLinkManager(mac_id)->receiveFromLower(packet);
 }
 
-LinkManager* MCSOTDMA_Mac::instantiateLinkManager(const MacId& id) {
-	auto* link_manager = new LinkManager(id, reservation_manager, this);
-	auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(id, link_manager));
-	if (!insertion_result.second)
-		throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
+LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
+	// Look for an existing link manager...
+	auto it = link_managers.find(id);
+	LinkManager* link_manager;
+	// ... if there already is one ...
+	if (it != link_managers.end()) {
+		link_manager = (*it).second;
+		coutd << "found existing LinkManager." << std::endl;
+	// ... if there's none ...
+	} else {
+		link_manager = new LinkManager(id, reservation_manager, this);
+		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(id, link_manager));
+		if (!insertion_result.second)
+			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
+		coutd << "instantiated new LinkManager." << std::endl;
+	}
 	return link_manager;
+}
+
+void MCSOTDMA_Mac::forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset) {
+	LinkManager* manager = getLinkManager(reply->getDestination());
+	manager->assign(channel);
+	manager->scheduleLinkReply(reply, slot_offset);
 }

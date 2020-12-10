@@ -236,7 +236,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				link_manager->current_reservation_table = table;
 				// Prepare a link establishment request.
 //				coutd.setVerbose(true);
-				// Set this link as established.
 				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
 				request->getPayloads().at(1) = link_manager->computeRequestProposal();
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
@@ -280,6 +279,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
 				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
 			}
+			
+			void testReplyToRequest() {
+				// Assign a reservation table.
+				ReservationTable* table = reservation_manager->reservation_tables.at(0);
+				link_manager->current_reservation_table = table;
+				// Prepare a link establishment request.
+				coutd.setVerbose(true);
+				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
+				request->getPayloads().at(1) = link_manager->computeRequestProposal();
+				link_manager->receiveFromLower(request);
+				coutd.setVerbose(false);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -297,6 +308,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
 			CPPUNIT_TEST(testProcessIncomingUnicast);
 			CPPUNIT_TEST(testPrepareLinkReply);
+			CPPUNIT_TEST(testReplyToRequest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

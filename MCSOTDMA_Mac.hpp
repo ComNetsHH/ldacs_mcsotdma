@@ -27,7 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void passToLower(L2Packet* packet, unsigned int center_frequency) override;
 			
-			void receiveFromLower(L2Packet* packet, const MacId& id) override;
+			void receiveFromLower(L2Packet* packet, const MacId& mac_id) override;
 			
 			/**
 			 * @param id
@@ -40,14 +40,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Notify this MAC that time has passed. */
 			void update(int64_t num_slots) override;
 			
+			/**
+			 * When a LinkManager computes a link reply, it may belong to a FrequencyChannel it doesn't manage.
+			 * In this case, it delegates the sending of the reply to the corresponding LinkManager through this function.
+			 * @param reply
+			 * @param channel
+			 * @param slot_offset
+			 */
+			void forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset);
+			
 		protected:
 			/**
 			 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.
 			 * @param channel
 			 */
 			virtual void onReceptionSlot(const FrequencyChannel* channel) = 0;
-			
-			LinkManager* instantiateLinkManager(const MacId& id);
 			
 			/** Keeps track of transmission resource reservations. */
 			ReservationManager* reservation_manager;
