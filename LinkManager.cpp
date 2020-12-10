@@ -149,6 +149,18 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	return request;
 }
 
+L2Packet* LinkManager::prepareLinkEstablishmentReply(const MacId& destination_id) {
+	auto* reply = new L2Packet();
+	// Base header.
+	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
+	reply->addPayload(base_header, nullptr);
+	// Reply.
+	auto* reply_header = new L2HeaderLinkEstablishmentReply();
+	reply_header->icao_dest_id = destination_id;
+	reply->addPayload(reply_header, nullptr);
+	return reply;
+}
+
 void LinkManager::setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots) {
 	this->num_proposed_channels = num_candidate_channels;
 	this->num_proposed_slots = num_candidate_slots;
@@ -430,10 +442,6 @@ const std::pair<const FrequencyChannel*, unsigned int>& LinkManager::chooseCandi
 	std::mt19937 generator(random_device());
 	std::uniform_int_distribution<> distribution(0, candidates.size() - 1);
 	return candidates.at(distribution(generator));
-}
-
-L2Packet* LinkManager::prepareLinkEstablishmentReply() {
-	return nullptr;
 }
 
 

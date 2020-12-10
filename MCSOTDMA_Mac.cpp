@@ -49,7 +49,9 @@ void MCSOTDMA_Mac::passToUpper(L2Packet* packet) {
 	upper_layer->receiveFromLower(packet);
 }
 
-void MCSOTDMA_Mac::update(uint64_t num_slots) {
+void MCSOTDMA_Mac::update(int64_t num_slots) {
+	// Update time.
+	IMac::update(num_slots);
 	coutd << "MAC::update(" << num_slots << ")... ";
 	// Notify the ReservationManager.
 	assert(reservation_manager && "MCSOTDMA_MAC::update with unset ReserationManager.");
@@ -67,20 +69,23 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 		coutd << reservation << std::endl;
 		coutd.increaseIndent();
 		switch (reservation.getAction()) {
-			case Reservation::IDLE:
+			case Reservation::IDLE: {
 				// No user is utilizing this slot.
 				// Nothing to do.
 				break;
-			case Reservation::BUSY:
+			}
+			case Reservation::BUSY: {
 				// Some other user is utilizing this slot.
 				// Nothing to do.
 				break;
-			case Reservation::TX_CONT:
+			}
+			case Reservation::TX_CONT: {
 				// Transmission has already started, so a transmitter is busy.
 				num_txs++;
 				// Nothing else to do.
 				break;
-			case Reservation::RX:
+			}
+			case Reservation::RX: {
 				// Ensure that we have not too many receptions scheduled.
 				num_rxs++;
 				if (num_rxs > num_receivers)
@@ -88,7 +93,8 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 				// Tune the receiver.
 				onReceptionSlot(channel);
 				break;
-			case Reservation::TX:
+			}
+			case Reservation::TX: {
 				// Ensure that we have no simultaneous transmissions scheduled.
 				num_txs++;
 				if (num_txs > num_transmitters)
@@ -99,13 +105,16 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 				try {
 					link_manager = link_managers.at(id);
 				} catch (const std::exception& e) {
-					throw std::runtime_error("MCSOTDMA_Mac::update caught exception while looking for the corresponding LinkManager: " + std::string(e.what()));
+					throw std::runtime_error(
+							"MCSOTDMA_Mac::update caught exception while looking for the corresponding LinkManager: " +
+							std::string(e.what()));
 				}
 				// Tell it about the transmission slot.
 				unsigned int num_tx_slots = reservation.getNumRemainingTxSlots() + 1;
 				L2Packet* outgoing_packet = link_manager->onTransmissionSlot(num_tx_slots);
 				passToLower(outgoing_packet, channel->getCenterFrequency());
 				break;
+			}
 		}
 		coutd.decreaseIndent();
 		coutd << std::endl;

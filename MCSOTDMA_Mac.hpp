@@ -38,7 +38,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void passToUpper(L2Packet* packet) override;
 			
 			/** Notify this MAC that time has passed. */
-			void update(uint64_t num_slots);
+			void update(int64_t num_slots) override;
 			
 		protected:
 			/**

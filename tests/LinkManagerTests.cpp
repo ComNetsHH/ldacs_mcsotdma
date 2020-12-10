@@ -274,6 +274,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT(unicast_packet_not_intended_for_us->getHeaders().at(1) == nullptr);
 				CPPUNIT_ASSERT(payload_not_for_us == nullptr);
 			}
+			
+			void testPrepareLinkReply() {
+				L2Packet* reply = link_manager->prepareLinkEstablishmentReply(communication_partner_id);
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
+				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -290,6 +296,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testProcessIncomingBase);
 			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
 			CPPUNIT_TEST(testProcessIncomingUnicast);
+			CPPUNIT_TEST(testPrepareLinkReply);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

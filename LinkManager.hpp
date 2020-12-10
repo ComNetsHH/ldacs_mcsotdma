@@ -153,9 +153,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * After a link request has been processed and a candidate chosen, this prepares a reply.
+			 * @param destination_id
 			 * @return
 			 */
-			L2Packet* prepareLinkEstablishmentReply();
+			L2Packet* prepareLinkEstablishmentReply(const MacId& destination_id);
 			
 			/**
 			 * When a link estabishment request comes in from the PHY, this processes it.
@@ -273,6 +274,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned short current_reservation_slot_length = 1;
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
 			unsigned int current_reservation_offset = 10;
+			/** Link replies *must* be sent on specific slots. This container holds these bindings. */
+			std::map<Timestamp, L2Packet*> control_messages;
 	};
 }
 
