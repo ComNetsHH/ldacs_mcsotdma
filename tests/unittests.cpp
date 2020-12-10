@@ -12,6 +12,7 @@
 #include "LinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
 #include "BCLinkManagerTests.cpp"
+#include "SystemTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
@@ -24,6 +25,7 @@ int main() {
 	runner.addTest(LinkManagerTests::suite());
 	runner.addTest(BCLinkManagerTests::suite());
 	runner.addTest(MCSOTDMA_MacTests::suite());
+	runner.addTest(SystemTests::suite());
 	
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

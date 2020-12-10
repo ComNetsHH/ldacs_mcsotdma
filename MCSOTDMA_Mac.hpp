@@ -20,7 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			friend class MCSOTDMA_MacTests;
 			
-			MCSOTDMA_Mac(const MacId& id, ReservationManager* reservation_manager);
+			MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);
 			~MCSOTDMA_Mac() override;
 			
 			void notifyOutgoing(unsigned long num_bits, const MacId& mac_id) override;

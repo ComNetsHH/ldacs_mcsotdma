@@ -8,7 +8,7 @@ include_directories(glue-lib-headers) # Includes the library header files, i.e. 
 # MC-SOTDMA source files.
 set(MCSOTDMA_SRC ReservationTable.cpp ReservationTable.hpp ReservationManager.cpp ReservationManager.hpp FrequencyChannel.cpp FrequencyChannel.hpp Reservation.cpp Reservation.hpp CPRPosition.hpp LinkManager.cpp LinkManager.hpp coutdebug.cpp coutdebug.hpp MCSOTDMA_Mac.cpp MCSOTDMA_Mac.hpp BCLinkManager.cpp BCLinkManager.hpp BeaconPayload.hpp MCSOTDMA_Phy.cpp MCSOTDMA_Phy.hpp)
 # MC-SOTDMA unittest files.
-set(MCSOTDMA_TEST_SRC tests/unittests.cpp tests/ReservationTableTests.cpp tests/ReservationManagerTests.cpp tests/FrequencyChannelTests.cpp tests/ReservationTests.cpp tests/LinkManagerTests.cpp tests/MCSOTDMA_MacTests.cpp tests/MockLayers.hpp tests/BCLinkManagerTests.cpp)
+set(MCSOTDMA_TEST_SRC tests/unittests.cpp tests/ReservationTableTests.cpp tests/ReservationManagerTests.cpp tests/FrequencyChannelTests.cpp tests/ReservationTests.cpp tests/LinkManagerTests.cpp tests/MCSOTDMA_MacTests.cpp tests/MockLayers.hpp tests/BCLinkManagerTests.cpp tests/SystemTests.cpp)
 
 # MC-SOTDMA library target.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

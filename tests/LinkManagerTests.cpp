@@ -26,13 +26,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			void setUp() override {
 				phy_layer = new PHYLayer(planning_horizon);
-				reservation_manager = new ReservationManager(planning_horizon);
+				mac = new MACLayer(own_id, planning_horizon);
+				reservation_manager = mac->reservation_manager;
 				reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
 				reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				mac = new MACLayer(own_id, reservation_manager);
+				
 				link_manager = new LinkManager(communication_partner_id, reservation_manager, mac);
 				arq_layer = new ARQLayer();
 				mac->setUpperLayer(arq_layer);
@@ -48,7 +49,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void tearDown() override {
-				delete reservation_manager;
 				delete mac;
 				delete link_manager;
 				delete arq_layer;
@@ -277,8 +277,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testPrepareLinkEstablishmentRequest() {
 				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
+				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, request->getDestination());
+				CPPUNIT_ASSERT_EQUAL(own_id, request->getOrigin());
+				delete request;
+				link_manager->link_establishment_status = LinkManager::link_established;
+				request = link_manager->prepareLinkEstablishmentRequest();
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, request->getDestination());
 				CPPUNIT_ASSERT_EQUAL(own_id, request->getOrigin());
+				delete request;
 			}
 			
 			void testPrepareLinkReply() {

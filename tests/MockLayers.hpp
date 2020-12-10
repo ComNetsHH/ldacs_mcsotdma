@@ -40,8 +40,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	};
 	
 	class MACLayer : public MCSOTDMA_Mac {
+			
+			friend class LinkManagerTests;
+			friend class BCLinkManagerTests;
+			friend class SystemTests;
+			
 		public:
-			explicit MACLayer(const MacId& id, ReservationManager* manager) : MCSOTDMA_Mac(id, manager) {}
+			explicit MACLayer(const MacId& id, uint32_t planning_horizon) : MCSOTDMA_Mac(id, planning_horizon) {}
 		
 		protected:
 			void onReceptionSlot(const FrequencyChannel* channel) override {
@@ -109,7 +114,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
-				coutd << "RLC received injection... ";
+				coutd << "RLC received injection for '" << packet->getDestination() << "'... ";
 				injections.push_back(packet);
 			}
 			

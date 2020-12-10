@@ -10,15 +10,16 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, ReservationManager* reservation_manager) : IMac(id), reservation_manager(reservation_manager) {}
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)) {}
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 	for (auto& pair : link_managers)
 		delete pair.second;
+	delete reservation_manager;
 }
 
 void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
-	coutd << "MAC::notifyOutgoing(" << num_bits << ", " << mac_id.getId() << ")... ";
+	coutd << "MAC::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id.getId() << ")... ";
 	// Tell the manager of new data.
 	getLinkManager(mac_id)->notifyOutgoing(num_bits);
 }

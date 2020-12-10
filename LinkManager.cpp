@@ -20,7 +20,7 @@ const MacId& LinkManager::getLinkId() const {
 }
 
 void LinkManager::notifyOutgoing(unsigned long num_bits) {
-	coutd << "LinkManager::notifyOutgoing on link '" << link_id.getId() << "'";
+	coutd << "LinkManager::notifyOutgoing(id='" << link_id.getId() << "')";
 	
 	// Update the moving average traffic estimate.
 	updateTrafficEstimate(num_bits);
@@ -38,7 +38,7 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 			return;
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
-			coutd << ": link is not established." << std::endl;
+			coutd << ": link is not established -> ";
 			requestNewLink();
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_establishment_status) + "'.");
@@ -184,7 +184,9 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
 	request->addPayload(base_header, nullptr);
 	// Instantiate request header.
-	auto* request_header = new L2HeaderLinkEstablishmentRequest(link_id, link_should_be_arq_protected, 0, 0, 0);
+	// If the link is not yet established, the request must be sent on the broadcast channel.
+	MacId dest_id = link_establishment_status == link_established ? link_id : SYMBOLIC_LINK_ID_BROADCAST;
+	auto* request_header = new L2HeaderLinkEstablishmentRequest(dest_id, link_should_be_arq_protected, 0, 0, 0);
 	auto* body = new ProposalPayload(this->num_proposed_channels, this->num_proposed_slots);
 	request->addPayload(request_header, body);
 	return request;
@@ -246,6 +248,8 @@ void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		L2Header* header = packet->getHeaders().at(i);
 		if (header->frame_type == L2Header::link_establishment_request) {
+			// Set the destination ID (may be broadcast until now).
+			((L2HeaderLinkEstablishmentRequest*) header)->icao_dest_id = link_id;
 			// Compute a current proposal.
 			packet->getPayloads().at(i) = computeRequestProposal();
 			// Remember the proposal.
