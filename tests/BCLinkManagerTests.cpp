@@ -88,10 +88,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT(tbl->getReservation(3) == reservation);
 				delete beacon;
 			}
+			
+			void testGetNumCandidateSlots() {
+				link_manager->contention_estimator.reportBroadcast(communication_partner_id);
+				link_manager->contention_estimator.update();
+				link_manager->contention_estimator.update();
+				// 50% broadcast rate of the only neighbor
+				CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageBroadcastRate());
+				// 50% target collision probability
+				double target_collision_prob = .5;
+				uint expected_num_slots = 2; // => Picking 1 slot out of 2 has a collision probability of 50% then.
+				CPPUNIT_ASSERT_EQUAL(expected_num_slots, link_manager->getNumCandidateSlots(target_collision_prob));
+				// 5% target collision probability
+				target_collision_prob = .05;
+				expected_num_slots = 11; // comparing to MATLAB implementation
+				CPPUNIT_ASSERT_EQUAL(expected_num_slots, link_manager->getNumCandidateSlots(target_collision_prob));
+				MacId other_id = MacId(communication_partner_id.getId() + 1);
+				link_manager->contention_estimator.reportBroadcast(communication_partner_id);
+				link_manager->contention_estimator.reportBroadcast(other_id);
+				link_manager->contention_estimator.update();
+				link_manager->contention_estimator.update();
+				// 50% broadcast rate of *two* neighbors
+				CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageBroadcastRate());
+				expected_num_slots = 21; // comparing to MATLAB implementation
+				CPPUNIT_ASSERT_EQUAL(expected_num_slots, link_manager->getNumCandidateSlots(target_collision_prob));
+			}
 		
 		CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 			CPPUNIT_TEST(testSetBeaconHeader);
 			CPPUNIT_TEST(testProcessIncomingBeacon);
+			CPPUNIT_TEST(testGetNumCandidateSlots);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

@@ -85,3 +85,27 @@ void BCLinkManager::update(uint64_t num_slots) {
 	for (auto i = 0; i < num_slots; i++)
 		contention_estimator.update();
 }
+
+unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {
+	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
+		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
+	// Average broadcast rate.
+	double r = contention_estimator.getAverageBroadcastRate();
+	// Number of active neighbors.
+	unsigned int m = contention_estimator.getNumActiveNeighbors();
+	double expected_num_bc_accesses = 0;
+	// For every number n of channel accesses from 0 to all neighbors...
+	for (auto n = 0; n <= m; n++) {
+		// Probability P(X=n) of n accesses.
+		double p = ((double) nchoosek(m, n)) * pow(r, n) * pow(1 - r, m - n);
+		// Number of slots that should be chosen if n accesses occur.
+		unsigned int k = n == 0 ? 1 : ceil(1.0 / (1.0 - pow(1.0 - target_collision_prob, 1.0 / n)));
+		expected_num_bc_accesses += p*k;
+	}
+	return ceil(expected_num_bc_accesses);
+}
+
+unsigned long long BCLinkManager::nchoosek(unsigned long n, unsigned long k) const {
+	if (k == 0) return 1;
+	return (n * nchoosek(n - 1, k - 1)) / k;
+}

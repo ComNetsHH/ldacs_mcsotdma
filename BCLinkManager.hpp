@@ -66,6 +66,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void setBeaconHeaderFields(L2HeaderBeacon* header) const override;
 			void setBroadcastHeaderFields(L2HeaderBroadcast* header) const override;
 			
+			/**
+			 * From neighbor observations, their broadcast activity is measured.
+			 * This contention is used to parameterize a Binomial distribution.
+			 * A random variable distributed according to this distribution is used to find its expectation value,
+			 * which gives the expected number of accesses on the broadcast channel in the range [0, num_neighbors] (inclusive).
+			 * From this, the number of idle slots is found, s.t. choosing one uniformly has the given probability of colliding with a neighbor transmission.
+			 * @param target_collision_prob Target collision probability.
+			 * @return Number of idle slots to consider to achieve the target collision probability.
+			 */
+			unsigned int getNumCandidateSlots(double target_collision_prob) const;
+			unsigned long long nchoosek(unsigned long n, unsigned long k) const;
+			
 			/** Number of slots in-between beacons. */
 			unsigned int beacon_slot_interval = 32,
 						 current_beacon_slot_interval = beacon_slot_interval;
