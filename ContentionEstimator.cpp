@@ -2,6 +2,7 @@
 // Created by Sebastian Lindner on 11.12.20.
 //
 
+#include <iostream>
 #include "ContentionEstimator.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
@@ -34,6 +35,26 @@ double ContentionEstimator::getContentionEstimate(const MacId& id) const {
 
 size_t ContentionEstimator::getHorizon() const {
 	return this->horizon;
+}
+
+unsigned int ContentionEstimator::getNumActiveNeighbors() const {
+	unsigned int n = 0;
+	for (const auto& estimate : contention_estimates)
+		if (estimate.second.get() > 0.0)
+			n++;
+	return n;
+}
+
+double ContentionEstimator::getAverageBroadcastRate() const {
+	double r = 0.0, n = 0.0;
+	for (const auto& estimate : contention_estimates) {
+		double neighbor_rate = estimate.second.get();
+		if (neighbor_rate > 0.0) {
+			r += neighbor_rate;
+			n++;
+		}
+	}
+	return n > 0.0 ? r/n : 0.0;
 }
 
 

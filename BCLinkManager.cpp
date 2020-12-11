@@ -16,7 +16,7 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
 }
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
-	: BCLinkManager(link_id, reservation_manager, mac, 2500) {}
+	: BCLinkManager(link_id, reservation_manager, mac, 5000 /* past 60s for 12ms slots */) {}
 
 L2Packet* BCLinkManager::prepareBeacon() {
 	auto* beacon = new L2Packet();
@@ -75,4 +75,13 @@ L2Packet* BCLinkManager::onTransmissionSlot(unsigned int num_slots) {
 	return LinkManager::onTransmissionSlot(num_slots);
 	// must differentiate between beacon and broadcast slots
 	// and schedule new beacon slots if necessary
+}
+
+unsigned int BCLinkManager::getNumActiveNeighbors() const {
+	return contention_estimator.getNumActiveNeighbors();
+}
+
+void BCLinkManager::update(uint64_t num_slots) {
+	for (auto i = 0; i < num_slots; i++)
+		contention_estimator.update();
 }

@@ -29,7 +29,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * @param id
-			 * @return Current contention estimate as avg_broadcasts/horizon.
+			 * @return Current contention estimate 0<=x<=1 as avg_broadcasts/horizon.
 			 */
 			double getContentionEstimate(const MacId& id) const;
 			
@@ -37,6 +37,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return The number of slots the estimate is computed over.
 			 */
 			size_t getHorizon() const;
+			
+			/**
+			 * @return The number of neighbors that have a contention estimate larger than zero.
+			 */
+			unsigned int getNumActiveNeighbors() const;
+			
+			/**
+			 * Calculates the average broadcast rate among *active* neighbors.
+			 * Active means that their current estimate is larger than zero.
+			 * @return Average active neighbor broadcast rate.
+			 */
+			double getAverageBroadcastRate() const;
 			
 		protected:
 			std::map<MacId, MovingAverage> contention_estimates;

@@ -38,9 +38,43 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					}
 				}
 			}
+			
+			void testGetNumActiveNeighbors() {
+				MacId other_id = MacId(id.getId() + 1);
+				CPPUNIT_ASSERT_EQUAL(uint(0), estimator->getNumActiveNeighbors());
+				for (size_t i = 0; i < horizon/2; i++) {
+					estimator->reportBroadcast(id);
+					estimator->reportBroadcast(other_id);
+					estimator->update();
+				}
+				CPPUNIT_ASSERT_EQUAL(uint(2), estimator->getNumActiveNeighbors());
+				for (size_t i = 0; i < horizon; i++) {
+					estimator->reportBroadcast(id);
+					estimator->update();
+				}
+				CPPUNIT_ASSERT_EQUAL(uint(1), estimator->getNumActiveNeighbors());
+				for (size_t i = 0; i < horizon; i++)
+					estimator->update();
+				CPPUNIT_ASSERT_EQUAL(uint(0), estimator->getNumActiveNeighbors());
+			}
+			
+			void getGetAverageBroadcastRate() {
+				MacId other_id = MacId(id.getId() + 1);
+				CPPUNIT_ASSERT_EQUAL(0.0, estimator->getAverageBroadcastRate());
+				for (size_t i = 0; i < horizon; i++) {
+					if (i % 2 == 0)
+						estimator->reportBroadcast(id);
+					if (i % 4 == 0)
+						estimator->reportBroadcast(other_id);
+					estimator->update();
+				}
+				CPPUNIT_ASSERT_EQUAL((0.5+0.25)/2, estimator->getAverageBroadcastRate());
+			}
 		
 		CPPUNIT_TEST_SUITE(ContentionEstimatorTests);
 			CPPUNIT_TEST(testEstimator);
+			CPPUNIT_TEST(testGetNumActiveNeighbors);
+			CPPUNIT_TEST(getGetAverageBroadcastRate);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	
