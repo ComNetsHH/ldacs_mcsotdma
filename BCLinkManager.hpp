@@ -6,6 +6,7 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_BCLINKMANAGER_HPP
 
 #include "LinkManager.hpp"
+#include "ContentionEstimator.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -19,6 +20,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class BCLinkManagerTests;
 			
 		public:
+			/**
+			 *
+			 * @param link_id ID this manager manages.
+			 * @param reservation_manager
+			 * @param mac
+			 * @param num_slots_contention_estimate Number of slots to include in the neighbor contention estimate.
+			 */
+			BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int num_slots_contention_estimate);
 			BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
 			
 			/**
@@ -57,8 +66,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						 current_beacon_slot_interval = beacon_slot_interval;
 			
 			/** For each neighbor, a moving average over past slots is kept, so that the contention by the neighbors is estimated. */
-			std::map<MacId, MovingAverage> contention_estimates;
-			std::map<MacId, bool> received_broadcast;
+			ContentionEstimator contention_estimator;
 			/** Based on the local contention estimate and this target collision probability, slot selection selects a number of slots. */
 			double target_collision_probability = 0.1;
 	};

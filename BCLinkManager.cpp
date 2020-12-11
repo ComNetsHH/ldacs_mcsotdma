@@ -9,6 +9,15 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
+BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac,
+                             unsigned int num_slots_contention_estimate)
+     : LinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
+	link_establishment_status = link_established;
+}
+
+BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
+	: BCLinkManager(link_id, reservation_manager, mac, 2500) {}
+
 L2Packet* BCLinkManager::prepareBeacon() {
 	auto* beacon = new L2Packet();
 	// Base header.
@@ -27,11 +36,9 @@ L2Packet* BCLinkManager::prepareBeacon() {
 }
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
-	auto it = contention_estimates.find(origin);
-	if (it != contention_estimates.end()) {
-		MovingAverage& avg = (*it).second;
-//		avg.put()
-	}
+	// Update the contention estimator.
+	coutd << " -> process broadcast -> updated contention estimate";
+	contention_estimator.reportBroadcast(origin);
 }
 
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
@@ -57,11 +64,6 @@ void BCLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
 	coutd << "-> setting broadcast header fields:";
 	// no fields.
 	coutd << " none ";
-}
-
-BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
-	: LinkManager(link_id, reservation_manager, mac) {
-	link_establishment_status = link_established;
 }
 
 void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
