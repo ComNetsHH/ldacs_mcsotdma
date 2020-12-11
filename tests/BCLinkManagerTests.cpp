@@ -39,7 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				link_manager = new BCLinkManager(communication_partner_id, reservation_manager, mac);
+				link_manager = new BCLinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac);
 				arq_layer = new ARQLayer();
 				mac->setUpperLayer(arq_layer);
 				arq_layer->setLowerLayer(mac);
@@ -113,11 +113,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				expected_num_slots = 21; // comparing to MATLAB implementation
 				CPPUNIT_ASSERT_EQUAL(expected_num_slots, link_manager->getNumCandidateSlots(target_collision_prob));
 			}
+			
+			void testNotifyOutgoing() {
+				coutd.setVerbose(true);
+				mac->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				Reservation reservation = mac->reservation_manager->getBroadcastReservationTable()->getReservation(1);
+				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservation.getAction());
+				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
+				mac->update(1);
+				coutd.setVerbose(false);
+			}
 		
 		CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 			CPPUNIT_TEST(testSetBeaconHeader);
 			CPPUNIT_TEST(testProcessIncomingBeacon);
 			CPPUNIT_TEST(testGetNumCandidateSlots);
+			CPPUNIT_TEST(testNotifyOutgoing);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

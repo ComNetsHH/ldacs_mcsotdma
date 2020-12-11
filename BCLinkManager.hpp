@@ -51,7 +51,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			unsigned int getNumActiveNeighbors() const;
 			
+			/**
+			 * Inform this BCLinkManager of the passing of time.
+			 * It is required to keep correct contention estimates of neighbor broadcast activity.
+			 * @param num_slots
+			 */
 			void update(uint64_t num_slots);
+			
+			/**
+			 * This probability is used during broadcast slot selection to determine the number slots to consider,
+			 * based on recent observations of neighbor broadcast activity.
+			 * @param p
+			 */
+			void setTargetCollisionProbability(double p);
 		
 		protected:
 			/**
@@ -78,6 +90,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int getNumCandidateSlots(double target_collision_prob) const;
 			unsigned long long nchoosek(unsigned long n, unsigned long k) const;
 			
+			/**
+			 * Applies Broadcast slot selection.
+			 * @return Slot offset of the chosen slot.
+			 */
+			unsigned int broadcastSlotSelection() const;
+			
 			/** Number of slots in-between beacons. */
 			unsigned int beacon_slot_interval = 32,
 						 current_beacon_slot_interval = beacon_slot_interval;
@@ -85,7 +103,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** For each neighbor, a moving average over past slots is kept, so that the contention by the neighbors is estimated. */
 			ContentionEstimator contention_estimator;
 			/** Based on the local contention estimate and this target collision probability, slot selection selects a number of slots. */
-			double target_collision_probability = 0.1;
+			double target_collision_probability = 0.05;
+			
+			/** Whether this BCLinkManager has a scheduled broadcast slot. */
+			bool broadcast_slot_scheduled = false;
 	};
 }
 

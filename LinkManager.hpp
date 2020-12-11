@@ -243,11 +243,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void updateTrafficEstimate(unsigned long num_bits);
 			
 			/**
-			 * When a link request has been received and viable candidates determined, this chooses one slot out of the viable candidates.
-			 * @param candidates (frequency channel, slot offset)-pairs that were both proposed and are idle for us.
-			 * @return A uniformly chosen candidate from 'candidates'.
+			 * @param start
+			 * @param end
+			 * @return Uniformly drawn random integer from [start, end] (exclusive).
 			 */
-			const std::pair<const FrequencyChannel*, unsigned int>& chooseCandidateSlot(const std::vector<std::pair<const FrequencyChannel*, unsigned int>>& candidates) const;
+			static size_t getRandomInt(size_t start, size_t end) ;
 			
 		protected:
 			/** The communication partner's ID, whose link is managed. */

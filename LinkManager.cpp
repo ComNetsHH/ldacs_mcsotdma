@@ -95,7 +95,7 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 						(ProposalPayload*&) payload);
 				if (!viable_candidates.empty()) {
 					// Choose a candidate out of the set.
-					auto chosen_candidate = chooseCandidateSlot(viable_candidates);
+					auto chosen_candidate = viable_candidates.at(getRandomInt(0, viable_candidates.size()));
 					coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
 					// Prepare a link reply.
 					L2Packet* reply = prepareLinkEstablishmentReply(packet->getOrigin());
@@ -277,7 +277,7 @@ BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 }
 
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
-	coutd << "LinkManager::onTransmissionSlot... ";
+	coutd << "LinkManager(" << link_id << ")::onTransmissionSlot... ";
 	L2Packet* segment;
 	// Prioritize link reply control messages.
 	if (!control_messages.empty()) {
@@ -335,9 +335,9 @@ void LinkManager::setHeaderFields(L2Header* header) {
 }
 
 void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
-	coutd << "-> setting base header fields:";
+	coutd << "setting base header fields:";
 	header->icao_id = mac->getMacId();
-	coutd << " icao_id=" << this->link_id;
+	coutd << " icao_id=" << mac->getMacId();
 	header->offset = this->current_reservation_offset;
 	coutd << " offset=" << this->current_reservation_offset;
 	if (this->current_reservation_slot_length == 0)
@@ -473,22 +473,18 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	}
 }
 
-const std::pair<const FrequencyChannel*, unsigned int>& LinkManager::chooseCandidateSlot(
-		const std::vector<std::pair<const FrequencyChannel*, unsigned int>>& candidates) const {
-	if (candidates.empty())
-		throw std::invalid_argument("LinkManager::chooseCandidateSlot on empty candidates.");
-	// Choose randomly.
-	std::random_device random_device;
-	std::mt19937 generator(random_device());
-	std::uniform_int_distribution<> distribution(0, candidates.size() - 1);
-	return candidates.at(distribution(generator));
-}
-
 void LinkManager::assign(const FrequencyChannel* channel) {
 	if (current_channel != nullptr || current_reservation_table != nullptr)
 		throw std::runtime_error("LinkManager reassignment not yet implemented!");
 	this->current_channel = channel;
 	this->current_reservation_table = reservation_manager->getReservationTable(channel);
+}
+
+size_t LinkManager::getRandomInt(size_t start, size_t end) {
+	std::random_device random_device;
+	std::mt19937 generator(random_device());
+	std::uniform_int_distribution<> distribution(0, end - 1);
+	return distribution(generator);
 }
 
 

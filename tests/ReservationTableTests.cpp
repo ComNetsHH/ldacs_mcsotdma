@@ -425,17 +425,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				ReservationTable* tbl1 = table->getTxReservations(id1);
 				for (int i = 0; i < planning_horizon; i++) {
 					if (i >= 3 && i < 7)
-						CPPUNIT_ASSERT_EQUAL(id1, tbl1->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+						CPPUNIT_ASSERT_EQUAL(id1,
+						                     tbl1->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getTarget());
 					else
-						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, tbl1->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET,
+						                     tbl1->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getTarget());
 				}
 				
 				ReservationTable* tbl2 = table->getTxReservations(id2);
 				for (int i = 0; i < planning_horizon; i++) {
 					if (i >= 12 && i < 22)
-						CPPUNIT_ASSERT_EQUAL(id2, tbl2->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+						CPPUNIT_ASSERT_EQUAL(id2,
+						                     tbl2->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getTarget());
 					else
-						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, tbl2->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getOwner());
+						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET,
+						                     tbl2->slot_utilization_vec.at(tbl1->convertOffsetToIndex(i)).getTarget());
 				}
 				
 				delete tbl1;

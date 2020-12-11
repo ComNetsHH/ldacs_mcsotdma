@@ -13,6 +13,8 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
                              unsigned int num_slots_contention_estimate)
      : LinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
 	link_establishment_status = link_established;
+	if (link_id != SYMBOLIC_LINK_ID_BROADCAST)
+		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
 }
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
@@ -67,14 +69,47 @@ void BCLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
 }
 
 void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
-	LinkManager::notifyOutgoing(num_bits);
-	// must implement broadcast slot selection
+	coutd << "BCLinkManager(" << link_id << ")::notifyOutgoing(" << num_bits << " bits) -> ";
+	if (!broadcast_slot_scheduled) {
+		current_reservation_offset = broadcastSlotSelection();
+		assert(current_reservation_table && "BCLinkManager::notifyOutgoing for unset reservation table.");
+		current_reservation_table->mark(current_reservation_offset, Reservation(link_id, Reservation::TX));
+		coutd << "scheduled broadcast next_broadcast_slot in " << current_reservation_offset << " slots." << std::endl;
+		broadcast_slot_scheduled = true;
+	} else
+		coutd << "already have a broadcast slot scheduled." << std::endl;
 }
 
 L2Packet* BCLinkManager::onTransmissionSlot(unsigned int num_slots) {
-	return LinkManager::onTransmissionSlot(num_slots);
-	// must differentiate between beacon and broadcast slots
-	// and schedule new beacon slots if necessary
+	coutd << "BCLinkManager(" << link_id << ")::onTransmissionSlot -> ";
+	if (num_slots != 1)
+		throw std::invalid_argument("BCLinkManager::onTransmissionSlot cannot be used for more or less than 1 slot.");
+	L2Packet* packet;
+	bool is_beacon_slot = false; // TODO determine
+	if (!is_beacon_slot) {
+		// Prepare broadcast.
+		unsigned long bits_per_slot = mac->getCurrentDatarate();
+		coutd << "requesting " << bits_per_slot << " bits -> ";
+		packet = mac->requestSegment(bits_per_slot, link_id);
+		// Check if there's more data...
+		if (mac->isThereMoreData(link_id)) {
+			// ... if so, schedule a next slot
+			current_reservation_offset = broadcastSlotSelection();
+			current_reservation_table->mark(current_reservation_offset, Reservation(link_id, Reservation::TX));
+			broadcast_slot_scheduled = true; // remains true
+			coutd << "scheduled next broadcast in " << current_reservation_offset << " slots -> ";
+		} else {
+			coutd << "no next broadcast slot required -> ";
+			broadcast_slot_scheduled = false;
+		}
+		// ... and set the header field.
+		for (L2Header* header : packet->getHeaders())
+			setHeaderFields(header);
+	} else {
+		// must send beacon
+		// and schedule a new beacon slot
+	}
+	return packet;
 }
 
 unsigned int BCLinkManager::getNumActiveNeighbors() const {
@@ -82,7 +117,7 @@ unsigned int BCLinkManager::getNumActiveNeighbors() const {
 }
 
 void BCLinkManager::update(uint64_t num_slots) {
-	for (auto i = 0; i < num_slots; i++)
+	for (uint64_t i = 0; i < num_slots; i++)
 		contention_estimator.update();
 }
 
@@ -98,7 +133,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	for (auto n = 0; n <= m; n++) {
 		// Probability P(X=n) of n accesses.
 		double p = ((double) nchoosek(m, n)) * pow(r, n) * pow(1 - r, m - n);
-		// Number of slots that should be chosen if n accesses occur.
+		// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
 		unsigned int k = n == 0 ? 1 : ceil(1.0 / (1.0 - pow(1.0 - target_collision_prob, 1.0 / n)));
 		expected_num_bc_accesses += p*k;
 	}
@@ -106,6 +141,24 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 }
 
 unsigned long long BCLinkManager::nchoosek(unsigned long n, unsigned long k) const {
-	if (k == 0) return 1;
+	if (k == 0)
+		return 1;
 	return (n * nchoosek(n - 1, k - 1)) / k;
+}
+
+void BCLinkManager::setTargetCollisionProbability(double p) {
+	if (p < 0.0 || p > 1.0)
+		throw std::invalid_argument("BCLinkManager::setTargetCollisionProbability p must be between 0 and 1.");
+	this->target_collision_probability = p;
+}
+
+unsigned int BCLinkManager::broadcastSlotSelection() const {
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
+	unsigned int num_candidates = getNumCandidateSlots(this->target_collision_probability);
+	std::vector<int32_t> candidate_slots = current_reservation_table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, num_candidates, 1, true);
+	int32_t slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
+	if (slot < 0)
+		throw std::runtime_error("BCLinkManager::broadcastSlotSelection chose a slot in the past.");
+	return (unsigned int) slot;
 }

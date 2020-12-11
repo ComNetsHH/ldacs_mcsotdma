@@ -38,6 +38,8 @@ ReservationTable* ReservationManager::getReservationTableByIndex(size_t index) {
 }
 
 void ReservationManager::update(uint64_t num_slots) {
+	if (broadcast_reservation_table != nullptr)
+		broadcast_reservation_table->update(num_slots);
 	for (ReservationTable* table : reservation_tables)
 		table->update(num_slots);
 }
@@ -84,10 +86,9 @@ ReservationTable* ReservationManager::getBroadcastReservationTable() {
 
 std::vector<std::pair<Reservation, const FrequencyChannel*>> ReservationManager::collectCurrentReservations() {
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations;
-	for (ReservationTable* table : reservation_tables) {
-		auto reservation = std::pair<Reservation, const FrequencyChannel*>(table->getReservation(0), table->getLinkedChannel());
-		reservations.push_back(reservation);
-	}
+	reservations.emplace_back(broadcast_reservation_table->getReservation(0), broadcast_frequency_channel);
+	for (ReservationTable* table : reservation_tables)
+		reservations.emplace_back(table->getReservation(0), table->getLinkedChannel());
 	return reservations;
 }
 

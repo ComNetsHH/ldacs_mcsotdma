@@ -31,8 +31,8 @@ class ReservationTests : public CppUnit::TestFixture {
 		}
 		
 		void testBasics() {
-			CPPUNIT_ASSERT(reservation->getOwner() == owner);
-			CPPUNIT_ASSERT(reservation->getOwner() != MacId(id+1));
+			CPPUNIT_ASSERT(reservation->getTarget() == owner);
+			CPPUNIT_ASSERT(reservation->getTarget() != MacId(id + 1));
 			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::IDLE);
 			reservation->setAction(Reservation::Action::TX);
 			CPPUNIT_ASSERT(reservation->getAction() != Reservation::Action::IDLE);

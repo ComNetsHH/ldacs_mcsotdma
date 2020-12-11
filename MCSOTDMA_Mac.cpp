@@ -38,6 +38,9 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 	// Update time.
 	IMac::update(num_slots);
 	coutd << "MAC::update(" << num_slots << ")... ";
+	// Notify the broadcast channel manager.
+	auto* bc_link_manager = (BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+	bc_link_manager->update(num_slots);
 	// Notify the ReservationManager.
 	assert(reservation_manager && "MCSOTDMA_MAC::update with unset ReserationManager.");
 	reservation_manager->update(num_slots);
@@ -85,7 +88,7 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 				if (num_txs > num_transmitters)
 					throw std::runtime_error("MCSOTDMA_Mac::update for too many transmissions within this time slot.");
 				// Find the corresponding LinkManager.
-				const MacId& id = reservation.getOwner();
+				const MacId& id = reservation.getTarget();
 				LinkManager* link_manager;
 				try {
 					link_manager = link_managers.at(id);
@@ -128,7 +131,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	// ... if there already is one ...
 	if (it != link_managers.end()) {
 		link_manager = (*it).second;
-		coutd << "found existing LinkManager(" << internal_id.getId() << ") ";
+//		coutd << "found existing LinkManager(" << internal_id << ") ";
 	// ... if there's none ...
 	} else {
 		// Auto-assign broadcast channel
@@ -140,7 +143,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
-		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "LinkManager") << "(" << internal_id << ") ";
+//		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "LinkManager") << "(" << internal_id << ") ";
 		
 	}
 	return link_manager;

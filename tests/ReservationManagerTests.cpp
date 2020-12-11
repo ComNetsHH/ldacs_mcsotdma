@@ -192,7 +192,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						for (int i = 0; i < 50; i++) {
 							// Should have reservations where we marked them
 							if (i == o11 || i == o12 || i == o13) {
-								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getOwner(), id);
+								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getTarget(), id);
 								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getAction(), Reservation::Action::TX);
 							// all others should be default
 							} else
@@ -201,7 +201,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					} else if (channel.getCenterFrequency() == freq2) {
 						for (int i = 0; i < 50; i++) {
 							if (i == o21 || i == o22 || i == o23) {
-								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getOwner(), id);
+								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getTarget(), id);
 								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getAction(), Reservation::Action::TX);
 							} else
 								CPPUNIT_ASSERT(table->getReservation(i) == Reservation());
@@ -209,7 +209,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					} else if (channel.getCenterFrequency() == bc_freq) {
 						for (int i = 0; i < 50; i++) {
 							if (i == o31 || i == o32 || i == o33) {
-								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getOwner(), id);
+								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getTarget(), id);
 								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getAction(), Reservation::Action::TX);
 							} else
 								CPPUNIT_ASSERT(table->getReservation(i) == Reservation());
@@ -247,7 +247,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT(*remote_tbl2 == *tbl2);
 				for (const auto& pair : local_reservations)
 					delete pair.second;
-				
+			}
+			
+			void testCollectCurrentReservations() {
+				reservation_manager->addFrequencyChannel(false, 1000, 500);
+				reservation_manager->addFrequencyChannel(true, 2000, 500);
+				reservation_manager->reservation_tables.at(0)->mark(1, Reservation(MacId(42), Reservation::TX));
+				reservation_manager->broadcast_reservation_table->mark(1, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+				reservation_manager->update(1);
+				auto reservations = reservation_manager->collectCurrentReservations();
+				CPPUNIT_ASSERT_EQUAL(size_t(2), reservations.size());
+				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservations.at(0).first.getTarget());
+				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservations.at(0).first.getAction());
+				CPPUNIT_ASSERT_EQUAL(MacId(42), reservations.at(1).first.getTarget());
+				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservations.at(1).first.getAction());
 			}
 		
 		CPPUNIT_TEST_SUITE(ReservationManagerTests);
@@ -258,6 +271,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testGetByPointer);
 			CPPUNIT_TEST(testGetTxReservations);
 			CPPUNIT_TEST(testUpdateTables);
+			CPPUNIT_TEST(testCollectCurrentReservations);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

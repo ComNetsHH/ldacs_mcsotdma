@@ -12,7 +12,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class LinkManager;
 
 	/**
-	 * A Reservation can be associated to time slots and is used to denote owner(s) of a communication link.
+	 * A Reservation can be associated to time slots and is used to denote target(s) of a communication link.
 	 * If the current user owns this reservation, it may further specify whether the slot should be used to receive or transmit data.
 	 */
 	class Reservation {
@@ -32,14 +32,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			};
 			
 			/**
-			 * @param owner
+			 * @param target
 			 * @param action
 			 * @param num_remaining_tx_slots For a continuous transmission burst, the number of slots *after* this one that should also be used
 			 * for this transmission burst, may be incorporated into a Reservation.
 			 */
-			Reservation(const MacId& owner, Action action, unsigned int num_remaining_tx_slots);
-			Reservation(const MacId& owner, Action action);
-			explicit Reservation(const MacId& owner);
+			Reservation(const MacId& target, Action action, unsigned int num_remaining_tx_slots);
+			Reservation(const MacId& target, Action action);
+			explicit Reservation(const MacId& target);
 			Reservation();
 			Reservation(const Reservation& other);
 			virtual ~Reservation();
@@ -47,10 +47,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * @return The MAC ID of whoever holds this reservation.
 			 */
-			const MacId& getOwner() const;
+			const MacId& getTarget() const;
 			
 			/**
-			 * @return If the owner of the reservation is the current user, then the action shall define whether the
+			 * @return If the target of the reservation is the current user, then the action shall define whether the
 			 * slot is used for reception (RX) or transmission (TX). For other users it'll be unset (UNSET).
 			 */
 			const Action& getAction() const;
@@ -70,8 +70,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			bool operator!=(const Reservation& other) const;
 		
 		protected:
-			/** Reservations are made by MAC nodes, so hold the ID of this reservation's holder. */
-			MacId owner;
+			/** Target MAC ID. */
+			MacId target;
 			Action action;
 			/** In case of a transmission, this keeps the number of remaining slots for this transmission burst. */
 			unsigned int num_remaining_tx_slots = 0;
@@ -97,7 +97,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				break;
 		}
 		action += "@";
-		return stream << action << reservation.getOwner();
+		return stream << action << reservation.getTarget();
 	}
 }
 

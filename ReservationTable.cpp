@@ -40,7 +40,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		phy_table->mark(slot_offset, reservation);
 	// If this is a multi-slot transmission reservation, set the following ones, too.
 	if (reservation.getNumRemainingTxSlots() > 0) {
-		Reservation next_reservation = Reservation(reservation.getOwner(), Reservation::Action::TX_CONT, reservation.getNumRemainingTxSlots() - 1);
+		Reservation next_reservation = Reservation(reservation.getTarget(), Reservation::Action::TX_CONT, reservation.getNumRemainingTxSlots() - 1);
 		mark(slot_offset + 1, next_reservation);
 	}
 	return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
@@ -222,7 +222,7 @@ const Reservation& ReservationTable::getReservation(int offset) const {
 unsigned long ReservationTable::countReservedTxSlots(const MacId& id) const {
 	unsigned long counter = 0;
 	for (const Reservation& reservation : slot_utilization_vec)
-		if (reservation.getOwner() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+		if (reservation.getTarget() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
 			counter++;
 	return counter;
 }
@@ -231,7 +231,7 @@ ReservationTable* ReservationTable::getTxReservations(const MacId& id) const {
 	auto* table = new ReservationTable(this->planning_horizon);
 	for (size_t i = 0; i < slot_utilization_vec.size(); i++) {
 		const Reservation& reservation = slot_utilization_vec.at(i);
-		if (reservation.getOwner() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+		if (reservation.getTarget() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
 			table->slot_utilization_vec.at(i) = Reservation(reservation);
 	}
 	return table;
