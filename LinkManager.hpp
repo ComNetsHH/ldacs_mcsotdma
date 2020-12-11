@@ -10,6 +10,7 @@
 #include <cmath>
 #include "ReservationManager.hpp"
 #include "BeaconPayload.hpp"
+#include "MovingAverage.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -106,8 +107,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			double getCurrentTrafficEstimate() const;
 			
-			const unsigned int& getTrafficEstimateWindowSize() const;
-			
 			/**
 			 * @return The number of slot reservations that have been made but are yet to arrive.
 			 */
@@ -195,9 +194,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * When a broadcast packet comes in from the PHY, this processes it.
+			 * @param origin
 			 * @param header
 			 */
-			void processIncomingBroadcast(L2HeaderBroadcast*& header);
+			virtual void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header);
 			
 			/**
 			 * When a unicast packet comes in from the PHY, this processes it.
@@ -215,7 +215,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * @return A payload that should accompany a link request.
 			 */
-			LinkManager::ProposalPayload* computeRequestProposal() const;
+			LinkManager::ProposalPayload* p2pSlotSelection() const;
 			
 			/**
 			 * Encodes this user's reserved transmission slots.
@@ -268,12 +268,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int num_proposed_channels = 2;
 			/** The number of time slots that should be proposed when a new link request is prepared. */
 			unsigned int num_proposed_slots = 3;
-			/** The number of past values to consider for the traffic estimate. */
-			const unsigned int traffic_estimate_num_values = 20;
-			/** Whenever a LinkManager is notified of new data for its link, a number of values are saved so that a traffic estimate can be calculated. */
-			std::vector<unsigned long long> traffic_estimate_queue_lengths;
-			/** Keeps track of the index that should be updated next in the `traffic_estimate_queue_lengths`. */
-			size_t traffic_estimate_index = 0;
+			MovingAverage traffic_estimate;
 			/** Keeps track of the number of slot reservations that have been made but are yet to arrive. */
 			unsigned int num_pending_reservations = 0;
 			/** Keeps a copy of the last proposal, so that reservations can be made when the proposal is accepted. */

@@ -57,7 +57,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class ARQLayer : public IArq {
 		public:
 			void notifyOutgoing(unsigned int num_bits, const MacId& mac_id) override {
-				coutd << "ARQ::notifyOutgoing(" << num_bits << ", " << mac_id.getId() << ")" << std::endl;
+				coutd << "ARQ::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id << ")" << std::endl;
+				if (should_forward)
+					lower_layer->notifyOutgoing(num_bits, mac_id);
 			}
 			
 			L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
@@ -76,7 +78,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void notifyAboutRemovedLink(const MacId& id) override {
 			
 			}
-		
+			
+			bool should_forward = false;
+			
 		protected:
 			void processIncomingHeader(L2Packet* incoming_packet) override {
 			
@@ -116,6 +120,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
 				coutd << "RLC received injection for '" << packet->getDestination() << "'... ";
 				injections.push_back(packet);
+				lower_layer->notifyOutgoing(packet->getBits(), packet->getDestination());
 			}
 			
 			L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {

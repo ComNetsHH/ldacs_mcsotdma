@@ -63,7 +63,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				unsigned int num_bits = initial_bits;
 				double sum = 0;
 				// Fill up the window.
-				for (size_t i = 0; i < link_manager->getTrafficEstimateWindowSize(); i++) {
+				for (size_t i = 0; i < link_manager->traffic_estimate.values.size(); i++) {
 					link_manager->updateTrafficEstimate(num_bits);
 					sum += num_bits;
 					num_bits += initial_bits;
@@ -73,7 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				link_manager->updateTrafficEstimate(num_bits);
 				sum -= initial_bits;
 				sum += num_bits;
-				CPPUNIT_ASSERT_EQUAL(sum / (link_manager->getTrafficEstimateWindowSize()), link_manager->getCurrentTrafficEstimate());
+				CPPUNIT_ASSERT_EQUAL(sum / (link_manager->traffic_estimate.values.size()), link_manager->getCurrentTrafficEstimate());
 			}
 			
 			void testNewLinkEstablishment() {
@@ -96,7 +96,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testComputeProposal() {
 				testNewLinkEstablishment();
 				L2Packet* request = rlc_layer->injections.at(0);
-				LinkManager::ProposalPayload* proposal = link_manager->computeRequestProposal();
+				LinkManager::ProposalPayload* proposal = link_manager->p2pSlotSelection();
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
 				
 				// Should've considered several distinct frequency channels.
@@ -158,6 +158,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testTriggerNewLinkRequest() {
 				// Next transmission should trigger a new request.
 				// Transmission slots should only occur for established links.
+//				coutd.setVerbose(true);
 				link_manager->link_establishment_status = LinkManager::link_established;
 				link_manager->TIMEOUT_THRESHOLD_TRIGGER = 3;
 				link_manager->current_reservation_timeout = link_manager->TIMEOUT_THRESHOLD_TRIGGER + 1;
@@ -167,6 +168,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
 				CPPUNIT_ASSERT(request->getHeaders().at(0)->frame_type == L2Header::base);
 				CPPUNIT_ASSERT(request->getHeaders().at(1)->frame_type == L2Header::link_establishment_request);
+//				coutd.setVerbose(false);
 			}
 			
 			void testSetBaseHeader() {
@@ -238,7 +240,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Prepare a link establishment request.
 //				coutd.setVerbose(true);
 				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
-				request->getPayloads().at(1) = link_manager->computeRequestProposal();
+				request->getPayloads().at(1) = link_manager->p2pSlotSelection();
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
 				auto body = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
@@ -299,7 +301,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Prepare a link establishment request.
 //				coutd.setVerbose(true);
 				L2Packet* request = bc_manager->prepareLinkEstablishmentRequest();
-				request->getPayloads().at(1) = bc_manager->computeRequestProposal();
+				request->getPayloads().at(1) = bc_manager->p2pSlotSelection();
 				// Hackily set it as if this request came from our communication partner.
 				((L2HeaderBase*) request->getHeaders().at(0))->icao_id = communication_partner_id;
 				request->originator_id = communication_partner_id;

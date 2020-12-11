@@ -19,7 +19,7 @@ MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 }
 
 void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
-	coutd << "MAC::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id.getId() << ")... ";
+	coutd << "MAC::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id << ")... ";
 	// Tell the manager of new data.
 	getLinkManager(mac_id)->notifyOutgoing(num_bits);
 }
@@ -140,7 +140,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
-		coutd << "instantiated new LinkManager(" << internal_id.getId() << ") ";
+		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "LinkManager") << "(" << internal_id << ") ";
 		
 	}
 	return link_manager;

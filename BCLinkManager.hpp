@@ -36,6 +36,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return A packet to send.
 			 */
 			L2Packet* onTransmissionSlot(unsigned int num_slots) override;
+			
+			
 		
 		protected:
 			/**
@@ -45,12 +47,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 			
+			void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
+			
 			void setBeaconHeaderFields(L2HeaderBeacon* header) const override;
 			void setBroadcastHeaderFields(L2HeaderBroadcast* header) const override;
 			
 			/** Number of slots in-between beacons. */
 			unsigned int beacon_slot_interval = 32,
 						 current_beacon_slot_interval = beacon_slot_interval;
+			
+			/** For each neighbor, a moving average over past slots is kept, so that the contention by the neighbors is estimated. */
+			std::map<MacId, MovingAverage> contention_estimates;
+			std::map<MacId, bool> received_broadcast;
+			/** Based on the local contention estimate and this target collision probability, slot selection selects a number of slots. */
+			double target_collision_probability = 0.1;
 	};
 }
 

@@ -31,6 +31,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
 				
 				arq_layer = new ARQLayer();
+				arq_layer->should_forward = true;
 				mac->setUpperLayer(arq_layer);
 				arq_layer->setLowerLayer(mac);
 				net_layer = new NetworkLayer();
@@ -52,10 +53,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void testStartOperation() {
-				coutd.setVerbose(true);
-				mac->notifyOutgoing(512, communication_partner_id);
-				
-				coutd.setVerbose(false);
+//				coutd.setVerbose(true);
+//				mac->notifyOutgoing(512, communication_partner_id);
+//
+//				coutd.setVerbose(false);
 			}
 			
 		

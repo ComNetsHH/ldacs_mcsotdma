@@ -26,6 +26,14 @@ L2Packet* BCLinkManager::prepareBeacon() {
 	return beacon;
 }
 
+void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
+	auto it = contention_estimates.find(origin);
+	if (it != contention_estimates.end()) {
+		MovingAverage& avg = (*it).second;
+//		avg.put()
+	}
+}
+
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
 	assert(payload && "LinkManager::processIncomingBeacon for nullptr BeaconPayload*");
 	if (origin_id == SYMBOLIC_ID_UNSET)

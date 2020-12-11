@@ -4,6 +4,7 @@
 
 #include <cppunit/ui/text/TestRunner.h>
 #include <cppunit/TestResultCollector.h>
+#include "MovingAverageTests.cpp"
 #include "ReservationTableTests.cpp"
 #include "FrequencyChannelTests.cpp"
 #include "ReservationManagerTests.cpp"
@@ -12,12 +13,14 @@
 #include "LinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
 #include "BCLinkManagerTests.cpp"
+#include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
 	CppUnit::TextUi::TestRunner runner;
 	
+	runner.addTest(MovingAverageTests::suite());
 	runner.addTest(ReservationTests::suite());
 	runner.addTest(ReservationTableTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
@@ -25,6 +28,7 @@ int main() {
 	runner.addTest(LinkManagerTests::suite());
 	runner.addTest(BCLinkManagerTests::suite());
 	runner.addTest(MCSOTDMA_MacTests::suite());
+	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(SystemTests::suite());
 	
 	runner.run();

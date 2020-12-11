@@ -13,14 +13,14 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-	  mac(mac), traffic_estimate_queue_lengths(traffic_estimate_num_values) {}
+	  mac(mac), traffic_estimate(20) {}
 
 const MacId& LinkManager::getLinkId() const {
 	return this->link_id;
 }
 
 void LinkManager::notifyOutgoing(unsigned long num_bits) {
-	coutd << "LinkManager::notifyOutgoing(id='" << link_id.getId() << "')";
+	coutd << "LinkManager::notifyOutgoing(id='" << link_id << "')";
 	
 	// Update the moving average traffic estimate.
 	updateTrafficEstimate(num_bits);
@@ -80,7 +80,7 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 			}
 			case L2Header::broadcast: {
 				coutd << "processing broadcast -> ";
-				processIncomingBroadcast((L2HeaderBroadcast*&) header);
+				processIncomingBroadcast(packet->getOrigin(), (L2HeaderBroadcast*&) header);
 				break;
 			}
 			case L2Header::unicast: {
@@ -155,13 +155,7 @@ void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
 }
 
 double LinkManager::getCurrentTrafficEstimate() const {
-	if (traffic_estimate_index == 0)
-		return 0.0; // No values were recorded yet.
-	double moving_average = 0.0;
-	for (auto it = traffic_estimate_queue_lengths.begin(); it < traffic_estimate_queue_lengths.end(); it++)
-		moving_average += (*it);
-	// Differentiate between a full window and a non-full window.
-	return traffic_estimate_index < traffic_estimate_num_values ? moving_average / ((double) traffic_estimate_index) : moving_average / ((double) traffic_estimate_num_values);
+	return traffic_estimate.get();
 }
 
 void LinkManager::requestNewLink() {
@@ -209,12 +203,8 @@ void LinkManager::setProposalDimension(unsigned int num_candidate_channels, unsi
 	this->num_proposed_slots = num_candidate_slots;
 }
 
-const unsigned int& LinkManager::getTrafficEstimateWindowSize() const {
-	return this->traffic_estimate_num_values;
-}
-
 unsigned long LinkManager::estimateCurrentNumSlots() const {
-	unsigned long traffic_estimate = (unsigned long) getCurrentTrafficEstimate(); // in bits.
+	unsigned long traffic_estimate = (unsigned long) this->traffic_estimate.get(); // in bits.
 	unsigned long datarate = mac->getCurrentDatarate(); // in bits/slot.
 	return traffic_estimate / datarate; // in slots.
 }
@@ -224,17 +214,7 @@ unsigned int LinkManager::getNumPendingReservations() const {
 }
 
 void LinkManager::updateTrafficEstimate(unsigned long num_bits) {
-	// If the window hasn't been filled yet.
-	if (traffic_estimate_index <= traffic_estimate_num_values - 1) {
-		traffic_estimate_queue_lengths.at(traffic_estimate_index) = num_bits;
-		traffic_estimate_index++;
-	// If it has, kick out an old value.
-	} else {
-		for (size_t i = 1; i < traffic_estimate_queue_lengths.size(); i++) {
-			traffic_estimate_queue_lengths.at(i - 1) = traffic_estimate_queue_lengths.at(i);
-		}
-		traffic_estimate_queue_lengths.at(traffic_estimate_queue_lengths.size() - 1) = num_bits;
-	}
+	traffic_estimate.put(num_bits);
 }
 
 int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const Reservation& reservation) const {
@@ -251,7 +231,7 @@ void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
 			// Set the destination ID (may be broadcast until now).
 			((L2HeaderLinkEstablishmentRequest*) header)->icao_dest_id = link_id;
 			// Compute a current proposal.
-			packet->getPayloads().at(i) = computeRequestProposal();
+			packet->getPayloads().at(i) = p2pSlotSelection();
 			// Remember the proposal.
 			if (this->last_proposal != nullptr)
 				throw std::runtime_error("LinkManager::notifyPacketBeingSent called, proposal computed, but there's already a saved proposal which would now be overwritten.");
@@ -260,7 +240,7 @@ void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
 	}
 }
 
-LinkManager::ProposalPayload* LinkManager::computeRequestProposal() const {
+LinkManager::ProposalPayload* LinkManager::p2pSlotSelection() const {
 	auto* proposal = new ProposalPayload(num_proposed_channels, num_proposed_slots);
 	
 	// Find resource proposals...
@@ -454,8 +434,8 @@ void LinkManager::processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmen
 	current_reservation_slot_length = last_proposal->num_slots_per_candidate;
 }
 
-void LinkManager::processIncomingBroadcast(L2HeaderBroadcast*& header) {
-	// Nothing to do on this layer.
+void LinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
+	throw std::runtime_error("LinkManager::processIncomingBroadcast for P2P LinkManager.");
 }
 
 void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
