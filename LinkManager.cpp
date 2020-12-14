@@ -61,19 +61,12 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		auto*& header = (L2Header*&) packet->getHeaders().at(i);
 		auto*& payload = (L2Packet::Payload*&) packet->getPayloads().at(i);
-		// ... these values should be remembered once they're set:
 		bool have_parsed_base_header = false;
-		unsigned int timeout, offset, length_next;
 		switch (header->frame_type) {
 			case L2Header::base: {
 				coutd << "processing base header -> ";
 				auto*& base_header = (L2HeaderBase*&) header;
 				processIncomingBase(base_header);
-				// remember these values
-				have_parsed_base_header = true;
-				timeout = base_header->timeout;
-				offset = base_header->offset;
-				length_next = base_header->length_next;
 				break;
 			}
 			case L2Header::beacon: {
@@ -110,9 +103,13 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 					L2Packet* reply = prepareLinkEstablishmentReply(packet->getOrigin());
 					const FrequencyChannel* reply_channel = chosen_candidate.first;
 					int32_t slot_offset = chosen_candidate.second;
-					// Pass it on to the corresponding LinkManager (could also be this one).
+					// Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
 					coutd << "passing on to corresponding LinkManager -> ";
-					mac->forwardLinkReply(reply, reply_channel, slot_offset);
+					unsigned int timeout = ((L2HeaderLinkEstablishmentRequest*&) header)->timeout,
+								 offset = ((L2HeaderLinkEstablishmentRequest*&) header)->offset,
+								 length = ((L2HeaderLinkEstablishmentRequest*&) header)->length_next;
+					
+					mac->forwardLinkReply(reply, reply_channel, slot_offset, timeout, offset, length);
 				} else
 					coutd << "no candidates viable. Doing nothing." << std::endl;
 				
@@ -142,7 +139,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 	mac->passToUpper(packet);
 }
 
-void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
+void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
 	uint64_t absolute_slot = mac->getCurrentSlot() + slot_offset;
 	auto it = control_messages.find(absolute_slot);
 	if (it != control_messages.end())
@@ -154,6 +151,8 @@ void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
 		current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
 		control_messages[absolute_slot] = reply;
 		coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
+		// ... and mark reservations: we're sending a reply, so we're the receiver.
+		markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
 	}
 }
 
@@ -235,6 +234,9 @@ void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
 		if (header->frame_type == L2Header::link_establishment_request) {
 			// Set the destination ID (may be broadcast until now).
 			((L2HeaderLinkEstablishmentRequest*) header)->icao_dest_id = link_id;
+			((L2HeaderLinkEstablishmentRequest*) header)->offset = tx_offset;
+			((L2HeaderLinkEstablishmentRequest*) header)->timeout = tx_timeout;
+			((L2HeaderLinkEstablishmentRequest*) header)->length_next = tx_burst_num_slots;
 			// Compute a current proposal.
 			packet->getPayloads().at(i) = p2pSlotSelection();
 			coutd << "-> computed link proposal -> ";
@@ -446,7 +448,7 @@ void LinkManager::processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmen
 	assign(channel);
 	// And mark the reservations.
 	// We've received a reply, so we have initiated this link, so we are the transmitter.
-	markReservations(tx_timeout, tx_offset, tx_burst_num_slots, link_id, Reservation::TX);
+	markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, link_id, Reservation::TX);
 	coutd << "link is now established";
 }
 
@@ -477,7 +479,7 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 		coutd << " marking next " << timeout << " reservations:";
 		// This is an incoming packet, so we must've been listening.
 		// Mark future slots as RX slots, too.
-		markReservations(timeout, offset, length_next, header->icao_id, Reservation::RX);
+		markReservations(timeout, 0, offset, length_next, header->icao_id, Reservation::RX);
 		coutd << " -> ";
 	}
 }
@@ -496,14 +498,14 @@ size_t LinkManager::getRandomInt(size_t start, size_t end) {
 	return distribution(generator);
 }
 
-void LinkManager::markReservations(unsigned int timeout, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action) {
+void LinkManager::markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action) {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("LinkManager::markReservations for unset ReservationTable.");
-	coutd << " marking next " << timeout << " reservations (offset=" << offset << ", length=" << length << ", target_id=" << target_id << ", action=" << action << ")";
+	coutd << " marking next " << timeout << " reservations (offset=" << offset << ", init_offset=" << init_offset << ", length=" << length << ", target_id=" << target_id << ", action=" << action << ")";
 	unsigned int remaining_slots = length > 0 ? length - 1 : 0;
 	Reservation reservation = Reservation(target_id, action, remaining_slots);
 	for (size_t i = 0; i < timeout; i++) {
-		int32_t current_offset = (i+1) * offset;
+		int32_t current_offset = (i+1) * offset + init_offset;
 		if (current_reservation_table->isUtilized(current_offset, length + 1))
 			throw std::runtime_error("LinkManager::markReservations was about to mark slots, but they were already utilized.");
 		current_reservation_table->mark(current_offset, reservation);

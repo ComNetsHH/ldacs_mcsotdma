@@ -114,6 +114,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 				// Link reply should've arrived, so link should be established.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
+				// Make sure that all corresponding slots are marked as TX on our side.
+				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+				ReservationTable* table_me = lm_me->current_reservation_table;
+				for (int offset = lm_me->tx_offset; offset < lm_me->tx_timeout * lm_me->tx_offset; offset += lm_me->tx_offset) {
+					const Reservation& reservation = table_me->getReservation(offset);
+					CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservation.getAction());
+					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
+				}
+				// Make sure that the same slots are marked as RX on their side.
+				LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+				ReservationTable* table_you = lm_you->current_reservation_table;
+				for (int offset = lm_me->tx_offset; offset < lm_me->tx_timeout * lm_me->tx_offset; offset += lm_me->tx_offset) {
+					const Reservation& reservation = table_you->getReservation(offset);
+					CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
+					CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+				}
 //				while (rlc_layer_you->receptions.size() < 2) {
 //					mac_layer_me->update(1);
 //					mac_layer_you->update(1);

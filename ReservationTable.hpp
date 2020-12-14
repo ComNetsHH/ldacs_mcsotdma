@@ -118,7 +118,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * @param id
-			 * @return A new ReservationTable that contains all TX and TX_CONT reservations owned by 'id'.
+			 * @return A new ReservationTable that contains all TX and TX_CONT reservations targeted at 'id'.
 			 */
 			ReservationTable* getTxReservations(const MacId& id) const;
 			

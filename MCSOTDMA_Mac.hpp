@@ -47,7 +47,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param channel
 			 * @param slot_offset
 			 */
-			void forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset);
+			void forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length);
 			
 		protected:
 			/**
