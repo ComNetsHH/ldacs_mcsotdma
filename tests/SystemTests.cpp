@@ -162,6 +162,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 							CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, next_reservation.getAction());
 						}
 						coutd << std::endl;
+					} else {
+						for (int j = reserved_time_slots.at(reserved_time_slots.size() - 1) + 1; j < planning_horizon; j++) {
+							const Reservation& next_reservation = table_you->getReservation(j);
+							CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
+							CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, next_reservation.getAction());
+						}
 					}
 				}
 //				coutd.setVerbose(false);
