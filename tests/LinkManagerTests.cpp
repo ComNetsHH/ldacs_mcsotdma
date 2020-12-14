@@ -311,8 +311,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
 				// And increment time until it has sent the reply.
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
-				while (!p2p_manager->control_messages.empty())
+				while (!p2p_manager->control_messages.empty()) {
 					mac->update(1);
+					mac->execute();
+				}
 				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
 				L2Packet* reply = phy_layer->outgoing_packets.at(0);
 				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());

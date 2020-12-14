@@ -123,8 +123,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// So that querying whether there's more data returns false -> no next broadcast
 				rlc_layer->should_there_be_more_data = false;
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
-				while (((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled)
+				while (((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
 					mac->update(1);
+					mac->execute();
+				}
 				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
 				L2Packet* packet = phy_layer->outgoing_packets.at(0);
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, packet->getDestination());
@@ -147,8 +149,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// So that a next broadcast must be scheduled.
 				rlc_layer->should_there_be_more_data = true;
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
-				while (phy_layer->outgoing_packets.empty())
+				while (phy_layer->outgoing_packets.empty()) {
 					mac->update(1);
+					mac->execute();
+				}
 				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
 				L2Packet* packet = phy_layer->outgoing_packets.at(0);
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, packet->getDestination());

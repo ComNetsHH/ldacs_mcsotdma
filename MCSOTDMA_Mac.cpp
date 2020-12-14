@@ -44,7 +44,67 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 	// Notify the ReservationManager.
 	assert(reservation_manager && "MCSOTDMA_MAC::update with unset ReserationManager.");
 	reservation_manager->update(num_slots);
-	// Now the reservation tables have been updated.
+}
+
+void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
+	const MacId& dest_id = packet->getDestination();
+	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << dest_id << ", " << center_frequency << "kHz)... ";
+	if (dest_id == SYMBOLIC_ID_UNSET)
+		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
+	// Find corresponding frequency channel.
+	FrequencyChannel* channel = reservation_manager->getFreqChannelByCenterFreq(center_frequency);
+	if (channel == nullptr)
+		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unknown FrequencyChannel.");
+	// Forward broadcasts to the BCLinkManager...
+	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
+		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet, channel);
+	// unicasts intended for us to the corresponding LinkManager that manages the packet's sender
+	else if (dest_id == id)
+		getLinkManager(packet->getOrigin())->receiveFromLower(packet, channel);
+	else
+		coutd << "packet not intended for us; discarding." << std::endl;
+}
+
+LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
+	if (id == getMacId()) {
+		throw std::invalid_argument("MCSOTDMA_Mac::getLinkManager for own MAC ID.");
+	}
+	// Beacon should be treated like Broadcast.
+	MacId internal_id = MacId(id);
+	if (internal_id == SYMBOLIC_LINK_ID_BEACON)
+		internal_id = SYMBOLIC_LINK_ID_BROADCAST;
+	
+	// Look for an existing link manager...
+	auto it = link_managers.find(internal_id);
+	LinkManager* link_manager;
+	// ... if there already is one ...
+	if (it != link_managers.end()) {
+		link_manager = (*it).second;
+//		coutd << "found existing LinkManager(" << internal_id << ") ";
+	// ... if there's none ...
+	} else {
+		// Auto-assign broadcast channel
+		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
+			link_manager = new BCLinkManager(internal_id, reservation_manager, this);
+			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
+		} else
+			link_manager = new LinkManager(internal_id, reservation_manager, this);
+		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
+		if (!insertion_result.second)
+			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
+//		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "LinkManager") << "(" << internal_id << ") ";
+		
+	}
+	return link_manager;
+}
+
+void MCSOTDMA_Mac::forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
+	LinkManager* manager = getLinkManager(reply->getDestination());
+	manager->assign(channel);
+	manager->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
+}
+
+void MCSOTDMA_Mac::execute() {
 	// Fetch all reservations of the current time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	coutd << "processing " << reservations.size() << " reservations..." << std::endl;
@@ -109,62 +169,4 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 		coutd << std::endl;
 	}
 	coutd.decreaseIndent();
-}
-
-void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
-	const MacId& dest_id = packet->getDestination();
-	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << dest_id << ", " << center_frequency << "kHz)... ";
-	if (dest_id == SYMBOLIC_ID_UNSET)
-		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
-	// Find corresponding frequency channel.
-	FrequencyChannel* channel = reservation_manager->getFreqChannelByCenterFreq(center_frequency);
-	if (channel == nullptr)
-		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unknown FrequencyChannel.");
-	// Forward broadcasts to the BCLinkManager...
-	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
-		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet, channel);
-	// unicasts intended for us to the corresponding LinkManager that manages the packet's sender
-	else if (dest_id == id)
-		getLinkManager(packet->getOrigin())->receiveFromLower(packet, channel);
-	else
-		coutd << "packet not intended for us; discarding." << std::endl;
-}
-
-LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
-	if (id == getMacId()) {
-		throw std::invalid_argument("MCSOTDMA_Mac::getLinkManager for own MAC ID.");
-	}
-	// Beacon should be treated like Broadcast.
-	MacId internal_id = MacId(id);
-	if (internal_id == SYMBOLIC_LINK_ID_BEACON)
-		internal_id = SYMBOLIC_LINK_ID_BROADCAST;
-	
-	// Look for an existing link manager...
-	auto it = link_managers.find(internal_id);
-	LinkManager* link_manager;
-	// ... if there already is one ...
-	if (it != link_managers.end()) {
-		link_manager = (*it).second;
-//		coutd << "found existing LinkManager(" << internal_id << ") ";
-	// ... if there's none ...
-	} else {
-		// Auto-assign broadcast channel
-		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
-			link_manager = new BCLinkManager(internal_id, reservation_manager, this);
-			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
-		} else
-			link_manager = new LinkManager(internal_id, reservation_manager, this);
-		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
-		if (!insertion_result.second)
-			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
-//		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "LinkManager") << "(" << internal_id << ") ";
-		
-	}
-	return link_manager;
-}
-
-void MCSOTDMA_Mac::forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
-	LinkManager* manager = getLinkManager(reply->getDestination());
-	manager->assign(channel);
-	manager->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
 }

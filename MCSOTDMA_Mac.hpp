@@ -39,6 +39,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/** Notify this MAC that time has passed. */
 			void update(int64_t num_slots) override;
+			/** Execute reservations valid in the current time slot. */
+			void execute();
 			
 			/**
 			 * When a LinkManager computes a link reply, it may belong to a FrequencyChannel it doesn't manage.

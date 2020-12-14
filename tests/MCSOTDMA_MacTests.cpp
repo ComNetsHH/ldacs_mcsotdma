@@ -86,6 +86,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				link_manager->link_establishment_status = LinkManager::link_established;
 				reservation_manager->reservation_tables.at(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
 				mac->update(1);
+				mac->execute();
 				// Now there should be one.
 				CPPUNIT_ASSERT_EQUAL(size_t(1), phy->outgoing_packets.size());
 				CPPUNIT_ASSERT(phy->outgoing_packets.at(0)->getBits() <= phy->getCurrentDatarate());

@@ -506,8 +506,6 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 	Reservation reservation = Reservation(target_id, action, remaining_slots);
 	for (size_t i = 0; i < timeout; i++) {
 		int32_t current_offset = (i+1) * offset + init_offset;
-		if (current_reservation_table->isUtilized(current_offset, length + 1))
-			throw std::runtime_error("LinkManager::markReservations was about to mark slots, but they were already utilized.");
 		current_reservation_table->mark(current_offset, reservation);
 		coutd << " @" << current_offset;
 	}
