@@ -18,7 +18,7 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	if (is_p2p) {
 		frequency_channels.push_back(channel);
 		reservation_tables.push_back(table);
-		p2p_channel_map[channel] = frequency_channels.size() - 1;
+		p2p_channel_map[*channel] = frequency_channels.size() - 1;
 		p2p_table_map[table] = reservation_tables.size() - 1;
 	} else {
 		if (broadcast_frequency_channel == nullptr && broadcast_reservation_table == nullptr) {
@@ -105,8 +105,12 @@ ReservationTable* ReservationManager::getReservationTable(const FrequencyChannel
 	ReservationTable* table;
 	if (channel == broadcast_frequency_channel)
 		table = broadcast_reservation_table;
-	else
-		table = reservation_tables.at(p2p_channel_map.at(channel));
+	else {
+		auto it = p2p_channel_map.find(*channel);
+		if (it == p2p_channel_map.end())
+			throw std::invalid_argument("ReservationManager::getReservationTable couldn't find this channel's ReservationTable.");
+		table = reservation_tables.at(it->second);
+	}
 	return table;
 }
 
@@ -116,7 +120,7 @@ ReservationManager::getTxReservations(const MacId& id) const {
 	auto local_reservations = std::vector<std::pair<FrequencyChannel, ReservationTable*>>();
 	local_reservations.emplace_back(FrequencyChannel(*broadcast_frequency_channel), broadcast_reservation_table->getTxReservations(id));
 	for (auto p2p_channel : frequency_channels) {
-		auto reservation_table = reservation_tables.at(p2p_channel_map.at(p2p_channel));
+		auto reservation_table = reservation_tables.at(p2p_channel_map.at(*p2p_channel));
 		auto tx_reservation_table = reservation_table->getTxReservations(id);
 		local_reservations.emplace_back(FrequencyChannel(*p2p_channel), tx_reservation_table);
 	}
@@ -155,4 +159,13 @@ FrequencyChannel* ReservationManager::matchFrequencyChannel(const FrequencyChann
 
 void ReservationManager::setPhyTransmitterTable(ReservationTable* phy_table) {
 	this->phy_transmitter_table = phy_table;
+}
+
+FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center_frequency) {
+	if (broadcast_frequency_channel->getCenterFrequency() == center_frequency)
+		return broadcast_frequency_channel;
+	for (auto* channel : frequency_channels)
+		if (channel->getCenterFrequency() == center_frequency)
+			return channel;
+	return nullptr;
 }

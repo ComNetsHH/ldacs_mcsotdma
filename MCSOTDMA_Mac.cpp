@@ -98,8 +98,9 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 							std::string(e.what()));
 				}
 				// Tell it about the transmission slot.
-				unsigned int num_tx_slots = reservation.getNumRemainingTxSlots() + 1;
+				unsigned int num_tx_slots = reservation.getNumRemainingSlots() + 1;
 				L2Packet* outgoing_packet = link_manager->onTransmissionSlot(num_tx_slots);
+				outgoing_packet->notifyCallbacks();
 				passToLower(outgoing_packet, channel->getCenterFrequency());
 				break;
 			}
@@ -110,12 +111,23 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 	coutd.decreaseIndent();
 }
 
-void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, const MacId& mac_id) {
-	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << mac_id << ")... ";
-	if (mac_id == SYMBOLIC_ID_UNSET)
-		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset mac_id.");
-	auto it = link_managers.find(mac_id);
-	getLinkManager(mac_id)->receiveFromLower(packet);
+void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
+	const MacId& dest_id = packet->getDestination();
+	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << dest_id << ", " << center_frequency << "kHz)... ";
+	if (dest_id == SYMBOLIC_ID_UNSET)
+		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
+	// Find corresponding frequency channel.
+	FrequencyChannel* channel = reservation_manager->getFreqChannelByCenterFreq(center_frequency);
+	if (channel == nullptr)
+		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unknown FrequencyChannel.");
+	// Forward broadcasts to the BCLinkManager...
+	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
+		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet, channel);
+	// unicasts intended for us to the corresponding LinkManager that manages the packet's sender
+	else if (dest_id == id)
+		getLinkManager(packet->getOrigin())->receiveFromLower(packet, channel);
+	else
+		coutd << "packet not intended for us; discarding." << std::endl;
 }
 
 LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {

@@ -34,10 +34,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * @param target
 			 * @param action
-			 * @param num_remaining_tx_slots For a continuous transmission burst, the number of slots *after* this one that should also be used
-			 * for this transmission burst, may be incorporated into a Reservation.
+			 * @param num_remaining_slots For a continuous burst, the number of slots *after* this one that should also be used for this transmission burst, may be incorporated into a Reservation.
 			 */
-			Reservation(const MacId& target, Action action, unsigned int num_remaining_tx_slots);
+			Reservation(const MacId& target, Action action, unsigned int num_remaining_slots);
 			Reservation(const MacId& target, Action action);
 			explicit Reservation(const MacId& target);
 			Reservation();
@@ -59,12 +58,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * @return Number of remaining slots this transmission burst continues for.
 			 */
-			unsigned int getNumRemainingTxSlots() const;
+			unsigned int getNumRemainingSlots() const;
 			
 			/**
 			 * @param num_slots The number of slots this transmission burst continues for.
 			 */
-			void setNumRemainingTxSlots(const unsigned int& num_slots);
+			void setNumRemainingSlots(const unsigned int& num_slots);
 			
 			bool operator==(const Reservation& other) const;
 			bool operator!=(const Reservation& other) const;
@@ -74,7 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MacId target;
 			Action action;
 			/** In case of a transmission, this keeps the number of remaining slots for this transmission burst. */
-			unsigned int num_remaining_tx_slots = 0;
+			unsigned int num_remaining_slots = 0;
 	};
 	
 	inline std::ostream & operator<<(std::ostream & stream, const Reservation& reservation) {

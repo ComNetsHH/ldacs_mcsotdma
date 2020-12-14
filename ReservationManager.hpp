@@ -46,6 +46,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			void addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
 			
+			FrequencyChannel* getFreqChannelByCenterFreq(uint64_t center_frequency);
 			FrequencyChannel* getFreqChannelByIndex(size_t index);
 			FrequencyChannel* getFreqChannel(const ReservationTable* table);
 			ReservationTable* getReservationTableByIndex(size_t index);
@@ -106,7 +107,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Keeps reservation table in the same order as frequency_channels. */
 			std::vector<TUHH_INTAIRNET_MCSOTDMA::ReservationTable*> reservation_tables;
 			/** Map pointer to index s.t. getReservationTable(ptr) doesn't have to search.. */
-			std::map<const FrequencyChannel*, size_t> p2p_channel_map;
+			std::map<const FrequencyChannel, size_t> p2p_channel_map;
 			/** Maps pointer to index s.t. getFrequencyChannel(ptr) doesn't have to search. */
 			std::map<const ReservationTable*, size_t> p2p_table_map;
 			/** A single broadcast frequency channel is kept. */

@@ -16,9 +16,9 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
 		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
 	link_establishment_status = link_established;
 	// Broadcast reservations don't remain valid.
-	current_reservation_timeout = 0;
+	tx_timeout = 0;
 	// Offset to next broadcast will be dynamically chosen.
-	current_reservation_offset = 0;
+	tx_offset = 0;
 }
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
@@ -75,10 +75,10 @@ void BCLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
 void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << "BCLinkManager(" << link_id << ")::notifyOutgoing(" << num_bits << " bits) -> ";
 	if (!broadcast_slot_scheduled) {
-		current_reservation_offset = broadcastSlotSelection();
+		tx_offset = broadcastSlotSelection();
 		assert(current_reservation_table && "BCLinkManager::notifyOutgoing for unset reservation table.");
-		current_reservation_table->mark(current_reservation_offset, Reservation(link_id, Reservation::TX));
-		coutd << "scheduled broadcast next_broadcast_slot in " << current_reservation_offset << " slots." << std::endl;
+		current_reservation_table->mark(tx_offset, Reservation(link_id, Reservation::TX));
+		coutd << "scheduled broadcast next_broadcast_slot in " << tx_offset << " slots." << std::endl;
 		broadcast_slot_scheduled = true;
 	} else
 		coutd << "already have a broadcast slot scheduled." << std::endl;
@@ -98,14 +98,14 @@ L2Packet* BCLinkManager::onTransmissionSlot(unsigned int num_slots) {
 		// Check if there's more data...
 		if (mac->isThereMoreData(link_id)) {
 			// ... if so, schedule a next slot
-			current_reservation_offset = broadcastSlotSelection();
-			current_reservation_table->mark(current_reservation_offset, Reservation(link_id, Reservation::TX));
+			tx_offset = broadcastSlotSelection();
+			current_reservation_table->mark(tx_offset, Reservation(link_id, Reservation::TX));
 			broadcast_slot_scheduled = true; // remains true
-			coutd << "scheduled next broadcast in " << current_reservation_offset << " slots -> ";
+			coutd << "scheduled next broadcast in " << tx_offset << " slots -> ";
 		} else {
 			coutd << "no next broadcast slot required -> ";
 			broadcast_slot_scheduled = false;
-			current_reservation_offset = 0;
+			tx_offset = 0;
 		}
 		// ... and set the header field.
 		for (L2Header* header : packet->getHeaders())

@@ -25,6 +25,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class LinkManagerTests;
 		friend class BCLinkManagerTests;
 		friend class MCSOTDMA_MacTests;
+		friend class SystemTests;
 			
 		public:
 			
@@ -94,7 +95,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
 			 */
-			void receiveFromLower(L2Packet*& packet);
+			void receiveFromLower(L2Packet*& packet, FrequencyChannel* channel);
 			
 			/**
 			 * @param num_candidate_channels Number of distinct frequency channels that should be proposed.
@@ -182,7 +183,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * When a link establishment reply comes in from the PHY, this processes it.
 			 * @param header
 			 */
-			void processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header);
+			void processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header, FrequencyChannel*& channel);
+			
+			/**
+			 * Makes reservations.
+			 * @param timeout
+			 * @param offset
+			 * @param length
+			 * @param action
+			 */
+			void markReservations(unsigned int timeout, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action);
 			
 			/**
 			 * When a beacon packet comes in from the PHY, this processes it.
@@ -215,7 +225,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * @return A payload that should accompany a link request.
 			 */
-			LinkManager::ProposalPayload* p2pSlotSelection() const;
+			LinkManager::ProposalPayload* p2pSlotSelection();
 			
 			/**
 			 * Encodes this user's reserved transmission slots.
@@ -238,7 +248,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.
 			 */
-			unsigned long estimateCurrentNumSlots() const;
+			unsigned int estimateCurrentNumSlots() const;
 			
 			void updateTrafficEstimate(unsigned long num_bits);
 			
@@ -271,16 +281,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MovingAverage traffic_estimate;
 			/** Keeps track of the number of slot reservations that have been made but are yet to arrive. */
 			unsigned int num_pending_reservations = 0;
-			/** Keeps a copy of the last proposal, so that reservations can be made when the proposal is accepted. */
-			LinkManager::ProposalPayload* last_proposal = nullptr;
 			/** Number of repetitions a reservation remains valid for. */
-			unsigned int current_reservation_timeout = 1, reservation_timeout = 1;
+			unsigned int default_tx_timeout = 10,
+						 tx_timeout = default_tx_timeout;
 			/** When a reservation timeout reaches this threshold, a new link request is prepared. */
 			int TIMEOUT_THRESHOLD_TRIGGER = -1;
 			/** Number of slots occupied per transmission burst. */
-			unsigned short current_reservation_slot_length = 1;
+			unsigned int tx_burst_num_slots = 1;
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
-			unsigned int current_reservation_offset = 10;
+			unsigned int tx_offset = 20;
 			/** Link replies *must* be sent on specific slots. This container holds these bindings. */
 			std::map<uint64_t , L2Packet*> control_messages;
 	};

@@ -13,7 +13,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		private:
 			MacId own_id = MacId(42);
 			MacId communication_partner_id = MacId(43);
-			uint32_t planning_horizon = 128;
+			uint32_t planning_horizon = 1024;
 			uint64_t center_frequency1 = 1000, center_frequency2 = 2000, center_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
 			MACLayer *mac_layer_me, *mac_layer_you;
 			ARQLayer *arq_layer_me, *arq_layer_you;
@@ -96,9 +96,53 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				coutd.setVerbose(false);
 			}
 			
+			void testLinkEstablishment() {
+				coutd.setVerbose(true);
+				rlc_layer_me->should_there_be_more_data = false;
+				// New data for partner.
+				mac_layer_me->notifyOutgoing(512, communication_partner_id);
+				while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
+					// Order is important: if 'you' updates last, the reply may already be sent, and we couldn't check the next condition (or check for both awaiting_reply OR established).
+					mac_layer_you->update(1);
+					mac_layer_me->update(1);
+				}
+				// Link request should've been sent, so we're awaiting_reply.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
+				while (mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status != LinkManager::link_established) {
+					mac_layer_me->update(1);
+					mac_layer_you->update(1);
+				}
+				// Link reply should've arrived, so link should be established.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
+//				while (rlc_layer_you->receptions.size() < 2) {
+//					mac_layer_me->update(1);
+//					mac_layer_you->update(1);
+//				}
+				coutd.setVerbose(false);
+			}
+			
+			// TODO
+			void testEncapsulatedUnicast() {
+			}
+			
+			// TODO
+			void testLinkRenewal() {
+			}
+			
+			// TODO
+			void testRequestDoesntMakeIt() {
+			}
+			
+			// TODO
+			void testReplyDoesntMakeIt() {
+			
+			}
 		
 		CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testBroadcast);
+			CPPUNIT_TEST(testLinkEstablishment);
+//			CPPUNIT_TEST(testEncapsulatedUnicast);
+//			CPPUNIT_TEST(testLinkRenewal);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

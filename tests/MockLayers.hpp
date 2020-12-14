@@ -27,7 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				if (connected_phy == nullptr)
 					outgoing_packets.push_back(data);
 				else
-					connected_phy->onReception(data, data->getDestination());
+					connected_phy->onReception(data, center_frequency);
 			}
 			
 			unsigned long getCurrentDatarate() const override {
@@ -177,6 +177,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void reportNumHopsToGS(const MacId& id, unsigned int num_hops) override {
 				num_hops_to_GS_map[id] = num_hops;
 			}
+			
+//			void receiveFromLower(L3Packet* packet) override {
+//
+//			}
 			
 			std::map<MacId, unsigned int> num_hops_to_GS_map;
 	};

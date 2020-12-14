@@ -27,7 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void passToLower(L2Packet* packet, unsigned int center_frequency) override;
 			
-			void receiveFromLower(L2Packet* packet, const MacId& mac_id) override;
+			void receiveFromLower(L2Packet* packet, uint64_t center_frequency) override;
 			
 			/**
 			 * @param id

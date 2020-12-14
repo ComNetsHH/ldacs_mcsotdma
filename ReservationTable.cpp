@@ -8,6 +8,7 @@
 #include <limits>
 #include <iostream>
 #include "ReservationTable.hpp"
+#include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -27,7 +28,7 @@ uint32_t ReservationTable::getPlanningHorizon() const {
 
 Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& reservation) {
 	if (!this->isValid(slot_offset))
-		throw std::invalid_argument("Reservation table planning horizon smaller than queried slot offset!");
+		throw std::invalid_argument("ReservationTable::mark planning_horizon=" + std::to_string(planning_horizon) + " smaller than queried slot_offset=" + std::to_string(slot_offset) + "!");
 	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() == Reservation::Action::IDLE;
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
 	// Update the number of idle slots.
@@ -39,8 +40,11 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	if (phy_table != nullptr)
 		phy_table->mark(slot_offset, reservation);
 	// If this is a multi-slot transmission reservation, set the following ones, too.
-	if (reservation.getNumRemainingTxSlots() > 0) {
-		Reservation next_reservation = Reservation(reservation.getTarget(), Reservation::Action::TX_CONT, reservation.getNumRemainingTxSlots() - 1);
+	if (reservation.getNumRemainingSlots() > 0) {
+		Reservation::Action action = reservation.getAction();
+		if (action == Reservation::TX)
+			action = Reservation::TX_CONT;
+		Reservation next_reservation = Reservation(reservation.getTarget(), action, reservation.getNumRemainingSlots() - 1);
 		mark(slot_offset + 1, next_reservation);
 	}
 	return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));

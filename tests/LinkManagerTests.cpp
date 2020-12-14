@@ -161,7 +161,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				coutd.setVerbose(true);
 				link_manager->link_establishment_status = LinkManager::link_established;
 				link_manager->TIMEOUT_THRESHOLD_TRIGGER = 3;
-				link_manager->current_reservation_timeout = link_manager->TIMEOUT_THRESHOLD_TRIGGER + 1;
+				link_manager->tx_timeout = link_manager->TIMEOUT_THRESHOLD_TRIGGER + 1;
 				link_manager->onTransmissionSlot(1);
 				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->injections.size());
 				L2Packet* request = rlc_layer->injections.at(0);
@@ -175,9 +175,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2HeaderBase header = L2HeaderBase();
 				link_manager->setHeaderFields(&header);
 				CPPUNIT_ASSERT_EQUAL(own_id, header.icao_id);
-				CPPUNIT_ASSERT_EQUAL(link_manager->current_reservation_offset, header.offset);
-				CPPUNIT_ASSERT_EQUAL(link_manager->current_reservation_slot_length, header.length_next);
-				CPPUNIT_ASSERT_EQUAL(link_manager->current_reservation_timeout + 1, header.timeout);
+				CPPUNIT_ASSERT_EQUAL(link_manager->tx_offset, header.offset);
+				CPPUNIT_ASSERT_EQUAL(link_manager->tx_burst_num_slots, header.length_next);
+				CPPUNIT_ASSERT_EQUAL(link_manager->tx_timeout + 1, header.timeout);
 			}
 			
 			void testSetBeaconHeader() {
@@ -216,18 +216,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				auto* base_header = new L2HeaderBase(communication_partner_id, offset, length_next, timeout);
 				packet->addPayload(base_header, nullptr);
 				// Have the LinkManager process it.
-				link_manager->receiveFromLower(packet);
+				link_manager->receiveFromLower(packet, reservation_manager->getFreqChannelByCenterFreq(center_frequency1));
 				// Ensure that the slots were marked.
 				for (size_t i = 0; i < timeout; i++) {
 					const Reservation& reservation = table->getReservation((i + 1) * offset);
 					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
-					CPPUNIT_ASSERT_EQUAL(Reservation::TX, reservation.getAction());
-					CPPUNIT_ASSERT_EQUAL(length_next - 1, reservation.getNumRemainingTxSlots());
+					CPPUNIT_ASSERT_EQUAL(Reservation::RX, reservation.getAction());
+					CPPUNIT_ASSERT_EQUAL(length_next - 1, reservation.getNumRemainingSlots());
 					for (unsigned int j = 1; j < length_next; j++) {
 						const Reservation& cont_reservation = table->getReservation((i+1) * offset + j);
 						CPPUNIT_ASSERT_EQUAL(communication_partner_id, cont_reservation.getTarget());
-						CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT,cont_reservation.getAction());
-						CPPUNIT_ASSERT_EQUAL(length_next - 1 - j, cont_reservation.getNumRemainingTxSlots());
+						CPPUNIT_ASSERT_EQUAL(Reservation::RX,cont_reservation.getAction());
+						CPPUNIT_ASSERT_EQUAL(length_next - 1 - j, cont_reservation.getNumRemainingSlots());
 					}
 					
 				}
@@ -306,7 +306,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				((L2HeaderBase*) request->getHeaders().at(0))->icao_id = communication_partner_id;
 				((L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1))->icao_dest_id = own_id;
 				// Receive it on the BC.
-				bc_manager->receiveFromLower(request);
+				bc_manager->receiveFromLower(request, reservation_manager->getBroadcastFreqChannel());
 				// Fetch the now-instantiated P2P manager.
 				LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
 				// And increment time until it has sent the reply.
@@ -317,6 +317,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2Packet* reply = phy_layer->outgoing_packets.at(0);
 				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
+				// Make sure reservations are set.
+				
 //				coutd.setVerbose(false);
 			}
 		
