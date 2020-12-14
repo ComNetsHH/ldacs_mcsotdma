@@ -39,7 +39,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/** Notify this MAC that time has passed. */
 			void update(int64_t num_slots) override;
-			/** Execute reservations valid in the current time slot. */
+			
+			/**
+			 * Execute reservations valid in the current time slot.
+			 * All users should have been updated before calling their executes s.t. time is synchronized.
+			 * */
 			void execute();
 			
 			/**
