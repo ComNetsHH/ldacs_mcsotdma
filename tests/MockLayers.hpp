@@ -178,9 +178,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				num_hops_to_GS_map[id] = num_hops;
 			}
 			
-//			void receiveFromLower(L3Packet* packet) override {
-//
-//			}
+			void receiveFromLower(L3Packet* packet) override {
+
+			}
 			
 			std::map<MacId, unsigned int> num_hops_to_GS_map;
 	};
