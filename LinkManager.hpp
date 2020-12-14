@@ -94,7 +94,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
 			 */
-			void receiveFromLower(L2Packet* packet);
+			void receiveFromLower(L2Packet*& packet);
 			
 			/**
 			 * @param num_candidate_channels Number of distinct frequency channels that should be proposed.

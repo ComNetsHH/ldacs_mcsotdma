@@ -111,7 +111,9 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 }
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, const MacId& mac_id) {
-	coutd << "MAC::receiveFromLower(" << mac_id.getId() << ")... ";
+	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << mac_id << ")... ";
+	if (mac_id == SYMBOLIC_ID_UNSET)
+		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset mac_id.");
 	auto it = link_managers.find(mac_id);
 	getLinkManager(mac_id)->receiveFromLower(packet);
 }

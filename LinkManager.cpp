@@ -46,21 +46,21 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 	}
 }
 
-void LinkManager::receiveFromLower(L2Packet* packet) {
+void LinkManager::receiveFromLower(L2Packet*& packet) {
 	coutd << "LinkManager(" << link_id << ")::receiveFromLower... ";
 	coutd << "a packet from '" << packet->getOrigin() << "' ";
 	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
-		coutd << "to '" << packet->getDestination() << " ";
+		coutd << "to '" << packet->getDestination() << "";
 		if (packet->getDestination() == mac->getMacId())
-			coutd << "(us)' -> ";
+			coutd << " (us)' -> ";
 		else
 			coutd << "' -> ";
 	}
 	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
 	// Go through all header and payload pairs...
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
-		L2Header* header = packet->getHeaders().at(i);
-		L2Packet::Payload* payload = packet->getPayloads().at(i);
+		auto*& header = (L2Header*&) packet->getHeaders().at(i);
+		auto*& payload = (L2Packet::Payload*&) packet->getPayloads().at(i);
 		switch (header->frame_type) {
 			case L2Header::base: {
 				coutd << "processing base header -> ";
@@ -135,7 +135,7 @@ void LinkManager::receiveFromLower(L2Packet* packet) {
 		}
 	}
 	// After processing, the packet is passed to the upper layer.
-	coutd << "passing to upper layer." << std::endl;
+	coutd << " -> passing to upper layer." << std::endl;
 	mac->passToUpper(packet);
 }
 

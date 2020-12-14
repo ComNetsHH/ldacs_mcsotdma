@@ -24,7 +24,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				if (data == nullptr)
 					throw std::invalid_argument("PHY::receiveFromUpper(nullptr)");
 				coutd << "PHY::receiveFromUpper(" << data->getBits() << "bits, " << center_frequency << "kHz)" << std::endl;
-				outgoing_packets.push_back(data);
+				if (connected_phy == nullptr)
+					outgoing_packets.push_back(data);
+				else
+					connected_phy->onReception(data, data->getDestination());
 			}
 			
 			unsigned long getCurrentDatarate() const override {
@@ -37,6 +40,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			std::vector<L2Packet*> outgoing_packets;
+			PHYLayer* connected_phy = nullptr;
 	};
 	
 	class MACLayer : public MCSOTDMA_Mac {
@@ -107,6 +111,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			virtual ~RLCLayer() {
 				for (L2Packet* packet : injections)
 					delete packet;
+				for (L2Packet* packet : receptions)
+					delete packet;
 			}
 			
 			void receiveFromUpper(L3Packet* data, MacId dest, PacketPriority priority) override {
@@ -115,6 +121,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void receiveFromLower(L2Packet* packet) override {
 				coutd << "RLC received packet... ";
+				receptions.push_back(packet);
 			}
 			
 			void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
@@ -155,6 +162,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			std::vector<L2Packet*> injections;
+			std::vector<L2Packet*> receptions;
 			bool should_there_be_more_data = true;
 		protected:
 			MacId own_id;

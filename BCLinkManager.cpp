@@ -43,7 +43,7 @@ L2Packet* BCLinkManager::prepareBeacon() {
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
 	// Update the contention estimator.
-	coutd << " -> process broadcast -> updated contention estimate";
+	coutd << "updated contention estimate";
 	contention_estimator.reportBroadcast(origin);
 }
 

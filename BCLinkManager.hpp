@@ -18,6 +18,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BCLinkManager : public LinkManager {
 			
 		friend class BCLinkManagerTests;
+		friend class SystemTests;
 			
 		public:
 			/**

@@ -211,12 +211,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				ReservationTable* table = reservation_manager->reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
 				// Prepare incoming packet.
-				L2Packet packet = L2Packet();
+				auto* packet = new L2Packet();
 				unsigned int offset = 5, length_next = 2, timeout = 3;
 				auto* base_header = new L2HeaderBase(communication_partner_id, offset, length_next, timeout);
-				packet.addPayload(base_header, nullptr);
+				packet->addPayload(base_header, nullptr);
 				// Have the LinkManager process it.
-				link_manager->receiveFromLower(&packet);
+				link_manager->receiveFromLower(packet);
 				// Ensure that the slots were marked.
 				for (size_t i = 0; i < timeout; i++) {
 					const Reservation& reservation = table->getReservation((i + 1) * offset);
@@ -304,9 +304,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				request->getPayloads().at(1) = bc_manager->p2pSlotSelection();
 				// Hackily set it as if this request came from our communication partner.
 				((L2HeaderBase*) request->getHeaders().at(0))->icao_id = communication_partner_id;
-				request->originator_id = communication_partner_id;
 				((L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1))->icao_dest_id = own_id;
-				request->dest_id = own_id;
 				// Receive it on the BC.
 				bc_manager->receiveFromLower(request);
 				// Fetch the now-instantiated P2P manager.
