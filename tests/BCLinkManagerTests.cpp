@@ -114,21 +114,55 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(expected_num_slots, link_manager->getNumCandidateSlots(target_collision_prob));
 			}
 			
-			void testNotifyOutgoing() {
-				coutd.setVerbose(true);
+			void testNotifyOutgoingSingle() {
+//				coutd.setVerbose(true);
 				mac->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 				Reservation reservation = mac->reservation_manager->getBroadcastReservationTable()->getReservation(1);
 				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservation.getAction());
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
-				mac->update(1);
-				coutd.setVerbose(false);
+				// So that querying whether there's more data returns false -> no next broadcast
+				rlc_layer->should_there_be_more_data = false;
+				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
+				while (((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled)
+					mac->update(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
+				L2Packet* packet = phy_layer->outgoing_packets.at(0);
+				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, packet->getDestination());
+				auto* base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+				CPPUNIT_ASSERT_EQUAL(ushort(1), base_header->length_next);
+				CPPUNIT_ASSERT_EQUAL(uint(0), base_header->offset);
+				CPPUNIT_ASSERT_EQUAL(uint(0), base_header->timeout);
+//				coutd.setVerbose(false);
+			}
+			
+			void testNotifyOutgoingMulti() {
+//				coutd.setVerbose(true);
+				mac->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				Reservation reservation = mac->reservation_manager->getBroadcastReservationTable()->getReservation(1);
+				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservation.getAction());
+				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
+				// So that a next broadcast must be scheduled.
+				rlc_layer->should_there_be_more_data = true;
+				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
+				while (phy_layer->outgoing_packets.empty())
+					mac->update(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
+				L2Packet* packet = phy_layer->outgoing_packets.at(0);
+				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, packet->getDestination());
+				auto* base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+				CPPUNIT_ASSERT_EQUAL(ushort(1), base_header->length_next);
+				// A non-zero offset means we must've scheduled a next broadcast.
+				CPPUNIT_ASSERT(base_header->offset > 0);
+				CPPUNIT_ASSERT_EQUAL(uint(0), base_header->timeout);
+//				coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 			CPPUNIT_TEST(testSetBeaconHeader);
 			CPPUNIT_TEST(testProcessIncomingBeacon);
 			CPPUNIT_TEST(testGetNumCandidateSlots);
-			CPPUNIT_TEST(testNotifyOutgoing);
+			CPPUNIT_TEST(testNotifyOutgoingSingle);
+			CPPUNIT_TEST(testNotifyOutgoingMulti);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

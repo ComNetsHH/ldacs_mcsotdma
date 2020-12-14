@@ -151,10 +151,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			bool isThereMoreData(const MacId& mac_id) const override {
-				return true;
+				return should_there_be_more_data;
 			}
 			
 			std::vector<L2Packet*> injections;
+			bool should_there_be_more_data = true;
 		protected:
 			MacId own_id;
 	};

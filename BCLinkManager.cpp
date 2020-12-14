@@ -12,9 +12,13 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac,
                              unsigned int num_slots_contention_estimate)
      : LinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
-	link_establishment_status = link_established;
 	if (link_id != SYMBOLIC_LINK_ID_BROADCAST)
 		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
+	link_establishment_status = link_established;
+	// Broadcast reservations don't remain valid.
+	current_reservation_timeout = 0;
+	// Offset to next broadcast will be dynamically chosen.
+	current_reservation_offset = 0;
 }
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
@@ -101,6 +105,7 @@ L2Packet* BCLinkManager::onTransmissionSlot(unsigned int num_slots) {
 		} else {
 			coutd << "no next broadcast slot required -> ";
 			broadcast_slot_scheduled = false;
+			current_reservation_offset = 0;
 		}
 		// ... and set the header field.
 		for (L2Header* header : packet->getHeaders())
