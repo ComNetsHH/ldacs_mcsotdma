@@ -288,16 +288,14 @@ BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	coutd << "LinkManager(" << link_id << ")::onTransmissionSlot... ";
 	L2Packet* segment;
-	// Prioritize link reply control messages.
-	if (!control_messages.empty()) {
+	// Prioritize control messages.
+	if (!control_messages.empty() && control_messages.find(mac->getCurrentSlot()) != control_messages.end()) {
+		coutd << "sending control message." << std::endl;
+		if (num_slots > 1) // Control messages should be sent during single slots.
+			throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
 		auto it = control_messages.find(mac->getCurrentSlot());
-		if (it != control_messages.end()) {
-			if (num_slots > 1) // Control messages should be sent during single slots.
-				throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
-			coutd << "sending control message." << std::endl;
-			segment = (*it).second;
-			control_messages.erase(mac->getCurrentSlot());
-		}
+		segment = (*it).second;
+		control_messages.erase(mac->getCurrentSlot());
 		assert(segment->getHeaders().size() == 2);
 		if (segment->getHeaders().size() == 2) {
 			const L2Header* header = segment->getHeaders().at(1);
