@@ -321,7 +321,7 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		// Link replies don't need a setting of their header fields.
 		return segment;
 	// Control message through link requests...
-	} else if (link_establishment_status == link_expired) {
+	} else if (link_establishment_status == link_expired || link_establishment_status == awaiting_reply) {
 		segment = prepareLinkEstablishmentRequest();
 		link_establishment_status = awaiting_reply;
 	} else {

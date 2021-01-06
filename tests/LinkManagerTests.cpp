@@ -337,7 +337,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(LinkManager::link_expired, instantiated_lm->link_establishment_status);
 				// And the next transmission slot should be used to send a request.
 				L2Packet* request = instantiated_lm->onTransmissionSlot(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
 				delete request;
+				// And next slots, too, since hopefully a reply comes in for one of them.
+				request = instantiated_lm->onTransmissionSlot(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
+				delete request;
+				// And we should be awaiting a reply.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, instantiated_lm->link_establishment_status);
 				
 				coutd.setVerbose(false);
