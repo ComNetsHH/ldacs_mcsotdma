@@ -321,7 +321,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void testLinkRenewal() {
-				coutd.setVerbose(true);
+//				coutd.setVerbose(true);
 				// Starting with an established link.
 				mac->notifyOutgoing(512, communication_partner_id);
 				LinkManager* instantiated_lm = mac->getLinkManager(communication_partner_id);
@@ -348,7 +348,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// And we should be awaiting a reply.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, instantiated_lm->link_establishment_status);
 				
-				coutd.setVerbose(false);
+//				coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
