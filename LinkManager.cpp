@@ -364,9 +364,7 @@ void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
 	header->timeout = this->tx_timeout;
 	coutd << " timeout=" << this->tx_timeout;
 	if (link_id != SYMBOLIC_LINK_ID_BROADCAST) {
-		if (tx_timeout > 0)
-			tx_timeout = tx_timeout - 1;
-		else
+		if (tx_timeout == 0)
 			throw std::runtime_error("LinkManager::setBaseHeaderFields reached timeout of zero.");
 	}
 	coutd << " ";

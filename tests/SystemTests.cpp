@@ -83,35 +83,52 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				delete net_layer_you;
 			}
 			
+			/**
+			 * Schedules a single broadcast message and updates time until it has been received.
+			 */
 			void testBroadcast() {
 //				coutd.setVerbose(true);
+				// Single message.
 				rlc_layer_me->should_there_be_more_data = false;
 				CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer_you->receptions.size());
+				// Notify about outgoing data, which schedules a broadcast slot.
 				mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				// While it is scheduled, increment time.
 				while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
 					mac_layer_me->update(1);
 					mac_layer_you->update(1);
 					mac_layer_me->execute();
 					mac_layer_you->execute();
 				}
+				// Ensure that it has been received.
 				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
 //				coutd.setVerbose(false);
 			}
 			
+			/**
+			 * Notifies one communication partner of an outgoing message for the other partner.
+			 * This sends a request, which the partner replies to, until the link is established.
+			 * It is also ensured that corresponding future slot reservations are marked.
+			 */
 			void testLinkEstablishment() {
 //				coutd.setVerbose(true);
+				// Single message.
 				rlc_layer_me->should_there_be_more_data = false;
-				// New data for partner.
+				// New data for communication partner.
 				mac_layer_me->notifyOutgoing(512, communication_partner_id);
 				while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
-					// Order is important: if 'you' updates last, the reply may already be sent, and we couldn't check the next condition (or check for both awaiting_reply OR established).
+					// Order is important: if 'you' updates last, the reply may already be sent, and we couldn't check the next condition (or check for both 'awaiting_reply' OR 'established').
 					mac_layer_you->update(1);
 					mac_layer_me->update(1);
 					mac_layer_me->execute();
 					mac_layer_you->execute();
 				}
-				// Link request should've been sent, so we're awaiting_reply.
+				// Link request should've been sent, so we're 'awaiting_reply'.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
+				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+				// Reservation timeout should still be default.
+				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout, lm_me->tx_timeout);
+				// Increment time until status is 'link_established'.
 				while (mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status != LinkManager::link_established) {
 					mac_layer_me->update(1);
 					mac_layer_you->update(1);
@@ -120,8 +137,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 				// Link reply should've arrived, so link should be established.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
+				// Reservation timeout should still be default.
+				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout, lm_me->tx_timeout);
 				// Make sure that all corresponding slots are marked as TX on our side.
-				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 				ReservationTable* table_me = lm_me->current_reservation_table;
 				for (int offset = lm_me->tx_offset; offset < lm_me->tx_timeout * lm_me->tx_offset; offset += lm_me->tx_offset) {
 					const Reservation& reservation = table_me->getReservation(offset);
@@ -146,6 +164,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					mac_layer_me->execute();
 					mac_layer_you->execute();
 				}
+				// Reservation timeout should be 1 less now.
+				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout - 1, lm_me->tx_timeout);
 				CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());
 				// Ensure reservations are still valid.
 				for (size_t i = 0; i < reserved_time_slots.size(); i++) {
@@ -173,12 +193,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				coutd.setVerbose(false);
 			}
 			
-			// TODO
-			void testEncapsulatedUnicast() {
+			/**
+			 * TODO
+			 * Establishes a link and sends messages until the link goes invalid.
+			 * Ensures that a new link is established beforehand.
+			 */
+			void testLinkRenewal() {
+				coutd.setVerbose(true);
+				// Do link establishment and send one data packet.
+				testLinkEstablishment();
+				// Now there's more data.
+				rlc_layer_me->should_there_be_more_data = true;
+				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout - 1, lm_me->tx_timeout);
+				coutd.setVerbose(false);
 			}
 			
 			// TODO
-			void testLinkRenewal() {
+			void testEncapsulatedUnicast() {
 			}
 			
 			// TODO
@@ -193,8 +225,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testBroadcast);
 			CPPUNIT_TEST(testLinkEstablishment);
+			CPPUNIT_TEST(testLinkRenewal);
 //			CPPUNIT_TEST(testEncapsulatedUnicast);
-//			CPPUNIT_TEST(testLinkRenewal);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

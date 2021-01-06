@@ -290,7 +290,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Number of slots occupied per transmission burst. */
 			unsigned int tx_burst_num_slots = 1;
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
-			unsigned int tx_offset = 20;
+			unsigned int tx_offset = 5;
 			/** Link replies *must* be sent on specific slots. This container holds these bindings. */
 			std::map<uint64_t , L2Packet*> control_messages;
 	};

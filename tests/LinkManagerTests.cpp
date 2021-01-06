@@ -177,7 +177,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(own_id, header.icao_id);
 				CPPUNIT_ASSERT_EQUAL(link_manager->tx_offset, header.offset);
 				CPPUNIT_ASSERT_EQUAL(link_manager->tx_burst_num_slots, header.length_next);
-				CPPUNIT_ASSERT_EQUAL(link_manager->tx_timeout + 1, header.timeout);
+				CPPUNIT_ASSERT_EQUAL(link_manager->tx_timeout, header.timeout);
 			}
 			
 			void testSetBeaconHeader() {
