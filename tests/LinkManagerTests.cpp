@@ -253,12 +253,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Assign a reservation table.
 				ReservationTable* table = reservation_manager->reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
+				// Set this link as established.
 				// When we receive a packet intended for us...
 				L2Packet* unicast_packet_intended_for_us = rlc_layer->requestSegment(phy_layer->getCurrentDatarate(), own_id);
 				auto* header_for_us = (L2HeaderUnicast*) unicast_packet_intended_for_us->getHeaders().at(1);
 				L2Packet::Payload* payload_for_us = unicast_packet_intended_for_us->getPayloads().at(1);
 				CPPUNIT_ASSERT(header_for_us != nullptr);
 				CPPUNIT_ASSERT(payload_for_us != nullptr);
+				// Right now the link is not established, which should trigger an error.
+				bool exception_occurred = false;
+				try {
+					link_manager->processIncomingUnicast(header_for_us, payload_for_us);
+				} catch (const std::runtime_error& e) {
+					exception_occurred = true;
+				}
+				CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
+				// So set it to established and try again.
+				link_manager->link_establishment_status = LinkManager::link_established;
 				link_manager->processIncomingUnicast(header_for_us, payload_for_us);
 				// ... then they should just remain for processing on the upper layers.
 				CPPUNIT_ASSERT(header_for_us != nullptr);

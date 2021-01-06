@@ -486,6 +486,8 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 		if (link_establishment_status == reply_sent) {
 			coutd << "link is now established";
 			link_establishment_status = link_established;
+		} else if (link_establishment_status != link_established) {
+			throw std::runtime_error("LinkManager::processIncomingUnicast for some status other than 'link_established' or 'reply_sent': " + std::to_string(link_establishment_status));
 		}
 	}
 }
