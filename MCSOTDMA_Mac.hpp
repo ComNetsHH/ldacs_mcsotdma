@@ -48,8 +48,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::pair<size_t, size_t> execute();
 			
 			/**
-			 * When a LinkManager computes a link reply, it may belong to a FrequencyChannel it doesn't manage.
-			 * In this case, it delegates the sending of the reply to the corresponding LinkManager through this function.
+			 * When a LinkManager computes a link reply in response to a request, it may have to be sent on a different FrequencyChannel.
+			 * For example, the request may have been received by the Broadcast LinkManager, and the reply sent on some unicast LinkManager.
+			 * In this case, this function delegates the sending of the reply to the corresponding LinkManager and sets the corresponding FrequencyChannel of the LinkManager.
 			 * @param reply
 			 * @param channel
 			 * @param slot_offset

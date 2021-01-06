@@ -109,6 +109,9 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 								 offset = ((L2HeaderLinkEstablishmentRequest*&) header)->offset,
 								 length = ((L2HeaderLinkEstablishmentRequest*&) header)->length_next;
 					
+					// The request may have been received by the broadcast link manager,
+					// while the reply must be sent on a unicast channel,
+					// so we have to forward the reply to the corresponding unicast link manager.
 					mac->forwardLinkReply(reply, reply_channel, slot_offset, timeout, offset, length);
 				} else
 					coutd << "no candidates viable. Doing nothing." << std::endl;
@@ -295,6 +298,20 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 			segment = (*it).second;
 			control_messages.erase(mac->getCurrentSlot());
 		}
+		assert(segment->getHeaders().size() == 2);
+		if (segment->getHeaders().size() == 2) {
+			const L2Header* header = segment->getHeaders().at(1);
+			
+			if (header->frame_type == L2Header::FrameType::link_establishment_request) {
+				link_establishment_status = awaiting_reply;
+			} else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
+				link_establishment_status = reply_sent;
+			} else
+				throw std::logic_error("LinkManager::onTransmissionSlot for non-reply and non-request control message.");
+		} else
+			throw std::logic_error("LinkManager::onTransmissionSlot has a control message with too many or too few headers.");
+		
+		assert(segment->getHeaders().at(1)->frame_type == L2Header::FrameType::link_establishment_reply);
 		// Link replies don't need a setting of their header fields.
 		return segment;
 	} else {

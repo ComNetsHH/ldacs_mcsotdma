@@ -319,7 +319,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2Packet* reply = phy_layer->outgoing_packets.at(0);
 				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
-				// Make sure reservations are set.
+				// Link establishment status should've been updated.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::reply_sent, p2p_manager->link_establishment_status);
 				
 //				coutd.setVerbose(false);
 			}

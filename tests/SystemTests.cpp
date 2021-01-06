@@ -135,8 +135,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					mac_layer_me->execute();
 					mac_layer_you->execute();
 				}
-				// Link reply should've arrived, so link should be established.
+				// Link reply should've arrived, so *our* link should be established...
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
+				// ... and *their* link should indicate that the reply has been sent.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::reply_sent, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
 				// Reservation timeout should still be default.
 				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout, lm_me->tx_timeout);
 				// Make sure that all corresponding slots are marked as TX on our side.
@@ -211,9 +213,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				rlc_layer_me->should_there_be_more_data = true;
 				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 				// We've sent one message so far, so the link remains valid until default-1.
-				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout - 1, lm_me->tx_timeout);
-				// Now increment time until the link goes invalid.
-				for (size_t i = 0; i < lm_me->tx_timeout + 1; i++) {
+				unsigned int expected_tx_timeout = lm_me->default_tx_timeout - 1;
+				CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->tx_timeout);
+				// Now increment time until the link should be renewed.
+				CPPUNIT_ASSERT(lm_me->tx_timeout > lm_me->TIMEOUT_THRESHOLD_TRIGGER);
+				size_t num_slots = 0; // Actual number of slots until link renewal is needed.
+				// It should be the difference to reach the THRESHOLD times the transmission offset.
+				// e.g. timeout=5 threshold=1 and we transmit every 3 slots, then 5-1=4 4*3=12 is the expected number of slots
+				size_t expected_num_slots = (lm_me->tx_timeout - lm_me->TIMEOUT_THRESHOLD_TRIGGER) * lm_me->tx_offset;
+				while (lm_me->tx_timeout > lm_me->TIMEOUT_THRESHOLD_TRIGGER) {
+					num_slots++;
 					mac_layer_me->update(1);
 					mac_layer_you->update(1);
 					std::pair<size_t, size_t> exes_me = mac_layer_me->execute();
@@ -222,7 +231,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(exes_me.first, exes_you.second);
 					// ... and vice-versa.
 					CPPUNIT_ASSERT_EQUAL(exes_me.second, exes_you.first);
+					// When I send a transmission, the reservation timeout should decrease.
+					if (exes_me.first == 1)
+						expected_tx_timeout--;
+					CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->tx_timeout);
 				}
+				// Ensure our expectation is met.
+				CPPUNIT_ASSERT_EQUAL(expected_num_slots, num_slots);
+				// We should now be in the 'awaiting_reply' state.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_establishment_status);
 				coutd.setVerbose(false);
 			}
 			

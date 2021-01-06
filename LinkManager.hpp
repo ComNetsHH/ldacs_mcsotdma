@@ -70,7 +70,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				/** Link has not been established yet. */
 				link_not_established,
 				/** Link establishment request has been prepared and we're waiting for the reply. */
-				awaiting_reply
+				awaiting_reply,
+				/** Link establishment reply has been sent and we're waiting for the first message. */
+				reply_sent
 			};
 			
 			LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
@@ -286,7 +288,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int default_tx_timeout = 10,
 						 tx_timeout = default_tx_timeout;
 			/** When a reservation timeout reaches this threshold, a new link request is prepared. */
-			int TIMEOUT_THRESHOLD_TRIGGER = -1;
+			unsigned int TIMEOUT_THRESHOLD_TRIGGER = 1;
 			/** Number of slots occupied per transmission burst. */
 			unsigned int tx_burst_num_slots = 1;
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
