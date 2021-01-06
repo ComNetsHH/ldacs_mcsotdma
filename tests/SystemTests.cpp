@@ -172,7 +172,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(exes_me.second, exes_you.first);
 				}
 				// *Their* status should now show an established link.
-//				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
 				// Reservation timeout should be 1 less now.
 				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout - 1, lm_me->tx_timeout);
 				CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());

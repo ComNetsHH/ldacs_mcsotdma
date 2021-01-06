@@ -480,6 +480,13 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 		header = nullptr;
 		delete payload;
 		payload = nullptr;
+	// ... and if we are ...
+	} else {
+		// ... update status if we've been expecting it.
+		if (link_establishment_status == reply_sent) {
+			coutd << "link is now established";
+			link_establishment_status = link_established;
+		}
 	}
 }
 
