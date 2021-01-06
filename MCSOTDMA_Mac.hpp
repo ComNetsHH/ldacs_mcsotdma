@@ -43,8 +43,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * Execute reservations valid in the current time slot.
 			 * All users should have been updated before calling their executes s.t. time is synchronized.
+			 * @return A pair of (num_transmissions, num_receptions) that were executed.
 			 * */
-			void execute();
+			std::pair<size_t, size_t> execute();
 			
 			/**
 			 * When a LinkManager computes a link reply, it may belong to a FrequencyChannel it doesn't manage.

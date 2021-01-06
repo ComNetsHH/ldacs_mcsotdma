@@ -161,8 +161,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				for (size_t i = 0; i < lm_you->tx_offset; i++) {
 					mac_layer_me->update(1);
 					mac_layer_you->update(1);
-					mac_layer_me->execute();
-					mac_layer_you->execute();
+					std::pair<size_t, size_t> exes_me = mac_layer_me->execute();
+					std::pair<size_t, size_t> exes_you = mac_layer_you->execute();
+					// Since the link is now established, reservation tables should match:
+					// The number of transmissions I send must equal the number of receptions you receive...
+					CPPUNIT_ASSERT_EQUAL(exes_me.first, exes_you.second);
+					// ... and vice-versa.
+					CPPUNIT_ASSERT_EQUAL(exes_me.second, exes_you.first);
 				}
 				// Reservation timeout should be 1 less now.
 				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout - 1, lm_me->tx_timeout);
@@ -205,7 +210,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Now there's more data.
 				rlc_layer_me->should_there_be_more_data = true;
 				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+				// We've sent one message so far, so the link remains valid until default-1.
 				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout - 1, lm_me->tx_timeout);
+				// Now increment time until the link goes invalid.
+				for (size_t i = 0; i < lm_me->tx_timeout + 1; i++) {
+					mac_layer_me->update(1);
+					mac_layer_you->update(1);
+					std::pair<size_t, size_t> exes_me = mac_layer_me->execute();
+					std::pair<size_t, size_t> exes_you = mac_layer_you->execute();
+					// The number of transmissions I send must equal the number of receptions you receive...
+					CPPUNIT_ASSERT_EQUAL(exes_me.first, exes_you.second);
+					// ... and vice-versa.
+					CPPUNIT_ASSERT_EQUAL(exes_me.second, exes_you.first);
+				}
 				coutd.setVerbose(false);
 			}
 			

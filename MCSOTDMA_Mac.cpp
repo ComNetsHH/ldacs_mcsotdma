@@ -104,7 +104,7 @@ void MCSOTDMA_Mac::forwardLinkReply(L2Packet* reply, const FrequencyChannel* cha
 	manager->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
 }
 
-void MCSOTDMA_Mac::execute() {
+std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	// Fetch all reservations of the current time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	coutd << "MCSOTDMA_Mac(" << id << ") processing " << reservations.size() << " reservations..." << std::endl;
@@ -169,4 +169,5 @@ void MCSOTDMA_Mac::execute() {
 		coutd << std::endl;
 	}
 	coutd.decreaseIndent();
+	return {num_txs, num_rxs};
 }
