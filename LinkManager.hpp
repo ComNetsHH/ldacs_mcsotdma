@@ -72,7 +72,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				/** Link establishment request has been prepared and we're waiting for the reply. */
 				awaiting_reply,
 				/** Link establishment reply has been sent and we're waiting for the first message. */
-				reply_sent
+				reply_sent,
+				/** When a link is expired, it must be renewed. */
+				link_expired
 			};
 			
 			LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
@@ -294,7 +296,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
 			unsigned int tx_offset = 5;
 			/** Link replies *must* be sent on specific slots. This container holds these bindings. */
-			std::map<uint64_t , L2Packet*> control_messages;
+			std::map<uint64_t , L2Packet*> scheduled_link_replies;
 	};
 }
 

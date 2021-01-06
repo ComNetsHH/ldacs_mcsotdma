@@ -137,7 +137,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				// Ensure that we have not too many receptions scheduled.
 				num_rxs++;
 				if (num_rxs > num_receivers)
-					throw std::runtime_error("MCSOTDMA_Mac::update for too many receptions within this time slot.");
+					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				// Tune the receiver.
 				onReceptionSlot(channel);
 				break;
@@ -146,7 +146,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				// Ensure that we have no simultaneous transmissions scheduled.
 				num_txs++;
 				if (num_txs > num_transmitters)
-					throw std::runtime_error("MCSOTDMA_Mac::update for too many transmissions within this time slot.");
+					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
 				// Find the corresponding LinkManager.
 				const MacId& id = reservation.getTarget();
 				LinkManager* link_manager;
@@ -154,7 +154,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 					link_manager = link_managers.at(id);
 				} catch (const std::exception& e) {
 					throw std::runtime_error(
-							"MCSOTDMA_Mac::update caught exception while looking for the corresponding LinkManager: " +
+							"MCSOTDMA_Mac::execute caught exception while looking for the corresponding LinkManager: " +
 							std::string(e.what()));
 				}
 				// Tell it about the transmission slot.

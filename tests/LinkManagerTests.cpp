@@ -155,22 +155,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				delete packet;
 			}
 			
-			void testTriggerNewLinkRequest() {
-				// Next transmission should trigger a new request.
-				// Transmission slots should only occur for established links.
-//				coutd.setVerbose(true);
-				link_manager->link_establishment_status = LinkManager::link_established;
-				link_manager->TIMEOUT_THRESHOLD_TRIGGER = 3;
-				link_manager->tx_timeout = link_manager->TIMEOUT_THRESHOLD_TRIGGER + 1;
-				link_manager->onTransmissionSlot(1);
-				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->injections.size());
-				L2Packet* request = rlc_layer->injections.at(0);
-				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
-				CPPUNIT_ASSERT(request->getHeaders().at(0)->frame_type == L2Header::base);
-				CPPUNIT_ASSERT(request->getHeaders().at(1)->frame_type == L2Header::link_establishment_request);
-//				coutd.setVerbose(false);
-			}
-			
 			void testSetBaseHeader() {
 				L2HeaderBase header = L2HeaderBase();
 				link_manager->setHeaderFields(&header);
@@ -322,7 +306,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
 				// And increment time until it has sent the reply.
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
-				while (!p2p_manager->control_messages.empty()) {
+				while (!p2p_manager->scheduled_link_replies.empty()) {
 					mac->update(1);
 					mac->execute();
 				}
@@ -335,6 +319,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				
 //				coutd.setVerbose(false);
 			}
+			
+			void testLinkRenewal() {
+				coutd.setVerbose(true);
+				// Starting with an established link.
+				mac->notifyOutgoing(512, communication_partner_id);
+				LinkManager* instantiated_lm = mac->getLinkManager(communication_partner_id);
+				instantiated_lm->link_establishment_status = LinkManager::link_established;
+				ReservationTable* table = reservation_manager->reservation_tables.at(0);
+				instantiated_lm->current_reservation_table = table;
+				// Reach the reservation timeout
+				instantiated_lm->tx_timeout = instantiated_lm->TIMEOUT_THRESHOLD_TRIGGER + 1;
+				instantiated_lm->current_reservation_table->mark(1, Reservation(communication_partner_id, Reservation::TX, 0));
+				L2Packet* packet = instantiated_lm->onTransmissionSlot(1);
+				delete packet;
+				// The status should now indicate the expired link.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::link_expired, instantiated_lm->link_establishment_status);
+				// And the next transmission slot should be used to send a request.
+				L2Packet* request = instantiated_lm->onTransmissionSlot(1);
+				delete request;
+				CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, instantiated_lm->link_establishment_status);
+				
+				coutd.setVerbose(false);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -343,7 +350,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
 			CPPUNIT_TEST(testNewLinkRequest);
 			CPPUNIT_TEST(testOnTransmissionSlot);
-			CPPUNIT_TEST(testTriggerNewLinkRequest);
 			CPPUNIT_TEST(testSetBaseHeader);
 			CPPUNIT_TEST(testSetBeaconHeader);
 			CPPUNIT_TEST(testSetUnicastHeader);
@@ -354,6 +360,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
 			CPPUNIT_TEST(testPrepareLinkReply);
 			CPPUNIT_TEST(testReplyToRequest);
+			CPPUNIT_TEST(testLinkRenewal);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

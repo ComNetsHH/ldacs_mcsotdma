@@ -144,15 +144,15 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 
 void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
 	uint64_t absolute_slot = mac->getCurrentSlot() + slot_offset;
-	auto it = control_messages.find(absolute_slot);
-	if (it != control_messages.end())
+	auto it = scheduled_link_replies.find(absolute_slot);
+	if (it != scheduled_link_replies.end())
 		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
 	else {
 		// ... schedule it.
 		if (current_reservation_table->isUtilized(slot_offset))
 			throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
 		current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
-		control_messages[absolute_slot] = reply;
+		scheduled_link_replies[absolute_slot] = reply;
 		coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
 		// ... and mark reservations: we're sending a reply, so we're the receiver.
 		markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
@@ -165,14 +165,21 @@ double LinkManager::getCurrentTrafficEstimate() const {
 
 void LinkManager::requestNewLink() {
 	coutd << "requesting new link... ";
-	// Prepare a link request and inject it into the RLC sublayer above.
-	L2Packet* request = prepareLinkEstablishmentRequest();
-	coutd << "prepared link establishment request... ";
-	mac->injectIntoUpper(request);
-	coutd << "injected into upper layer... ";
-	// We are now awaiting a reply.
-	this->link_establishment_status = Status::awaiting_reply;
-	coutd << "updated status to 'awaiting_reply'." << std::endl;
+	// An established link can just update its status, so that the next transmission slot sends a request.
+	if (link_establishment_status == link_established) {
+		link_establishment_status = link_expired;
+		coutd << "set status to 'link_expired'." << std::endl;
+	// An unestablished link must resort to injecting it into the upper layer as a broadcast.
+	} else if (link_establishment_status == link_not_established) {
+		// Prepare a link request and inject it into the RLC sublayer above.
+		L2Packet* request = prepareLinkEstablishmentRequest();
+		coutd << "prepared link establishment request... ";
+		mac->injectIntoUpper(request);
+		coutd << "injected into upper layer... ";
+		// We are now awaiting a reply.
+		this->link_establishment_status = Status::awaiting_reply;
+		coutd << "updated status to 'awaiting_reply'." << std::endl;
+	}
 }
 
 L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
@@ -184,7 +191,7 @@ L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
 	request->addPayload(base_header, nullptr);
 	// Instantiate request header.
 	// If the link is not yet established, the request must be sent on the broadcast channel.
-	MacId dest_id = link_establishment_status == link_established ? link_id : SYMBOLIC_LINK_ID_BROADCAST;
+	MacId dest_id = link_establishment_status == link_not_established ? SYMBOLIC_LINK_ID_BROADCAST : link_id;
 	auto* request_header = new L2HeaderLinkEstablishmentRequest(dest_id, link_should_be_arq_protected, 0, 0, 0);
 	auto* body = new ProposalPayload(this->num_proposed_channels, this->num_proposed_slots);
 	request->addPayload(request_header, body);
@@ -289,13 +296,14 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	coutd << "LinkManager(" << link_id << ")::onTransmissionSlot... ";
 	L2Packet* segment;
 	// Prioritize control messages.
-	if (!control_messages.empty() && control_messages.find(mac->getCurrentSlot()) != control_messages.end()) {
+	// Control message through scheduled link replies...
+	if (!scheduled_link_replies.empty() && scheduled_link_replies.find(mac->getCurrentSlot()) != scheduled_link_replies.end()) {
 		coutd << "sending control message." << std::endl;
 		if (num_slots > 1) // Control messages should be sent during single slots.
 			throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
-		auto it = control_messages.find(mac->getCurrentSlot());
+		auto it = scheduled_link_replies.find(mac->getCurrentSlot());
 		segment = (*it).second;
-		control_messages.erase(mac->getCurrentSlot());
+		scheduled_link_replies.erase(mac->getCurrentSlot());
 		assert(segment->getHeaders().size() == 2);
 		if (segment->getHeaders().size() == 2) {
 			const L2Header* header = segment->getHeaders().at(1);
@@ -312,6 +320,10 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		assert(segment->getHeaders().at(1)->frame_type == L2Header::FrameType::link_establishment_reply);
 		// Link replies don't need a setting of their header fields.
 		return segment;
+	// Control message through link requests...
+	} else if (link_establishment_status == link_expired) {
+		segment = prepareLinkEstablishmentRequest();
+		link_establishment_status = awaiting_reply;
 	} else {
 		// Non-control messages can only be sent on established links.
 		if (link_establishment_status != Status::link_established)
@@ -328,9 +340,8 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 			requestNewLink();
 		}
 	}
-	// All other messages do need the setting of their header fields.
-	assert(segment->getHeaders().size() > 1 &&
-	       "LinkManager::onTransmissionSlot received segment with <=1 headers.");
+	// Set header fields.
+	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionSlot received segment with <=1 headers.");
 	for (L2Header* header : segment->getHeaders())
 		setHeaderFields(header);
 	
