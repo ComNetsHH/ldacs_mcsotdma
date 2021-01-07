@@ -29,10 +29,10 @@ uint32_t ReservationTable::getPlanningHorizon() const {
 Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& reservation) {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::mark planning_horizon=" + std::to_string(planning_horizon) + " smaller than queried slot_offset=" + std::to_string(slot_offset) + "!");
-	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() == Reservation::Action::IDLE;
+	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
 	// Update the number of idle slots.
-	if (reservation.getAction() != Reservation::Action::IDLE)
+	if (!reservation.isIdle())
 		num_idle_future_slots--;
 	else if (!currently_idle) // changing from non-idle to idle
 		num_idle_future_slots++;
@@ -53,14 +53,14 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 bool ReservationTable::isUtilized(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::isUtilized for planning horizon smaller than queried offset!");
-	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() != Reservation::Action::IDLE;
+	return !this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
 }
 
 bool ReservationTable::anyTxReservations(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::anyTxReservations for planning horizon smaller than queried offset!");
-	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() == Reservation::Action::TX
-		|| this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getAction() == Reservation::Action::TX_CONT;
+	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isTx()
+		|| this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isTxCont();
 }
 
 bool ReservationTable::anyTxReservations(int32_t start, uint32_t length) const {
@@ -150,7 +150,7 @@ void ReservationTable::update(uint64_t num_slots) {
 	uint64_t num_busy_slots = 0;
 	for (auto it = slot_utilization_vec.begin(); it < slot_utilization_vec.begin() + num_slots; it++) {
 		Reservation reservation = *it;
-		if (reservation.getAction() != Reservation::Action::IDLE)
+		if (!reservation.isIdle())
 			num_busy_slots++;
 	}
 	num_idle_future_slots += num_busy_slots; // As these go out of scope, we may have more idle slots now.
@@ -226,7 +226,7 @@ const Reservation& ReservationTable::getReservation(int offset) const {
 unsigned long ReservationTable::countReservedTxSlots(const MacId& id) const {
 	unsigned long counter = 0;
 	for (const Reservation& reservation : slot_utilization_vec)
-		if (reservation.getTarget() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+		if (reservation.getTarget() == id && (reservation.isTx() || reservation.isTxCont()))
 			counter++;
 	return counter;
 }
@@ -235,7 +235,7 @@ ReservationTable* ReservationTable::getTxReservations(const MacId& id) const {
 	auto* table = new ReservationTable(this->planning_horizon);
 	for (size_t i = 0; i < slot_utilization_vec.size(); i++) {
 		const Reservation& reservation = slot_utilization_vec.at(i);
-		if (reservation.getTarget() == id && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+		if (reservation.getTarget() == id && (reservation.isTx() || reservation.isTxCont()))
 			table->slot_utilization_vec.at(i) = Reservation(reservation);
 	}
 	return table;
@@ -246,7 +246,7 @@ void ReservationTable::integrateTxReservations(const ReservationTable* other) {
 		throw std::invalid_argument("ReservationTable::integrateTxReservations where other table doesn't have the same dimension!");
 	for (size_t i = 0; i < slot_utilization_vec.size(); i++) {
 		const Reservation& reservation = other->slot_utilization_vec.at(i);
-		if (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT)
+		if (reservation.isTx() || reservation.isTxCont())
 			slot_utilization_vec.at(i) = Reservation(reservation);
 	}
 }

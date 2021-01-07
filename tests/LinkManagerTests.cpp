@@ -205,12 +205,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				for (size_t i = 0; i < timeout; i++) {
 					const Reservation& reservation = table->getReservation((i + 1) * offset);
 					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
-					CPPUNIT_ASSERT_EQUAL(Reservation::RX, reservation.getAction());
+					CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
 					CPPUNIT_ASSERT_EQUAL(length_next - 1, reservation.getNumRemainingSlots());
 					for (unsigned int j = 1; j < length_next; j++) {
 						const Reservation& cont_reservation = table->getReservation((i+1) * offset + j);
 						CPPUNIT_ASSERT_EQUAL(communication_partner_id, cont_reservation.getTarget());
-						CPPUNIT_ASSERT_EQUAL(Reservation::RX,cont_reservation.getAction());
+						CPPUNIT_ASSERT_EQUAL(true,cont_reservation.isRx());
 						CPPUNIT_ASSERT_EQUAL(length_next - 1 - j, cont_reservation.getNumRemainingSlots());
 					}
 					

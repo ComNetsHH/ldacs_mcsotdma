@@ -28,7 +28,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				/** Reservation for me, and I should *start to transmit* during this slot. */
 				TX,
 				/** Reservation for me, and I should *continue transmitting* during this slot. */
-				TX_CONT
+				TX_CONT,
+				/** A locked reservation has been considered in a link request proposal and shouldn't be used until this negotiation has concluded. */
+				LOCKED
 			};
 			
 			/**
@@ -67,6 +69,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			bool operator==(const Reservation& other) const;
 			bool operator!=(const Reservation& other) const;
+			
+			/**
+			 * @return Whether this reservation can be considered as usable for making a new reservation.
+			 */
+			bool isIdle() const;
+			
+			/**
+			 * @return Whether this denotes a cell that is reserved by another user.
+			 */
+			bool isBusy() const;
+			
+			/**
+			 * @return Whether this denotes a reserved transmission cell.
+			 */
+			bool isTx() const;
+			
+			/**
+			 * @return Whether this denotes a continued transmission cell.
+			 */
+			bool isTxCont() const;
+			
+			/**
+			 * @return Whether this denotes a reception cell.
+			 */
+			bool isRx() const;
+			
+			/**
+			 * @return Whether this cell is locked as it was used for making a proposal and shouldn't be considered for further reservations until the negotiation has concluded.
+			 */
+			bool isLocked() const;
 		
 		protected:
 			/** Target MAC ID. */
@@ -93,6 +125,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				break;
 			case Reservation::TX_CONT:
 				action = "TX_CONT";
+				break;
+			case Reservation::LOCKED:
+				action = "LOCKED";
 				break;
 		}
 		action += "@";

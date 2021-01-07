@@ -384,11 +384,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(0, reservation);
 				for (uint32_t t = 0; t < planning_horizon; t++) {
 					if (t == 0)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::TX);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTx());
 					else if (t <= num_cont_slots)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::TX_CONT);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTxCont());
 					else
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 				}
 			}
 			
@@ -398,11 +398,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(0, reservation);
 				for (uint32_t t = 0; t < planning_horizon; t++) {
 					if (t == 0)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::RX);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isRx());
 					else if (t <= num_cont_slots)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::RX);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isRx());
 					else
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 				}
 			}
 			
@@ -412,11 +412,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(0, reservation);
 				for (uint32_t t = 0; t < planning_horizon; t++) {
 					if (t == 0)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::BUSY);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isBusy());
 					else if (t <= num_cont_slots)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::BUSY);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isBusy());
 					else
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 				}
 			}
 			
@@ -426,11 +426,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(0, reservation);
 				for (uint32_t t = 0; t < planning_horizon; t++) {
 					if (t == 0)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 					else if (t <= num_cont_slots)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 					else
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 				}
 			}
 			
@@ -440,11 +440,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(0, reservation);
 				for (uint32_t t = 0; t < planning_horizon; t++) {
 					if (t == 0)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::TX_CONT);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTxCont());
 					else if (t <= num_cont_slots)
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::TX_CONT);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTxCont());
 					else
-						CPPUNIT_ASSERT(table->getReservation(t).getAction() == Reservation::Action::IDLE);
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 				}
 			}
 			

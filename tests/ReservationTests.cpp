@@ -33,10 +33,10 @@ class ReservationTests : public CppUnit::TestFixture {
 		void testBasics() {
 			CPPUNIT_ASSERT(reservation->getTarget() == owner);
 			CPPUNIT_ASSERT(reservation->getTarget() != MacId(id + 1));
-			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::IDLE);
+			CPPUNIT_ASSERT_EQUAL(true, reservation->isIdle());
 			reservation->setAction(Reservation::Action::TX);
-			CPPUNIT_ASSERT(reservation->getAction() != Reservation::Action::IDLE);
-			CPPUNIT_ASSERT(reservation->getAction() == Reservation::Action::TX);
+			CPPUNIT_ASSERT_EQUAL(false, reservation->isIdle());
+			CPPUNIT_ASSERT_EQUAL(true, reservation->isTx());
 		}
 		
 		void testEqualityOperator() {

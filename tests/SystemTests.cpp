@@ -145,7 +145,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				ReservationTable* table_me = lm_me->current_reservation_table;
 				for (int offset = lm_me->tx_offset; offset < lm_me->tx_timeout * lm_me->tx_offset; offset += lm_me->tx_offset) {
 					const Reservation& reservation = table_me->getReservation(offset);
-					CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservation.getAction());
+					CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
 					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
 				}
 				// Make sure that the same slots are marked as RX on their side.
@@ -155,7 +155,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				for (int offset = lm_me->tx_offset; offset < lm_me->tx_timeout * lm_me->tx_offset; offset += lm_me->tx_offset) {
 					const Reservation& reservation = table_you->getReservation(offset);
 					CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
-					CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+					CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
 					reserved_time_slots.push_back(offset);
 				}
 				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
@@ -181,21 +181,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					int offset = reserved_time_slots.at(i);
 					const Reservation& reservation = table_you->getReservation(offset - lm_you->tx_offset); // Normalize saved offsets to current time
 					CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
-					CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+					CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
 					// All inbetween current and next reservation should be IDLE.
 					if (i < reserved_time_slots.size() - 1) {
 						int next_offset = reserved_time_slots.at(i+1);
 						for (int j = offset + 1; j < next_offset; j++) {
 							const Reservation& next_reservation = table_you->getReservation(j);
 							CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
-							CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, next_reservation.getAction());
+							CPPUNIT_ASSERT_EQUAL(true, next_reservation.isIdle());
 						}
 						coutd << std::endl;
 					} else {
 						for (int j = reserved_time_slots.at(reserved_time_slots.size() - 1) + 1; j < planning_horizon; j++) {
 							const Reservation& next_reservation = table_you->getReservation(j);
 							CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
-							CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, next_reservation.getAction());
+							CPPUNIT_ASSERT_EQUAL(true, next_reservation.isIdle());
 						}
 					}
 				}
@@ -268,7 +268,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testBroadcast);
 			CPPUNIT_TEST(testLinkEstablishment);
-			CPPUNIT_TEST(testLinkRenewal);
+//			CPPUNIT_TEST(testLinkRenewal);
 //			CPPUNIT_TEST(testEncapsulatedUnicast);
 		CPPUNIT_TEST_SUITE_END();
 	};

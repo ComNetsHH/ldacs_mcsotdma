@@ -193,7 +193,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 							// Should have reservations where we marked them
 							if (i == o11 || i == o12 || i == o13) {
 								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getTarget(), id);
-								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getAction(), Reservation::Action::TX);
+								CPPUNIT_ASSERT_EQUAL(true, table->getReservation(i).isTx());
 							// all others should be default
 							} else
 								CPPUNIT_ASSERT(table->getReservation(i) == Reservation());
@@ -202,7 +202,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						for (int i = 0; i < 50; i++) {
 							if (i == o21 || i == o22 || i == o23) {
 								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getTarget(), id);
-								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getAction(), Reservation::Action::TX);
+								CPPUNIT_ASSERT_EQUAL(true, table->getReservation(i).isTx());
 							} else
 								CPPUNIT_ASSERT(table->getReservation(i) == Reservation());
 						}
@@ -210,7 +210,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						for (int i = 0; i < 50; i++) {
 							if (i == o31 || i == o32 || i == o33) {
 								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getTarget(), id);
-								CPPUNIT_ASSERT_EQUAL(table->getReservation(i).getAction(), Reservation::Action::TX);
+								CPPUNIT_ASSERT_EQUAL(true, table->getReservation(i).isTx());
 							} else
 								CPPUNIT_ASSERT(table->getReservation(i) == Reservation());
 						}
@@ -258,9 +258,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				auto reservations = reservation_manager->collectCurrentReservations();
 				CPPUNIT_ASSERT_EQUAL(size_t(2), reservations.size());
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservations.at(0).first.getTarget());
-				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservations.at(0).first.getAction());
+				CPPUNIT_ASSERT_EQUAL(true, reservations.at(0).first.isTx());
 				CPPUNIT_ASSERT_EQUAL(MacId(42), reservations.at(1).first.getTarget());
-				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservations.at(1).first.getAction());
+				CPPUNIT_ASSERT_EQUAL(true, reservations.at(1).first.isTx());
 			}
 		
 		CPPUNIT_TEST_SUITE(ReservationManagerTests);

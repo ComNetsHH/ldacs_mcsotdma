@@ -118,7 +118,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				coutd.setVerbose(true);
 				mac->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 				Reservation reservation = mac->reservation_manager->getBroadcastReservationTable()->getReservation(1);
-				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservation.getAction());
+				CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
 				// So that querying whether there's more data returns false -> no next broadcast
 				rlc_layer->should_there_be_more_data = false;
@@ -144,7 +144,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				coutd.setVerbose(true);
 				mac->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 				Reservation reservation = mac->reservation_manager->getBroadcastReservationTable()->getReservation(1);
-				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, reservation.getAction());
+				CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
 				// So that a next broadcast must be scheduled.
 				rlc_layer->should_there_be_more_data = true;

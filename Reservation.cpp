@@ -47,3 +47,27 @@ void Reservation::setNumRemainingSlots(const unsigned int& num_slots) {
 	this->num_remaining_slots = num_slots;
 }
 
+bool Reservation::isIdle() const {
+	return action == IDLE;
+}
+
+bool Reservation::isBusy() const {
+	return action == BUSY;
+}
+
+bool Reservation::isTx() const {
+	return action == TX;
+}
+
+bool Reservation::isTxCont() const {
+	return action == TX_CONT;
+}
+
+bool Reservation::isRx() const {
+	return action == RX;
+}
+
+bool Reservation::isLocked() const {
+	return action == LOCKED;
+}
+
