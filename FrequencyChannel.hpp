@@ -6,6 +6,7 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_FREQUENCYCHANNEL_HPP
 
 #include <cstdint>
+#include <ostream>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -44,6 +45,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			bool is_blacklisted;
 	};
 	
+	inline std::ostream& operator<<(std::ostream& stream, const FrequencyChannel& channel) {
+		return stream << std::to_string(channel.getCenterFrequency()) << "kHz";
+	}
 }
 
 

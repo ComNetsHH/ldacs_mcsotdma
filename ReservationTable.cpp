@@ -202,6 +202,14 @@ std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offse
 	return start_slots;
 }
 
+void ReservationTable::lock(const std::vector<int32_t>& slot_offsets) {
+	for (int32_t i : slot_offsets) {
+		bool succeeded = slot_utilization_vec.at(convertOffsetToIndex(i)).lock();
+		if (!succeeded)
+			throw std::invalid_argument("ReservationTable::lock didn't succeed for slot index '" + std::to_string(i) + "'.");
+	}
+}
+
 int32_t ReservationTable::findEarliestOffset(int32_t start_offset, const Reservation& reservation) const {
 	for (uint32_t i = start_offset; i < planning_horizon; i++) {
 		const Reservation& current_reservation = slot_utilization_vec.at(convertOffsetToIndex(i));

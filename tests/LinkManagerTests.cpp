@@ -221,14 +221,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Assign a reservation table.
 				ReservationTable* table = reservation_manager->reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
-				// Prepare a link establishment request.
+				// Prepare a link establishment request by our communication partner.
+				MACLayer other_mac = MACLayer(communication_partner_id, planning_horizon);
+				other_mac.setUpperLayer(arq_layer);
+				other_mac.setLowerLayer(phy_layer);
+				other_mac.reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
+				other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
+				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
+				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
+				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
+				LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
 //				coutd.setVerbose(true);
-				L2Packet* request = link_manager->prepareLinkEstablishmentRequest();
-				request->getPayloads().at(1) = link_manager->p2pSlotSelection();
+				L2Packet* request = other_link_manager.prepareLinkEstablishmentRequest();
+				request->getPayloads().at(1) = other_link_manager.p2pSlotSelection();
+				// The number of proposed channels should be adequate.
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
 				auto body = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
 				auto viable_candidates = link_manager->processIncomingLinkEstablishmentRequest(header, body);
+				// And all slots should be viable.
 				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->num_proposed_channels * link_manager->num_proposed_slots, viable_candidates.size());
 //				coutd.setVerbose(false);
 			}
@@ -294,12 +305,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Assign as BC link manager.
 				LinkManager* bc_manager = mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 				// Prepare a link establishment request.
+				MACLayer other_mac = MACLayer(communication_partner_id, planning_horizon);
+				other_mac.setUpperLayer(arq_layer);
+				other_mac.setLowerLayer(phy_layer);
+				other_mac.reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
+				other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
+				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
+				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
+				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
+				LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
+				L2Packet* request = other_link_manager.prepareLinkEstablishmentRequest();
+				request->getPayloads().at(1) = other_link_manager.p2pSlotSelection();
 //				coutd.setVerbose(true);
-				L2Packet* request = bc_manager->prepareLinkEstablishmentRequest();
-				request->getPayloads().at(1) = bc_manager->p2pSlotSelection();
-				// Hackily set it as if this request came from our communication partner.
-				((L2HeaderBase*) request->getHeaders().at(0))->icao_id = communication_partner_id;
-				((L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1))->icao_dest_id = own_id;
 				// Receive it on the BC.
 				bc_manager->receiveFromLower(request, reservation_manager->getBroadcastFreqChannel());
 				// Fetch the now-instantiated P2P manager.
@@ -316,7 +333,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
 				// Link establishment status should've been updated.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::reply_sent, p2p_manager->link_establishment_status);
-				
 //				coutd.setVerbose(false);
 			}
 			
@@ -350,6 +366,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				
 //				coutd.setVerbose(false);
 			}
+			
+			void testLocking() {
+				// Compute one request1.
+				L2Packet* request1 = link_manager->prepareLinkEstablishmentRequest();
+				request1->getPayloads().at(1) = link_manager->p2pSlotSelection();
+				// And another one.
+				L2Packet* request2 = link_manager->prepareLinkEstablishmentRequest();
+				request2->getPayloads().at(1) = link_manager->p2pSlotSelection();
+				// Because the first proposed slots have been locked, they shouldn't be the same as the next.
+				auto* proposal1 = (LinkManager::ProposalPayload*) request1->getPayloads().at(1);
+				auto* proposal2 = (LinkManager::ProposalPayload*) request2->getPayloads().at(1);
+				// We have a sufficiently large planning horizon s.t. the frequency channels can be the same.
+				CPPUNIT_ASSERT_EQUAL(proposal1->proposed_channels.size(), proposal2->proposed_channels.size());
+				for (size_t i = 0; i < proposal1->proposed_channels.size(); i++)
+					CPPUNIT_ASSERT_EQUAL(proposal1->proposed_channels.at(i), proposal2->proposed_channels.at(i));
+				// But the slots mustn't be the same.
+				for (int32_t slot1 : proposal1->proposed_slots) { // Any out of the first proposed slots
+					for (int32_t slot2 : proposal2->proposed_slots) // can't equal any of the others.
+						CPPUNIT_ASSERT(slot1 != slot2);
+				}
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -369,6 +406,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testPrepareLinkReply);
 			CPPUNIT_TEST(testReplyToRequest);
 			CPPUNIT_TEST(testLinkRenewal);
+			CPPUNIT_TEST(testLocking);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

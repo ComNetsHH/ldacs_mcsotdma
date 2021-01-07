@@ -528,6 +528,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(offset, Reservation(id, Reservation::TX_CONT));
 				CPPUNIT_ASSERT_EQUAL(true, table->anyTxReservations(0, 2*offset));
 			}
+			
+			void testLocking() {
+				// Find some candidate
+				unsigned int num_candidates = 3;
+				std::vector<int32_t> slots = table->findCandidateSlots(0, num_candidates, 5, false);
+				// Now lock these slots.
+				table->lock(slots);
+				// So these slots should *not* be considered for a further request.
+				std::vector<int32_t> slots2 = table->findCandidateSlots(0, num_candidates, 5, false);
+				CPPUNIT_ASSERT_EQUAL(slots.size(), slots2.size());
+				
+				for (int32_t i : slots) { // for every slot out of the first set
+					for (int32_t j : slots2) // it shouldn't equal any slot out of the second
+						CPPUNIT_ASSERT(i != j);
+				}
+				
+				// First slots should be 0, 1, 2
+				for (int32_t i = 0; i < num_candidates; i++)
+					CPPUNIT_ASSERT_EQUAL(i, slots.at(i));
+				// Second slots should be 3, 4, 5
+				for (int32_t i = 0; i < num_candidates; i++)
+					CPPUNIT_ASSERT_EQUAL(i+(int32_t) num_candidates, slots2.at(i));
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -552,6 +575,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testGetTxReservations);
 			CPPUNIT_TEST(testIntegrateTxReservations);
 			CPPUNIT_TEST(testAnyTxReservations);
+			CPPUNIT_TEST(testLocking);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

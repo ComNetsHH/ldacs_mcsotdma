@@ -270,8 +270,10 @@ LinkManager::ProposalPayload* LinkManager::p2pSlotSelection() {
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
-		// ... and try to find candidate slots.
+		// ... and try to find candidate slots ...
 		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, this->num_proposed_slots, tx_burst_num_slots, true);
+		// ... and lock them s.t. future proposals don't consider them.
+		table->lock(candidate_slots);
 		
 		// Fill proposal.
 		proposal->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.

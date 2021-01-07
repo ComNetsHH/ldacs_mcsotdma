@@ -51,11 +51,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const MacId& getTarget() const;
 			
 			/**
-			 * @return If the target of the reservation is the current user, then the action shall define whether the
-			 * slot is used for reception (RX) or transmission (TX). For other users it'll be unset (UNSET).
+			 * @return The current action associated with this cell.
 			 */
 			const Action& getAction() const;
 			void setAction(Action action);
+			
+			/**
+			 * @return Whether locking succeeded.
+			 */
+			bool lock();
 			
 			/**
 			 * @return Number of remaining slots this transmission burst continues for.
@@ -108,7 +112,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int num_remaining_slots = 0;
 	};
 	
-	inline std::ostream & operator<<(std::ostream & stream, const Reservation& reservation) {
+	inline std::ostream& operator<<(std::ostream& stream, const Reservation& reservation) {
 		std::string action;
 		switch (reservation.getAction()) {
 			case Reservation::IDLE:

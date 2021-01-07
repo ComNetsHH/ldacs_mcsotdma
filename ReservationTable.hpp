@@ -69,6 +69,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<int32_t> findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length, bool consider_transmitter) const;
 			
 			/**
+			 * Locks the given slot_offsets in this reservation table so that they are not considered for later link establishment proposals' candidate slot_offsets.
+			 * @param slot_offsets
+			 */
+			void lock(const std::vector<int32_t>& slot_offsets);
+			
+			/**
 			 * @param start_offset The minimum slot offset to start the search.
 			 * @param reservation
 			 * @return The slot offset until the earliest reservation that corresponds to the one provided.
