@@ -368,7 +368,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			void testLocking() {
-				// Compute one request1.
+				// Compute one request.
 				L2Packet* request1 = link_manager->prepareLinkEstablishmentRequest();
 				request1->getPayloads().at(1) = link_manager->p2pSlotSelection();
 				// And another one.
@@ -382,7 +382,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				for (size_t i = 0; i < proposal1->proposed_channels.size(); i++)
 					CPPUNIT_ASSERT_EQUAL(proposal1->proposed_channels.at(i), proposal2->proposed_channels.at(i));
 				// But the slots mustn't be the same.
-				for (int32_t slot1 : proposal1->proposed_slots) { // Any out of the first proposed slots
+				for (int32_t slot1 : proposal1->proposed_slots) { // Any out of the first proposed slots...
 					for (int32_t slot2 : proposal2->proposed_slots) // can't equal any of the others.
 						CPPUNIT_ASSERT(slot1 != slot2);
 				}

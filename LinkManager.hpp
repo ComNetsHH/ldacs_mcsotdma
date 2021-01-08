@@ -130,7 +130,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * This is used to set header fields, and to compute link request proposals.
 			 * @param packet
 			 */
-			void notifyPacketBeingSent(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
+			void packetBeingSentCallback(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
 			
 			/**
 			 * @param reservation_timeout Number of repetitions a reservation remains valid for.
@@ -297,6 +297,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int tx_offset = 5;
 			/** Link replies *must* be sent on specific slots. This container holds these bindings. */
 			std::map<uint64_t , L2Packet*> scheduled_link_replies;
+			/** Last proposal's frequency channels. */
+			std::vector<const FrequencyChannel*> last_proposed_channels;
+			/** Last proposal's time slots. */
+			std::vector<unsigned int> last_proposed_slots;
 	};
 }
 

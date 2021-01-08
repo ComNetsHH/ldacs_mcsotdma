@@ -61,7 +61,6 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		auto*& header = (L2Header*&) packet->getHeaders().at(i);
 		auto*& payload = (L2Packet::Payload*&) packet->getPayloads().at(i);
-		bool have_parsed_base_header = false;
 		switch (header->frame_type) {
 			case L2Header::base: {
 				coutd << "processing base header -> ";
@@ -237,7 +236,7 @@ int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const 
 	return current_reservation_table->findEarliestOffset(start_slot, reservation);
 }
 
-void LinkManager::notifyPacketBeingSent(L2Packet* packet) {
+void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 	// This callback is used only for link requests.
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		L2Header* header = packet->getHeaders().at(i);
@@ -324,8 +323,9 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		return segment;
 	// Control message through link requests...
 	} else if (link_establishment_status == link_expired || link_establishment_status == awaiting_reply) {
-		segment = prepareLinkEstablishmentRequest();
+		segment = prepareLinkEstablishmentRequest(); // Sets the callback, s.t. the actual proposal is computed then.
 		link_establishment_status = awaiting_reply;
+	// Non-control messages...
 	} else {
 		// Non-control messages can only be sent on established links.
 		if (link_establishment_status != Status::link_established)
@@ -464,13 +464,12 @@ std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::proce
 
 void LinkManager::processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header, FrequencyChannel*& channel) {
 	// Make sure we're expecting a reply.
-	if (link_establishment_status != Status::awaiting_reply) {
-		std::string status = link_establishment_status == Status::link_not_established ? "link_not_established" : "link_established";
-		throw std::runtime_error("LinkManager for ID '" + std::to_string(link_id.getId()) + "' received a link reply but its state is '" + status + "'.");
-	}
+	if (link_establishment_status != Status::awaiting_reply)
+		throw std::runtime_error("LinkManager for ID '" + std::to_string(link_id.getId()) + "' received a link reply but its state is '" + std::to_string(link_establishment_status) + "'.");
 	// The link has now been established!
 	// So update the status.
 	link_establishment_status = Status::link_established;
+	mac->notifyAboutNewLink(link_id);
 	assign(channel);
 	// And mark the reservations.
 	// We've received a reply, so we have initiated this link, so we are the transmitter.
@@ -499,6 +498,7 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 		if (link_establishment_status == reply_sent) {
 			coutd << "link is now established";
 			link_establishment_status = link_established;
+			mac->notifyAboutNewLink(link_id);
 		} else if (link_establishment_status != link_established) {
 			throw std::runtime_error("LinkManager::processIncomingUnicast for some status other than 'link_established' or 'reply_sent': " + std::to_string(link_establishment_status));
 		}
