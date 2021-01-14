@@ -7,6 +7,7 @@
 #include "LinkManager.hpp"
 #include "coutdebug.hpp"
 #include "MCSOTDMA_Mac.hpp"
+#include "LinkRenewalProcess.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -262,7 +263,6 @@ LinkManager::ProposalPayload* LinkManager::p2pSlotSelection() {
 	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
 	// ... until we have considered the target number of channels ...
 	tx_burst_num_slots = estimateCurrentNumSlots();
-	coutd << "tx_num_burst_slots" << tx_burst_num_slots << std::endl;
 	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
 		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
 			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
@@ -473,7 +473,11 @@ void LinkManager::processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmen
 	assign(channel);
 	// And mark the reservations.
 	// We've received a reply, so we have initiated this link, so we are the transmitter.
+	tx_timeout = default_tx_timeout;
 	markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, link_id, Reservation::TX);
+	// Refresh the link renewal process.
+	delete this->link_renewal_process;
+	this->link_renewal_process = new LinkRenewalProcess(this, link_renewal_attempts, tx_timeout, 0, tx_offset);
 	coutd << "link is now established";
 }
 
@@ -545,6 +549,10 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 		coutd << " @" << current_offset;
 	}
 	coutd << " -> ";
+}
+
+LinkManager::~LinkManager() {
+    delete link_renewal_process;
 }
 
 

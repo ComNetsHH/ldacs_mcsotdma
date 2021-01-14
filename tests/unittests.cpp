@@ -15,6 +15,7 @@
 #include "BCLinkManagerTests.cpp"
 #include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
+#include "LinkRenewalProcessTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
@@ -30,6 +31,7 @@ int main() {
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(SystemTests::suite());
+	runner.addTest(LinkRenewalProcessTests::suite());
 	
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

@@ -15,6 +15,8 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
 	class MCSOTDMA_Mac;
+    // Implemented in its own files for better readability and testing.
+    class LinkRenewalProcess;
 	
 	/**
 	 * A LinkManager is responsible for a single communication link.
@@ -26,6 +28,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class BCLinkManagerTests;
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
+
+		friend class LinkRenewalProcess;
 			
 		public:
 			
@@ -78,6 +82,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			};
 			
 			LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
+			virtual ~LinkManager();
 			
 			/**
 			 * @return The link ID that is managed.
@@ -301,6 +306,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<const FrequencyChannel*> last_proposed_channels;
 			/** Last proposal's time slots. */
 			std::vector<unsigned int> last_proposed_slots;
+			LinkRenewalProcess* link_renewal_process = nullptr;
+			unsigned int link_renewal_attempts = 3;
 	};
 }
 

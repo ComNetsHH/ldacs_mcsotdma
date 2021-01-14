@@ -19,6 +19,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MCSOTDMA_Mac : public IMac {
 		public:
 			friend class MCSOTDMA_MacTests;
+			friend class LinkRenewalProcessTests;
 			
 			MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);
 			~MCSOTDMA_Mac() override;
