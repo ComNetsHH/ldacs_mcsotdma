@@ -40,6 +40,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         void processLinkReply(const L2HeaderLinkEstablishmentReply* header, const LinkManager::ProposalPayload* payload);
 
+        void onTransmissionSlot();
+
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
 

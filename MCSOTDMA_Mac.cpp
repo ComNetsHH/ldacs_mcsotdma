@@ -46,21 +46,17 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 	reservation_manager->update(num_slots);
 }
 
-void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
+void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet) {
 	const MacId& dest_id = packet->getDestination();
-	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << dest_id << ", " << center_frequency << "kHz)... ";
+	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << dest_id << ")... ";
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
-	// Find corresponding frequency channel.
-	FrequencyChannel* channel = reservation_manager->getFreqChannelByCenterFreq(center_frequency);
-	if (channel == nullptr)
-		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unknown FrequencyChannel.");
 	// Forward broadcasts to the BCLinkManager...
 	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
-		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet, channel);
+		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet);
 	// unicasts intended for us to the corresponding LinkManager that manages the packet's sender
 	else if (dest_id == id)
-		getLinkManager(packet->getOrigin())->receiveFromLower(packet, channel);
+		getLinkManager(packet->getOrigin())->receiveFromLower(packet);
 	else
 		coutd << "packet not intended for us; discarding." << std::endl;
 }

@@ -42,14 +42,14 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
 			coutd << ": link is not established -> ";
-			requestNewLink();
+            establishLink();
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_establishment_status) + "'.");
 		}
 	}
 }
 
-void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel) {
+void LinkManager::receiveFromLower(L2Packet*& packet) {
 	coutd << "LinkManager(" << link_id << ")::receiveFromLower... ";
 	coutd << "a packet from '" << packet->getOrigin() << "' ";
 	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
@@ -170,14 +170,9 @@ double LinkManager::getCurrentTrafficEstimate() const {
 	return traffic_estimate.get();
 }
 
-void LinkManager::requestNewLink() {
-	coutd << "requesting new link... ";
-	// An established link can just shouldSendRequest its status, so that the next transmission slot sends a request.
-	if (link_establishment_status == link_established) {
-		link_establishment_status = link_expired;
-		coutd << "set status to 'link_expired'." << std::endl;
-	// An unestablished link must resort to injecting it into the upper layer as a broadcast.
-	} else if (link_establishment_status == link_not_established) {
+void LinkManager::establishLink() {
+	coutd << "establishing new link... ";
+	if (link_establishment_status == link_not_established) {
 		// Prepare a link request and inject it into the RLC sublayer above.
 		L2Packet* request = prepareLinkEstablishmentRequest();
 		coutd << "prepared link establishment request... ";
@@ -186,7 +181,8 @@ void LinkManager::requestNewLink() {
 		// We are now awaiting a reply.
 		this->link_establishment_status = Status::awaiting_reply;
 		coutd << "updated status to 'awaiting_reply'." << std::endl;
-	}
+	} else
+	    throw std::runtime_error("LinkManager::establishLink for link status: " + std::to_string(link_establishment_status));
 }
 
 L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
@@ -331,26 +327,23 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		// Link replies don't need a setting of their header fields.
 		return segment;
 	// Control message through link requests...
-	} else if (link_establishment_status == link_expired || link_establishment_status == awaiting_reply) {
+	} else if (link_renewal_process->shouldSendRequest()) {
 		segment = prepareLinkEstablishmentRequest(); // Sets the callback, s.t. the actual proposal is computed then.
 		link_establishment_status = awaiting_reply;
 	// Non-control messages...
 	} else {
 		// Non-control messages can only be sent on established links.
 		if (link_establishment_status != Status::link_established)
-			throw std::runtime_error("LinkManager::onTransmissionSlot for an unestablished link.");
+			throw std::runtime_error("LinkManager::onTransmissionSlot for link status: " + std::to_string(link_establishment_status));
 		// Query PHY for the current datarate.
 		unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
 		unsigned long num_bits = datarate * num_slots; // bits
 		// Query ARQ for a new segment.
 		coutd << "requesting " << num_bits << " bits." << std::endl;
 		segment = mac->requestSegment(num_bits, getLinkId());
-		tx_timeout--;
-		if (tx_timeout == TIMEOUT_THRESHOLD_TRIGGER) {
-			coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
-			requestNewLink();
-		}
 	}
+	// Update renewal process.
+    link_renewal_process->onTransmissionSlot();
 	// Set header fields.
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionSlot received segment with <=1 headers.");
 	for (L2Header* header : segment->getHeaders())
@@ -484,7 +477,7 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 		payload = nullptr;
 	// ... and if we are ...
 	} else {
-		// ... shouldSendRequest status if we've been expecting it.
+		// ... update status if we've been expecting it.
 		if (link_establishment_status == reply_sent) {
 			coutd << "link is now established";
 			link_establishment_status = link_established;

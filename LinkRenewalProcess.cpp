@@ -65,3 +65,14 @@ void LinkRenewalProcess::processLinkReply(const L2HeaderLinkEstablishmentReply *
     configure(owner->link_renewal_attempts, owner->tx_timeout, 0, owner->tx_offset);
     coutd << "link is now established";
 }
+
+void LinkRenewalProcess::onTransmissionSlot() {
+    owner->tx_timeout--;
+    if (owner->tx_timeout == owner->TIMEOUT_THRESHOLD_TRIGGER) {
+        coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
+        if (owner->link_establishment_status == owner->link_established) {
+            owner->link_establishment_status = owner->link_expired;
+            coutd << "set status to 'link_expired'." << std::endl;
+        }
+    }
+}
