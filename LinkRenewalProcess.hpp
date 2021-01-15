@@ -38,8 +38,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
     protected:
         /** Number of times a link should still be attempted to be renewed. */
-        unsigned int remaining_attempts = 0;
-        uint64_t accumulated_updates = 0;
+        unsigned int num_renewal_attempts = 0;
         /** A LinkRenewalProcess is a module of a LinkManager. */
         LinkManager* owner = nullptr;
         /** The absolute points in time when requests should be sent. */
