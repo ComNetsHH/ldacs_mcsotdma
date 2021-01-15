@@ -15,6 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
     class LinkRenewalProcess {
 
         friend class LinkRenewalProcessTests;
+        friend class LinkManagerTests;
 
     public:
         explicit LinkRenewalProcess(LinkManager* owner);

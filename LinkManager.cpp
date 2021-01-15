@@ -304,7 +304,7 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	// Prioritize control messages.
 	// Control message through scheduled link replies...
 	if (!scheduled_link_replies.empty() && scheduled_link_replies.find(mac->getCurrentSlot()) != scheduled_link_replies.end()) {
-		coutd << "sending control message." << std::endl;
+		coutd << "sending link reply control message." << std::endl;
 		if (num_slots > 1) // Control messages should be sent during single slots.
 			throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
 		auto it = scheduled_link_replies.find(mac->getCurrentSlot());
@@ -328,12 +328,13 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		return segment;
 	// Control message through link requests...
 	} else if (link_renewal_process->shouldSendRequest()) {
+        coutd << "sending link request control message... ";
 		segment = prepareLinkEstablishmentRequest(); // Sets the callback, s.t. the actual proposal is computed then.
 		link_establishment_status = awaiting_reply;
 	// Non-control messages...
 	} else {
 		// Non-control messages can only be sent on established links.
-		if (link_establishment_status != Status::link_established)
+		if (link_establishment_status == Status::link_not_established)
 			throw std::runtime_error("LinkManager::onTransmissionSlot for link status: " + std::to_string(link_establishment_status));
 		// Query PHY for the current datarate.
 		unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
@@ -393,10 +394,6 @@ void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
 	coutd << " length_next=" << this->tx_burst_num_slots;
 	header->timeout = this->tx_timeout;
 	coutd << " timeout=" << this->tx_timeout;
-	if (link_id != SYMBOLIC_LINK_ID_BROADCAST) {
-		if (tx_timeout == 0)
-			throw std::runtime_error("LinkManager::setBaseHeaderFields reached timeout of zero.");
-	}
 	coutd << " ";
 }
 

@@ -5,6 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManager.hpp"
+#include "../LinkRenewalProcess.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -15,7 +16,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MacId own_id = MacId(42);
 			MacId communication_partner_id = MacId(43);
 			uint32_t planning_horizon = 128;
-			uint64_t center_frequency1 = 1000, center_frequency2 = 2000, center_frequency3 = 3000, bc_frequency = 4000, bandwidth = 500;
+			uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
 			unsigned long num_bits_going_out = 800*100;
 			MACLayer* mac;
 			ARQLayer* arq_layer;
@@ -338,45 +339,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testLinkRenewal() {
 //				coutd.setVerbose(true);
-                // Prepare a link establishment request.
-                MACLayer other_mac = MACLayer(communication_partner_id, planning_horizon);
-                other_mac.setUpperLayer(arq_layer);
-                other_mac.setLowerLayer(phy_layer);
-                other_mac.reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
-                other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-                other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-                other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-                other_mac.reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-                LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
-                L2Packet* request = other_link_manager.prepareLinkEstablishmentRequest();
-                request->getPayloads().at(1) = other_link_manager.p2pSlotSelection();
-                // Receive it.
-                mac->receiveFromLower(request);
 				// Starting with an established link.
-//				mac->notifyOutgoing(512, communication_partner_id);
-//				LinkManager* instantiated_lm = mac->getLinkManager(communication_partner_id);
-//				instantiated_lm->link_establishment_status = LinkManager::link_established;
-//				ReservationTable* table = reservation_manager->reservation_tables.at(0);
-//				instantiated_lm->current_reservation_table = table;
-//				// Reach the reservation timeout
-//				instantiated_lm->tx_timeout = instantiated_lm->TIMEOUT_THRESHOLD_TRIGGER + 1;
-//				instantiated_lm->current_reservation_table->mark(1, Reservation(communication_partner_id, Reservation::TX, 0));
-//				L2Packet* packet = instantiated_lm->onTransmissionSlot(1);
-//				delete packet;
-//				// The status should now indicate the expired link.
-//				CPPUNIT_ASSERT_EQUAL(LinkManager::link_expired, instantiated_lm->link_establishment_status);
-//				// And the next transmission slot should be used to send a request.
-//				L2Packet* request = instantiated_lm->onTransmissionSlot(1);
-//				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
-//				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
-//				delete request;
-//				// And next slots, too, since hopefully a reply comes in for one of them.
-//				request = instantiated_lm->onTransmissionSlot(1);
-//				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
-//				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
-//				delete request;
-//				// And we should be awaiting a reply.
-//				CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, instantiated_lm->link_establishment_status);
+				mac->notifyOutgoing(512, communication_partner_id);
+				LinkManager* instantiated_lm = mac->getLinkManager(communication_partner_id);
+				instantiated_lm->link_establishment_status = LinkManager::link_established;
+				ReservationTable* table = reservation_manager->reservation_tables.at(0);
+				instantiated_lm->current_reservation_table = table;
+				instantiated_lm->link_renewal_process->configure(2, instantiated_lm->tx_timeout, 0, instantiated_lm->tx_offset);
+				// Reach the reservation timeout
+				while (instantiated_lm->tx_timeout > instantiated_lm->TIMEOUT_THRESHOLD_TRIGGER)
+                    instantiated_lm->link_renewal_process->onTransmissionSlot();
+				// Set the current time to the first control message slot.
+                mac->current_slot = instantiated_lm->link_renewal_process->absolute_request_slots.at(instantiated_lm->link_renewal_process->absolute_request_slots.size() - 1);
+                CPPUNIT_ASSERT_EQUAL(LinkManager::link_expired, instantiated_lm->link_establishment_status);
+				instantiated_lm->current_reservation_table->mark(1, Reservation(communication_partner_id, Reservation::TX, 0));
+                // And the next transmission slot should be used to send a request.
+				L2Packet* request = instantiated_lm->onTransmissionSlot(1);
+				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
+				delete request;
+				// And we should be awaiting a reply.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, instantiated_lm->link_establishment_status);
 				
 //				coutd.setVerbose(false);
 			}
