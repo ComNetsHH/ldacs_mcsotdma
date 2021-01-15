@@ -2,8 +2,10 @@
 // Created by seba on 1/14/21.
 //
 
+#include <cassert>
 #include "LinkRenewalProcess.hpp"
 #include "MCSOTDMA_Mac.hpp"
+#include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -50,4 +52,24 @@ bool LinkRenewalProcess::update(int64_t num_slots) {
         }
     }
     return should_send_request;
+}
+
+void LinkRenewalProcess::processLinkReply(const L2HeaderLinkEstablishmentReply *header,
+                                          const LinkManager::ProposalPayload *payload) {
+    // Make sure we're expecting a reply.
+    if (owner->link_establishment_status != owner->Status::awaiting_reply)
+        throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
+    // The link has now been established!
+    // So update the status.
+    owner->link_establishment_status = owner->Status::link_established;
+    owner->mac->notifyAboutNewLink(owner->link_id);
+    assert(payload->proposed_channels.size() == 1);
+    owner->assign(payload->proposed_channels.at(0));
+    // And mark the reservations.
+    // We've received a reply, so we have initiated this link, so we are the transmitter.
+    owner->tx_timeout = owner->default_tx_timeout;
+    owner->markReservations(owner->tx_timeout, 0, owner->tx_offset, owner->tx_burst_num_slots, owner->link_id, Reservation::TX);
+    // Refresh the link renewal process.
+    configure(owner->link_renewal_attempts, owner->tx_timeout, 0, owner->tx_offset);
+    coutd << "link is now established";
 }

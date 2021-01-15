@@ -34,7 +34,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			
 			/**
-			 * Implements a link establishment request payload that encodes proposed frequency channels and slots.
+			 * Implements a link establishment payload that encodes proposed frequency channels and slots.
+			 * Link requests may contain a number of channels and slots, while replies should contain just a single one.
 			 */
 			class ProposalPayload : public L2Packet::Payload {
 				public:
@@ -136,11 +137,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param packet
 			 */
 			void packetBeingSentCallback(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
-			
+
 			/**
-			 * @param reservation_timeout Number of repetitions a reservation remains valid for.
+			 * When a new reservation is established, this resets the timeout counter.
 			 */
-			void setReservationTimeout(unsigned int reservation_timeout);
+			void resetReservationTimeout();
 			
 			/**
 			 * @param reservation_offset Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions.
@@ -191,8 +192,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * When a link establishment reply comes in from the PHY, this processes it.
 			 * @param header
+			 * @param payload
+			 * @param channel
 			 */
-			void processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header, FrequencyChannel*& channel);
+			void processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header, ProposalPayload*& payload, FrequencyChannel*& channel);
 			
 			/**
 			 * Makes reservations.

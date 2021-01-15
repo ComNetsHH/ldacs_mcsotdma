@@ -33,11 +33,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         bool update(int64_t num_slots);
 
+        /**
+         * When a LinkManager receives a link reply, it should forward it to this function.
+         * @param header
+         * @param payload
+         */
+        void processLinkReply(const L2HeaderLinkEstablishmentReply* header, const LinkManager::ProposalPayload* payload);
+
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
 
     protected:
-        /** Number of times a link should still be attempted to be renewed. */
+        /** Number of times a link should be attempted to be renewed. */
         unsigned int num_renewal_attempts = 0;
         /** A LinkRenewalProcess is a module of a LinkManager. */
         LinkManager* owner = nullptr;

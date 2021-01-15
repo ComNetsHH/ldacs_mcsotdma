@@ -60,6 +60,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 			coutd << "' -> ";
 	}
 	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
+    assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		auto*& header = (L2Header*&) packet->getHeaders().at(i);
@@ -103,7 +104,11 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 					coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
 					// Prepare a link reply.
 					L2Packet* reply = prepareLinkEstablishmentReply(packet->getOrigin());
+					// Populate the payload.
 					const FrequencyChannel* reply_channel = chosen_candidate.first;
+					assert(reply->getPayloads().size() == 2);
+					auto* reply_payload = (ProposalPayload*) reply->getPayloads().at(1);
+					reply_payload->proposed_channels.push_back(reply_channel);
 					int32_t slot_offset = chosen_candidate.second;
 					// Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
 					coutd << "passing on to corresponding LinkManager -> ";
@@ -126,7 +131,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet, FrequencyChannel* channel)
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				processIncomingLinkEstablishmentReply((L2HeaderLinkEstablishmentReply*&) header, channel);
+				link_renewal_process->processLinkReply((L2HeaderLinkEstablishmentReply*&) header, (ProposalPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -206,10 +211,12 @@ L2Packet* LinkManager::prepareLinkEstablishmentReply(const MacId& destination_id
 	// Base header.
 	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
 	reply->addPayload(base_header, nullptr);
-	// Reply.
+	// Reply header.
 	auto* reply_header = new L2HeaderLinkEstablishmentReply();
 	reply_header->icao_dest_id = destination_id;
-	reply->addPayload(reply_header, nullptr);
+	// Reply payload will be populated by receiveFromLower.
+	auto* reply_payload = new ProposalPayload(1, 1);
+	reply->addPayload(reply_header, reply_payload);
 	return reply;
 }
 
@@ -422,10 +429,6 @@ void LinkManager::setRequestHeaderFields(L2HeaderLinkEstablishmentRequest* heade
 	coutd << " ";
 }
 
-void LinkManager::setReservationTimeout(unsigned int reservation_timeout) {
-	this->default_tx_timeout = reservation_timeout;
-}
-
 void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 	this->tx_offset = reservation_offset;
 }
@@ -462,24 +465,6 @@ std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::proce
 		}
 	}
 	return viable_candidates;
-}
-
-void LinkManager::processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header, FrequencyChannel*& channel) {
-	// Make sure we're expecting a reply.
-	if (link_establishment_status != Status::awaiting_reply)
-		throw std::runtime_error("LinkManager for ID '" + std::to_string(link_id.getId()) + "' received a link reply but its state is '" + std::to_string(link_establishment_status) + "'.");
-	// The link has now been established!
-	// So update the status.
-	link_establishment_status = Status::link_established;
-	mac->notifyAboutNewLink(link_id);
-	assign(channel);
-	// And mark the reservations.
-	// We've received a reply, so we have initiated this link, so we are the transmitter.
-	tx_timeout = default_tx_timeout;
-	markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, link_id, Reservation::TX);
-	// Refresh the link renewal process.
-	this->link_renewal_process->configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
-	coutd << "link is now established";
 }
 
 void LinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
@@ -554,6 +539,10 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 
 LinkManager::~LinkManager() {
     delete link_renewal_process;
+}
+
+void LinkManager::resetReservationTimeout() {
+    tx_timeout = default_tx_timeout;
 }
 
 
