@@ -31,6 +31,8 @@ std::vector<uint64_t> LinkRenewalProcess::scheduleRequests(unsigned int tx_timeo
 bool LinkRenewalProcess::update() {
     if (remaining_attempts == 0)
         return false;
+    if (!owner->mac->isThereMoreData(owner->getLinkId()))
+        return false;
     // Check if the current slot is one during which a request should be sent.
     uint64_t current_slot = owner->mac->getCurrentSlot();
     auto it = std::find(absolute_request_slots.begin(), absolute_request_slots.end(), current_slot);
