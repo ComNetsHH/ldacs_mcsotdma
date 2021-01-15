@@ -17,20 +17,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         friend class LinkRenewalProcessTests;
 
     public:
-        explicit LinkRenewalProcess(LinkManager* owner, unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset);
+        explicit LinkRenewalProcess(LinkManager* owner);
+
+        /**
+         * When a new reservation is established, this resets the process and starts it anew.
+         * @param num_renewal_attempts
+         * @param tx_timeout
+         * @param init_offset
+         * @param tx_offset
+         */
+        void configure(unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset);
 
         /**
          * @return Whether a link request should be sent.
          */
         bool update();
-        unsigned int getRemainingAttempts() const;
 
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
 
     protected:
         /** Number of times a link should still be attempted to be renewed. */
-        unsigned int remaining_attempts;
+        unsigned int remaining_attempts = 0;
         /** A LinkRenewalProcess is a module of a LinkManager. */
         LinkManager* owner = nullptr;
         /** The absolute points in time when requests should be sent. */

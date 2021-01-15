@@ -7,8 +7,11 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-LinkRenewalProcess::LinkRenewalProcess(LinkManager *owner, unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset)
-    : owner(owner), remaining_attempts(num_renewal_attempts) {
+LinkRenewalProcess::LinkRenewalProcess(LinkManager *owner) : owner(owner) {}
+
+void LinkRenewalProcess::configure(unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset,
+                                   unsigned int tx_offset) {
+    remaining_attempts = num_renewal_attempts;
     // Schedule the absolute slots for sending requests.
     absolute_request_slots = scheduleRequests(tx_timeout, init_offset, tx_offset);
 }
@@ -37,8 +40,4 @@ bool LinkRenewalProcess::update() {
         return true;
     }
     return false;
-}
-
-unsigned int LinkRenewalProcess::getRemainingAttempts() const {
-    return this->remaining_attempts;
 }

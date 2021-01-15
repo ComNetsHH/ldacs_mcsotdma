@@ -14,7 +14,9 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-	  mac(mac), traffic_estimate(20) {}
+	  mac(mac), traffic_estimate(20) {
+	    link_renewal_process = new LinkRenewalProcess(this);
+	}
 
 const MacId& LinkManager::getLinkId() const {
 	return this->link_id;
@@ -476,8 +478,7 @@ void LinkManager::processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmen
 	tx_timeout = default_tx_timeout;
 	markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, link_id, Reservation::TX);
 	// Refresh the link renewal process.
-	delete this->link_renewal_process;
-	this->link_renewal_process = new LinkRenewalProcess(this, link_renewal_attempts, tx_timeout, 0, tx_offset);
+	this->link_renewal_process->configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
 	coutd << "link is now established";
 }
 

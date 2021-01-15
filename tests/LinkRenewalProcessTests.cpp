@@ -50,7 +50,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             phy_layer->setUpperLayer(mac);
             mac->setLowerLayer(phy_layer);
 
-            link_renewal_process = new LinkRenewalProcess(link_manager, num_renewal_attempts, tx_timeout, init_offset, tx_offset);
+            link_renewal_process = new LinkRenewalProcess(link_manager);
         }
 
         void tearDown() override {
@@ -64,6 +64,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         }
 
         void testSchedule() {
+            link_renewal_process->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
             std::vector<uint64_t> slots = link_renewal_process->scheduleRequests(tx_timeout, init_offset, tx_offset);
             CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), slots.size());
             // Manual check: init offset=1, tx every 3 slots, 5 txs -> tx at [1,4,7,10,13], and the last two of these are used for requests.
@@ -72,6 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         }
 
         void testUpdate() {
+            link_renewal_process->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
             const auto& request_slots = link_renewal_process->absolute_request_slots;
             size_t num_requests_that_should_be_sent = 0;
             while (link_renewal_process->remaining_attempts > 0) {
