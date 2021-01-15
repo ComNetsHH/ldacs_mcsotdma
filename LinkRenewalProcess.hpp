@@ -31,7 +31,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         /**
          * @return Whether a link request should be sent.
          */
-        bool update(int64_t num_slots);
+        bool shouldSendRequest();
 
         /**
          * When a LinkManager receives a link reply, it should forward it to this function.
@@ -49,7 +49,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         /** A LinkRenewalProcess is a module of a LinkManager. */
         LinkManager* owner = nullptr;
         /** The absolute points in time when requests should be sent. */
-        std::vector<uint64_t> relative_request_slots;
+        std::vector<uint64_t> absolute_request_slots;
     };
 }
 

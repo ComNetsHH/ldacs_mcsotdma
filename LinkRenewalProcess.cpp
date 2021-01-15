@@ -15,7 +15,7 @@ void LinkRenewalProcess::configure(unsigned int num_renewal_attempts, unsigned i
                                    unsigned int tx_offset) {
     this->num_renewal_attempts = num_renewal_attempts;
     // Schedule the absolute slots for sending requests.
-    relative_request_slots = scheduleRequests(tx_timeout, init_offset, tx_offset);
+    absolute_request_slots = scheduleRequests(tx_timeout, init_offset, tx_offset);
 }
 
 std::vector<uint64_t> LinkRenewalProcess::scheduleRequests(unsigned int tx_timeout, unsigned int init_offset,
@@ -25,31 +25,23 @@ std::vector<uint64_t> LinkRenewalProcess::scheduleRequests(unsigned int tx_timeo
     for (long i = 0, offset = init_offset + (tx_timeout-1)*tx_offset; slots.size() < num_renewal_attempts && offset >= init_offset; offset -= tx_offset, i++) {
         // ... add every second burst
         if (i % 2 == 1)
-            slots.push_back(offset);
+            slots.push_back(owner->mac->getCurrentSlot() + offset);
     }
     return slots;
 }
 
-bool LinkRenewalProcess::update(int64_t num_slots) {
+bool LinkRenewalProcess::shouldSendRequest() {
     // Check if the current slot is one during which a request should be sent.
     bool should_send_request = false;
-    for (auto it = relative_request_slots.begin(); it != relative_request_slots.end(); it++) {
-        // Update relative offsets...
-        uint64_t current_offset = *it;
-        if (num_slots > current_offset) {// these are unsigned, so can't subtract first (would lead to overflow)
-            std::cout << "num_slots=" << num_slots << " offset=" << current_offset << std::endl;
-            throw std::invalid_argument(
-                    "LinkRenewalProcess::update exceeds a scheduled request. Should've updated earlier.");
-        }
-        current_offset -= num_slots;
-        *it = current_offset;
-        // ... check if a request should now be sent.
-        if (current_offset == 0) {
-            relative_request_slots.erase(it);
+    for (auto it = absolute_request_slots.begin(); it != absolute_request_slots.end(); it++) {
+        uint64_t current_slot = *it;
+        if (current_slot == owner->mac->getCurrentSlot()) {
+            absolute_request_slots.erase(it);
             it--; // Update iterator as the vector has shrunk.
             if (owner->mac->isThereMoreData(owner->getLinkId()))
                 should_send_request = true;
-        }
+        } else if (current_slot < owner->mac->getCurrentSlot())
+            throw std::invalid_argument("LinkRenewalProcess::shouldSendRequest has missed a scheduled request.");
     }
     return should_send_request;
 }
@@ -60,7 +52,7 @@ void LinkRenewalProcess::processLinkReply(const L2HeaderLinkEstablishmentReply *
     if (owner->link_establishment_status != owner->Status::awaiting_reply)
         throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
     // The link has now been established!
-    // So update the status.
+    // So shouldSendRequest the status.
     owner->link_establishment_status = owner->Status::link_established;
     owner->mac->notifyAboutNewLink(owner->link_id);
     assert(payload->proposed_channels.size() == 1);

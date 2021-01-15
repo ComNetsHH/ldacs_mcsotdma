@@ -39,7 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * Progress time for this reservation table. Old values are dropped, new values are added.
 			 * Also increments the last_updated timestamp by by num_slots.
-			 * @param num_slots The number of slots that have passed since the last update.
+			 * @param num_slots The number of slots that have passed since the last shouldSendRequest.
 			 */
 			void update(uint64_t num_slots);
 			
@@ -160,7 +160,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/**
 			 * Sets what this table regards as the current moment in time.
-			 * Should be used just once at the start - calls to 'update()' will increment the timestamp henceforth.
+			 * Should be used just once at the start - calls to 'shouldSendRequest()' will increment the timestamp henceforth.
 			 * @param timestamp
 			 */
 			void setLastUpdated(const Timestamp& timestamp);

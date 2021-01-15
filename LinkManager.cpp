@@ -14,7 +14,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-	  mac(mac), traffic_estimate(20) {
+	mac(mac), traffic_estimate(20) {
 	    link_renewal_process = new LinkRenewalProcess(this);
 	}
 
@@ -172,7 +172,7 @@ double LinkManager::getCurrentTrafficEstimate() const {
 
 void LinkManager::requestNewLink() {
 	coutd << "requesting new link... ";
-	// An established link can just update its status, so that the next transmission slot sends a request.
+	// An established link can just shouldSendRequest its status, so that the next transmission slot sends a request.
 	if (link_establishment_status == link_established) {
 		link_establishment_status = link_expired;
 		coutd << "set status to 'link_expired'." << std::endl;
@@ -484,7 +484,7 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 		payload = nullptr;
 	// ... and if we are ...
 	} else {
-		// ... update status if we've been expecting it.
+		// ... shouldSendRequest status if we've been expecting it.
 		if (link_establishment_status == reply_sent) {
 			coutd << "link is now established";
 			link_establishment_status = link_established;

@@ -65,7 +65,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         void testSchedule() {
             link_renewal_process->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
-            const std::vector<uint64_t>& slots = link_renewal_process->relative_request_slots;
+            const std::vector<uint64_t>& slots = link_renewal_process->absolute_request_slots;
             CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), slots.size());
             // Manual check: init offset=1, tx every 3 slots, 5 txs -> tx at [1,4,7,10,13].
             CPPUNIT_ASSERT_EQUAL(uint64_t(10), slots.at(0));
@@ -74,11 +74,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         void testUpdate() {
             link_renewal_process->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
-            const auto& request_slots = link_renewal_process->relative_request_slots;
+            const auto& request_slots = link_renewal_process->absolute_request_slots;
             size_t num_request_triggers = 0;
             while (num_request_triggers < num_renewal_attempts) {
                 mac->update(1);
-                bool should_send_request = link_renewal_process->update(1);
+                bool should_send_request = link_renewal_process->shouldSendRequest();
                 if (should_send_request) {
                     num_request_triggers++;
                     // Manual check.
@@ -86,14 +86,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 }
             }
             // Once all requests should've been sent, don't request to send another.
-            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->update(1));
+            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->shouldSendRequest());
             mac->update(1);
-            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->update(1));
+            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->shouldSendRequest());
             mac->update(1);
-            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->update(1));
+            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->shouldSendRequest());
             // Should've requested the right number of requests.
             CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), num_request_triggers);
-            CPPUNIT_ASSERT_EQUAL(true, link_renewal_process->relative_request_slots.empty());
+            CPPUNIT_ASSERT_EQUAL(true, link_renewal_process->absolute_request_slots.empty());
         }
 
         CPPUNIT_TEST_SUITE(LinkRenewalProcessTests);
