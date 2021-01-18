@@ -125,55 +125,11 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 }
 
 void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
-	uint64_t absolute_slot = mac->getCurrentSlot() + slot_offset;
-	auto it = scheduled_link_replies.find(absolute_slot);
-	if (it != scheduled_link_replies.end())
-		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
-	else {
-		// ... schedule it.
-		if (current_reservation_table->isUtilized(slot_offset))
-			throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
-		current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
-		scheduled_link_replies[absolute_slot] = reply;
-		coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
-		// ... and mark reservations: we're sending a reply, so we're the receiver.
-		markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
-	}
+	link_management_process->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
 }
 
 double LinkManager::getCurrentTrafficEstimate() const {
 	return traffic_estimate.get();
-}
-
-L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
-	auto* request = new L2Packet();
-	// Query ARQ sublayer whether this link should be ARQ protected.
-	bool link_should_be_arq_protected = mac->shouldLinkBeArqProtected(this->link_id);
-	// Instantiate base header.
-	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
-	request->addPayload(base_header, nullptr);
-	// Instantiate request header.
-	// If the link is not yet established, the request must be sent on the broadcast channel.
-	MacId dest_id = link_establishment_status == link_not_established ? SYMBOLIC_LINK_ID_BROADCAST : link_id;
-	auto* request_header = new L2HeaderLinkEstablishmentRequest(dest_id, link_should_be_arq_protected, 0, 0, 0);
-	auto* body = new ProposalPayload(this->num_proposed_channels, this->num_proposed_slots);
-	request->addPayload(request_header, body);
-	request->addCallback(this);
-	return request;
-}
-
-L2Packet* LinkManager::prepareLinkEstablishmentReply(const MacId& destination_id) {
-	auto* reply = new L2Packet();
-	// Base header.
-	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
-	reply->addPayload(base_header, nullptr);
-	// Reply header.
-	auto* reply_header = new L2HeaderLinkEstablishmentReply();
-	reply_header->icao_dest_id = destination_id;
-	// Reply payload will be populated by receiveFromLower.
-	auto* reply_payload = new ProposalPayload(1, 1);
-	reply->addPayload(reply_header, reply_payload);
-	return reply;
 }
 
 void LinkManager::setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots) {
@@ -262,36 +218,24 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	coutd << "LinkManager(" << link_id << ")::onTransmissionSlot... ";
 	L2Packet* segment;
 	// Prioritize control messages.
-	// Control message through scheduled link replies...
-	if (!scheduled_link_replies.empty() && scheduled_link_replies.find(mac->getCurrentSlot()) != scheduled_link_replies.end()) {
-		coutd << "sending link reply control message." << std::endl;
-		if (num_slots > 1) // Control messages should be sent during single slots.
-			throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
-		auto it = scheduled_link_replies.find(mac->getCurrentSlot());
-		segment = (*it).second;
-		scheduled_link_replies.erase(mac->getCurrentSlot());
-		assert(segment->getHeaders().size() == 2);
-		if (segment->getHeaders().size() == 2) {
-			const L2Header* header = segment->getHeaders().at(1);
-			
-			if (header->frame_type == L2Header::FrameType::link_establishment_request) {
-				link_establishment_status = awaiting_reply;
-			} else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
-				link_establishment_status = reply_sent;
-			} else
-				throw std::logic_error("LinkManager::onTransmissionSlot for non-reply and non-request control message.");
-		} else
-			throw std::logic_error("LinkManager::onTransmissionSlot has a control message with too many or too few headers.");
-		
-		assert(segment->getHeaders().at(1)->frame_type == L2Header::FrameType::link_establishment_reply);
-		// Link replies don't need a setting of their header fields.
-		return segment;
-	// Control message through link requests...
-	} else if (link_management_process->hasControlMessage()) {
-        coutd << "sending link request control message... ";
-		segment = prepareLinkEstablishmentRequest(); // Sets the callback, s.t. the actual proposal is computed then.
-		link_establishment_status = awaiting_reply;
-	// Non-control messages...
+	if (link_management_process->hasControlMessage()) {
+        coutd << "fetching control message... ";
+        if (num_slots > 1) // Control messages should be sent during single slots.
+            throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
+	    segment = link_management_process->getControlMessage();
+        if (segment->getHeaders().size() == 2) {
+            const L2Header* header = segment->getHeaders().at(1);
+            if (header->frame_type == L2Header::FrameType::link_establishment_request) {
+                coutd << "fetched request... ";
+                link_establishment_status = awaiting_reply;
+            } else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
+                coutd << "fetched reply... ";
+                link_establishment_status = reply_sent;
+            } else
+                throw std::logic_error("LinkManager::onTransmissionSlot for non-reply and non-request control message.");
+        } else
+            throw std::logic_error("LinkManager::onTransmissionSlot has a control message with too many or too few headers.");
+    // If there are none, a new data packet can be sent.
 	} else {
 		// Non-control messages can only be sent on established links.
 		if (link_establishment_status == Status::link_not_established)
@@ -303,7 +247,7 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		coutd << "requesting " << num_bits << " bits." << std::endl;
 		segment = mac->requestSegment(num_bits, getLinkId());
 	}
-	// Update renewal process.
+	// Update management process.
     link_management_process->onTransmissionSlot();
 	// Set header fields.
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionSlot received segment with <=1 headers.");
@@ -316,24 +260,34 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 void LinkManager::setHeaderFields(L2Header* header) {
 	switch (header->frame_type) {
 		case L2Header::base: {
-			setBaseHeaderFields((L2HeaderBase*) header);
+            coutd << "setting base header fields:";
+			setBaseHeaderFields((L2HeaderBase*&) header);
 			break;
 		}
 		case L2Header::beacon: {
-			setBeaconHeaderFields((L2HeaderBeacon*) header);
+            coutd << "-> setting beacon header fields:";
+			setBeaconHeaderFields((L2HeaderBeacon*&) header);
 			break;
 		}
 		case L2Header::broadcast: {
-			setBroadcastHeaderFields((L2HeaderBroadcast*) header);
+            coutd << "-> setting broadcast header fields:";
+			setBroadcastHeaderFields((L2HeaderBroadcast*&) header);
 			break;
 		}
 		case L2Header::unicast: {
-			setUnicastHeaderFields((L2HeaderUnicast*) header);
+            coutd << "-> setting unicast header fields:";
+			setUnicastHeaderFields((L2HeaderUnicast*&) header);
 			break;
 		}
 		case L2Header::link_establishment_request: {
-			setRequestHeaderFields((L2HeaderLinkEstablishmentRequest*) header);
+            coutd << "-> setting link establishment request header fields: ";
+			setUnicastHeaderFields((L2HeaderUnicast*&) header);
 			break;
+		}
+		case L2Header::link_establishment_reply: {
+            coutd << "-> setting link establishment reply header fields: ";
+            setUnicastHeaderFields((L2HeaderUnicast*&) header);
+		    break;
 		}
 		default: {
 			throw std::invalid_argument(
@@ -342,8 +296,7 @@ void LinkManager::setHeaderFields(L2Header* header) {
 	}
 }
 
-void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
-	coutd << "setting base header fields:";
+void LinkManager::setBaseHeaderFields(L2HeaderBase*& header) {
 	header->icao_id = mac->getMacId();
 	coutd << " icao_id=" << mac->getMacId();
 	header->offset = this->tx_offset;
@@ -357,23 +310,15 @@ void LinkManager::setBaseHeaderFields(L2HeaderBase* header) {
 	coutd << " ";
 }
 
-void LinkManager::setBeaconHeaderFields(L2HeaderBeacon* header) const {
+void LinkManager::setBeaconHeaderFields(L2HeaderBeacon*& header) const {
 	throw std::runtime_error("P2P LinkManager shouldn't set beacon header fields.");
 }
 
-void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
+void LinkManager::setBroadcastHeaderFields(L2HeaderBroadcast*& header) const {
 	throw std::runtime_error("P2P LinkManager shouldn't set broadcast header fields.");
 }
 
-void LinkManager::setUnicastHeaderFields(L2HeaderUnicast* header) const {
-	coutd << "-> setting unicast header fields:";
-	coutd << " icao_dest_id=" << link_id;
-	header->icao_dest_id = link_id;
-	coutd << " ";
-}
-
-void LinkManager::setRequestHeaderFields(L2HeaderLinkEstablishmentRequest* header) const {
-	coutd << "-> setting link establishment request header fields: ";
+void LinkManager::setUnicastHeaderFields(L2HeaderUnicast*& header) const {
 	coutd << " icao_dest_id=" << link_id;
 	header->icao_dest_id = link_id;
 	coutd << " ";

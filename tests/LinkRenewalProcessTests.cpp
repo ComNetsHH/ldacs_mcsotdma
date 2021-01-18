@@ -73,6 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         }
 
         void testUpdate() {
+//            coutd.setVerbose(true);
             link_renewal_process->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
             const auto& request_slots = link_renewal_process->absolute_request_slots;
             size_t num_request_triggers = 0;
@@ -81,6 +82,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 bool should_send_request = link_renewal_process->hasControlMessage();
                 if (should_send_request) {
                     num_request_triggers++;
+                    delete link_renewal_process->getControlMessage();
                     // Manual check.
                     CPPUNIT_ASSERT(mac->getCurrentSlot() == uint64_t(4) || mac->getCurrentSlot() == uint64_t(10));
                 }
@@ -94,6 +96,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             // Should've requested the right number of requests.
             CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), num_request_triggers);
             CPPUNIT_ASSERT_EQUAL(true, link_renewal_process->absolute_request_slots.empty());
+//            coutd.setVerbose(false);
         }
 
         CPPUNIT_TEST_SUITE(LinkRenewalProcessTests);

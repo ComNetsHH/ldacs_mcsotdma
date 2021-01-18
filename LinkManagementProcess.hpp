@@ -34,6 +34,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         bool hasControlMessage();
 
+        L2Packet* getControlMessage();
+
         /**
          * When a LinkManager receives a link reply, it should forward it to this function.
          * @param header
@@ -55,12 +57,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         void establishLink() const;
 
+        void scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length);
+
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
 
         std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, LinkManager::ProposalPayload*& payload) const;
 
         L2Packet* prepareRequest() const;
+
+        L2Packet* prepareReply(const MacId& destination_id) const;
+
+        bool hasPendingRequest();
+
+        bool hasPendingReply();
 
     protected:
         /** Number of times a link should be attempted to be renewed. */
@@ -69,6 +79,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         LinkManager* owner = nullptr;
         /** The absolute points in time when requests should be sent. */
         std::vector<uint64_t> absolute_request_slots;
+        /** Link replies *must* be sent on specific slots. This container holds these bindings. */
+        std::map<uint64_t , L2Packet*> scheduled_link_replies;
     };
 }
 

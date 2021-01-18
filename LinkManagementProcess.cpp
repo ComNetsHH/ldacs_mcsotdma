@@ -30,22 +30,6 @@ std::vector<uint64_t> LinkManagementProcess::scheduleRequests(unsigned int tx_ti
     return slots;
 }
 
-bool LinkManagementProcess::hasControlMessage() {
-    // Check if the current slot is one during which a request should be sent.
-    bool should_send_request = false;
-    for (auto it = absolute_request_slots.begin(); it != absolute_request_slots.end(); it++) {
-        uint64_t current_slot = *it;
-        if (current_slot == owner->mac->getCurrentSlot()) {
-            absolute_request_slots.erase(it);
-            it--; // Update iterator as the vector has shrunk.
-            if (owner->mac->isThereMoreData(owner->getLinkId()))
-                should_send_request = true;
-        } else if (current_slot < owner->mac->getCurrentSlot())
-            throw std::invalid_argument("LinkManagementProcess::hasControlMessage has missed a scheduled request.");
-    }
-    return should_send_request;
-}
-
 void LinkManagementProcess::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
                                              const LinkManager::ProposalPayload*& payload) {
     // Make sure we're expecting a reply.
@@ -87,7 +71,7 @@ void LinkManagementProcess::processLinkRequest(const L2HeaderLinkEstablishmentRe
         auto chosen_candidate = viable_candidates.at(owner->getRandomInt(0, viable_candidates.size()));
         coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
         // Prepare a link reply.
-        L2Packet* reply = owner->prepareLinkEstablishmentReply(origin);
+        L2Packet* reply = prepareReply(origin);
         // Populate the payload.
         const FrequencyChannel* reply_channel = chosen_candidate.first;
         assert(reply->getPayloads().size() == 2);
@@ -153,8 +137,24 @@ L2Packet *LinkManagementProcess::prepareRequest() const {
     auto* body = new LinkManager::ProposalPayload(owner->num_proposed_channels, owner->num_proposed_slots);
     request->addPayload(request_header, body);
     request->addCallback(owner);
+    coutd << "prepared request" << std::endl;
     return request;
 }
+
+L2Packet *LinkManagementProcess::prepareReply(const MacId& destination_id) const {
+    auto* reply = new L2Packet();
+    // Base header.
+    auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
+    reply->addPayload(base_header, nullptr);
+    // Reply header.
+    auto* reply_header = new L2HeaderLinkEstablishmentReply();
+    reply_header->icao_dest_id = destination_id;
+    // Reply payload will be populated by receiveFromLower.
+    auto* reply_payload = new LinkManager::ProposalPayload(1, 1);
+    reply->addPayload(reply_header, reply_payload);
+    return reply;
+}
+
 
 void LinkManagementProcess::establishLink() const {
     coutd << "establishing new link... ";
@@ -169,4 +169,61 @@ void LinkManagementProcess::establishLink() const {
         coutd << "updated status to 'awaiting_reply'." << std::endl;
     } else
         throw std::runtime_error("LinkManager::establishLink for link status: " + std::to_string(owner->link_establishment_status));
+}
+
+L2Packet* LinkManagementProcess::getControlMessage() {
+    L2Packet* control_message = nullptr;
+    if (hasPendingReply()) {
+        auto it = scheduled_link_replies.find(owner->mac->getCurrentSlot());
+        control_message = (*it).second;
+        scheduled_link_replies.erase(owner->mac->getCurrentSlot());
+    } else if (hasPendingRequest()) {
+        control_message = prepareRequest(); // Sets the callback, s.t. the actual proposal is computed then.
+        // Delete scheduled slot.
+        for (auto it = absolute_request_slots.begin(); it != absolute_request_slots.end(); it++) {
+            uint64_t current_slot = *it;
+            if (current_slot == owner->mac->getCurrentSlot()) {
+                absolute_request_slots.erase(it);
+                it--; // Update iterator as the vector has shrunk.
+            }
+        }
+    }
+    return control_message;
+}
+
+bool LinkManagementProcess::hasControlMessage() {
+    return hasPendingRequest() || hasPendingReply();
+}
+
+bool LinkManagementProcess::hasPendingRequest() {
+    for (unsigned long current_slot : absolute_request_slots) {
+        if (current_slot == owner->mac->getCurrentSlot()) {
+            if (owner->mac->isThereMoreData(owner->getLinkId()))
+                return true;
+        } else if (current_slot < owner->mac->getCurrentSlot())
+            throw std::invalid_argument("LinkManagementProcess::hasControlMessage has missed a scheduled request.");
+    }
+    return false;
+}
+
+bool LinkManagementProcess::hasPendingReply() {
+    return !scheduled_link_replies.empty() && scheduled_link_replies.find(owner->mac->getCurrentSlot()) != scheduled_link_replies.end();
+}
+
+void LinkManagementProcess::scheduleLinkReply(L2Packet *reply, int32_t slot_offset, unsigned int timeout,
+                                              unsigned int offset, unsigned int length) {
+    uint64_t absolute_slot = owner->mac->getCurrentSlot() + slot_offset;
+    auto it = scheduled_link_replies.find(absolute_slot);
+    if (it != scheduled_link_replies.end())
+        throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
+    else {
+        // ... schedule it.
+        if (owner->current_reservation_table->isUtilized(slot_offset))
+            throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
+        owner->current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
+        scheduled_link_replies[absolute_slot] = reply;
+        coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
+        // ... and mark reservations: we're sending a reply, so we're the receiver.
+        owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
+    }
 }

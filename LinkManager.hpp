@@ -163,19 +163,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		protected:
 			/**
-			 * Upon a transmission slot, the link establishment request payload must be computed.
-			 * @return The modified data packet, now containing the request payload.
-			 */
-			L2Packet* prepareLinkEstablishmentRequest();
-			
-			/**
-			 * After a link request has been processed and a candidate chosen, this prepares a reply.
-			 * @param destination_id
-			 * @return
-			 */
-			L2Packet* prepareLinkEstablishmentReply(const MacId& destination_id);
-			
-			/**
 			 * Makes reservations.
 			 * @param timeout Number of repetitions.
 			 * @param init_offset First offset to start with.
@@ -230,11 +217,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param header The header whose fields shall be set.
 			 */
 			void setHeaderFields(L2Header* header);
-			void setBaseHeaderFields(L2HeaderBase* header);
-			virtual void setBeaconHeaderFields(L2HeaderBeacon* header) const;
-			virtual void setBroadcastHeaderFields(L2HeaderBroadcast* header) const;
-			void setUnicastHeaderFields(L2HeaderUnicast* header) const;
-			void setRequestHeaderFields(L2HeaderLinkEstablishmentRequest* header) const;
+			void setBaseHeaderFields(L2HeaderBase*& header);
+			virtual void setBeaconHeaderFields(L2HeaderBeacon*& header) const;
+			virtual void setBroadcastHeaderFields(L2HeaderBroadcast*& header) const;
+			void setUnicastHeaderFields(L2HeaderUnicast*& header) const;
+			void setRequestHeaderFields(L2HeaderLinkEstablishmentRequest*& header) const;
+            void setReplyHeaderFields(L2HeaderLinkEstablishmentReply*& header) const;
 			
 			/**
 			 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.
@@ -281,8 +269,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int tx_burst_num_slots = 1;
 			/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
 			unsigned int tx_offset = 5;
-			/** Link replies *must* be sent on specific slots. This container holds these bindings. */
-			std::map<uint64_t , L2Packet*> scheduled_link_replies;
+
 			/** Last proposal's frequency channels. */
 			std::vector<const FrequencyChannel*> last_proposed_channels;
 			/** Last proposal's time slots. */

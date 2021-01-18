@@ -59,14 +59,14 @@ void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon
 	reservation_manager->updateTables(payload->local_reservations);
 }
 
-void BCLinkManager::setBeaconHeaderFields(L2HeaderBeacon* header) const {
+void BCLinkManager::setBeaconHeaderFields(L2HeaderBeacon*& header) const {
 	coutd << "-> setting beacon header fields:";
 	header->num_hops_to_ground_station = mac->getNumHopsToGS();
 	coutd << " num_hops=" << header->num_hops_to_ground_station;
 	coutd << " ";
 }
 
-void BCLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast* header) const {
+void BCLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast*& header) const {
 	coutd << "-> setting broadcast header fields:";
 	// no fields.
 	coutd << " none ";

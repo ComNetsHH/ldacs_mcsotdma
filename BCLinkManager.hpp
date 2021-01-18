@@ -76,8 +76,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
 			
-			void setBeaconHeaderFields(L2HeaderBeacon* header) const override;
-			void setBroadcastHeaderFields(L2HeaderBroadcast* header) const override;
+			void setBeaconHeaderFields(L2HeaderBeacon*& header) const override;
+			void setBroadcastHeaderFields(L2HeaderBroadcast*& header) const override;
 			
 			/**
 			 * From neighbor observations, their broadcast activity is measured.
