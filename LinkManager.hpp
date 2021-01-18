@@ -78,8 +78,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				awaiting_reply,
 				/** Link establishment reply has been sent and we're waiting for the first message. */
 				reply_sent,
-				/** When a link is expired, it must be renewed. */
-				link_expired
+				/** When a link is expiring, it must be renewed. */
+				link_about_to_expire
 			};
 			
 			LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
@@ -180,15 +180,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return
 			 */
 			L2Packet* prepareLinkEstablishmentReply(const MacId& destination_id);
-			
-			/**
-			 * When a link estabishment request comes in from the PHY, this processes it.
-			 * @param header
-			 * @param payload
-			 * @return Out of the proposed (freq. channel, slot offset) candidates, those candidates are returned that are idle for us.
-			 */
-			std::vector<std::pair<const FrequencyChannel*, unsigned int>> processIncomingLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest*& header, ProposalPayload*& payload);
-			
+
 			/**
 			 * When a link establishment reply comes in from the PHY, this processes it.
 			 * @param header

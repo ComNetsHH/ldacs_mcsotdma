@@ -240,8 +240,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 				// Ensure our expectation is met.
 				CPPUNIT_ASSERT_EQUAL(expected_num_slots, num_slots);
-				// We should now be in the 'link_expired' state.
-				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_expired, lm_me->link_establishment_status);
+				// We should now be in the 'link_about_to_expire' state.
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_about_to_expire, lm_me->link_establishment_status);
 				// So continue until the next transmission slot.
 				while (lm_me->link_establishment_status != LinkManager::awaiting_reply) {
 					mac_layer_me->update(1);

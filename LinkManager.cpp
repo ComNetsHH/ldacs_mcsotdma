@@ -44,7 +44,7 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 			coutd << ": link is not established -> ";
             establishLink();
 		} else {
-			throw std::runtime_error("Unsupported LinkManager::Status: '" + std::to_string(link_establishment_status) + "'.");
+			throw std::runtime_error("Unsupported LinkManager::notifyOutgoing with status: '" + std::to_string(link_establishment_status) + "'.");
 		}
 	}
 }
@@ -95,33 +95,8 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request";
-				auto viable_candidates = processIncomingLinkEstablishmentRequest(
-						(L2HeaderLinkEstablishmentRequest*&) header,
-						(ProposalPayload*&) payload);
-				if (!viable_candidates.empty()) {
-					// Choose a candidate out of the set.
-					auto chosen_candidate = viable_candidates.at(getRandomInt(0, viable_candidates.size()));
-					coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
-					// Prepare a link reply.
-					L2Packet* reply = prepareLinkEstablishmentReply(packet->getOrigin());
-					// Populate the payload.
-					const FrequencyChannel* reply_channel = chosen_candidate.first;
-					assert(reply->getPayloads().size() == 2);
-					auto* reply_payload = (ProposalPayload*) reply->getPayloads().at(1);
-					reply_payload->proposed_channels.push_back(reply_channel);
-					int32_t slot_offset = chosen_candidate.second;
-					// Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
-					coutd << "passing on to corresponding LinkManager -> ";
-					unsigned int timeout = ((L2HeaderLinkEstablishmentRequest*&) header)->timeout,
-								 offset = ((L2HeaderLinkEstablishmentRequest*&) header)->offset,
-								 length = ((L2HeaderLinkEstablishmentRequest*&) header)->length_next;
-					
-					// The request may have been received by the broadcast link manager,
-					// while the reply must be sent on a unicast channel,
-					// so we have to forward the reply to the corresponding unicast link manager.
-					mac->forwardLinkReply(reply, reply_channel, slot_offset, timeout, offset, length);
-				} else
-					coutd << "no candidates viable. Doing nothing." << std::endl;
+				link_renewal_process->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
+                                                         (const ProposalPayload*&) payload, packet->getOrigin());
 				
 				delete header;
 				header = nullptr;
@@ -131,7 +106,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				link_renewal_process->processLinkReply((L2HeaderLinkEstablishmentReply*&) header, (ProposalPayload*&) payload);
+				link_renewal_process->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const ProposalPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -425,36 +400,6 @@ void LinkManager::setReservationOffset(unsigned int reservation_offset) {
 
 void LinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
 	throw std::runtime_error("Non-broadcast LinkManager got a beacon to process.");
-}
-
-std::vector<std::pair<const FrequencyChannel*, unsigned int>> LinkManager::processIncomingLinkEstablishmentRequest(L2HeaderLinkEstablishmentRequest*& header,
-                                                                                                                   ProposalPayload*& payload) {
-	assert(payload && "LinkManager::processIncomingLinkEstablishmentRequest for nullptr ProposalPayload*");
-	const MacId& dest_id = header->icao_dest_id;
-	if (payload->proposed_channels.empty())
-		throw std::invalid_argument("LinkManager::processIncomingLinkEstablishmentRequest for an empty proposal.");
-	
-	// Go through all proposed channels...
-	std::vector<std::pair<const FrequencyChannel*, unsigned int>> viable_candidates;
-	for (size_t i = 0; i < payload->proposed_channels.size(); i++) {
-		const FrequencyChannel* channel = payload->proposed_channels.at(i);
-		coutd << " -> proposed channel " << channel->getCenterFrequency() << "kHz:";
-		// ... and all slots proposed on this channel ...
-		unsigned int num_candidates_on_this_channel = payload->num_candidates.at(i);
-		for (size_t j = 0; j < num_candidates_on_this_channel; j++) {
-			unsigned int slot_offset = payload->proposed_slots.at(j);
-			coutd << " @" << slot_offset;
-			// ... and check if they're idle for us ...
-			const ReservationTable* table = reservation_manager->getReservationTable(channel);
-			// ... if they are, then save them.
-			if (table->isIdle(slot_offset, payload->num_slots_per_candidate) && mac->isTransmitterIdle(slot_offset, payload->num_slots_per_candidate)) {
-				coutd << " (viable)";
-				viable_candidates.emplace_back(channel, slot_offset);
-			} else
-				coutd << " (busy)";
-		}
-	}
-	return viable_candidates;
 }
 
 void LinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {

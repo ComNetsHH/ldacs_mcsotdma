@@ -46,8 +46,8 @@ bool LinkRenewalProcess::shouldSendRequest() {
     return should_send_request;
 }
 
-void LinkRenewalProcess::processLinkReply(const L2HeaderLinkEstablishmentReply *header,
-                                          const LinkManager::ProposalPayload *payload) {
+void LinkRenewalProcess::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
+                                          const LinkManager::ProposalPayload*& payload) {
     // Make sure we're expecting a reply.
     if (owner->link_establishment_status != owner->Status::awaiting_reply)
         throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
@@ -71,8 +71,70 @@ void LinkRenewalProcess::onTransmissionSlot() {
     if (owner->tx_timeout == owner->TIMEOUT_THRESHOLD_TRIGGER) {
         coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
         if (owner->link_establishment_status == owner->link_established) {
-            owner->link_establishment_status = owner->link_expired;
-            coutd << "set status to 'link_expired'." << std::endl;
+            owner->link_establishment_status = owner->link_about_to_expire;
+            coutd << "set status to 'link_about_to_expire'." << std::endl;
         }
     }
+}
+
+void LinkRenewalProcess::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
+                                            const LinkManager::ProposalPayload*& payload, const MacId& origin) {
+    auto viable_candidates = findViableCandidatesInRequest(
+            (L2HeaderLinkEstablishmentRequest*&) header,
+            (LinkManager::ProposalPayload*&) payload);
+    if (!viable_candidates.empty()) {
+        // Choose a candidate out of the set.
+        auto chosen_candidate = viable_candidates.at(owner->getRandomInt(0, viable_candidates.size()));
+        coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
+        // Prepare a link reply.
+        L2Packet* reply = owner->prepareLinkEstablishmentReply(origin);
+        // Populate the payload.
+        const FrequencyChannel* reply_channel = chosen_candidate.first;
+        assert(reply->getPayloads().size() == 2);
+        auto* reply_payload = (LinkManager::ProposalPayload*) reply->getPayloads().at(1);
+        reply_payload->proposed_channels.push_back(reply_channel);
+        int32_t slot_offset = chosen_candidate.second;
+        // Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
+        coutd << "passing on to corresponding LinkManager -> ";
+        unsigned int timeout = ((L2HeaderLinkEstablishmentRequest*&) header)->timeout,
+                offset = ((L2HeaderLinkEstablishmentRequest*&) header)->offset,
+                length = ((L2HeaderLinkEstablishmentRequest*&) header)->length_next;
+
+        // The request may have been received by the broadcast link manager,
+        // while the reply must be sent on a unicast channel,
+        // so we have to forward the reply to the corresponding P2P LinkManager.
+        owner->mac->forwardLinkReply(reply, reply_channel, slot_offset, timeout, offset, length);
+    } else
+        coutd << "no candidates viable. Doing nothing." << std::endl;
+}
+
+std::vector<std::pair<const FrequencyChannel *, unsigned int>>
+LinkRenewalProcess::findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest *&header,
+                                                  LinkManager::ProposalPayload *&payload) const {
+        assert(payload && "LinkManager::findViableCandidatesInRequest for nullptr ProposalPayload*");
+        const MacId& dest_id = header->icao_dest_id;
+        if (payload->proposed_channels.empty())
+            throw std::invalid_argument("LinkManager::findViableCandidatesInRequest for an empty proposal.");
+
+        // Go through all proposed channels...
+        std::vector<std::pair<const FrequencyChannel*, unsigned int>> viable_candidates;
+        for (size_t i = 0; i < payload->proposed_channels.size(); i++) {
+            const FrequencyChannel* channel = payload->proposed_channels.at(i);
+            coutd << " -> proposed channel " << channel->getCenterFrequency() << "kHz:";
+            // ... and all slots proposed on this channel ...
+            unsigned int num_candidates_on_this_channel = payload->num_candidates.at(i);
+            for (size_t j = 0; j < num_candidates_on_this_channel; j++) {
+                unsigned int slot_offset = payload->proposed_slots.at(j);
+                coutd << " @" << slot_offset;
+                // ... and check if they're idle for us ...
+                const ReservationTable* table = owner->reservation_manager->getReservationTable(channel);
+                // ... if they are, then save them.
+                if (table->isIdle(slot_offset, payload->num_slots_per_candidate) && owner->mac->isTransmitterIdle(slot_offset, payload->num_slots_per_candidate)) {
+                    coutd << " (viable)";
+                    viable_candidates.emplace_back(channel, slot_offset);
+                } else
+                    coutd << " (busy)";
+            }
+        }
+        return viable_candidates;
 }

@@ -39,12 +39,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          * @param header
          * @param payload
          */
-        void processLinkReply(const L2HeaderLinkEstablishmentReply* header, const LinkManager::ProposalPayload* payload);
+        void processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::ProposalPayload*& payload);
+
+        /**
+         * When a LinkManager receoves a link request, it should forward it to this function.
+         * @param header
+         * @param payload
+         */
+        void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const LinkManager::ProposalPayload*& payload, const MacId& origin);
 
         void onTransmissionSlot();
 
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
+
+        std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, LinkManager::ProposalPayload*& payload) const;
 
     protected:
         /** Number of times a link should be attempted to be renewed. */

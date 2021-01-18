@@ -239,7 +239,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
 				auto body = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
-				auto viable_candidates = link_manager->processIncomingLinkEstablishmentRequest(header, body);
+				auto viable_candidates = link_manager->link_renewal_process->findViableCandidatesInRequest(header, body);
 				// And all slots should be viable.
 				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->num_proposed_channels * link_manager->num_proposed_slots, viable_candidates.size());
 //				coutd.setVerbose(false);
@@ -351,7 +351,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                     instantiated_lm->link_renewal_process->onTransmissionSlot();
 				// Set the current time to the first control message slot.
                 mac->current_slot = instantiated_lm->link_renewal_process->absolute_request_slots.at(instantiated_lm->link_renewal_process->absolute_request_slots.size() - 1);
-                CPPUNIT_ASSERT_EQUAL(LinkManager::link_expired, instantiated_lm->link_establishment_status);
+                CPPUNIT_ASSERT_EQUAL(LinkManager::link_about_to_expire, instantiated_lm->link_establishment_status);
 				instantiated_lm->current_reservation_table->mark(1, Reservation(communication_partner_id, Reservation::TX, 0));
                 // And the next transmission slot should be used to send a request.
 				L2Packet* request = instantiated_lm->onTransmissionSlot(1);
