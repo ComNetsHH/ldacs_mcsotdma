@@ -31,7 +31,7 @@ std::vector<uint64_t> LinkManagementProcess::scheduleRequests(unsigned int tx_ti
 }
 
 void LinkManagementProcess::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
-                                             const LinkManager::ProposalPayload*& payload) {
+                                             const ProposalPayload*& payload) {
     // Make sure we're expecting a reply.
     if (owner->link_establishment_status != owner->Status::awaiting_reply)
         throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
@@ -43,16 +43,16 @@ void LinkManagementProcess::processLinkReply(const L2HeaderLinkEstablishmentRepl
     owner->assign(payload->proposed_channels.at(0));
     // And mark the reservations.
     // We've received a reply, so we have initiated this link, so we are the transmitter.
-    owner->tx_timeout = owner->default_tx_timeout;
-    owner->markReservations(owner->tx_timeout, 0, owner->tx_offset, owner->tx_burst_num_slots, owner->link_id, Reservation::TX);
+    tx_timeout = default_tx_timeout;
+    owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
     // Refresh the link renewal process.
-    configure(owner->link_renewal_attempts, owner->tx_timeout, 0, owner->tx_offset);
+    configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
     coutd << "link is now established";
 }
 
 void LinkManagementProcess::onTransmissionSlot() {
-    owner->tx_timeout--;
-    if (owner->tx_timeout == owner->TIMEOUT_THRESHOLD_TRIGGER) {
+    tx_timeout--;
+    if (tx_timeout == TIMEOUT_THRESHOLD_TRIGGER) {
         coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
         if (owner->link_establishment_status == owner->link_established) {
             owner->link_establishment_status = owner->link_about_to_expire;
@@ -62,10 +62,10 @@ void LinkManagementProcess::onTransmissionSlot() {
 }
 
 void LinkManagementProcess::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
-                                               const LinkManager::ProposalPayload*& payload, const MacId& origin) {
+                                               const ProposalPayload*& payload, const MacId& origin) {
     auto viable_candidates = findViableCandidatesInRequest(
             (L2HeaderLinkEstablishmentRequest*&) header,
-            (LinkManager::ProposalPayload*&) payload);
+            (ProposalPayload*&) payload);
     if (!viable_candidates.empty()) {
         // Choose a candidate out of the set.
         auto chosen_candidate = viable_candidates.at(owner->getRandomInt(0, viable_candidates.size()));
@@ -75,7 +75,7 @@ void LinkManagementProcess::processLinkRequest(const L2HeaderLinkEstablishmentRe
         // Populate the payload.
         const FrequencyChannel* reply_channel = chosen_candidate.first;
         assert(reply->getPayloads().size() == 2);
-        auto* reply_payload = (LinkManager::ProposalPayload*) reply->getPayloads().at(1);
+        auto* reply_payload = (ProposalPayload*) reply->getPayloads().at(1);
         reply_payload->proposed_channels.push_back(reply_channel);
         int32_t slot_offset = chosen_candidate.second;
         // Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
@@ -94,7 +94,7 @@ void LinkManagementProcess::processLinkRequest(const L2HeaderLinkEstablishmentRe
 
 std::vector<std::pair<const FrequencyChannel *, unsigned int>>
 LinkManagementProcess::findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest *&header,
-                                                     LinkManager::ProposalPayload *&payload) const {
+                                                     ProposalPayload *&payload) const {
         assert(payload && "LinkManager::findViableCandidatesInRequest for nullptr ProposalPayload*");
         const MacId& dest_id = header->icao_dest_id;
         if (payload->proposed_channels.empty())
@@ -134,7 +134,7 @@ L2Packet *LinkManagementProcess::prepareRequest() const {
     // If the link is not yet established, the request must be sent on the broadcast channel.
     MacId dest_id = owner->link_establishment_status == owner->link_not_established ? SYMBOLIC_LINK_ID_BROADCAST : owner->link_id;
     auto* request_header = new L2HeaderLinkEstablishmentRequest(dest_id, link_should_be_arq_protected, 0, 0, 0);
-    auto* body = new LinkManager::ProposalPayload(owner->num_proposed_channels, owner->num_proposed_slots);
+    auto* body = new ProposalPayload(num_proposed_channels, num_proposed_slots);
     request->addPayload(request_header, body);
     request->addCallback(owner);
     coutd << "prepared request" << std::endl;
@@ -150,7 +150,7 @@ L2Packet *LinkManagementProcess::prepareReply(const MacId& destination_id) const
     auto* reply_header = new L2HeaderLinkEstablishmentReply();
     reply_header->icao_dest_id = destination_id;
     // Reply payload will be populated by receiveFromLower.
-    auto* reply_payload = new LinkManager::ProposalPayload(1, 1);
+    auto* reply_payload = new ProposalPayload(1, 1);
     reply->addPayload(reply_header, reply_payload);
     return reply;
 }
@@ -225,5 +225,74 @@ void LinkManagementProcess::scheduleLinkReply(L2Packet *reply, int32_t slot_offs
         coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
         // ... and mark reservations: we're sending a reply, so we're the receiver.
         owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
+    }
+}
+
+void LinkManagementProcess::setTxTimeout(unsigned int value) {
+    tx_timeout = value;
+}
+
+void LinkManagementProcess::setTxOffset(unsigned int value) {
+    tx_offset = value;
+}
+
+unsigned int LinkManagementProcess::getTxTimeout() const {
+    return tx_timeout;
+}
+
+unsigned int LinkManagementProcess::getTxOffset() const {
+    return tx_offset;
+}
+
+unsigned int LinkManagementProcess::getMinOffset() const {
+    return minimum_slot_offset_for_new_slot_reservations;
+}
+
+LinkManagementProcess::ProposalPayload *LinkManagementProcess::p2pSlotSelection() {
+    auto* proposal = new ProposalPayload(num_proposed_channels, num_proposed_slots);
+
+    // Find resource proposals...
+    // ... get the P2P reservation tables sorted by their numbers of idle slots ...
+    auto table_priority_queue = owner->reservation_manager->getSortedP2PReservationTables();
+    // ... until we have considered the target number of channels ...
+    tx_burst_num_slots = owner->estimateCurrentNumSlots();
+    for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
+        if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
+            throw std::runtime_error("LinkManager::prepareRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
+        // ... get the next reservation table ...
+        ReservationTable* table = table_priority_queue.top();
+        table_priority_queue.pop();
+        // ... and try to find candidate slots ...
+        std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, this->num_proposed_slots, tx_burst_num_slots, true);
+        // ... and lock them s.t. future proposals don't consider them.
+        table->lock(candidate_slots);
+
+        // Fill proposal.
+        proposal->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.
+        proposal->num_candidates.push_back(candidate_slots.size()); // Number of candidates (could be fewer than the target).
+        for (int32_t slot : candidate_slots) // The candidate slots.
+            proposal->proposed_slots.push_back(slot);
+    }
+    return proposal;
+}
+
+unsigned int LinkManagementProcess::getTxBurstSlots() const {
+    return tx_burst_num_slots;
+}
+
+void LinkManagementProcess::populateRequest(L2Packet*& request) {
+    for (size_t i = 0; i < request->getHeaders().size(); i++) {
+        L2Header* header = request->getHeaders().at(i);
+        if (header->frame_type == L2Header::link_establishment_request) {
+            // Set the destination ID (may be broadcast until now).
+            ((L2HeaderLinkEstablishmentRequest*) header)->icao_dest_id = owner->link_id;
+            ((L2HeaderLinkEstablishmentRequest*) header)->offset = tx_offset;
+            ((L2HeaderLinkEstablishmentRequest*) header)->timeout = tx_timeout;
+            ((L2HeaderLinkEstablishmentRequest*) header)->length_next = tx_burst_num_slots;
+            // Compute a current proposal.
+            request->getPayloads().at(i) = p2pSlotSelection();
+            coutd << "-> computed link proposal -> ";
+            break;
+        }
     }
 }

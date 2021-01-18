@@ -7,6 +7,7 @@
 
 #include "LinkManager.hpp"
 #include "ContentionEstimator.hpp"
+#include "LinkManagementProcess.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	

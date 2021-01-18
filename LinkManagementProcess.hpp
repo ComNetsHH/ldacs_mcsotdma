@@ -5,19 +5,62 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTPROCESS_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTPROCESS_HPP
 
-#include "LinkManager.hpp"
+#include <cmath>
+#include <map>
+#include "L2Packet.hpp"
+#include "FrequencyChannel.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
+    class LinkManager;
     /**
-     * LinkManager module that handles the P2P link management, such as processing requests and replies.
-     */
+ * LinkManager module that handles the P2P link management, such as processing requests and replies.
+ */
     class LinkManagementProcess {
 
-        friend class LinkRenewalProcessTests;
+        friend class LinkManagementProcessTests;
         friend class LinkManagerTests;
+        friend class SystemTests;
 
     public:
+
+        /**
+         * Implements a link establishment payload that encodes proposed frequency channels and slots.
+         * Link requests may contain a number of channels and slots, while replies should contain just a single one.
+         */
+        class ProposalPayload : public L2Packet::Payload {
+        public:
+            ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : target_num_channels(num_freq_channels), target_num_slots(num_slots), num_slots_per_candidate(1) {
+                if (target_num_slots > pow(2, 4))
+                    throw std::runtime_error("Cannot encode more than 16 candidate slots.");
+            }
+
+            /** Copy constructor. */
+            ProposalPayload(const ProposalPayload& other)
+                    : proposed_channels(other.proposed_channels), proposed_slots(other.proposed_slots), num_candidates(other.num_candidates),
+                      target_num_channels(other.target_num_channels), target_num_slots(other.target_num_slots), num_slots_per_candidate(other.num_slots_per_candidate) {}
+
+            unsigned int getBits() const override {
+                return 8 * target_num_channels // 1B per frequency channel
+                       + 8*target_num_slots // 1B per candidate
+                       + 4*target_num_slots // number of actual candidates per channel
+                       + 8; // 1B to denote candidate slot length
+            }
+
+            std::vector<const FrequencyChannel*> proposed_channels;
+            /** Starting slots. */
+            std::vector<unsigned int> proposed_slots;
+            /** Actual number of candidates per frequency channel. */
+            std::vector<unsigned int> num_candidates;
+            /** Target number of frequency channels to propose. */
+            unsigned int target_num_channels;
+            /** Target number of slots to propose. */
+            unsigned int target_num_slots;
+            /** Number of slots to reserve. */
+            unsigned int num_slots_per_candidate;
+        };
+
+
         explicit LinkManagementProcess(LinkManager* owner);
 
         /**
@@ -41,14 +84,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          * @param header
          * @param payload
          */
-        void processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::ProposalPayload*& payload);
+        void processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
 
         /**
          * When a LinkManager receoves a link request, it should forward it to this function.
          * @param header
          * @param payload
          */
-        void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const LinkManager::ProposalPayload*& payload, const MacId& origin);
+        void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
 
         void onTransmissionSlot();
 
@@ -59,10 +102,42 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         void scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length);
 
+        void populateRequest(L2Packet*& request);
+
+        /**
+         * @param value Number of transmission bursts a reservation should be valid for.
+         */
+        void setTxTimeout(unsigned int value);
+
+        /**
+         * @param value Number of slots inbetween two transmission bursts.
+         */
+        void setTxOffset(unsigned int value);
+
+        /**
+         * @return Number of transmission bursts the reservation is still valid for.
+         */
+        unsigned int getTxTimeout() const;
+
+        /**
+         * @return Number of slots in-between two transmission bursts.
+         */
+        unsigned int getTxOffset() const;
+
+        /**
+         * @return Minimum offset for new reservations.
+         */
+        unsigned int getMinOffset() const;
+
+        /**
+         * @return Number of consecutive slots used per transmission burst.
+         */
+        unsigned int getTxBurstSlots() const;
+
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
 
-        std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, LinkManager::ProposalPayload*& payload) const;
+        std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, ProposalPayload*& payload) const;
 
         L2Packet* prepareRequest() const;
 
@@ -71,6 +146,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         bool hasPendingRequest();
 
         bool hasPendingReply();
+
+        /**
+         * @return A payload that should accompany a link request.
+         */
+        ProposalPayload* p2pSlotSelection();
 
     protected:
         /** Number of times a link should be attempted to be renewed. */
@@ -81,6 +161,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         std::vector<uint64_t> absolute_request_slots;
         /** Link replies *must* be sent on specific slots. This container holds these bindings. */
         std::map<uint64_t , L2Packet*> scheduled_link_replies;
+        /** Number of attempts to renew a link before giving up. */
+        unsigned int link_renewal_attempts = 3;
+        /** The minimum number of slots a proposed slot should be in the future. */
+        const int32_t minimum_slot_offset_for_new_slot_reservations = 1;
+        /** The number of frequency channels that should be proposed when a new link request is prepared. */
+        unsigned int num_proposed_channels = 2;
+        /** The number of time slots that should be proposed when a new link request is prepared. */
+        unsigned int num_proposed_slots = 3;
+        /** Number of repetitions a reservation remains valid for. */
+        unsigned int default_tx_timeout = 10,
+                tx_timeout = default_tx_timeout;
+        /** When a reservation timeout reaches this threshold, a new link request is prepared. */
+        unsigned int TIMEOUT_THRESHOLD_TRIGGER = 1;
+        /** Number of slots occupied per transmission burst. */
+        unsigned int tx_burst_num_slots = 1;
+        /** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
+        unsigned int tx_offset = 5;
     };
 }
 

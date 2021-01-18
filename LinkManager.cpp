@@ -96,7 +96,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request";
 				link_management_process->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
-                                                            (const ProposalPayload*&) payload, packet->getOrigin());
+                                                            (const LinkManagementProcess::ProposalPayload*&) payload, packet->getOrigin());
 				
 				delete header;
 				header = nullptr;
@@ -106,7 +106,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				link_management_process->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const ProposalPayload*&) payload);
+				link_management_process->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const LinkManagementProcess::ProposalPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -132,20 +132,11 @@ double LinkManager::getCurrentTrafficEstimate() const {
 	return traffic_estimate.get();
 }
 
-void LinkManager::setProposalDimension(unsigned int num_candidate_channels, unsigned int num_candidate_slots) {
-	this->num_proposed_channels = num_candidate_channels;
-	this->num_proposed_slots = num_candidate_slots;
-}
-
 unsigned int LinkManager::estimateCurrentNumSlots() const {
 	unsigned int traffic_estimate = (unsigned int) this->traffic_estimate.get(); // in bits.
 	unsigned int datarate = mac->getCurrentDatarate(); // in bits/slot.
 	unsigned int num_slots = traffic_estimate / datarate; // in slots.
 	return num_slots > 0 ? num_slots : 1; // in slots.
-}
-
-unsigned int LinkManager::getNumPendingReservations() const {
-	return this->num_pending_reservations;
 }
 
 void LinkManager::updateTrafficEstimate(unsigned long num_bits) {
@@ -160,48 +151,7 @@ int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const 
 
 void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 	// This callback is used only for link requests.
-	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
-		L2Header* header = packet->getHeaders().at(i);
-		if (header->frame_type == L2Header::link_establishment_request) {
-			// Set the destination ID (may be broadcast until now).
-			((L2HeaderLinkEstablishmentRequest*) header)->icao_dest_id = link_id;
-			((L2HeaderLinkEstablishmentRequest*) header)->offset = tx_offset;
-			((L2HeaderLinkEstablishmentRequest*) header)->timeout = tx_timeout;
-			((L2HeaderLinkEstablishmentRequest*) header)->length_next = tx_burst_num_slots;
-			// Compute a current proposal.
-			packet->getPayloads().at(i) = p2pSlotSelection();
-			coutd << "-> computed link proposal -> ";
-			break;
-		}
-	}
-}
-
-LinkManager::ProposalPayload* LinkManager::p2pSlotSelection() {
-	auto* proposal = new ProposalPayload(num_proposed_channels, num_proposed_slots);
-	
-	// Find resource proposals...
-	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
-	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
-	// ... until we have considered the target number of channels ...
-	tx_burst_num_slots = estimateCurrentNumSlots();
-	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
-		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
-			throw std::runtime_error("LinkManager::prepareRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
-		// ... get the next reservation table ...
-		ReservationTable* table = table_priority_queue.top();
-		table_priority_queue.pop();
-		// ... and try to find candidate slots ...
-		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, this->num_proposed_slots, tx_burst_num_slots, true);
-		// ... and lock them s.t. future proposals don't consider them.
-		table->lock(candidate_slots);
-		
-		// Fill proposal.
-		proposal->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.
-		proposal->num_candidates.push_back(candidate_slots.size()); // Number of candidates (could be fewer than the target).
-		for (int32_t slot : candidate_slots) // The candidate slots.
-			proposal->proposed_slots.push_back(slot);
-	}
-	return proposal;
+	link_management_process->populateRequest(packet);
 }
 
 BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
@@ -299,14 +249,14 @@ void LinkManager::setHeaderFields(L2Header* header) {
 void LinkManager::setBaseHeaderFields(L2HeaderBase*& header) {
 	header->icao_id = mac->getMacId();
 	coutd << " icao_id=" << mac->getMacId();
-	header->offset = this->tx_offset;
-	coutd << " offset=" << this->tx_offset;
-	if (this->tx_burst_num_slots == 0)
+	header->offset = link_management_process->getTxOffset();
+	coutd << " offset=" << link_management_process->getTxOffset();
+	if (link_management_process->getTxBurstSlots() == 0)
 		throw std::runtime_error("LinkManager::setBaseHeaderFields attempted to set next_length to zero.");
-	header->length_next = this->tx_burst_num_slots;
-	coutd << " length_next=" << this->tx_burst_num_slots;
-	header->timeout = this->tx_timeout;
-	coutd << " timeout=" << this->tx_timeout;
+	header->length_next = link_management_process->getTxBurstSlots();
+	coutd << " length_next=" << link_management_process->getTxBurstSlots();
+	header->timeout = link_management_process->getTxTimeout();
+	coutd << " timeout=" << link_management_process->getTxTimeout();
 	coutd << " ";
 }
 
@@ -322,10 +272,6 @@ void LinkManager::setUnicastHeaderFields(L2HeaderUnicast*& header) const {
 	coutd << " icao_dest_id=" << link_id;
 	header->icao_dest_id = link_id;
 	coutd << " ";
-}
-
-void LinkManager::setReservationOffset(unsigned int reservation_offset) {
-	this->tx_offset = reservation_offset;
 }
 
 void LinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
@@ -404,10 +350,6 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 
 LinkManager::~LinkManager() {
     delete link_management_process;
-}
-
-void LinkManager::resetReservationTimeout() {
-    tx_timeout = default_tx_timeout;
 }
 
 

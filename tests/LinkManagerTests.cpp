@@ -97,11 +97,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testComputeProposal() {
 				testNewLinkEstablishment();
 				L2Packet* request = rlc_layer->injections.at(0);
-				LinkManager::ProposalPayload* proposal = link_manager->p2pSlotSelection();
+                LinkManagementProcess::ProposalPayload* proposal = link_manager->link_management_process->p2pSlotSelection();
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
 				
 				// Should've considered several distinct frequency channels.
-				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), proposal->proposed_channels.size());
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->link_management_process->num_proposed_channels), proposal->proposed_channels.size());
 				for (size_t i = 1; i < proposal->proposed_channels.size(); i++) {
 					const FrequencyChannel* channel0 = proposal->proposed_channels.at(i-1);
 					const FrequencyChannel* channel1 = proposal->proposed_channels.at(i);
@@ -111,10 +111,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Should've considered a number of candidate slots per frequency channel.
 				for (auto num_slots_in_this_candidate : proposal->num_candidates) {
 					// Since all are idle, we should've found the target number each time.
-					CPPUNIT_ASSERT_EQUAL(link_manager->num_proposed_slots, num_slots_in_this_candidate);
+					CPPUNIT_ASSERT_EQUAL(link_manager->link_management_process->num_proposed_slots, num_slots_in_this_candidate);
 				}
 				// and so the grand total should be the number of proposed slots times the number of proposed channels.
-				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels * link_manager->num_proposed_slots), proposal->proposed_slots.size());
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->link_management_process->num_proposed_channels * link_manager->link_management_process->num_proposed_slots), proposal->proposed_slots.size());
 				
 				// To have a look...
 //				coutd.setVerbose(true);
@@ -160,9 +160,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2HeaderBase header = L2HeaderBase();
 				link_manager->setHeaderFields(&header);
 				CPPUNIT_ASSERT_EQUAL(own_id, header.icao_id);
-				CPPUNIT_ASSERT_EQUAL(link_manager->tx_offset, header.offset);
-				CPPUNIT_ASSERT_EQUAL(link_manager->tx_burst_num_slots, header.length_next);
-				CPPUNIT_ASSERT_EQUAL(link_manager->tx_timeout, header.timeout);
+				CPPUNIT_ASSERT_EQUAL(link_manager->link_management_process->tx_offset, header.offset);
+				CPPUNIT_ASSERT_EQUAL(link_manager->link_management_process->tx_burst_num_slots, header.length_next);
+				CPPUNIT_ASSERT_EQUAL(link_manager->link_management_process->tx_timeout, header.timeout);
 			}
 			
 			void testSetBeaconHeader() {
@@ -234,14 +234,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
 //				coutd.setVerbose(true);
 				L2Packet* request = other_link_manager.link_management_process->prepareRequest();
-				request->getPayloads().at(1) = other_link_manager.p2pSlotSelection();
+				request->getPayloads().at(1) = other_link_manager.link_management_process->p2pSlotSelection();
 				// The number of proposed channels should be adequate.
-				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->link_management_process->num_proposed_channels), ((LinkManagementProcess::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
-				auto body = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
+				auto body = (LinkManagementProcess::ProposalPayload*) request->getPayloads().at(1);
 				auto viable_candidates = link_manager->link_management_process->findViableCandidatesInRequest(header, body);
 				// And all slots should be viable.
-				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->num_proposed_channels * link_manager->num_proposed_slots, viable_candidates.size());
+				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->link_management_process->num_proposed_channels * link_manager->link_management_process->num_proposed_slots, viable_candidates.size());
 //				coutd.setVerbose(false);
 			}
 			
@@ -316,7 +316,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
 				LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
 				L2Packet* request = other_link_manager.link_management_process->prepareRequest();
-				request->getPayloads().at(1) = other_link_manager.p2pSlotSelection();
+				request->getPayloads().at(1) = other_link_manager.link_management_process->p2pSlotSelection();
 //				coutd.setVerbose(true);
 				// Receive it on the BC.
 				bc_manager->receiveFromLower(request);
@@ -345,9 +345,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				instantiated_lm->link_establishment_status = LinkManager::link_established;
 				ReservationTable* table = reservation_manager->reservation_tables.at(0);
 				instantiated_lm->current_reservation_table = table;
-				instantiated_lm->link_management_process->configure(2, instantiated_lm->tx_timeout, 0, instantiated_lm->tx_offset);
+				instantiated_lm->link_management_process->configure(2, instantiated_lm->link_management_process->tx_timeout, 0, instantiated_lm->link_management_process->tx_offset);
 				// Reach the reservation timeout
-				while (instantiated_lm->tx_timeout > instantiated_lm->TIMEOUT_THRESHOLD_TRIGGER)
+				while (instantiated_lm->link_management_process->tx_timeout > instantiated_lm->link_management_process->TIMEOUT_THRESHOLD_TRIGGER)
                     instantiated_lm->link_management_process->onTransmissionSlot();
 				// Set the current time to the first control message slot.
                 mac->current_slot = instantiated_lm->link_management_process->absolute_request_slots.at(instantiated_lm->link_management_process->absolute_request_slots.size() - 1);
@@ -367,13 +367,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testLocking() {
 				// Compute one request.
 				L2Packet* request1 = link_manager->link_management_process->prepareRequest();
-				request1->getPayloads().at(1) = link_manager->p2pSlotSelection();
+				request1->getPayloads().at(1) = link_manager->link_management_process->p2pSlotSelection();
 				// And another one.
 				L2Packet* request2 = link_manager->link_management_process->prepareRequest();
-				request2->getPayloads().at(1) = link_manager->p2pSlotSelection();
+				request2->getPayloads().at(1) = link_manager->link_management_process->p2pSlotSelection();
 				// Because the first proposed slots have been locked, they shouldn't be the same as the next.
-				auto* proposal1 = (LinkManager::ProposalPayload*) request1->getPayloads().at(1);
-				auto* proposal2 = (LinkManager::ProposalPayload*) request2->getPayloads().at(1);
+				auto* proposal1 = (LinkManagementProcess::ProposalPayload*) request1->getPayloads().at(1);
+				auto* proposal2 = (LinkManagementProcess::ProposalPayload*) request2->getPayloads().at(1);
 				// We have a sufficiently large planning horizon s.t. the frequency channels can be the same.
 				CPPUNIT_ASSERT_EQUAL(proposal1->proposed_channels.size(), proposal2->proposed_channels.size());
 				for (size_t i = 0; i < proposal1->proposed_channels.size(); i++)

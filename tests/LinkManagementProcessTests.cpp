@@ -8,7 +8,7 @@
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
-    class LinkRenewalProcessTests : public CppUnit::TestFixture {
+    class LinkManagementProcessTests : public CppUnit::TestFixture {
     private:
         LinkManager* link_manager;
         ReservationManager* reservation_manager;
@@ -99,7 +99,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //            coutd.setVerbose(false);
         }
 
-        CPPUNIT_TEST_SUITE(LinkRenewalProcessTests);
+        CPPUNIT_TEST_SUITE(LinkManagementProcessTests);
             CPPUNIT_TEST(testSchedule);
             CPPUNIT_TEST(testUpdate);
         CPPUNIT_TEST_SUITE_END();

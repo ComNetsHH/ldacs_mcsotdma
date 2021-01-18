@@ -127,7 +127,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
 				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 				// Reservation timeout should still be default.
-				CPPUNIT_ASSERT_EQUAL(lm_me->default_tx_timeout, lm_me->tx_timeout);
+				CPPUNIT_ASSERT_EQUAL(lm_me->link_management_process->default_tx_timeout, lm_me->link_management_process->tx_timeout);
 				// Increment time until status is 'link_established'.
 				while (mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status != LinkManager::link_established) {
 					mac_layer_me->update(1);
@@ -215,15 +215,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				rlc_layer_me->should_there_be_more_data = true;
 				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 				// We've sent one message so far, so the link remains valid until default-1.
-				unsigned int expected_tx_timeout = lm_me->default_tx_timeout - 1;
-				CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->tx_timeout);
+				unsigned int expected_tx_timeout = lm_me->link_management_process->default_tx_timeout - 1;
+				CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->link_management_process->tx_timeout);
 				// Now increment time until the link should be renewed.
-				CPPUNIT_ASSERT(lm_me->tx_timeout > lm_me->TIMEOUT_THRESHOLD_TRIGGER);
+				CPPUNIT_ASSERT(lm_me->link_management_process->tx_timeout > lm_me->link_management_process->TIMEOUT_THRESHOLD_TRIGGER);
 				size_t num_slots = 0; // Actual number of slots until link renewal is needed.
 				// It should be the difference to reach the THRESHOLD times the transmission offset.
 				// e.g. timeout=5 threshold=1 and we transmit every 3 slots, then 5-1=4 4*3=12 is the expected number of slots
-				size_t expected_num_slots = (lm_me->tx_timeout - lm_me->TIMEOUT_THRESHOLD_TRIGGER) * lm_me->tx_offset;
-				while (lm_me->tx_timeout > lm_me->TIMEOUT_THRESHOLD_TRIGGER) {
+				size_t expected_num_slots = (lm_me->link_management_process->tx_timeout - lm_me->link_management_process->TIMEOUT_THRESHOLD_TRIGGER) * lm_me->link_management_process->tx_offset;
+				while (lm_me->link_management_process->tx_timeout > lm_me->link_management_process->TIMEOUT_THRESHOLD_TRIGGER) {
 					num_slots++;
 					mac_layer_me->update(1);
 					mac_layer_you->update(1);
@@ -236,7 +236,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					// When I send a transmission, the reservation timeout should decrease.
 					if (exes_me.first == 1)
 						expected_tx_timeout--;
-					CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->tx_timeout);
+					CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->link_management_process->tx_timeout);
 				}
 				// Ensure our expectation is met.
 				CPPUNIT_ASSERT_EQUAL(expected_num_slots, num_slots);

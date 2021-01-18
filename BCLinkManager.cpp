@@ -16,9 +16,9 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
 		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
 	link_establishment_status = link_established;
 	// Broadcast reservations don't remain valid.
-	tx_timeout = 0;
+	link_management_process->setTxTimeout(0);
 	// Offset to next broadcast will be dynamically chosen.
-	tx_offset = 0;
+	link_management_process->setTxOffset(0);
 }
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
@@ -75,10 +75,10 @@ void BCLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast*& header) const {
 void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << "BCLinkManager(" << link_id << ")::notifyOutgoing(" << num_bits << " bits) -> ";
 	if (!broadcast_slot_scheduled) {
-		tx_offset = broadcastSlotSelection();
+		link_management_process->setTxOffset(broadcastSlotSelection());
 		assert(current_reservation_table && "BCLinkManager::notifyOutgoing for unset reservation table.");
-		current_reservation_table->mark(tx_offset, Reservation(link_id, Reservation::TX));
-		coutd << "scheduled broadcast next_broadcast_slot in " << tx_offset << " slots." << std::endl;
+		current_reservation_table->mark(link_management_process->getTxOffset(), Reservation(link_id, Reservation::TX));
+		coutd << "scheduled broadcast next_broadcast_slot in " << link_management_process->getTxOffset() << " slots." << std::endl;
 		broadcast_slot_scheduled = true;
 	} else
 		coutd << "already have a broadcast slot scheduled." << std::endl;
@@ -98,14 +98,14 @@ L2Packet* BCLinkManager::onTransmissionSlot(unsigned int num_slots) {
 		// Check if there's more data...
 		if (mac->isThereMoreData(link_id)) {
 			// ... if so, schedule a next slot
-			tx_offset = broadcastSlotSelection();
-			current_reservation_table->mark(tx_offset, Reservation(link_id, Reservation::TX));
+			link_management_process->setTxOffset(broadcastSlotSelection());
+			current_reservation_table->mark(link_management_process->getTxOffset(), Reservation(link_id, Reservation::TX));
 			broadcast_slot_scheduled = true; // remains true
-			coutd << "scheduled next broadcast in " << tx_offset << " slots -> ";
+			coutd << "scheduled next broadcast in " << link_management_process->getTxOffset() << " slots -> ";
 		} else {
 			coutd << "no next broadcast slot required -> ";
 			broadcast_slot_scheduled = false;
-			tx_offset = 0;
+			link_management_process->setTxOffset(0);
 		}
 		// ... and set the header field.
 		for (L2Header* header : packet->getHeaders())
@@ -161,7 +161,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() const {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->target_collision_probability);
-	std::vector<int32_t> candidate_slots = current_reservation_table->findCandidateSlots(this->minimum_slot_offset_for_new_slot_reservations, num_candidates, 1, true);
+	std::vector<int32_t> candidate_slots = current_reservation_table->findCandidateSlots(link_management_process->getMinOffset(), num_candidates, 1, true);
 	int32_t slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
 	if (slot < 0)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection chose a slot in the past.");
