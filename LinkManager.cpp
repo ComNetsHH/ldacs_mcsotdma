@@ -169,17 +169,17 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 	L2Packet* segment;
 	// Prioritize control messages.
 	if (link_management_process->hasControlMessage()) {
-        coutd << "fetching control message... ";
+        coutd << "fetching control message ";
         if (num_slots > 1) // Control messages should be sent during single slots.
             throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
 	    segment = link_management_process->getControlMessage();
         if (segment->getHeaders().size() == 2) {
             const L2Header* header = segment->getHeaders().at(1);
             if (header->frame_type == L2Header::FrameType::link_establishment_request) {
-                coutd << "fetched request... ";
+                coutd << "[request]... ";
                 link_establishment_status = awaiting_reply;
             } else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
-                coutd << "fetched reply... ";
+                coutd << "[reply]... ";
                 link_establishment_status = reply_sent;
             } else
                 throw std::logic_error("LinkManager::onTransmissionSlot for non-reply and non-request control message.");

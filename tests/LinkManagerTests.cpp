@@ -9,6 +9,12 @@
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
+
+    /**
+     * The LinkManager is the core component of the IntAirNet' LDACS MAC.
+     * These tests aim at one side of the communication link, e.g. the preparation of a request and testing its contents.
+     * Tests that involve both TX *and* RX are put into SystemTests instead.
+     */
 	class LinkManagerTests : public CppUnit::TestFixture {
 		private:
 			LinkManager* link_manager;
@@ -324,7 +330,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
 				// And increment time until it has sent the reply.
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
-				while (!p2p_manager->link_management_process->scheduled_link_replies.empty()) {
+				while (!p2p_manager->link_management_process->scheduled_replies.empty()) {
 					mac->update(1);
 					mac->execute();
 				}
@@ -350,7 +356,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				while (instantiated_lm->link_management_process->tx_timeout > instantiated_lm->link_management_process->TIMEOUT_THRESHOLD_TRIGGER)
                     instantiated_lm->link_management_process->onTransmissionSlot();
 				// Set the current time to the first control message slot.
-                mac->current_slot = instantiated_lm->link_management_process->absolute_request_slots.at(instantiated_lm->link_management_process->absolute_request_slots.size() - 1);
+                mac->current_slot = instantiated_lm->link_management_process->scheduled_requests.at(instantiated_lm->link_management_process->scheduled_requests.size() - 1);
                 CPPUNIT_ASSERT_EQUAL(LinkManager::link_about_to_expire, instantiated_lm->link_establishment_status);
 				instantiated_lm->current_reservation_table->mark(1, Reservation(communication_partner_id, Reservation::TX, 0));
                 // And the next transmission slot should be used to send a request.

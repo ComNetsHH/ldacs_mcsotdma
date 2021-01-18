@@ -158,9 +158,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         /** A LinkManagementProcess is a module of a LinkManager. */
         LinkManager* owner = nullptr;
         /** The absolute points in time when requests should be sent. */
-        std::vector<uint64_t> absolute_request_slots;
+        std::vector<uint64_t> scheduled_requests;
         /** Link replies *must* be sent on specific slots. This container holds these bindings. */
-        std::map<uint64_t , L2Packet*> scheduled_link_replies;
+        std::map<uint64_t , L2Packet*> scheduled_replies;
         /** Number of attempts to renew a link before giving up. */
         unsigned int link_renewal_attempts = 3;
         /** The minimum number of slots a proposed slot should be in the future. */

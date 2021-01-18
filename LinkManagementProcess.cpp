@@ -15,7 +15,7 @@ void LinkManagementProcess::configure(unsigned int num_renewal_attempts, unsigne
                                       unsigned int tx_offset) {
     this->num_renewal_attempts = num_renewal_attempts;
     // Schedule the absolute slots for sending requests.
-    absolute_request_slots = scheduleRequests(tx_timeout, init_offset, tx_offset);
+    scheduled_requests = scheduleRequests(tx_timeout, init_offset, tx_offset);
 }
 
 std::vector<uint64_t> LinkManagementProcess::scheduleRequests(unsigned int tx_timeout, unsigned int init_offset,
@@ -174,16 +174,17 @@ void LinkManagementProcess::establishLink() const {
 L2Packet* LinkManagementProcess::getControlMessage() {
     L2Packet* control_message = nullptr;
     if (hasPendingReply()) {
-        auto it = scheduled_link_replies.find(owner->mac->getCurrentSlot());
+        auto it = scheduled_replies.find(owner->mac->getCurrentSlot());
         control_message = (*it).second;
-        scheduled_link_replies.erase(owner->mac->getCurrentSlot());
+        // Delete scheduled entry.
+        scheduled_replies.erase(owner->mac->getCurrentSlot());
     } else if (hasPendingRequest()) {
         control_message = prepareRequest(); // Sets the callback, s.t. the actual proposal is computed then.
-        // Delete scheduled slot.
-        for (auto it = absolute_request_slots.begin(); it != absolute_request_slots.end(); it++) {
+        // Delete scheduled entry.
+        for (auto it = scheduled_requests.begin(); it != scheduled_requests.end(); it++) { // it's a std::vector, so there's no find() and there may be multiples
             uint64_t current_slot = *it;
             if (current_slot == owner->mac->getCurrentSlot()) {
-                absolute_request_slots.erase(it);
+                scheduled_requests.erase(it);
                 it--; // Update iterator as the vector has shrunk.
             }
         }
@@ -196,7 +197,7 @@ bool LinkManagementProcess::hasControlMessage() {
 }
 
 bool LinkManagementProcess::hasPendingRequest() {
-    for (unsigned long current_slot : absolute_request_slots) {
+    for (unsigned long current_slot : scheduled_requests) {
         if (current_slot == owner->mac->getCurrentSlot()) {
             if (owner->mac->isThereMoreData(owner->getLinkId()))
                 return true;
@@ -207,21 +208,21 @@ bool LinkManagementProcess::hasPendingRequest() {
 }
 
 bool LinkManagementProcess::hasPendingReply() {
-    return !scheduled_link_replies.empty() && scheduled_link_replies.find(owner->mac->getCurrentSlot()) != scheduled_link_replies.end();
+    return !scheduled_replies.empty() && scheduled_replies.find(owner->mac->getCurrentSlot()) != scheduled_replies.end();
 }
 
 void LinkManagementProcess::scheduleLinkReply(L2Packet *reply, int32_t slot_offset, unsigned int timeout,
                                               unsigned int offset, unsigned int length) {
     uint64_t absolute_slot = owner->mac->getCurrentSlot() + slot_offset;
-    auto it = scheduled_link_replies.find(absolute_slot);
-    if (it != scheduled_link_replies.end())
+    auto it = scheduled_replies.find(absolute_slot);
+    if (it != scheduled_replies.end())
         throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
     else {
         // ... schedule it.
         if (owner->current_reservation_table->isUtilized(slot_offset))
             throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
         owner->current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
-        scheduled_link_replies[absolute_slot] = reply;
+        scheduled_replies[absolute_slot] = reply;
         coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
         // ... and mark reservations: we're sending a reply, so we're the receiver.
         owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);

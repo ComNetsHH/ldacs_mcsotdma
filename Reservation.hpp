@@ -111,32 +111,39 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** In case of a transmission, this keeps the number of remaining slots for this transmission burst. */
 			unsigned int num_remaining_slots = 0;
 	};
+
+    inline std::ostream& operator<<(std::ostream& stream, const Reservation::Action& action) {
+        std::string str;
+        switch (action) {
+            case Reservation::IDLE: {
+                str = "IDLE";
+                break;
+            }
+            case Reservation::BUSY: {
+                str = "BUSY";
+                break;
+            } case Reservation::RX: {
+                str = "RX";
+                break;
+            } case Reservation::TX: {
+                str = "TX";
+                break;
+            } case Reservation::TX_CONT: {
+                str = "TX_CONT";
+                break;
+            } case Reservation::LOCKED: {
+                str = "LOCKED";
+                break;
+            }
+        }
+        return stream << str;
+    }
 	
 	inline std::ostream& operator<<(std::ostream& stream, const Reservation& reservation) {
-		std::string action;
-		switch (reservation.getAction()) {
-			case Reservation::IDLE:
-				action = "IDLE";
-				break;
-			case Reservation::BUSY:
-				action = "BUSY";
-				break;
-			case Reservation::RX:
-				action = "RX";
-				break;
-			case Reservation::TX:
-				action = "TX";
-				break;
-			case Reservation::TX_CONT:
-				action = "TX_CONT";
-				break;
-			case Reservation::LOCKED:
-				action = "LOCKED";
-				break;
-		}
-		action += "@";
-		return stream << action << reservation.getTarget();
+		return stream << reservation.getAction() << std::string("@") << reservation.getTarget();
 	}
+
+
 }
 
 

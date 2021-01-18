@@ -70,7 +70,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         void testSchedule() {
             link_renewal_process->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
-            const std::vector<uint64_t>& slots = link_renewal_process->absolute_request_slots;
+            const std::vector<uint64_t>& slots = link_renewal_process->scheduled_requests;
             CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), slots.size());
             // Manual check: init offset=1, tx every 3 slots, 5 txs -> tx at [1,4,7,10,13].
             CPPUNIT_ASSERT_EQUAL(uint64_t(10), slots.at(0));
@@ -80,7 +80,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         void testUpdate() {
 //            coutd.setVerbose(true);
             link_renewal_process->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
-            const auto& request_slots = link_renewal_process->absolute_request_slots;
+            const auto& request_slots = link_renewal_process->scheduled_requests;
             size_t num_request_triggers = 0;
             while (num_request_triggers < num_renewal_attempts) {
                 mac->update(1);
@@ -100,7 +100,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->hasControlMessage());
             // Should've requested the right number of requests.
             CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), num_request_triggers);
-            CPPUNIT_ASSERT_EQUAL(true, link_renewal_process->absolute_request_slots.empty());
+            CPPUNIT_ASSERT_EQUAL(true, link_renewal_process->scheduled_requests.empty());
 //            coutd.setVerbose(false);
         }
 
