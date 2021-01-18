@@ -7,7 +7,7 @@
 #include "LinkManager.hpp"
 #include "coutdebug.hpp"
 #include "MCSOTDMA_Mac.hpp"
-#include "LinkRenewalProcess.hpp"
+#include "LinkManagementProcess.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -15,7 +15,7 @@ LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_m
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
 	mac(mac), traffic_estimate(20) {
-	    link_renewal_process = new LinkRenewalProcess(this);
+	    link_renewal_process = new LinkManagementProcess(this);
 	}
 
 const MacId& LinkManager::getLinkId() const {

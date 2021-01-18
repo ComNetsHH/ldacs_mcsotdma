@@ -3,23 +3,23 @@
 //
 
 #include <cassert>
-#include "LinkRenewalProcess.hpp"
+#include "LinkManagementProcess.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-LinkRenewalProcess::LinkRenewalProcess(LinkManager *owner) : owner(owner) {}
+LinkManagementProcess::LinkManagementProcess(LinkManager *owner) : owner(owner) {}
 
-void LinkRenewalProcess::configure(unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset,
-                                   unsigned int tx_offset) {
+void LinkManagementProcess::configure(unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset,
+                                      unsigned int tx_offset) {
     this->num_renewal_attempts = num_renewal_attempts;
     // Schedule the absolute slots for sending requests.
     absolute_request_slots = scheduleRequests(tx_timeout, init_offset, tx_offset);
 }
 
-std::vector<uint64_t> LinkRenewalProcess::scheduleRequests(unsigned int tx_timeout, unsigned int init_offset,
-                                                       unsigned int tx_offset) const {
+std::vector<uint64_t> LinkManagementProcess::scheduleRequests(unsigned int tx_timeout, unsigned int init_offset,
+                                                              unsigned int tx_offset) const {
     std::vector<uint64_t> slots;
     // For each transmission burst from last to first according to this reservation...
     for (long i = 0, offset = init_offset + (tx_timeout-1)*tx_offset; slots.size() < num_renewal_attempts && offset >= init_offset; offset -= tx_offset, i++) {
@@ -30,7 +30,7 @@ std::vector<uint64_t> LinkRenewalProcess::scheduleRequests(unsigned int tx_timeo
     return slots;
 }
 
-bool LinkRenewalProcess::shouldSendRequest() {
+bool LinkManagementProcess::shouldSendRequest() {
     // Check if the current slot is one during which a request should be sent.
     bool should_send_request = false;
     for (auto it = absolute_request_slots.begin(); it != absolute_request_slots.end(); it++) {
@@ -41,13 +41,13 @@ bool LinkRenewalProcess::shouldSendRequest() {
             if (owner->mac->isThereMoreData(owner->getLinkId()))
                 should_send_request = true;
         } else if (current_slot < owner->mac->getCurrentSlot())
-            throw std::invalid_argument("LinkRenewalProcess::shouldSendRequest has missed a scheduled request.");
+            throw std::invalid_argument("LinkManagementProcess::shouldSendRequest has missed a scheduled request.");
     }
     return should_send_request;
 }
 
-void LinkRenewalProcess::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
-                                          const LinkManager::ProposalPayload*& payload) {
+void LinkManagementProcess::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
+                                             const LinkManager::ProposalPayload*& payload) {
     // Make sure we're expecting a reply.
     if (owner->link_establishment_status != owner->Status::awaiting_reply)
         throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
@@ -66,7 +66,7 @@ void LinkRenewalProcess::processLinkReply(const L2HeaderLinkEstablishmentReply*&
     coutd << "link is now established";
 }
 
-void LinkRenewalProcess::onTransmissionSlot() {
+void LinkManagementProcess::onTransmissionSlot() {
     owner->tx_timeout--;
     if (owner->tx_timeout == owner->TIMEOUT_THRESHOLD_TRIGGER) {
         coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
@@ -77,8 +77,8 @@ void LinkRenewalProcess::onTransmissionSlot() {
     }
 }
 
-void LinkRenewalProcess::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
-                                            const LinkManager::ProposalPayload*& payload, const MacId& origin) {
+void LinkManagementProcess::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
+                                               const LinkManager::ProposalPayload*& payload, const MacId& origin) {
     auto viable_candidates = findViableCandidatesInRequest(
             (L2HeaderLinkEstablishmentRequest*&) header,
             (LinkManager::ProposalPayload*&) payload);
@@ -109,8 +109,8 @@ void LinkRenewalProcess::processLinkRequest(const L2HeaderLinkEstablishmentReque
 }
 
 std::vector<std::pair<const FrequencyChannel *, unsigned int>>
-LinkRenewalProcess::findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest *&header,
-                                                  LinkManager::ProposalPayload *&payload) const {
+LinkManagementProcess::findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest *&header,
+                                                     LinkManager::ProposalPayload *&payload) const {
         assert(payload && "LinkManager::findViableCandidatesInRequest for nullptr ProposalPayload*");
         const MacId& dest_id = header->icao_dest_id;
         if (payload->proposed_channels.empty())

@@ -16,7 +16,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	
 	class MCSOTDMA_Mac;
     // Implemented in its own files for better readability and testing.
-    class LinkRenewalProcess;
+    class LinkManagementProcess;
 	
 	/**
 	 * A LinkManager is responsible for a single communication link.
@@ -29,7 +29,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
 
-		friend class LinkRenewalProcess;
+		friend class LinkManagementProcess;
 			
 		public:
 			
@@ -180,14 +180,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return
 			 */
 			L2Packet* prepareLinkEstablishmentReply(const MacId& destination_id);
-
-			/**
-			 * When a link establishment reply comes in from the PHY, this processes it.
-			 * @param header
-			 * @param payload
-			 * @param channel
-			 */
-			void processIncomingLinkEstablishmentReply(L2HeaderLinkEstablishmentReply*& header, ProposalPayload*& payload, FrequencyChannel*& channel);
 			
 			/**
 			 * Makes reservations.
@@ -301,7 +293,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<const FrequencyChannel*> last_proposed_channels;
 			/** Last proposal's time slots. */
 			std::vector<unsigned int> last_proposed_slots;
-			LinkRenewalProcess* link_renewal_process = nullptr;
+			LinkManagementProcess* link_renewal_process = nullptr;
 			unsigned int link_renewal_attempts = 3;
 	};
 }

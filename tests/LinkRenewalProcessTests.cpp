@@ -4,7 +4,7 @@
 
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
-#include "../LinkRenewalProcess.hpp"
+#include "../LinkManagementProcess.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -24,7 +24,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         NetworkLayer* net_layer;
 
         unsigned int tx_timeout = 5, init_offset = 1, tx_offset = 3, num_renewal_attempts = 2;
-        LinkRenewalProcess* link_renewal_process;
+        LinkManagementProcess* link_renewal_process;
 
     public:
         void setUp() override {
@@ -50,7 +50,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             phy_layer->setUpperLayer(mac);
             mac->setLowerLayer(phy_layer);
 
-            link_renewal_process = new LinkRenewalProcess(link_manager);
+            link_renewal_process = new LinkManagementProcess(link_manager);
         }
 
         void tearDown() override {

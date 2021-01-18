@@ -5,7 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManager.hpp"
-#include "../LinkRenewalProcess.hpp"
+#include "../LinkManagementProcess.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
