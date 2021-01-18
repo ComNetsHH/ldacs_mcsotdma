@@ -8,6 +8,11 @@
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
+
+    /**
+     * The LinkManagementProcess is a module of the LinkManager.
+     * As such, it cannot be easily tested on its own. Most tests are put into LinkManagerTests or even SystemTests.
+     */
     class LinkManagementProcessTests : public CppUnit::TestFixture {
     private:
         LinkManager* link_manager;
