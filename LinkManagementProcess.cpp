@@ -30,7 +30,7 @@ std::vector<uint64_t> LinkManagementProcess::scheduleRequests(unsigned int tx_ti
     return slots;
 }
 
-bool LinkManagementProcess::shouldSendRequest() {
+bool LinkManagementProcess::hasControlMessage() {
     // Check if the current slot is one during which a request should be sent.
     bool should_send_request = false;
     for (auto it = absolute_request_slots.begin(); it != absolute_request_slots.end(); it++) {
@@ -41,7 +41,7 @@ bool LinkManagementProcess::shouldSendRequest() {
             if (owner->mac->isThereMoreData(owner->getLinkId()))
                 should_send_request = true;
         } else if (current_slot < owner->mac->getCurrentSlot())
-            throw std::invalid_argument("LinkManagementProcess::shouldSendRequest has missed a scheduled request.");
+            throw std::invalid_argument("LinkManagementProcess::hasControlMessage has missed a scheduled request.");
     }
     return should_send_request;
 }
@@ -52,7 +52,7 @@ void LinkManagementProcess::processLinkReply(const L2HeaderLinkEstablishmentRepl
     if (owner->link_establishment_status != owner->Status::awaiting_reply)
         throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
     // The link has now been established!
-    // So shouldSendRequest the status.
+    // So hasControlMessage the status.
     owner->link_establishment_status = owner->Status::link_established;
     owner->mac->notifyAboutNewLink(owner->link_id);
     assert(payload->proposed_channels.size() == 1);
@@ -137,4 +137,36 @@ LinkManagementProcess::findViableCandidatesInRequest(L2HeaderLinkEstablishmentRe
             }
         }
         return viable_candidates;
+}
+
+L2Packet *LinkManagementProcess::prepareRequest() const {
+    auto* request = new L2Packet();
+    // Query ARQ sublayer whether this link should be ARQ protected.
+    bool link_should_be_arq_protected = owner->mac->shouldLinkBeArqProtected(owner->link_id);
+    // Instantiate base header.
+    auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
+    request->addPayload(base_header, nullptr);
+    // Instantiate request header.
+    // If the link is not yet established, the request must be sent on the broadcast channel.
+    MacId dest_id = owner->link_establishment_status == owner->link_not_established ? SYMBOLIC_LINK_ID_BROADCAST : owner->link_id;
+    auto* request_header = new L2HeaderLinkEstablishmentRequest(dest_id, link_should_be_arq_protected, 0, 0, 0);
+    auto* body = new LinkManager::ProposalPayload(owner->num_proposed_channels, owner->num_proposed_slots);
+    request->addPayload(request_header, body);
+    request->addCallback(owner);
+    return request;
+}
+
+void LinkManagementProcess::establishLink() const {
+    coutd << "establishing new link... ";
+    if (owner->link_establishment_status == owner->link_not_established) {
+        // Prepare a link request and inject it into the RLC sublayer above.
+        L2Packet* request = prepareRequest();
+        coutd << "prepared link establishment request... ";
+        owner->mac->injectIntoUpper(request);
+        coutd << "injected into upper layer... ";
+        // We are now awaiting a reply.
+        owner->link_establishment_status = LinkManager::Status::awaiting_reply;
+        coutd << "updated status to 'awaiting_reply'." << std::endl;
+    } else
+        throw std::runtime_error("LinkManager::establishLink for link status: " + std::to_string(owner->link_establishment_status));
 }

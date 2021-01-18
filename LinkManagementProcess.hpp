@@ -30,9 +30,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         void configure(unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset);
 
         /**
-         * @return Whether a link request should be sent.
+         * @return Whether a link management control message should be sent.
          */
-        bool shouldSendRequest();
+        bool hasControlMessage();
 
         /**
          * When a LinkManager receives a link reply, it should forward it to this function.
@@ -50,10 +50,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         void onTransmissionSlot();
 
+        /**
+         * Prepares a link request and injects it into the upper layers.
+         */
+        void establishLink() const;
+
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
 
         std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, LinkManager::ProposalPayload*& payload) const;
+
+        L2Packet* prepareRequest() const;
 
     protected:
         /** Number of times a link should be attempted to be renewed. */

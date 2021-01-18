@@ -15,7 +15,7 @@ LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_m
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
 	mac(mac), traffic_estimate(20) {
-	    link_renewal_process = new LinkManagementProcess(this);
+    link_management_process = new LinkManagementProcess(this);
 	}
 
 const MacId& LinkManager::getLinkId() const {
@@ -42,7 +42,7 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
 			coutd << ": link is not established -> ";
-            establishLink();
+            link_management_process->establishLink();
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::notifyOutgoing with status: '" + std::to_string(link_establishment_status) + "'.");
 		}
@@ -95,8 +95,8 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request";
-				link_renewal_process->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
-                                                         (const ProposalPayload*&) payload, packet->getOrigin());
+				link_management_process->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
+                                                            (const ProposalPayload*&) payload, packet->getOrigin());
 				
 				delete header;
 				header = nullptr;
@@ -106,7 +106,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				link_renewal_process->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const ProposalPayload*&) payload);
+				link_management_process->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const ProposalPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 				delete header;
 				header = nullptr;
@@ -143,21 +143,6 @@ void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsign
 
 double LinkManager::getCurrentTrafficEstimate() const {
 	return traffic_estimate.get();
-}
-
-void LinkManager::establishLink() {
-	coutd << "establishing new link... ";
-	if (link_establishment_status == link_not_established) {
-		// Prepare a link request and inject it into the RLC sublayer above.
-		L2Packet* request = prepareLinkEstablishmentRequest();
-		coutd << "prepared link establishment request... ";
-		mac->injectIntoUpper(request);
-		coutd << "injected into upper layer... ";
-		// We are now awaiting a reply.
-		this->link_establishment_status = Status::awaiting_reply;
-		coutd << "updated status to 'awaiting_reply'." << std::endl;
-	} else
-	    throw std::runtime_error("LinkManager::establishLink for link status: " + std::to_string(link_establishment_status));
 }
 
 L2Packet* LinkManager::prepareLinkEstablishmentRequest() {
@@ -245,7 +230,7 @@ LinkManager::ProposalPayload* LinkManager::p2pSlotSelection() {
 	tx_burst_num_slots = estimateCurrentNumSlots();
 	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
 		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
-			throw std::runtime_error("LinkManager::prepareLinkEstablishmentRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
+			throw std::runtime_error("LinkManager::prepareRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
@@ -302,7 +287,7 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		// Link replies don't need a setting of their header fields.
 		return segment;
 	// Control message through link requests...
-	} else if (link_renewal_process->shouldSendRequest()) {
+	} else if (link_management_process->hasControlMessage()) {
         coutd << "sending link request control message... ";
 		segment = prepareLinkEstablishmentRequest(); // Sets the callback, s.t. the actual proposal is computed then.
 		link_establishment_status = awaiting_reply;
@@ -319,7 +304,7 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		segment = mac->requestSegment(num_bits, getLinkId());
 	}
 	// Update renewal process.
-    link_renewal_process->onTransmissionSlot();
+    link_management_process->onTransmissionSlot();
 	// Set header fields.
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionSlot received segment with <=1 headers.");
 	for (L2Header* header : segment->getHeaders())
@@ -473,7 +458,7 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 }
 
 LinkManager::~LinkManager() {
-    delete link_renewal_process;
+    delete link_management_process;
 }
 
 void LinkManager::resetReservationTimeout() {

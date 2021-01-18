@@ -78,7 +78,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             size_t num_request_triggers = 0;
             while (num_request_triggers < num_renewal_attempts) {
                 mac->update(1);
-                bool should_send_request = link_renewal_process->shouldSendRequest();
+                bool should_send_request = link_renewal_process->hasControlMessage();
                 if (should_send_request) {
                     num_request_triggers++;
                     // Manual check.
@@ -86,11 +86,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 }
             }
             // Once all requests should've been sent, don't request to send another.
-            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->shouldSendRequest());
+            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->hasControlMessage());
             mac->update(1);
-            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->shouldSendRequest());
+            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->hasControlMessage());
             mac->update(1);
-            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->shouldSendRequest());
+            CPPUNIT_ASSERT_EQUAL(false, link_renewal_process->hasControlMessage());
             // Should've requested the right number of requests.
             CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), num_request_triggers);
             CPPUNIT_ASSERT_EQUAL(true, link_renewal_process->absolute_request_slots.empty());

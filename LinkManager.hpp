@@ -162,12 +162,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length);
 		
 		protected:
-			
-			/**
-			 * Prepares a link request and injects it into the upper layers.
-			 */
-			void establishLink();
-			
 			/**
 			 * Upon a transmission slot, the link establishment request payload must be computed.
 			 * @return The modified data packet, now containing the request payload.
@@ -293,7 +287,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<const FrequencyChannel*> last_proposed_channels;
 			/** Last proposal's time slots. */
 			std::vector<unsigned int> last_proposed_slots;
-			LinkManagementProcess* link_renewal_process = nullptr;
+			LinkManagementProcess* link_management_process = nullptr;
 			unsigned int link_renewal_attempts = 3;
 	};
 }

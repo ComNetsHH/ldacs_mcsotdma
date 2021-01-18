@@ -56,7 +56,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ReservationTable* getBroadcastReservationTable();
 			
 			/**
-			 * Calls shouldSendRequest() function on each ReservationTable.
+			 * Calls hasControlMessage() function on each ReservationTable.
 			 * @param num_slots
 			 */
 			void update(uint64_t num_slots);

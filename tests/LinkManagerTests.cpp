@@ -128,7 +128,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testNewLinkRequest() {
 				CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::link_not_established);
-                link_manager->establishLink();
+                link_manager->link_management_process->establishLink();
 				CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::awaiting_reply);
 				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->injections.size());
 				L2Packet* request = rlc_layer->injections.at(0);
@@ -239,7 +239,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_proposed_channels), ((LinkManager::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
 				auto body = (LinkManager::ProposalPayload*) request->getPayloads().at(1);
-				auto viable_candidates = link_manager->link_renewal_process->findViableCandidatesInRequest(header, body);
+				auto viable_candidates = link_manager->link_management_process->findViableCandidatesInRequest(header, body);
 				// And all slots should be viable.
 				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->num_proposed_channels * link_manager->num_proposed_slots, viable_candidates.size());
 //				coutd.setVerbose(false);
@@ -345,12 +345,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				instantiated_lm->link_establishment_status = LinkManager::link_established;
 				ReservationTable* table = reservation_manager->reservation_tables.at(0);
 				instantiated_lm->current_reservation_table = table;
-				instantiated_lm->link_renewal_process->configure(2, instantiated_lm->tx_timeout, 0, instantiated_lm->tx_offset);
+				instantiated_lm->link_management_process->configure(2, instantiated_lm->tx_timeout, 0, instantiated_lm->tx_offset);
 				// Reach the reservation timeout
 				while (instantiated_lm->tx_timeout > instantiated_lm->TIMEOUT_THRESHOLD_TRIGGER)
-                    instantiated_lm->link_renewal_process->onTransmissionSlot();
+                    instantiated_lm->link_management_process->onTransmissionSlot();
 				// Set the current time to the first control message slot.
-                mac->current_slot = instantiated_lm->link_renewal_process->absolute_request_slots.at(instantiated_lm->link_renewal_process->absolute_request_slots.size() - 1);
+                mac->current_slot = instantiated_lm->link_management_process->absolute_request_slots.at(instantiated_lm->link_management_process->absolute_request_slots.size() - 1);
                 CPPUNIT_ASSERT_EQUAL(LinkManager::link_about_to_expire, instantiated_lm->link_establishment_status);
 				instantiated_lm->current_reservation_table->mark(1, Reservation(communication_partner_id, Reservation::TX, 0));
                 // And the next transmission slot should be used to send a request.
