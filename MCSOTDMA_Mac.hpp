@@ -63,7 +63,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.
 			 * @param channel
 			 */
-			virtual void onReceptionSlot(const FrequencyChannel* channel) = 0;
+			void onReceptionSlot(const FrequencyChannel* channel);
 			
 			/** Keeps track of transmission resource reservations. */
 			ReservationManager* reservation_manager;

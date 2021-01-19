@@ -54,11 +54,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 		public:
 			explicit MACLayer(const MacId& id, uint32_t planning_horizon) : MCSOTDMA_Mac(id, planning_horizon) {}
-		
-		protected:
-			void onReceptionSlot(const FrequencyChannel* channel) override {
-				// do nothing.
-			}
 	};
 	
 	class ARQLayer : public IArq {

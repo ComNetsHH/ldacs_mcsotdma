@@ -51,7 +51,7 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet) {
 	const MacId& dest_id = packet->getDestination();
-	coutd << *this << "::receiveFromLower(" << dest_id << ")... ";
+	coutd << *this << "::receiveFromLower(from=" << packet->getOrigin() << ", to=" << dest_id << ")... ";
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
 	// Forward broadcasts to the BCLinkManager...
@@ -141,6 +141,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				if (num_rxs > num_receivers)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				// Tune the receiver.
+				LinkManager* link_manager = getLinkManager(reservation.getTarget());
+				link_manager->onReceptionSlot();
 				onReceptionSlot(channel);
 				break;
 			}
@@ -151,14 +153,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
 				// Find the corresponding LinkManager.
 				const MacId& id = reservation.getTarget();
-				LinkManager* link_manager;
-				try {
-					link_manager = link_managers.at(id);
-				} catch (const std::exception& e) {
-					throw std::runtime_error(
-							"MCSOTDMA_Mac::execute caught exception while looking for the corresponding LinkManager: " +
-							std::string(e.what()));
-				}
+				LinkManager* link_manager = getLinkManager(id);
 				// Tell it about the transmission slot.
 				unsigned int num_tx_slots = reservation.getNumRemainingSlots() + 1;
 				L2Packet* outgoing_packet = link_manager->onTransmissionBurst(num_tx_slots);
@@ -172,4 +167,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	}
 	coutd.decreaseIndent();
 	return {num_txs, num_rxs};
+}
+
+void MCSOTDMA_Mac::onReceptionSlot(const FrequencyChannel *channel) {
+    // Do nothing.
 }

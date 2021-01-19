@@ -78,7 +78,7 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 		lme->setTxOffset(broadcastSlotSelection());
 		assert(current_reservation_table && "BCLinkManager::notifyOutgoing for unset reservation table.");
 		current_reservation_table->mark(lme->getTxOffset(), Reservation(link_id, Reservation::TX));
-		coutd << "scheduled broadcast next_broadcast_slot in " << lme->getTxOffset() << " slots." << std::endl;
+		coutd << "scheduled broadcast in " << lme->getTxOffset() << " slots." << std::endl;
 		broadcast_slot_scheduled = true;
 	} else
 		coutd << "already have a broadcast slot scheduled." << std::endl;

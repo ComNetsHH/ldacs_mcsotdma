@@ -168,6 +168,7 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 	coutd << *this << "::onTransmissionBurst(" << num_slots << " slots) -> ";
 	L2Packet* segment;
 	// Prioritize control messages.
+	bool sending_reply = false;
 	if (lme->hasControlMessage()) {
         coutd << "fetching control message ";
         if (num_slots > 1) // Control messages should be sent during single slots.
@@ -181,7 +182,8 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
                 lme->onRequestTransmission();
             } else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
                 coutd << "[reply]... ";
-                link_establishment_status = reply_sent;
+                link_establishment_status = (link_establishment_status == link_not_established ? reply_sent : link_renewal_complete);
+                sending_reply = true;
             } else
                 throw std::logic_error("LinkManager::onTransmissionBurst for non-reply and non-request control message.");
         } else
@@ -202,8 +204,9 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
     lme->onTransmissionBurst();
 	// Set header fields.
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionBurst received segment with <=1 headers.");
-	for (L2Header* header : segment->getHeaders())
-		setHeaderFields(header);
+	if (!sending_reply)
+        for (L2Header* header : segment->getHeaders())
+            setHeaderFields(header);
 	
 	return segment;
 }
@@ -302,8 +305,8 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 			coutd << "link is now established";
 			link_establishment_status = link_established;
 			mac->notifyAboutNewLink(link_id);
-		} else if (link_establishment_status != link_established) {
-			throw std::runtime_error("LinkManager::processIncomingUnicast for some status other than 'link_established' or 'reply_sent': " + std::to_string(link_establishment_status));
+		} else if (link_establishment_status != link_established && link_establishment_status != link_renewal_complete) {
+			throw std::runtime_error("LinkManager::processIncomingUnicast for some status other than 'link_established' or 'reply_sent' or 'link_renewal_complete': " + std::to_string(link_establishment_status));
 		}
 	}
 }
@@ -322,6 +325,7 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 		// This is an incoming packet, so we must've been listening.
 		// Mark future slots as RX slots, too.
 		markReservations(timeout, 0, offset, length_next, header->icao_id, Reservation::RX);
+		coutd << " -> ";
 	}
 }
 
@@ -331,7 +335,11 @@ void LinkManager::assign(const FrequencyChannel* channel) {
         this->current_reservation_table = reservation_manager->getReservationTable(channel);
 	} else
 		coutd << *this << ":assign, but channel or reservation table are already assigned; ignoring -> ";
+}
 
+void LinkManager::reassign(const FrequencyChannel* channel) {
+    this->current_channel = channel;
+    this->current_reservation_table = reservation_manager->getReservationTable(channel);
 }
 
 size_t LinkManager::getRandomInt(size_t start, size_t end) {
@@ -366,6 +374,10 @@ void LinkManager::update(uint64_t num_slots) {
     if (!traffic_estimate.hasBeenUpdated())
         traffic_estimate.put(0);
     traffic_estimate.reset();
+}
+
+void LinkManager::onReceptionSlot() {
+    lme->onReceptionSlot();
 }
 
 

@@ -49,10 +49,11 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
         configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
         owner->link_establishment_status = owner->Status::link_established;
         owner->mac->notifyAboutNewLink(owner->link_id);
-        coutd << "link is now established";
+        coutd << "link is now established -> ";
     // Renewing an existing link...
     } else {
         coutd << "renewing link -> ";
+        scheduled_requests.clear();
         if (channel == owner->current_channel) {
             coutd << "no channel change -> increasing timeout: " << tx_timeout;
             tx_timeout += default_tx_timeout;
@@ -64,8 +65,10 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
             owner->link_establishment_status = owner->Status::link_established;
             coutd << "->" << owner->link_establishment_status;
         } else {
-            coutd << "channel change -> saving new channel -> ";
+            coutd << "channel change -> saving new channel (" << *owner->current_channel << "->" << *channel << ") -> ";
             next_channel = channel;
+            coutd << " and marking TX reservations: ";
+            owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
             coutd << "link status update: " << owner->link_establishment_status;
             owner->link_establishment_status = owner->Status::link_renewal_complete;
             coutd << "->" << owner->link_establishment_status << " -> ";
@@ -74,10 +77,33 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 }
 
 void LinkManagementEntity::onTransmissionBurst() {
+    decrementTimeout();
+}
+
+void LinkManagementEntity::onReceptionSlot() {
+    decrementTimeout();
+}
+
+void LinkManagementEntity::decrementTimeout() {
+    if (tx_timeout == 0)
+        throw std::runtime_error("LinkManagementEntity::decrementTimeout attempted to decrement timeout past zero.");
     tx_timeout--;
     if (tx_timeout == 0) {
-        coutd << "timeout reached -> setting this link to unestablished!" << std::endl;
-        owner->link_establishment_status = LinkManager::link_not_established;
+        coutd << "timeout reached -> ";
+        if (owner->link_establishment_status == LinkManager::link_renewal_complete) {
+            coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
+            owner->reassign(next_channel);
+            next_channel = nullptr;
+            coutd << "; restoring timeout to " << default_tx_timeout;
+            tx_timeout = default_tx_timeout;
+            coutd << "; updating status: " << owner->link_establishment_status;
+            owner->link_establishment_status = LinkManager::link_established;
+            coutd << "->" << owner->link_establishment_status << " -> link renewal complete -> ";
+        } else {
+            coutd << "no pending renewal, changing status: " << owner->link_establishment_status << "->";
+            owner->link_establishment_status = LinkManager::link_not_established;
+            coutd << owner->link_establishment_status << " -> link reset -> ";
+        }
     }
 }
 
@@ -195,7 +221,12 @@ L2Packet* LinkManagementEntity::getControlMessage() {
         auto it = scheduled_replies.find(owner->mac->getCurrentSlot());
         control_message = (*it).second;
         // Delete scheduled entry.
-        scheduled_replies.erase(owner->mac->getCurrentSlot());
+        scheduled_replies.erase(it);
+        // Save chosen link transition.
+        assert(control_message->getPayloads().size() == 2);
+        assert(((ProposalPayload*) control_message->getPayloads().at(1))->proposed_channels.size() == 1);
+        const FrequencyChannel* channel = ((ProposalPayload*) control_message->getPayloads().at(1))->proposed_channels.at(0);
+        next_channel = channel;
     } else if (hasPendingRequest()) {
         control_message = prepareRequest(); // Sets the callback, s.t. the actual proposal is computed then.
         // Delete scheduled entry.
@@ -246,6 +277,7 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet *reply, int32_t slot_offse
             // ... and mark reservations: we're sending a reply, so we're the receiver.
              coutd << "-> first-time link setup; mark RX slots -> ";
             owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
+            coutd << " -> ";
         } else {
             // ... renewal negotiation: might have to change the FrequencyChannel, so do nothing now.
         }

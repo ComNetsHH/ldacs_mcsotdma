@@ -63,6 +63,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return A data packet that should now be sent.
 			 */
 			virtual L2Packet* onTransmissionBurst(unsigned int num_slots);
+
+			void onReceptionSlot();
 			
 			/**
 			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
@@ -172,7 +174,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param end
 			 * @return Uniformly drawn random integer from [start, end] (exclusive).
 			 */
-			static size_t getRandomInt(size_t start, size_t end) ;
+			static size_t getRandomInt(size_t start, size_t end);
+
+            /**
+             * Reassign both FrequencyChannel and corresponding ReservationTable.
+             * @param channel
+             */
+            void reassign(const FrequencyChannel* channel);
 			
 		protected:
 			/** The communication partner's ID, whose link is managed. */

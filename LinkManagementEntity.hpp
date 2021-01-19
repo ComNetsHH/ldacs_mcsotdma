@@ -95,6 +95,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
 
         void onTransmissionBurst();
+        void onReceptionSlot();
 
         /**
          * Prepares a link request and injects it into the upper layers.
@@ -154,6 +155,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          * @return A payload that should accompany a link request.
          */
         ProposalPayload* p2pSlotSelection();
+
+        void decrementTimeout();
 
     protected:
         /** Number of times a link should be attempted to be renewed. */
