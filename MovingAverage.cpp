@@ -9,6 +9,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 MovingAverage::MovingAverage(unsigned int num_values) : values(num_values), index(0) {}
 
 void MovingAverage::put(unsigned long value) {
+	has_been_updated = true;
 	// If the window hasn't been filled yet.
 	if (index <= values.size() - 1) {
 		values.at(index) = value;
@@ -30,4 +31,12 @@ double MovingAverage::get() const {
 		moving_average += (*it);
 	// Differentiate between a full window and a non-full window.
 	return index < values.size() ? moving_average / ((double) index) : moving_average / ((double) values.size());
+}
+
+void MovingAverage::reset() {
+	has_been_updated = false;
+}
+
+bool MovingAverage::hasBeenUpdated() const {
+	return has_been_updated;
 }

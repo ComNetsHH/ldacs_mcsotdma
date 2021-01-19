@@ -122,6 +122,7 @@ unsigned int BCLinkManager::getNumActiveNeighbors() const {
 }
 
 void BCLinkManager::update(uint64_t num_slots) {
+    LinkManager::update(num_slots);
 	for (uint64_t i = 0; i < num_slots; i++)
 		contention_estimator.update();
 }

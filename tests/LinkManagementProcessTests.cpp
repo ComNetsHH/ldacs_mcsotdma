@@ -4,13 +4,13 @@
 
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
-#include "../LinkManagementProcess.hpp"
+#include "../LinkManagementEntity.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
     /**
-     * The LinkManagementProcess is a module of the LinkManager.
+     * The LinkManagementEntity is a module of the LinkManager.
      * As such, it cannot be easily tested on its own. Most tests are put into LinkManagerTests or even SystemTests.
      */
     class LinkManagementProcessTests : public CppUnit::TestFixture {
@@ -29,7 +29,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         NetworkLayer* net_layer;
 
         unsigned int tx_timeout = 5, init_offset = 1, tx_offset = 3, num_renewal_attempts = 2;
-        LinkManagementProcess* link_renewal_process;
+        LinkManagementEntity* link_renewal_process;
 
     public:
         void setUp() override {
@@ -55,7 +55,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             phy_layer->setUpperLayer(mac);
             mac->setLowerLayer(phy_layer);
 
-            link_renewal_process = new LinkManagementProcess(link_manager);
+            link_renewal_process = new LinkManagementEntity(link_manager);
         }
 
         void tearDown() override {

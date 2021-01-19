@@ -214,19 +214,34 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          * It is also ensured that corresponding future slot reservations are marked.
          */
         void testLinkEstablishmentMultiSlotBurst() {
-            coutd.setVerbose(true);
+//            coutd.setVerbose(true);
             // Single message.
             rlc_layer_me->should_there_be_more_data = false;
-            // New data for communication partner.
-            mac_layer_me->notifyOutgoing(512, communication_partner_id);
             LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+            // Update traffic estimate s.t. multi-slot bursts should be used.
+            unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+            unsigned int expected_num_slots = 3;
+            lm_me->updateTrafficEstimate(expected_num_slots * bits_per_slot);
+            unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+            CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+            // New data for communication partner.
+            mac_layer_me->notifyOutgoing(expected_num_slots * bits_per_slot, communication_partner_id);
             while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
-                // Order is important: if 'you' updates last, the reply may already be sent, and we couldn't check the next condition (or check for both 'awaiting_reply' OR 'established').
                 mac_layer_you->update(1);
                 mac_layer_me->update(1);
                 mac_layer_me->execute();
                 mac_layer_you->execute();
+                required_slots = lm_me->estimateCurrentNumSlots();
+                CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
             }
+            // Ensure that the request requested a multi-slot reservation.
+            CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
+            L2Packet* request = rlc_layer_you->receptions.at(0);
+            CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+            CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
+            required_slots = lm_me->estimateCurrentNumSlots();
+            auto* request_payload = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
+            CPPUNIT_ASSERT_EQUAL(required_slots, request_payload->num_slots_per_candidate);
             // Link request should've been sent, so we're 'awaiting_reply'.
             CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_establishment_status);
             // Reservation timeout should still be default.
@@ -247,19 +262,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             // Make sure that all corresponding slots are marked as TX on our side.
             ReservationTable* table_me = lm_me->current_reservation_table;
             for (int offset = lm_me->link_management_entity->tx_offset; offset < lm_me->link_management_entity->tx_timeout * lm_me->link_management_entity->tx_offset; offset += lm_me->link_management_entity->tx_offset) {
-                const Reservation& reservation = table_me->getReservation(offset);
-                CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
-                CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
+                for (int i = 0; i < expected_num_slots; i++) {
+                    const Reservation &reservation = table_me->getReservation(offset + i);
+                    if (i == 0)
+                        CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
+                    else
+                        CPPUNIT_ASSERT_EQUAL(true, reservation.isTxCont());
+                    CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
+                }
             }
             // Make sure that the same slots are marked as RX on their side.
             LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
             ReservationTable* table_you = lm_you->current_reservation_table;
             std::vector<int> reserved_time_slots;
             for (int offset = lm_me->link_management_entity->tx_offset; offset < lm_me->link_management_entity->tx_timeout * lm_me->link_management_entity->tx_offset; offset += lm_me->link_management_entity->tx_offset) {
-                const Reservation& reservation = table_you->getReservation(offset);
-                CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
-                CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
-                reserved_time_slots.push_back(offset);
+                for (int i = 0; i < expected_num_slots; i++) {
+                    const Reservation& reservation = table_you->getReservation(offset + i);
+                    CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
+                    CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
+                    reserved_time_slots.push_back(offset + i);
+                }
             }
             CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
             // Wait until the next transmission.
@@ -293,7 +315,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                         CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
                         CPPUNIT_ASSERT_EQUAL(true, next_reservation.isIdle());
                     }
-                    coutd << std::endl;
                 } else {
                     for (int j = reserved_time_slots.at(reserved_time_slots.size() - 1) + 1; j < planning_horizon; j++) {
                         const Reservation& next_reservation = table_you->getReservation(j);
@@ -302,7 +323,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                     }
                 }
             }
-            coutd.setVerbose(false);
+//            coutd.setVerbose(false);
         }
 			
 			/**
@@ -371,6 +392,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testBroadcast);
 			CPPUNIT_TEST(testLinkEstablishment);
+            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
 //			CPPUNIT_TEST(testLinkRenewal);
 //			CPPUNIT_TEST(testEncapsulatedUnicast);
 		CPPUNIT_TEST_SUITE_END();

@@ -5,7 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManager.hpp"
-#include "../LinkManagementProcess.hpp"
+#include "../LinkManagementEntity.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -41,7 +41,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
 				reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
 				
-				link_manager = new LinkManager(communication_partner_id, reservation_manager, mac);
+				link_manager = mac->getLinkManager(communication_partner_id);
 				arq_layer = new ARQLayer();
 				mac->setUpperLayer(arq_layer);
 				arq_layer->setLowerLayer(mac);
@@ -57,13 +57,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void tearDown() override {
 				delete mac;
-				delete link_manager;
 				delete arq_layer;
 				delete rlc_layer;
 				delete phy_layer;
 				delete net_layer;
 			}
-			
+
+			/**
+			 * Tests the updateTrafficEstimate() directly.
+			 */
 			void testTrafficEstimate() {
 				CPPUNIT_ASSERT_EQUAL(0.0, link_manager->getCurrentTrafficEstimate());
 				unsigned int initial_bits = 10;
@@ -81,6 +83,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				sum -= initial_bits;
 				sum += num_bits;
 				CPPUNIT_ASSERT_EQUAL(sum / (link_manager->traffic_estimate.values.size()), link_manager->getCurrentTrafficEstimate());
+			}
+
+			/**
+			 * Tests updating the traffic estimate over a number of slots.
+			 */
+			void testTrafficEstimateOverTimeslots() {
+                double expected_estimate = 0.0;
+			    CPPUNIT_ASSERT_EQUAL(expected_estimate, link_manager->getCurrentTrafficEstimate());
+			    unsigned int bits_to_send = 1024;
+			    expected_estimate = bits_to_send;
+			    // Fill one moving average window...
+			    for (size_t i = 0; i < link_manager->traffic_estimate.values.size(); i++) {
+			        mac->notifyOutgoing(bits_to_send, communication_partner_id);
+			        mac->update(1);
+                    CPPUNIT_ASSERT_EQUAL(expected_estimate, link_manager->getCurrentTrafficEstimate());
+			    }
+			    // ... and then shrink it per slot by not notying about any new data
+			    for (size_t i = 0; i < link_manager->traffic_estimate.values.size(); i++) {
+			        mac->update(1);
+			        expected_estimate -= ((double) bits_to_send /  ((double) link_manager->traffic_estimate.values.size()));
+			        // Comparing doubles...
+                    CPPUNIT_ASSERT(link_manager->getCurrentTrafficEstimate() > expected_estimate - 1 && link_manager->getCurrentTrafficEstimate() < expected_estimate + 1);
+			    }
 			}
 			
 			void testNewLinkEstablishment() {
@@ -103,7 +128,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testComputeProposal() {
 				testNewLinkEstablishment();
 				L2Packet* request = rlc_layer->injections.at(0);
-                LinkManagementProcess::ProposalPayload* proposal = link_manager->link_management_entity->p2pSlotSelection();
+                LinkManagementEntity::ProposalPayload* proposal = link_manager->link_management_entity->p2pSlotSelection();
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
 				
 				// Should've considered several distinct frequency channels.
@@ -242,9 +267,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2Packet* request = other_link_manager.link_management_entity->prepareRequest();
 				request->getPayloads().at(1) = other_link_manager.link_management_entity->p2pSlotSelection();
 				// The number of proposed channels should be adequate.
-				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->link_management_entity->num_proposed_channels), ((LinkManagementProcess::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->link_management_entity->num_proposed_channels), ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
-				auto body = (LinkManagementProcess::ProposalPayload*) request->getPayloads().at(1);
+				auto body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
 				auto viable_candidates = link_manager->link_management_entity->findViableCandidatesInRequest(header, body);
 				// And all slots should be viable.
 				CPPUNIT_ASSERT_EQUAL((size_t) link_manager->link_management_entity->num_proposed_channels * link_manager->link_management_entity->num_proposed_slots, viable_candidates.size());
@@ -378,8 +403,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2Packet* request2 = link_manager->link_management_entity->prepareRequest();
 				request2->getPayloads().at(1) = link_manager->link_management_entity->p2pSlotSelection();
 				// Because the first proposed slots have been locked, they shouldn't be the same as the next.
-				auto* proposal1 = (LinkManagementProcess::ProposalPayload*) request1->getPayloads().at(1);
-				auto* proposal2 = (LinkManagementProcess::ProposalPayload*) request2->getPayloads().at(1);
+				auto* proposal1 = (LinkManagementEntity::ProposalPayload*) request1->getPayloads().at(1);
+				auto* proposal2 = (LinkManagementEntity::ProposalPayload*) request2->getPayloads().at(1);
 				// We have a sufficiently large planning horizon s.t. the frequency channels can be the same.
 				CPPUNIT_ASSERT_EQUAL(proposal1->proposed_channels.size(), proposal2->proposed_channels.size());
 				for (size_t i = 0; i < proposal1->proposed_channels.size(); i++)
@@ -393,6 +418,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
+            CPPUNIT_TEST(testTrafficEstimateOverTimeslots);
 			CPPUNIT_TEST(testNewLinkEstablishment);
 			CPPUNIT_TEST(testComputeProposal);
 			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);

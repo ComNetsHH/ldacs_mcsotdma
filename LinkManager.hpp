@@ -15,7 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	
 	class MCSOTDMA_Mac;
     // Implemented in its own files for better readability and testing.
-    class LinkManagementProcess;
+    class LinkManagementEntity;
 	
 	/**
 	 * A LinkManager is responsible for a single communication link.
@@ -28,7 +28,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
 
-		friend class LinkManagementProcess;
+		friend class LinkManagementEntity;
 			
 		public:
 			enum Status {
@@ -101,6 +101,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param slot_offset
 			 */
 			void scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length);
+
+            virtual void update(uint64_t num_slots);
 		
 		protected:
 			/**
@@ -188,7 +190,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Current traffic estimate of this link. */
             MovingAverage traffic_estimate;
             /** Takes care of link management. It resides in its own class to modularize the code. */
-			LinkManagementProcess* link_management_entity = nullptr;
+			LinkManagementEntity* link_management_entity = nullptr;
 
 	};
 }

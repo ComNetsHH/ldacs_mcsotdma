@@ -7,7 +7,7 @@
 
 #include "LinkManager.hpp"
 #include "ContentionEstimator.hpp"
-#include "LinkManagementProcess.hpp"
+#include "LinkManagementEntity.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -58,7 +58,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * It is required to keep correct contention estimates of neighbor broadcast activity.
 			 * @param num_slots
 			 */
-			void update(uint64_t num_slots);
+			void update(uint64_t num_slots) override;
 			
 			/**
 			 * This probability is used during broadcast slot selection to determine the number slots to consider,

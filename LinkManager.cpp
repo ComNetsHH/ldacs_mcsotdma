@@ -7,7 +7,7 @@
 #include "LinkManager.hpp"
 #include "coutdebug.hpp"
 #include "MCSOTDMA_Mac.hpp"
-#include "LinkManagementProcess.hpp"
+#include "LinkManagementEntity.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -15,7 +15,7 @@ LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_m
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
 	mac(mac), traffic_estimate(20) {
-    link_management_entity = new LinkManagementProcess(this);
+    link_management_entity = new LinkManagementEntity(this);
 	}
 
 const MacId& LinkManager::getLinkId() const {
@@ -76,10 +76,10 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 				coutd << "processing beacon -> ";
 				processIncomingBeacon(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
-				delete header;
-				header = nullptr;
-				delete payload;
-				payload = nullptr;
+//				delete header;
+//				header = nullptr;
+//				delete payload;
+//				payload = nullptr;
 				coutd << std::endl;
 				break;
 			}
@@ -96,22 +96,22 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request";
 				link_management_entity->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
-                                                           (const LinkManagementProcess::ProposalPayload*&) payload, packet->getOrigin());
+                                                           (const LinkManagementEntity::ProposalPayload*&) payload, packet->getOrigin());
 				
-				delete header;
-				header = nullptr;
-				delete payload;
-				payload = nullptr;
+//				delete header;
+//				header = nullptr;
+//				delete payload;
+//				payload = nullptr;
 				break;
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				link_management_entity->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const LinkManagementProcess::ProposalPayload*&) payload);
+				link_management_entity->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const LinkManagementEntity::ProposalPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
-				delete header;
-				header = nullptr;
-				delete payload;
-				payload = nullptr;
+//				delete header;
+//				header = nullptr;
+//				delete payload;
+//				payload = nullptr;
 				break;
 			}
 			default: {
@@ -165,7 +165,7 @@ BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 }
 
 L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
-	coutd << "LinkManager(" << link_id << ")::onTransmissionSlot... ";
+	coutd << "LinkManager(" << link_id << ")::onTransmissionSlot(" << num_slots << " slots) -> ";
 	L2Packet* segment;
 	// Prioritize control messages.
 	if (link_management_entity->hasControlMessage()) {
@@ -244,6 +244,7 @@ void LinkManager::setHeaderFields(L2Header* header) {
 					"LinkManager::setHeaderFields for unsupported frame type: " + std::to_string(header->frame_type));
 		}
 	}
+	coutd << "-> ";
 }
 
 void LinkManager::setBaseHeaderFields(L2HeaderBase*& header) {
@@ -353,6 +354,12 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 
 LinkManager::~LinkManager() {
     delete link_management_entity;
+}
+
+void LinkManager::update(uint64_t num_slots) {
+    if (!traffic_estimate.hasBeenUpdated())
+        traffic_estimate.put(0);
+    traffic_estimate.reset();
 }
 
 

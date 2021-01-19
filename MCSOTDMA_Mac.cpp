@@ -41,6 +41,9 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 	// Notify the broadcast channel manager.
 	auto* bc_link_manager = (BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 	bc_link_manager->update(num_slots);
+	// Notfy all other LinkManagers.
+	for (auto item : link_managers)
+	    item.second->update(num_slots);
 	// Notify the ReservationManager.
 	assert(reservation_manager && "MCSOTDMA_MAC::update with unset ReserationManager.");
 	reservation_manager->update(num_slots);

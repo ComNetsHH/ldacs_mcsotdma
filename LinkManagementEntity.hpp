@@ -2,8 +2,8 @@
 // Created by seba on 1/14/21.
 //
 
-#ifndef TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTPROCESS_HPP
-#define TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTPROCESS_HPP
+#ifndef TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTENTITY_HPP
+#define TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTENTITY_HPP
 
 #include <cmath>
 #include <map>
@@ -13,10 +13,11 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
     class LinkManager;
+
     /**
- * LinkManager module that handles the P2P link management, such as processing requests and replies.
- */
-    class LinkManagementProcess {
+     * LinkManager module that handles the P2P link management, such as processing requests and replies.
+     */
+    class LinkManagementEntity {
 
         friend class LinkManagementProcessTests;
         friend class LinkManagerTests;
@@ -61,7 +62,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         };
 
 
-        explicit LinkManagementProcess(LinkManager* owner);
+        explicit LinkManagementEntity(LinkManager* owner);
 
         /**
          * When a new reservation is established, this resets the process and starts it anew.
@@ -155,7 +156,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
     protected:
         /** Number of times a link should be attempted to be renewed. */
         unsigned int num_renewal_attempts = 0;
-        /** A LinkManagementProcess is a module of a LinkManager. */
+        /** A LinkManagementEntity is a module of a LinkManager. */
         LinkManager* owner = nullptr;
         /** The absolute points in time when requests should be sent. */
         std::vector<uint64_t> scheduled_requests;
@@ -181,4 +182,4 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
     };
 }
 
-#endif //TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTPROCESS_HPP
+#endif //TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGEMENTENTITY_HPP
