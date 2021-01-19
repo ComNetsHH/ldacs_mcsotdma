@@ -23,11 +23,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void receiveFromUpper(L2Packet* data, unsigned int center_frequency) override {
 				if (data == nullptr)
 					throw std::invalid_argument("PHY::receiveFromUpper(nullptr)");
-				coutd << "PHY::receiveFromUpper(" << data->getBits() << "bits, " << center_frequency << "kHz)" << std::endl;
-				if (connected_phy == nullptr)
-					outgoing_packets.push_back(data);
-				else
-					connected_phy->onReception(data, center_frequency);
+				coutd << "PHY::receiveFromUpper(" << data->getBits() << "bits, " << center_frequency << "kHz)";
+				if (connected_phy == nullptr) {
+                    coutd << " -> buffered." << std::endl;
+                    outgoing_packets.push_back(data);
+                } else {
+                    coutd << " -> sent." << std::endl;
+                    connected_phy->onReception(data, center_frequency);
+                }
 			}
 			
 			unsigned long getCurrentDatarate() const override {

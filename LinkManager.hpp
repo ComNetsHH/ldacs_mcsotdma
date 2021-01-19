@@ -188,7 +188,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Current traffic estimate of this link. */
             MovingAverage traffic_estimate;
             /** Takes care of link management. It resides in its own class to modularize the code. */
-			LinkManagementProcess* link_management_process = nullptr;
+			LinkManagementProcess* link_management_entity = nullptr;
 
 	};
 }

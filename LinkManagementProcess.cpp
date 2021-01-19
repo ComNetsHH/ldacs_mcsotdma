@@ -79,7 +79,6 @@ void LinkManagementProcess::processLinkRequest(const L2HeaderLinkEstablishmentRe
         reply_payload->proposed_channels.push_back(reply_channel);
         int32_t slot_offset = chosen_candidate.second;
         // Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
-        coutd << "passing on to corresponding LinkManager -> ";
         unsigned int timeout = ((L2HeaderLinkEstablishmentRequest*&) header)->timeout,
                 offset = ((L2HeaderLinkEstablishmentRequest*&) header)->offset,
                 length = ((L2HeaderLinkEstablishmentRequest*&) header)->length_next;
@@ -223,7 +222,7 @@ void LinkManagementProcess::scheduleLinkReply(L2Packet *reply, int32_t slot_offs
             throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
         owner->current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
         scheduled_replies[absolute_slot] = reply;
-        coutd << "-> scheduled reply in " << slot_offset << " slots." << std::endl;
+        coutd << "-> scheduled reply in " << slot_offset << " slots -> mark RX slots -> ";
         // ... and mark reservations: we're sending a reply, so we're the receiver.
         owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
     }

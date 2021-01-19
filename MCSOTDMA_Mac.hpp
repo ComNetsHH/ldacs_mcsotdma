@@ -73,6 +73,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Holds the current belief of neighbor positions. */
 			std::map<MacId, CPRPosition> position_map;
 	};
+
+    inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {
+        return stream << "MAC(" << mac.getMacId() << ")";
+    }
 }
 
 

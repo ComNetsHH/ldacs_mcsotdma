@@ -19,7 +19,7 @@ MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 }
 
 void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
-	coutd << "MAC::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id << ")... ";
+	coutd << *this << "::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id << ")... ";
 	// Tell the manager of new data.
 	getLinkManager(mac_id)->notifyOutgoing(num_bits);
 }
@@ -37,7 +37,7 @@ void MCSOTDMA_Mac::passToUpper(L2Packet* packet) {
 void MCSOTDMA_Mac::update(int64_t num_slots) {
 	// Update time.
 	IMac::update(num_slots);
-	coutd << "MAC::update(" << num_slots << ")... ";
+	coutd << *this << "::update(" << num_slots << ")... ";
 	// Notify the broadcast channel manager.
 	auto* bc_link_manager = (BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 	bc_link_manager->update(num_slots);
@@ -48,7 +48,7 @@ void MCSOTDMA_Mac::update(int64_t num_slots) {
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet) {
 	const MacId& dest_id = packet->getDestination();
-	coutd << "MCSOTDMA_Mac(" << id << ")::receiveFromLower(" << dest_id << ")... ";
+	coutd << *this << "::receiveFromLower(" << dest_id << ")... ";
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
 	// Forward broadcasts to the BCLinkManager...
@@ -95,7 +95,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 }
 
 void MCSOTDMA_Mac::forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
-    coutd << "MCSOTDMA_Mac(" << id << ")::forwardLinkReply(to=" << reply->getDestination() << ")... ";
+    coutd << *this << "::forwardLinkReply(to=" << reply->getDestination() << ") ";
 	LinkManager* manager = getLinkManager(reply->getDestination());
 	manager->assign(channel);
 	manager->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
@@ -104,15 +104,15 @@ void MCSOTDMA_Mac::forwardLinkReply(L2Packet* reply, const FrequencyChannel* cha
 std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	// Fetch all reservations of the current time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
-	coutd << "MCSOTDMA_Mac(" << id << ") processing " << reservations.size() << " reservations..." << std::endl;
+	coutd << *this << " processing " << reservations.size() << " reservations..." << std::endl;
 	coutd.increaseIndent();
 	size_t num_txs = 0, num_rxs = 0;
 	for (const std::pair<Reservation, const FrequencyChannel*>& pair : reservations) {
 		const Reservation& reservation = pair.first;
 		const FrequencyChannel* channel = pair.second;
-		
-		coutd << reservation << std::endl;
-		coutd.increaseIndent();
+
+        coutd << reservation << std::endl;
+        coutd.increaseIndent();
 		switch (reservation.getAction()) {
 			case Reservation::IDLE: {
 				// No user is utilizing this slot.
