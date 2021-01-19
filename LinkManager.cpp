@@ -164,14 +164,14 @@ BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 	return payload;
 }
 
-L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
-	coutd << "LinkManager(" << link_id << ")::onTransmissionSlot(" << num_slots << " slots) -> ";
+L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
+	coutd << "LinkManager(" << link_id << ")::onTransmissionBurst(" << num_slots << " slots) -> ";
 	L2Packet* segment;
 	// Prioritize control messages.
 	if (link_management_entity->hasControlMessage()) {
         coutd << "fetching control message ";
         if (num_slots > 1) // Control messages should be sent during single slots.
-            throw std::logic_error("LinkManager::onTransmissionSlot would send a control message, but num_slots>1.");
+            throw std::logic_error("LinkManager::onTransmissionBurst would send a control message, but num_slots>1.");
 	    segment = link_management_entity->getControlMessage();
         if (segment->getHeaders().size() == 2) {
             const L2Header* header = segment->getHeaders().at(1);
@@ -182,14 +182,14 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
                 coutd << "[reply]... ";
                 link_establishment_status = reply_sent;
             } else
-                throw std::logic_error("LinkManager::onTransmissionSlot for non-reply and non-request control message.");
+                throw std::logic_error("LinkManager::onTransmissionBurst for non-reply and non-request control message.");
         } else
-            throw std::logic_error("LinkManager::onTransmissionSlot has a control message with too many or too few headers.");
+            throw std::logic_error("LinkManager::onTransmissionBurst has a control message with too many or too few headers.");
     // If there are none, a new data packet can be sent.
 	} else {
 		// Non-control messages can only be sent on established links.
 		if (link_establishment_status == Status::link_not_established)
-			throw std::runtime_error("LinkManager::onTransmissionSlot for link status: " + std::to_string(link_establishment_status));
+			throw std::runtime_error("LinkManager::onTransmissionBurst for link status: " + std::to_string(link_establishment_status));
 		// Query PHY for the current datarate.
 		unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
 		unsigned long num_bits = datarate * num_slots; // bits
@@ -198,9 +198,9 @@ L2Packet* LinkManager::onTransmissionSlot(unsigned int num_slots) {
 		segment = mac->requestSegment(num_bits, getLinkId());
 	}
 	// Update management process.
-    link_management_entity->onTransmissionSlot();
+    link_management_entity->onTransmissionBurst();
 	// Set header fields.
-	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionSlot received segment with <=1 headers.");
+	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionBurst received segment with <=1 headers.");
 	for (L2Header* header : segment->getHeaders())
 		setHeaderFields(header);
 	

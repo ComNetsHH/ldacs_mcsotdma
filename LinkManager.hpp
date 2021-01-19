@@ -62,7 +62,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param num_slots Number of consecutive slots that may be used for this transmission.
 			 * @return A data packet that should now be sent.
 			 */
-			virtual L2Packet* onTransmissionSlot(unsigned int num_slots);
+			virtual L2Packet* onTransmissionBurst(unsigned int num_slots);
 			
 			/**
 			 * When a packet on this link comes in from the PHY, this notifies the LinkManager.

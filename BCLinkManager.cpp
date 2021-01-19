@@ -84,10 +84,10 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "already have a broadcast slot scheduled." << std::endl;
 }
 
-L2Packet* BCLinkManager::onTransmissionSlot(unsigned int num_slots) {
-	coutd << "BCLinkManager(" << link_id << ")::onTransmissionSlot -> ";
+L2Packet* BCLinkManager::onTransmissionBurst(unsigned int num_slots) {
+	coutd << "BCLinkManager(" << link_id << ")::onTransmissionBurst -> ";
 	if (num_slots != 1)
-		throw std::invalid_argument("BCLinkManager::onTransmissionSlot cannot be used for more or less than 1 slot.");
+		throw std::invalid_argument("BCLinkManager::onTransmissionBurst cannot be used for more or less than 1 slot.");
 	L2Packet* packet;
 	bool is_beacon_slot = false; // TODO determine
 	if (!is_beacon_slot) {

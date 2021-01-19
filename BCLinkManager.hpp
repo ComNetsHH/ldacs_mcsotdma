@@ -46,7 +46,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param num_slots
 			 * @return A packet to send.
 			 */
-			L2Packet* onTransmissionSlot(unsigned int num_slots) override;
+			L2Packet* onTransmissionBurst(unsigned int num_slots) override;
 			
 			/**
 			 * @return Number of neighbors that have been active on the broadcast channel according to their contention estimate.

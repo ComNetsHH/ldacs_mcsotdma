@@ -94,7 +94,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
 
-        void onTransmissionSlot();
+        void onTransmissionBurst();
 
         /**
          * Prepares a link request and injects it into the upper layers.

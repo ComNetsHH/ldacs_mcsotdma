@@ -130,6 +130,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 			case Reservation::TX_CONT: {
 				// Transmission has already started, so a transmitter is busy.
 				num_txs++;
+                if (num_txs > num_transmitters)
+                    throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
 				// Nothing else to do.
 				break;
 			}
@@ -159,7 +161,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				}
 				// Tell it about the transmission slot.
 				unsigned int num_tx_slots = reservation.getNumRemainingSlots() + 1;
-				L2Packet* outgoing_packet = link_manager->onTransmissionSlot(num_tx_slots);
+				L2Packet* outgoing_packet = link_manager->onTransmissionBurst(num_tx_slots);
 				outgoing_packet->notifyCallbacks();
 				passToLower(outgoing_packet, channel->getCenterFrequency());
 				break;

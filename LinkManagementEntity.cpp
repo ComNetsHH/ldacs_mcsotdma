@@ -50,8 +50,9 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
     coutd << "link is now established";
 }
 
-void LinkManagementEntity::onTransmissionSlot() {
+void LinkManagementEntity::onTransmissionBurst() {
     tx_timeout--;
+    coutd << "burst timeout=" << tx_timeout << " vs " << TIMEOUT_THRESHOLD_TRIGGER << std::endl;
     if (tx_timeout == TIMEOUT_THRESHOLD_TRIGGER) {
         coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
         if (owner->link_establishment_status == owner->link_established) {
@@ -136,7 +137,6 @@ L2Packet *LinkManagementEntity::prepareRequest() const {
     auto* body = new ProposalPayload(num_proposed_channels, num_proposed_slots);
     request->addPayload(request_header, body);
     request->addCallback(owner);
-    coutd << "prepared request" << std::endl;
     return request;
 }
 
@@ -287,10 +287,10 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
         L2Header* header = request->getHeaders().at(i);
         if (header->frame_type == L2Header::link_establishment_request) {
             // Set the destination ID (may be broadcast until now).
-            L2HeaderLinkEstablishmentRequest* request_header = (L2HeaderLinkEstablishmentRequest*) header;
+            auto* request_header = (L2HeaderLinkEstablishmentRequest*) header;
             request_header->icao_dest_id = owner->link_id;
             request_header->offset = tx_offset;
-            request_header->timeout = tx_timeout;
+            request_header->timeout = default_tx_timeout;
             // Remember this request's number of slots.
             tx_burst_num_slots = owner->estimateCurrentNumSlots();
             request_header->length_next = tx_burst_num_slots;

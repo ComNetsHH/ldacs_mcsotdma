@@ -171,7 +171,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testTransmissionSlotOnUnestablishedLink() {
 				bool exception_thrown = false;
 				try {
-					link_manager->onTransmissionSlot(1);
+                    link_manager->onTransmissionBurst(1);
 				} catch (const std::exception& e) {
 					exception_thrown = true;
 				}
@@ -182,7 +182,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
 				// Transmission slots should only occur for established links.
 				link_manager->link_establishment_status = LinkManager::link_established;
-				L2Packet* packet = link_manager->onTransmissionSlot(1);
+				L2Packet* packet = link_manager->onTransmissionBurst(1);
 				CPPUNIT_ASSERT(packet != nullptr);
 				delete packet;
 			}
@@ -379,13 +379,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				instantiated_lm->link_management_entity->configure(2, instantiated_lm->link_management_entity->tx_timeout, 0, instantiated_lm->link_management_entity->tx_offset);
 				// Reach the reservation timeout
 				while (instantiated_lm->link_management_entity->tx_timeout > instantiated_lm->link_management_entity->TIMEOUT_THRESHOLD_TRIGGER)
-                    instantiated_lm->link_management_entity->onTransmissionSlot();
+                    instantiated_lm->link_management_entity->onTransmissionBurst();
 				// Set the current time to the first control message slot.
                 mac->current_slot = instantiated_lm->link_management_entity->scheduled_requests.at(instantiated_lm->link_management_entity->scheduled_requests.size() - 1);
                 CPPUNIT_ASSERT_EQUAL(LinkManager::link_about_to_expire, instantiated_lm->link_establishment_status);
 				instantiated_lm->current_reservation_table->mark(1, Reservation(communication_partner_id, Reservation::TX, 0));
                 // And the next transmission slot should be used to send a request.
-				L2Packet* request = instantiated_lm->onTransmissionSlot(1);
+				L2Packet* request = instantiated_lm->onTransmissionBurst(1);
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
 				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
 				delete request;
