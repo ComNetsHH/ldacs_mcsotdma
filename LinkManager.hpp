@@ -39,9 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				/** Link establishment request has been prepared and we're waiting for the reply. */
 				awaiting_reply,
 				/** Link establishment reply has been sent and we're waiting for the first message. */
-				reply_sent,
-				/** When a link is expiring, it must be renewed. */
-				link_about_to_expire
+				reply_sent
 			};
 			
 			LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
@@ -190,9 +188,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Current traffic estimate of this link. */
             MovingAverage traffic_estimate;
             /** Takes care of link management. It resides in its own class to modularize the code. */
-			LinkManagementEntity* link_management_entity = nullptr;
+			LinkManagementEntity* lme = nullptr;
 
 	};
+
+    inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {
+        return stream << "LinkManager(" << lm.getLinkId() << ")";
+    }
 }
 
 

@@ -52,13 +52,9 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 
 void LinkManagementEntity::onTransmissionBurst() {
     tx_timeout--;
-    coutd << "burst timeout=" << tx_timeout << " vs " << TIMEOUT_THRESHOLD_TRIGGER << std::endl;
-    if (tx_timeout == TIMEOUT_THRESHOLD_TRIGGER) {
-        coutd << "Timeout threshold reached -> triggering new link request!" << std::endl;
-        if (owner->link_establishment_status == owner->link_established) {
-            owner->link_establishment_status = owner->link_about_to_expire;
-            coutd << "set status to 'link_about_to_expire'." << std::endl;
-        }
+    if (tx_timeout == 0) {
+        coutd << "timeout reached -> setting this link to unestablished!" << std::endl;
+        owner->link_establishment_status = LinkManager::link_not_established;
     }
 }
 
@@ -299,5 +295,16 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
             coutd << "populated link request: " << *request_header << " -> ";
             break;
         }
+    }
+}
+
+void LinkManagementEntity::onRequestTransmission() {
+    // Upon a renewal request...
+    if (owner->link_establishment_status != LinkManager::link_not_established) {
+        // ... mark the next transmission burst as RX to receive the reply.
+        owner->current_reservation_table->mark(tx_offset, Reservation(owner->getLinkId(), Reservation::Action::RX));
+        // Upon initial requests...
+    } else {
+        // ... do nothing.
     }
 }

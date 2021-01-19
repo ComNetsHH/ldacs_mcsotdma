@@ -15,7 +15,7 @@ LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_m
 	: link_id(link_id), reservation_manager(reservation_manager),
 	link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
 	mac(mac), traffic_estimate(20) {
-    link_management_entity = new LinkManagementEntity(this);
+    lme = new LinkManagementEntity(this);
 	}
 
 const MacId& LinkManager::getLinkId() const {
@@ -23,7 +23,7 @@ const MacId& LinkManager::getLinkId() const {
 }
 
 void LinkManager::notifyOutgoing(unsigned long num_bits) {
-	coutd << "LinkManager::notifyOutgoing(id='" << link_id << "')";
+	coutd << *this << "::notifyOutgoing(id='" << link_id << "')";
 	
 	// Update the moving average traffic estimate.
 	updateTrafficEstimate(num_bits);
@@ -42,7 +42,7 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 		// ... and link establishment has not yet been started ...
 		} else if (link_establishment_status == Status::link_not_established) {
 			coutd << ": link is not established -> ";
-            link_management_entity->establishLink();
+            lme->establishLink();
 		} else {
 			throw std::runtime_error("Unsupported LinkManager::notifyOutgoing with status: '" + std::to_string(link_establishment_status) + "'.");
 		}
@@ -50,7 +50,7 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void LinkManager::receiveFromLower(L2Packet*& packet) {
-	coutd << "LinkManager(" << link_id << ")::receiveFromLower... ";
+	coutd << *this << "::receiveFromLower... ";
 	coutd << "a packet from '" << packet->getOrigin() << "' ";
 	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
 		coutd << "to '" << packet->getDestination() << "";
@@ -95,8 +95,8 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request";
-				link_management_entity->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
-                                                           (const LinkManagementEntity::ProposalPayload*&) payload, packet->getOrigin());
+				lme->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
+                                        (const LinkManagementEntity::ProposalPayload*&) payload, packet->getOrigin());
 				
 //				delete header;
 //				header = nullptr;
@@ -106,7 +106,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				link_management_entity->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const LinkManagementEntity::ProposalPayload*&) payload);
+				lme->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const LinkManagementEntity::ProposalPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 //				delete header;
 //				header = nullptr;
@@ -125,7 +125,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 }
 
 void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
-	link_management_entity->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
+	lme->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
 }
 
 double LinkManager::getCurrentTrafficEstimate() const {
@@ -151,7 +151,7 @@ int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const 
 
 void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 	// This callback is used only for link requests.
-	link_management_entity->populateRequest(packet);
+	lme->populateRequest(packet);
 }
 
 BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
@@ -165,19 +165,20 @@ BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 }
 
 L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
-	coutd << "LinkManager(" << link_id << ")::onTransmissionBurst(" << num_slots << " slots) -> ";
+	coutd << *this << "::onTransmissionBurst(" << num_slots << " slots) -> ";
 	L2Packet* segment;
 	// Prioritize control messages.
-	if (link_management_entity->hasControlMessage()) {
+	if (lme->hasControlMessage()) {
         coutd << "fetching control message ";
         if (num_slots > 1) // Control messages should be sent during single slots.
             throw std::logic_error("LinkManager::onTransmissionBurst would send a control message, but num_slots>1.");
-	    segment = link_management_entity->getControlMessage();
+	    segment = lme->getControlMessage();
         if (segment->getHeaders().size() == 2) {
             const L2Header* header = segment->getHeaders().at(1);
             if (header->frame_type == L2Header::FrameType::link_establishment_request) {
                 coutd << "[request]... ";
                 link_establishment_status = awaiting_reply;
+                lme->onRequestTransmission();
             } else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
                 coutd << "[reply]... ";
                 link_establishment_status = reply_sent;
@@ -197,8 +198,8 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 		coutd << "requesting " << num_bits << " bits." << std::endl;
 		segment = mac->requestSegment(num_bits, getLinkId());
 	}
-	// Update management process.
-    link_management_entity->onTransmissionBurst();
+	// Update LME.
+    lme->onTransmissionBurst();
 	// Set header fields.
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionBurst received segment with <=1 headers.");
 	for (L2Header* header : segment->getHeaders())
@@ -250,14 +251,14 @@ void LinkManager::setHeaderFields(L2Header* header) {
 void LinkManager::setBaseHeaderFields(L2HeaderBase*& header) {
 	header->icao_id = mac->getMacId();
 	coutd << " icao_id=" << mac->getMacId();
-	header->offset = link_management_entity->getTxOffset();
-	coutd << " offset=" << link_management_entity->getTxOffset();
-	if (link_management_entity->getTxBurstSlots() == 0)
+	header->offset = lme->getTxOffset();
+	coutd << " offset=" << lme->getTxOffset();
+	if (lme->getTxBurstSlots() == 0)
 		throw std::runtime_error("LinkManager::setBaseHeaderFields attempted to set next_length to zero.");
-	header->length_next = link_management_entity->getTxBurstSlots();
-	coutd << " length_next=" << link_management_entity->getTxBurstSlots();
-	header->timeout = link_management_entity->getTxTimeout();
-	coutd << " timeout=" << link_management_entity->getTxTimeout();
+	header->length_next = lme->getTxBurstSlots();
+	coutd << " length_next=" << lme->getTxBurstSlots();
+	header->timeout = lme->getTxTimeout();
+	coutd << " timeout=" << lme->getTxTimeout();
 	coutd << " ";
 }
 
@@ -353,7 +354,7 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 }
 
 LinkManager::~LinkManager() {
-    delete link_management_entity;
+    delete lme;
 }
 
 void LinkManager::update(uint64_t num_slots) {

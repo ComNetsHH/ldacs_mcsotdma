@@ -135,6 +135,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         unsigned int getTxBurstSlots() const;
 
+        void onRequestTransmission();
+
     protected:
         std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
 
@@ -173,8 +175,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         /** Number of repetitions a reservation remains valid for. */
         unsigned int default_tx_timeout = 10,
                 tx_timeout = default_tx_timeout;
-        /** When a reservation timeout reaches this threshold, a new link request is prepared. */
-        unsigned int TIMEOUT_THRESHOLD_TRIGGER = 1;
         /** Number of slots occupied per transmission burst. */
         unsigned int tx_burst_num_slots = 1;
         /** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
