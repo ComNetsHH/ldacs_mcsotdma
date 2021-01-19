@@ -197,6 +197,34 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
     inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {
         return stream << "LinkManager(" << lm.getLinkId() << ")";
     }
+
+    inline std::ostream& operator<<(std::ostream& stream, const LinkManager::Status& status) {
+        std::string str;
+        switch (status) {
+            case LinkManager::link_renewal_complete: {
+                str = "link_renewal_complete";
+                break;
+            }
+            case LinkManager::link_not_established: {
+                str = "link_not_established";
+                break;
+            }
+            case LinkManager::awaiting_reply: {
+                str = "awaiting_reply";
+                break;
+            }
+            case LinkManager::link_established: {
+                str = "link_established";
+                break;
+            }
+            case LinkManager::reply_sent: {
+                str = "reply_sent";
+                break;
+            }
+
+        }
+        return stream << str;
+    }
 }
 
 

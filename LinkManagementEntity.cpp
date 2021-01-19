@@ -60,29 +60,17 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
             owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
             coutd << " -> configuring request slots -> ";
             configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
+            coutd << "link status update: " << owner->link_establishment_status;
             owner->link_establishment_status = owner->Status::link_established;
-            coutd << "link renewal completed -> ";
+            coutd << "->" << owner->link_establishment_status;
         } else {
             coutd << "channel change -> saving new channel -> ";
             next_channel = channel;
+            coutd << "link status update: " << owner->link_establishment_status;
             owner->link_establishment_status = owner->Status::link_renewal_complete;
-            coutd << "link renewal completed -> ";
+            coutd << "->" << owner->link_establishment_status << " -> ";
         }
     }
-
-//
-//    if (channel == owner->current_channel) {
-//        // And mark the reservations.
-//        // We've received a reply, so we have initiated this link, so we are the transmitter.
-//        coutd << "new channel is identical to old channel -> increasing timeout " << tx_timeout;
-//        tx_timeout = default_tx_timeout + tx_timeout;
-//        coutd << "->" << tx_timeout << " and marking TX reservations: ";
-//        owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
-//        coutd << "reconfiguring link management -> ";
-//        // Refresh the link renewal process.
-//        configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
-//    }
-
 }
 
 void LinkManagementEntity::onTransmissionBurst() {

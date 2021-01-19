@@ -373,6 +373,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                     mac_layer_you->execute();
                 }
                 CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->lme->scheduled_replies.size());
+                CPPUNIT_ASSERT(LinkManager::Status::link_renewal_complete == lm_me->link_establishment_status || LinkManager::Status::link_established == lm_me->link_establishment_status);
 
                 coutd.setVerbose(false);
             }
