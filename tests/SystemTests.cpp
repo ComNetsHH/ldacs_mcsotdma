@@ -347,22 +347,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 CPPUNIT_ASSERT(lm_me->lme->tx_timeout > 0);
                 CPPUNIT_ASSERT_EQUAL((size_t) lm_me->lme->num_renewal_attempts, lm_me->lme->scheduled_requests.size());
                 for (uint64_t i = 0; i < num_slots_until_request; i++) {
-                    try {
-                        mac_layer_me->update(1);
-                        mac_layer_you->update(1);
-                        mac_layer_me->execute();
-                        mac_layer_you->execute();
-                    } catch (const std::runtime_error& e) { // TODO remove once implemented
-                        // Catch not-implemented error.
-                        coutd << "Caught not-implemented error." << std::endl;
-                        break;
-                    }
+                    mac_layer_me->update(1);
+                    mac_layer_you->update(1);
+                    mac_layer_me->execute();
+                    mac_layer_you->execute();
                 }
                 // A scheduled request should've been deleted.
                 CPPUNIT_ASSERT_EQUAL((size_t) lm_me->lme->num_renewal_attempts - 1, lm_me->lme->scheduled_requests.size());
                 // A request should've been sent. TODO uncomment once re-assigning is implemented
-//                L2Packet* latest_request = rlc_layer_you->receptions.at(rlc_layer_you->receptions.size() - 1);
-//                CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, latest_request->getHeaders().at(1)->frame_type);
+                L2Packet* latest_request = rlc_layer_you->receptions.at(rlc_layer_you->receptions.size() - 1);
+                CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, latest_request->getHeaders().at(1)->frame_type);
                 // We should now be in the 'awaiting_reply' state.
                 CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_establishment_status);
                 // And the next transmission burst should be marked as RX.

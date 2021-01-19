@@ -98,7 +98,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 }
 
 void MCSOTDMA_Mac::forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
-    coutd << *this << "::forwardLinkReply(to=" << reply->getDestination() << ") ";
+    coutd << *this << "::forwardLinkReply(to=" << reply->getDestination() << ") -> ";
 	LinkManager* manager = getLinkManager(reply->getDestination());
 	manager->assign(channel);
 	manager->scheduleLinkReply(reply, slot_offset, timeout, offset, length);

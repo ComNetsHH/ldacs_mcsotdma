@@ -326,10 +326,12 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 }
 
 void LinkManager::assign(const FrequencyChannel* channel) {
-	if (current_channel != nullptr || current_reservation_table != nullptr)
-		throw std::runtime_error("LinkManager reassignment not yet implemented!");
-	this->current_channel = channel;
-	this->current_reservation_table = reservation_manager->getReservationTable(channel);
+	if (current_channel == nullptr && current_reservation_table == nullptr) {
+        this->current_channel = channel;
+        this->current_reservation_table = reservation_manager->getReservationTable(channel);
+	} else
+		coutd << *this << ":assign, but channel or reservation table are already assigned; ignoring ";
+
 }
 
 size_t LinkManager::getRandomInt(size_t start, size_t end) {
