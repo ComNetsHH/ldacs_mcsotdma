@@ -35,19 +35,54 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
     // Make sure we're expecting a reply.
     if (owner->link_establishment_status != owner->Status::awaiting_reply)
         throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
-    // The link has now been established!
-    // So hasControlMessage the status.
-    owner->link_establishment_status = owner->Status::link_established;
-    owner->mac->notifyAboutNewLink(owner->link_id);
     assert(payload->proposed_channels.size() == 1);
-    owner->assign(payload->proposed_channels.at(0));
-    // And mark the reservations.
-    // We've received a reply, so we have initiated this link, so we are the transmitter.
-    tx_timeout = default_tx_timeout;
-    owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
-    // Refresh the link renewal process.
-    configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
-    coutd << "link is now established";
+    const FrequencyChannel* channel = payload->proposed_channels.at(0);
+
+    // Configuring an initial channel...
+    if (owner->current_channel == nullptr) {
+        coutd << "assigning channel -> ";
+        owner->assign(channel);
+        tx_timeout = default_tx_timeout;
+        coutd << "resetting timeout to " << tx_timeout << " -> marking TX reservations:";
+        owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+        coutd << " -> configuring request slots -> ";
+        configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
+        owner->link_establishment_status = owner->Status::link_established;
+        owner->mac->notifyAboutNewLink(owner->link_id);
+        coutd << "link is now established";
+    // Renewing an existing link...
+    } else {
+        coutd << "renewing link -> ";
+        if (channel == owner->current_channel) {
+            coutd << "no channel change -> increasing timeout: " << tx_timeout;
+            tx_timeout += default_tx_timeout;
+            coutd << tx_timeout << " and marking TX reservations: ";
+            owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+            coutd << " -> configuring request slots -> ";
+            configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
+            owner->link_establishment_status = owner->Status::link_established;
+            coutd << "link renewal completed -> ";
+        } else {
+            coutd << "channel change -> saving new channel -> ";
+            next_channel = channel;
+            owner->link_establishment_status = owner->Status::link_renewal_complete;
+            coutd << "link renewal completed -> ";
+        }
+    }
+
+//
+//    if (channel == owner->current_channel) {
+//        // And mark the reservations.
+//        // We've received a reply, so we have initiated this link, so we are the transmitter.
+//        coutd << "new channel is identical to old channel -> increasing timeout " << tx_timeout;
+//        tx_timeout = default_tx_timeout + tx_timeout;
+//        coutd << "->" << tx_timeout << " and marking TX reservations: ";
+//        owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+//        coutd << "reconfiguring link management -> ";
+//        // Refresh the link renewal process.
+//        configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
+//    }
+
 }
 
 void LinkManagementEntity::onTransmissionBurst() {
@@ -218,9 +253,14 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet *reply, int32_t slot_offse
             throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
         owner->current_reservation_table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
         scheduled_replies[absolute_slot] = reply;
-        coutd << "-> scheduled reply in " << slot_offset << " slots -> mark RX slots -> ";
-        // ... and mark reservations: we're sending a reply, so we're the receiver.
-        owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
+        coutd << "-> scheduled reply in " << slot_offset << " slots ";
+        if (owner->link_establishment_status == LinkManager::link_not_established) {
+            // ... and mark reservations: we're sending a reply, so we're the receiver.
+             coutd << "-> first-time link setup; mark RX slots -> ";
+            owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
+        } else {
+            // ... renewal negotiation: might have to change the FrequencyChannel, so do nothing now.
+        }
     }
 }
 

@@ -179,6 +179,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         unsigned int tx_burst_num_slots = 1;
         /** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
         unsigned int tx_offset = 5;
+        const FrequencyChannel* next_channel = nullptr;
     };
 }
 

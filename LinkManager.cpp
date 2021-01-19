@@ -120,7 +120,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 		}
 	}
 	// After processing, the packet is passed to the upper layer.
-	coutd << " -> passing to upper layer." << std::endl;
+	coutd << "passing to upper layer." << std::endl;
 	mac->passToUpper(packet);
 }
 
@@ -314,8 +314,8 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int offset = header->offset;
 	coutd << "timeout=" << timeout << " length_next=" << length_next << " offset=" << offset << " -> ";
 	if (timeout > 0) {
-        if (current_reservation_table == nullptr && link_establishment_status == awaiting_reply) {
-            coutd << "awaiting first reply, so not marking slots yet -> ";
+        if (link_establishment_status == awaiting_reply) {
+            coutd << "awaiting reply, so not marking RX slots -> ";
             return;
         }
 		coutd << "updating reservations: ";
@@ -330,7 +330,7 @@ void LinkManager::assign(const FrequencyChannel* channel) {
         this->current_channel = channel;
         this->current_reservation_table = reservation_manager->getReservationTable(channel);
 	} else
-		coutd << *this << ":assign, but channel or reservation table are already assigned; ignoring ";
+		coutd << *this << ":assign, but channel or reservation table are already assigned; ignoring -> ";
 
 }
 
@@ -349,10 +349,13 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 	Reservation reservation = Reservation(target_id, action, remaining_slots);
 	for (size_t i = 0; i < timeout; i++) {
 		int32_t current_offset = (i+1) * offset + init_offset;
+		Reservation::Action old_action = current_reservation_table->getReservation(current_offset).getAction();
 		current_reservation_table->mark(current_offset, reservation);
-		coutd << " @" << current_offset;
+		if (old_action != action)
+		    coutd << " @" << current_offset << ":" << old_action << "->" << action;
+		else
+            coutd << " @" << current_offset;
 	}
-	coutd << " -> ";
 }
 
 LinkManager::~LinkManager() {

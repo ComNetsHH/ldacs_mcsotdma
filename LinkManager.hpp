@@ -39,7 +39,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				/** Link establishment request has been prepared and we're waiting for the reply. */
 				awaiting_reply,
 				/** Link establishment reply has been sent and we're waiting for the first message. */
-				reply_sent
+				reply_sent,
+				/** Link renewal has been completed. After expiry, the new reservations take action. */
+				link_renewal_complete
 			};
 			
 			LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);

@@ -354,7 +354,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 }
                 // A scheduled request should've been deleted.
                 CPPUNIT_ASSERT_EQUAL((size_t) lm_me->lme->num_renewal_attempts - 1, lm_me->lme->scheduled_requests.size());
-                // A request should've been sent. TODO uncomment once re-assigning is implemented
+                // A request should've been sent.
                 L2Packet* latest_request = rlc_layer_you->receptions.at(rlc_layer_you->receptions.size() - 1);
                 CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, latest_request->getHeaders().at(1)->frame_type);
                 // We should now be in the 'awaiting_reply' state.
@@ -362,6 +362,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 // And the next transmission burst should be marked as RX.
                 const Reservation& reservation = lm_me->current_reservation_table->getReservation(lm_me->lme->tx_offset);
                 CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+
+                // Increment time until the reply is sent.
+                LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+                CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->lme->scheduled_replies.size());
+                while (!lm_you->lme->scheduled_replies.empty()) {
+                    mac_layer_me->update(1);
+                    mac_layer_you->update(1);
+                    mac_layer_me->execute();
+                    mac_layer_you->execute();
+                }
+                CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->lme->scheduled_replies.size());
 
                 coutd.setVerbose(false);
             }
