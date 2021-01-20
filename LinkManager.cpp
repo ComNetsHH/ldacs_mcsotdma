@@ -124,8 +124,8 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 	mac->passToUpper(packet);
 }
 
-void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length) {
-	lme->scheduleLinkReply(reply, slot_offset, timeout, offset, length);
+void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
+	lme->scheduleLinkReply(reply, slot_offset);
 }
 
 double LinkManager::getCurrentTrafficEstimate() const {

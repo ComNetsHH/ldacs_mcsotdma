@@ -102,7 +102,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param reply
 			 * @param slot_offset
 			 */
-			void scheduleLinkReply(L2Packet* reply, int32_t slot_offset, unsigned int timeout, unsigned int offset, unsigned int length);
+			void scheduleLinkReply(L2Packet* reply, int32_t slot_offset);
 
             virtual void update(uint64_t num_slots);
 		

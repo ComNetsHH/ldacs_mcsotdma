@@ -455,27 +455,94 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 //                coutd.setVerbose(false);
 			}
+
+			/**
+			 * Tests slot reservations after the receiver of a request has picked a candidate.
+			 */
+			void testReservationsAfterCandidateSelection() {
+			    // Prepare a request.
+                L2Packet* request = link_manager->lme->prepareRequest();
+                link_manager->lme->populateRequest(request);
+
+                // Configure a receiver side.
+                PHYLayer phy_layer_rx = PHYLayer(planning_horizon);
+                MACLayer mac_rx = MACLayer(communication_partner_id, planning_horizon);
+                ReservationManager* reservation_manager_rx = mac_rx.reservation_manager;
+                reservation_manager_rx->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
+                reservation_manager_rx->addFrequencyChannel(false, bc_frequency, bandwidth);
+                reservation_manager_rx->addFrequencyChannel(true, center_frequency1, bandwidth);
+                reservation_manager_rx->addFrequencyChannel(true, center_frequency2, bandwidth);
+                reservation_manager_rx->addFrequencyChannel(true, center_frequency3, bandwidth);
+                LinkManager* link_manager_rx = mac_rx.getLinkManager(own_id);
+                ARQLayer arq_layer_rx = ARQLayer();
+                mac_rx.setUpperLayer(&arq_layer_rx);
+                arq_layer_rx.setLowerLayer(&mac_rx);
+                NetworkLayer net_layer_rx = NetworkLayer();
+                RLCLayer rlc_layer_rx = RLCLayer(communication_partner_id);
+                net_layer_rx.setLowerLayer(&rlc_layer_rx);
+                rlc_layer_rx.setUpperLayer(&net_layer_rx);
+                rlc_layer_rx.setLowerLayer(&arq_layer_rx);
+                arq_layer_rx.setUpperLayer(&rlc_layer_rx);
+                phy_layer_rx.setUpperLayer(&mac_rx);
+                mac_rx.setLowerLayer(&phy_layer_rx);
+
+                coutd.setVerbose(true);
+
+                // Receive the request.
+                CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
+                link_manager_rx->receiveFromLower(request);
+                CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
+
+                // ONLY the first slot out of the selected candidate should be RX, everything else IDLE.
+                std::vector<uint64_t> frequencies;
+                frequencies.push_back(center_frequency1);
+                frequencies.push_back(center_frequency2);
+                frequencies.push_back(center_frequency3);
+                frequencies.push_back(bc_frequency);
+                auto request_payload = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
+
+                for (uint64_t frequency : frequencies) {
+                    ReservationTable* table = reservation_manager_rx->getReservationTable(reservation_manager_rx->getFreqChannelByCenterFreq(frequency));
+                    for (size_t t = 0; t < table->getPlanningHorizon(); t++) {
+                        const Reservation& reservation = table->getReservation(t);
+                        std::cout << "t=" << t << " -> " << reservation << std::endl;
+                        // Time slot 't' not within the proposed slots
+//                        if (std::find(request_payload->proposed_slots.begin(), request_payload->proposed_slots.end(), t) == request_payload->proposed_slots.end())
+//                            CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
+//                        // Time slot 't' within the proposed slots
+//                        else {
+//                            if (frequency == request_payload->proposed_channels.at(0)->getCenterFrequency())
+//                                CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+//                            else
+//                                CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
+//                        }
+                    }
+                }
+
+                coutd.setVerbose(false);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
-			CPPUNIT_TEST(testTrafficEstimate);
-            CPPUNIT_TEST(testTrafficEstimateOverTimeslots);
-			CPPUNIT_TEST(testNewLinkEstablishment);
-			CPPUNIT_TEST(testComputeProposal);
-			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
-			CPPUNIT_TEST(testNewLinkRequest);
-			CPPUNIT_TEST(testOnTransmissionSlot);
-			CPPUNIT_TEST(testSetBaseHeader);
-			CPPUNIT_TEST(testSetBeaconHeader);
-			CPPUNIT_TEST(testSetUnicastHeader);
-			CPPUNIT_TEST(testSetRequestHeader);
-			CPPUNIT_TEST(testProcessIncomingBase);
-			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
-			CPPUNIT_TEST(testProcessIncomingUnicast);
-			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
-			CPPUNIT_TEST(testPrepareLinkReply);
-			CPPUNIT_TEST(testReplyToRequest);
-			CPPUNIT_TEST(testLocking);
-            CPPUNIT_TEST(testReservationsAfterRequest);
+//			CPPUNIT_TEST(testTrafficEstimate);
+//            CPPUNIT_TEST(testTrafficEstimateOverTimeslots);
+//			CPPUNIT_TEST(testNewLinkEstablishment);
+//			CPPUNIT_TEST(testComputeProposal);
+//			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
+//			CPPUNIT_TEST(testNewLinkRequest);
+//			CPPUNIT_TEST(testOnTransmissionSlot);
+//			CPPUNIT_TEST(testSetBaseHeader);
+//			CPPUNIT_TEST(testSetBeaconHeader);
+//			CPPUNIT_TEST(testSetUnicastHeader);
+//			CPPUNIT_TEST(testSetRequestHeader);
+//			CPPUNIT_TEST(testProcessIncomingBase);
+//			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
+//			CPPUNIT_TEST(testProcessIncomingUnicast);
+//			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
+//			CPPUNIT_TEST(testPrepareLinkReply);
+//			CPPUNIT_TEST(testReplyToRequest);
+//			CPPUNIT_TEST(testLocking);
+//            CPPUNIT_TEST(testReservationsAfterRequest);
+            CPPUNIT_TEST(testReservationsAfterCandidateSelection);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
