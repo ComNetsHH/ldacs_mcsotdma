@@ -5,6 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManager.hpp"
+#include "../BCLinkManager.hpp"
 #include "../LinkManagementEntity.hpp"
 #include "MockLayers.hpp"
 
@@ -388,6 +389,72 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						CPPUNIT_ASSERT(slot1 != slot2);
 				}
 			}
+
+			/**
+			 * Tests that reservations are set correctly after a link request has been sent.
+			 */
+			void testReservationsAfterRequest() {
+//			    coutd.setVerbose(true);
+
+			    // No need to schedule additional broadcast slots after sending the request.
+			    rlc_layer->should_there_be_more_data = false;
+			    // Injections into RLC should trigger notifications down to the corresponding LinkManager.
+                arq_layer->should_forward = true;
+                auto* bc_link_manager = (BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+                CPPUNIT_ASSERT_EQUAL(false, bc_link_manager->broadcast_slot_scheduled);
+
+			    // Trigger link establishment.
+			    CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->injections.size());
+			    mac->notifyOutgoing(1024, communication_partner_id);
+			    // Request should've been injected.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->injections.size());
+                CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, rlc_layer->injections.at(0)->getHeaders().at(1)->frame_type);
+                // Broadcast LinkManager should've been notified.
+                CPPUNIT_ASSERT_EQUAL(true, bc_link_manager->broadcast_slot_scheduled);
+
+                // Increment time until the reply has been sent.
+                CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
+                size_t num_slots = 0, max_num_slots = 10;
+                while (bc_link_manager->broadcast_slot_scheduled && num_slots < max_num_slots) {
+                    mac->update(1);
+                    mac->execute();
+                    num_slots++;
+                }
+                CPPUNIT_ASSERT(num_slots < max_num_slots);
+                CPPUNIT_ASSERT_EQUAL(false, bc_link_manager->broadcast_slot_scheduled);
+
+                // Request should've been sent.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
+
+                // Now RX reservations should've been made at all proposed slots.
+                L2Packet* request = phy_layer->outgoing_packets.at(0);
+                auto* request_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
+                auto* request_body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
+                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_channels), request_body->proposed_channels.size());
+                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_slots * request_body->target_num_channels), request_body->proposed_slots.size());
+                // For each frequency channel...
+                for (size_t i = 0; i < request_body->proposed_channels.size(); i++) {
+                    const FrequencyChannel* channel = request_body->proposed_channels.at(i);
+                    ReservationTable* table = reservation_manager->getReservationTable(channel);
+                    std::vector<unsigned int> proposed_slots;
+                    // ... and each slot...
+                    for (size_t j = 0; j < request_body->target_num_slots; j++) {
+                        unsigned int slot = request_body->proposed_slots.at(i*request_body->target_num_slots + j);
+                        proposed_slots.push_back(slot);
+                    }
+                    for (unsigned int offset = 0; offset < table->getPlanningHorizon(); offset++) {
+                        const Reservation& reservation = table->getReservation(offset);
+                        // ... it should be marked as RX for the proposed slots...
+                        if (std::find(proposed_slots.begin(), proposed_slots.end(), offset) != proposed_slots.end())
+                            CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+                        // ... and idle for all others.
+                        else
+                            CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
+                    }
+                }
+
+//                coutd.setVerbose(false);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -408,6 +475,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testPrepareLinkReply);
 			CPPUNIT_TEST(testReplyToRequest);
 			CPPUNIT_TEST(testLocking);
+            CPPUNIT_TEST(testReservationsAfterRequest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

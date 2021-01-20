@@ -151,7 +151,20 @@ int32_t LinkManager::getEarliestReservationSlotOffset(int32_t start_slot, const 
 
 void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 	// This callback is used only for link requests.
+	// Populate the request with a proposal.
 	lme->populateRequest(packet);
+	// And mark the proposed slots as RX.
+	auto* proposal = (LinkManagementEntity::ProposalPayload*) packet->getPayloads().at(1);
+    for (size_t i = 0; i < proposal->proposed_channels.size(); i++) {
+        const FrequencyChannel* channel = proposal->proposed_channels.at(i);
+        ReservationTable* table = reservation_manager->getReservationTable(channel);
+        std::vector<unsigned int> proposed_slots;
+        // ... and each slot...
+        for (size_t j = 0; j < proposal->target_num_slots; j++) {
+            int32_t offset = (int32_t) proposal->proposed_slots.at(i*proposal->target_num_slots + j);
+            table->mark(offset, Reservation(link_id, Reservation::Action::RX, proposal->num_slots_per_candidate - 1));
+        }
+    }
 }
 
 BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {

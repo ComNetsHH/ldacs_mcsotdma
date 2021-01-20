@@ -17,7 +17,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 * The Broadcast Channel (BC) Link Manager.
 	 */
 	class BCLinkManager : public LinkManager {
-			
+
+        friend class LinkManagerTests;
 		friend class BCLinkManagerTests;
 		friend class SystemTests;
 			

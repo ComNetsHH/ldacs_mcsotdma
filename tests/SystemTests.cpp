@@ -117,7 +117,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * It is also ensured that corresponding future slot reservations are marked.
 			 */
 			void testLinkEstablishment() {
-//				coutd.setVerbose(true);
+				coutd.setVerbose(true);
 				// Single message.
 				rlc_layer_me->should_there_be_more_data = false;
 				// New data for communication partner.
@@ -205,7 +205,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						}
 					}
 				}
-//				coutd.setVerbose(false);
+				coutd.setVerbose(false);
 			}
 
 
@@ -483,9 +483,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testBroadcast);
-			CPPUNIT_TEST(testLinkEstablishment);
-            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
-            CPPUNIT_TEST(testLinkIsExpiring);
+//			CPPUNIT_TEST(testLinkEstablishment);
+//            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+//            CPPUNIT_TEST(testLinkIsExpiring);
 //			CPPUNIT_TEST(testLinkRenewal);
 //			CPPUNIT_TEST(testEncapsulatedUnicast);
 		CPPUNIT_TEST_SUITE_END();
