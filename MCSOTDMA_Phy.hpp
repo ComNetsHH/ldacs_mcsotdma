@@ -16,6 +16,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			~MCSOTDMA_Phy() override;
 			
 			bool isTransmitterIdle(unsigned int slot_offset, unsigned int num_slots) const override;
+
+			bool isAnyReceiverIdle(unsigned int slot_offset, unsigned int num_slots) const override;
 			
 			void update(uint64_t num_slots);
 			
@@ -24,6 +26,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		protected:
 			/** Is notified by MAC ReservationTables of their reservations. */
 			ReservationTable* transmitter_reservations = nullptr;
+			std::vector<ReservationTable*> receiver_reservations;
 	};
 }
 

@@ -13,8 +13,10 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	auto* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
 	auto* table = new ReservationTable(this->planning_horizon);
 	table->linkFrequencyChannel(channel);
-	if (phy_transmitter_table != nullptr)
-		table->linkPhyTable(this->phy_transmitter_table);
+	if (transmitter_table != nullptr)
+        table->linkTransmitterReservationTable(this->transmitter_table);
+	for (ReservationTable* rx_table : receiver_reservation_tables)
+	    table->linkReceiverReservationTable(rx_table);
 	if (is_p2p) {
 		frequency_channels.push_back(channel);
 		reservation_tables.push_back(table);
@@ -157,8 +159,8 @@ FrequencyChannel* ReservationManager::matchFrequencyChannel(const FrequencyChann
 	return nullptr;
 }
 
-void ReservationManager::setPhyTransmitterTable(ReservationTable* phy_table) {
-	this->phy_transmitter_table = phy_table;
+void ReservationManager::setTransmitterReservationTable(ReservationTable* tx_table) {
+	this->transmitter_table = tx_table;
 }
 
 FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center_frequency) {
@@ -168,4 +170,8 @@ FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center
 		if (channel->getCenterFrequency() == center_frequency)
 			return channel;
 	return nullptr;
+}
+
+void ReservationManager::addReceiverReservationTable(ReservationTable *rx_table) {
+    this->receiver_reservation_tables.push_back(rx_table);
 }

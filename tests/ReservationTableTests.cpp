@@ -528,6 +528,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(offset, Reservation(id, Reservation::TX_CONT));
 				CPPUNIT_ASSERT_EQUAL(true, table->anyTxReservations(0, 2*offset));
 			}
+
+            void testAnyRxReservations() {
+                MacId id = MacId(42);
+                int32_t offset = 5;
+                Reservation reservation = Reservation(id, Reservation::Action::RX);
+                CPPUNIT_ASSERT_EQUAL(false, table->anyRxReservations(0, 2*offset));
+                table->mark(offset, reservation);
+                CPPUNIT_ASSERT_EQUAL(true, table->anyRxReservations(0, 2*offset));
+                table->mark(offset, Reservation(id, Reservation::IDLE));
+                CPPUNIT_ASSERT_EQUAL(false, table->anyRxReservations(0, 2*offset));
+                table->mark(offset, Reservation(id, Reservation::BUSY));
+                CPPUNIT_ASSERT_EQUAL(false, table->anyRxReservations(0, 2*offset));
+                table->mark(offset, Reservation(id, Reservation::RX));
+                CPPUNIT_ASSERT_EQUAL(true, table->anyRxReservations(0, 2*offset));
+            }
 			
 			void testLocking() {
 				// Find some candidate
@@ -575,6 +590,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testGetTxReservations);
 			CPPUNIT_TEST(testIntegrateTxReservations);
 			CPPUNIT_TEST(testAnyTxReservations);
+            CPPUNIT_TEST(testAnyRxReservations);
 			CPPUNIT_TEST(testLocking);
 		CPPUNIT_TEST_SUITE_END();
 	};

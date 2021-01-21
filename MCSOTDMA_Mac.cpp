@@ -114,7 +114,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 		const Reservation& reservation = pair.first;
 		const FrequencyChannel* channel = pair.second;
 
-        coutd << reservation << std::endl;
+        coutd << *channel << ":" << reservation << std::endl;
         coutd.increaseIndent();
 		switch (reservation.getAction()) {
 			case Reservation::IDLE: {

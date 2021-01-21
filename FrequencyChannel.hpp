@@ -29,6 +29,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void setBlacklisted(bool value);
 			
 			bool operator==(const FrequencyChannel& other) const;
+            bool operator!=(const FrequencyChannel& other) const;
 			bool operator<(const FrequencyChannel& other) const;
 			bool operator<=(const FrequencyChannel& other) const;
 			bool operator>(const FrequencyChannel& other) const;
@@ -46,7 +47,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	};
 	
 	inline std::ostream& operator<<(std::ostream& stream, const FrequencyChannel& channel) {
-		return stream << std::to_string(channel.getCenterFrequency()) << "kHz";
+	    if (channel.isPointToPointChannel())
+		    return stream << std::to_string(channel.getCenterFrequency()) << "kHz";
+	    else
+	        return stream << "BC";
 	}
 }
 

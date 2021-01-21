@@ -88,8 +88,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			std::vector<std::pair<FrequencyChannel, ReservationTable*>> getTxReservations(const MacId& id) const;
 			void updateTables(const std::vector<std::pair<FrequencyChannel, ReservationTable*>>& reservations);
-			
-			void setPhyTransmitterTable(ReservationTable* phy_table);
+
+			/**
+			 * Links a ReservationTable for the single transmitter that we have.
+			 * Reservations can query this table to see if a particular time slot is already utilized by the transmitter.
+			 * @param tx_table
+			 */
+			void setTransmitterReservationTable(ReservationTable* tx_table);
+
+			/**
+			 * Links a ReservationTable for a hardware receiver.
+			 * Reservations can query this table to see if a particular time slot is already utilized by any (of possibly several) receiver.
+			 * @param rx_table
+			 */
+			void addReceiverReservationTable(ReservationTable* rx_table);
 
 		protected:
 			
@@ -115,7 +127,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** A single broadcast channel reservation table is kept. */
 			ReservationTable* broadcast_reservation_table = nullptr;
 			/** The PHY layer may keep a transmitter ReservationTable, which should be linked to all ReservationTables within this manager. */
-			ReservationTable* phy_transmitter_table = nullptr;
+			ReservationTable* transmitter_table = nullptr;
+			std::vector<ReservationTable*> receiver_reservation_tables;
 	};
 	
 }

@@ -64,6 +64,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param min_offset The minimum offset in time for any candidate slot.
 			 * @param num_candidates The number of candidate slots that should be found.
 			 * @param range_length The number of slots that should be idle for each range that starts at the returned offsets.
+			 * @param consider_transmitter Whether transmitter utilization should be taken into account, s.t. slots that are already marked for transmission are not included.
 			 * @return The start slots of each candidate. The size of the returned container should be checked to ensure that enough candidates were found.
 			 */
 			std::vector<int32_t> findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length, bool consider_transmitter) const;
@@ -99,8 +100,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			bool isUtilized(int32_t slot_offset) const;
 			
 			bool anyTxReservations(int32_t slot_offset) const;
-			
 			bool anyTxReservations(int32_t start, uint32_t length) const;
+			bool anyRxReservations(int32_t slot_offset) const;
+            bool anyRxReservations(int32_t start, uint32_t length) const;
 			
 			/**
 			 * @param start Slot offset that marks the beginning of the range of slots.
@@ -150,8 +152,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return False if all reservations match.
 			 */
 			bool operator!=(const ReservationTable& other) const;
-			
-			void linkPhyTable(ReservationTable* phy_table);
+
+			/**
+			 * Links a transmitter reservation table.
+			 * @param tx_table
+			 */
+            void linkTransmitterReservationTable(ReservationTable* tx_table);
+
+            /**
+             * Links a receiver reservation table.
+             * @param rx_table
+             */
+            void linkReceiverReservationTable(ReservationTable* rx_table);
 		
 		protected:
 			bool isValid(int32_t slot_offset) const;
@@ -197,11 +209,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** The ReservationTable keeps track of the idle slots it currently has, so that different tables are easily compared for their capacity of new reservations. */
 			uint64_t num_idle_future_slots;
 			FrequencyChannel* freq_channel = nullptr;
-			/**
-			 * The ReservationTable on the PHY layer may be linked, so that all TX reservations are forwarded to it.
-			 * With this, the PHY layer is aware of all slots during which the transmitter will be busy.
-			 */
-			ReservationTable* phy_table = nullptr;
+
+			/** The ReservationTable of the single transmitter may be linked, so that all TX reservations are forwarded to it. */
+			ReservationTable* transmitter_reservation_table = nullptr;
+
+			/** The ReservationTables of any receiver may be linked, so that all RX reservations can be forwarded to them. */
+			std::vector<ReservationTable*> receiver_reservation_tables;
 	};
 }
 

@@ -17,76 +17,48 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
      */
 	class SystemTests : public CppUnit::TestFixture {
 		private:
-			MacId own_id = MacId(42);
-			MacId communication_partner_id = MacId(43);
-			uint32_t planning_horizon = 256;
-            uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
-			MACLayer *mac_layer_me, *mac_layer_you;
-			ARQLayer *arq_layer_me, *arq_layer_you;
-			RLCLayer *rlc_layer_me, *rlc_layer_you;
-			PHYLayer *phy_layer_me, *phy_layer_you;
-			NetworkLayer *net_layer_me, *net_layer_you;
+			TestEnvironment* env_me, *env_you;
+
+            MacId own_id,  communication_partner_id;
+            uint32_t planning_horizon;
+            uint64_t center_frequency1, center_frequency2, center_frequency3, bc_frequency, bandwidth;
+            NetworkLayer *net_layer_me, *net_layer_you;
+            RLCLayer *rlc_layer_me, *rlc_layer_you;
+            ARQLayer *arq_layer_me, *arq_layer_you;
+            MACLayer *mac_layer_me, *mac_layer_you;
+            PHYLayer *phy_layer_me, *phy_layer_you;
 		
 		public:
 			void setUp() override {
-				phy_layer_me = new PHYLayer(planning_horizon);
-				mac_layer_me = new MACLayer(own_id, planning_horizon);
-				mac_layer_me->reservation_manager->setPhyTransmitterTable(phy_layer_me->getTransmitterReservationTable());
-				mac_layer_me->reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-				mac_layer_me->reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-				mac_layer_me->reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-				mac_layer_me->reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				
-				arq_layer_me = new ARQLayer();
-				arq_layer_me->should_forward = true;
-				mac_layer_me->setUpperLayer(arq_layer_me);
-				arq_layer_me->setLowerLayer(mac_layer_me);
-				net_layer_me = new NetworkLayer();
-				rlc_layer_me = new RLCLayer(own_id);
-				net_layer_me->setLowerLayer(rlc_layer_me);
-				rlc_layer_me->setUpperLayer(net_layer_me);
-				rlc_layer_me->setLowerLayer(arq_layer_me);
-				arq_layer_me->setUpperLayer(rlc_layer_me);
-				phy_layer_me->setUpperLayer(mac_layer_me);
-				mac_layer_me->setLowerLayer(phy_layer_me);
-				
-				phy_layer_you = new PHYLayer(planning_horizon);
-				mac_layer_you = new MACLayer(communication_partner_id, planning_horizon);
-				mac_layer_you->reservation_manager->setPhyTransmitterTable(phy_layer_you->getTransmitterReservationTable());
-				mac_layer_you->reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-				mac_layer_you->reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-				mac_layer_you->reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-				mac_layer_you->reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				
-				arq_layer_you = new ARQLayer();
-				arq_layer_you->should_forward = true;
-				mac_layer_you->setUpperLayer(arq_layer_you);
-				arq_layer_you->setLowerLayer(mac_layer_you);
-				net_layer_you = new NetworkLayer();
-				rlc_layer_you = new RLCLayer(own_id);
-				net_layer_you->setLowerLayer(rlc_layer_you);
-				rlc_layer_you->setUpperLayer(net_layer_you);
-				rlc_layer_you->setLowerLayer(arq_layer_you);
-				arq_layer_you->setUpperLayer(rlc_layer_you);
-				phy_layer_you->setUpperLayer(mac_layer_you);
-				mac_layer_you->setLowerLayer(phy_layer_you);
-				
+			    own_id = MacId(42);
+			    communication_partner_id = MacId(43);
+                env_me = new TestEnvironment(own_id, communication_partner_id);
+                env_you = new TestEnvironment(communication_partner_id, own_id);
+
+				center_frequency1 = env_me->center_frequency1;
+				center_frequency2 = env_me->center_frequency2;
+				center_frequency3 = env_me->center_frequency3;
+				bc_frequency = env_me->bc_frequency;
+				bandwidth = env_me->bandwidth;
+
+				net_layer_me = env_me->net_layer;
+				net_layer_you = env_you->net_layer;
+				rlc_layer_me = env_me->rlc_layer;
+				rlc_layer_you = env_you->rlc_layer;
+				arq_layer_me = env_me->arq_layer;
+				arq_layer_you = env_you->arq_layer;
+				mac_layer_me = env_me->mac_layer;
+				mac_layer_you = env_you->mac_layer;
+				phy_layer_me = env_me->phy_layer;
+				phy_layer_you = env_you->phy_layer;
+
 				phy_layer_me->connected_phy = phy_layer_you;
 				phy_layer_you->connected_phy = phy_layer_me;
 			}
 			
 			void tearDown() override {
-				delete mac_layer_me;
-				delete arq_layer_me;
-				delete rlc_layer_me;
-				delete phy_layer_me;
-				delete net_layer_me;
-				
-				delete mac_layer_you;
-				delete arq_layer_you;
-				delete rlc_layer_you;
-				delete phy_layer_you;
-				delete net_layer_you;
+				delete env_me;
+				delete env_you;
 			}
 			
 			/**
@@ -406,8 +378,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				// Do link establishment and send one data packet.
 //				testLinkEstablishment();
 //				// Now there's more data.
-//				rlc_layer_me->should_there_be_more_data = true;
-//				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+//				rlc_layer->should_there_be_more_data = true;
+//				LinkManager* lm_me = mac_layer->getLinkManager(communication_partner_id);
 //				// We've sent one message so far, so the link remains valid until default-1.
 //				unsigned int expected_tx_timeout = lm_me->lme->default_tx_timeout - 1;
 //				CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->lme->tx_timeout);
@@ -419,9 +391,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				size_t expected_num_slots = (lm_me->lme->tx_timeout - lm_me->lme->TIMEOUT_THRESHOLD_TRIGGER) * lm_me->lme->tx_offset;
 //				while (lm_me->lme->tx_timeout > lm_me->lme->TIMEOUT_THRESHOLD_TRIGGER) {
 //					num_slots++;
-//					mac_layer_me->update(1);
+//					mac_layer->update(1);
 //					mac_layer_you->update(1);
-//					std::pair<size_t, size_t> exes_me = mac_layer_me->execute();
+//					std::pair<size_t, size_t> exes_me = mac_layer->execute();
 //					std::pair<size_t, size_t> exes_you = mac_layer_you->execute();
 //					// The number of transmissions I send must equal the number of receptions you receive...
 //					CPPUNIT_ASSERT_EQUAL(exes_me.first, exes_you.second);
@@ -438,9 +410,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_about_to_expire, lm_me->link_establishment_status);
 //				// So continue until the next transmission slot.
 //				while (lm_me->link_establishment_status != LinkManager::awaiting_reply) {
-//					mac_layer_me->update(1);
+//					mac_layer->update(1);
 //					mac_layer_you->update(1);
-//					mac_layer_me->execute();
+//					mac_layer->execute();
 //					mac_layer_you->execute();
 //				}
 //				coutd.setVerbose(false);

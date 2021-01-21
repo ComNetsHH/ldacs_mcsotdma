@@ -31,7 +31,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				phy = new PHYLayer(planning_horizon);
 				mac = new MACLayer(own_id, planning_horizon);
 				reservation_manager = mac->reservation_manager;
-				reservation_manager->setPhyTransmitterTable(phy->getTransmitterReservationTable());
+                reservation_manager->setTransmitterReservationTable(phy->getTransmitterReservationTable());
 				reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 				reservation_manager->addFrequencyChannel(true, p2p_frequency1, bandwidth);
 				reservation_manager->addFrequencyChannel(true, p2p_frequency2, bandwidth);

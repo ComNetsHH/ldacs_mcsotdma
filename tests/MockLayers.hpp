@@ -51,9 +51,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			friend class LinkManagerTests;
 			friend class BCLinkManagerTests;
 			friend class SystemTests;
+            friend class TestEnvironment;
 			
 		public:
-			explicit MACLayer(const MacId& id, uint32_t planning_horizon) : MCSOTDMA_Mac(id, planning_horizon) {}
+			explicit MACLayer(const MacId& id, uint32_t planning_horizon) : MCSOTDMA_Mac(id, planning_horizon) {
+
+			}
 	};
 	
 	class ARQLayer : public IArq {
@@ -181,6 +184,51 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			std::map<MacId, unsigned int> num_hops_to_GS_map;
+	};
+
+	class TestEnvironment {
+    public:
+        MacId own_id;
+        MacId communication_partner_id;
+        uint32_t planning_horizon = 512;
+        uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
+        NetworkLayer *net_layer;
+        RLCLayer *rlc_layer;
+        ARQLayer *arq_layer;
+        MACLayer *mac_layer;
+        PHYLayer *phy_layer;
+
+        TestEnvironment(const MacId& own_id, const MacId& communication_partner_id) : own_id(own_id), communication_partner_id(communication_partner_id) {
+            phy_layer = new PHYLayer(planning_horizon);
+            mac_layer = new MACLayer(own_id, planning_horizon);
+            mac_layer->reservation_manager->setTransmitterReservationTable(
+                    phy_layer->getTransmitterReservationTable());
+            mac_layer->reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
+            mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
+            mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
+            mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
+
+            arq_layer = new ARQLayer();
+            arq_layer->should_forward = true;
+            mac_layer->setUpperLayer(arq_layer);
+            arq_layer->setLowerLayer(mac_layer);
+            net_layer = new NetworkLayer();
+            rlc_layer = new RLCLayer(own_id);
+            net_layer->setLowerLayer(rlc_layer);
+            rlc_layer->setUpperLayer(net_layer);
+            rlc_layer->setLowerLayer(arq_layer);
+            arq_layer->setUpperLayer(rlc_layer);
+            phy_layer->setUpperLayer(mac_layer);
+            mac_layer->setLowerLayer(phy_layer);
+        }
+
+        virtual ~TestEnvironment() {
+            delete mac_layer;
+            delete arq_layer;
+            delete rlc_layer;
+            delete phy_layer;
+            delete net_layer;
+        }
 	};
 	
 }

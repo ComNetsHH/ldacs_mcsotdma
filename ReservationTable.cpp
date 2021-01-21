@@ -36,9 +36,9 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		num_idle_future_slots--;
 	else if (!currently_idle) // changing from non-idle to idle
 		num_idle_future_slots++;
-	// If a PHY transmission table is linked, mark it there, too.
-	if (phy_table != nullptr)
-		phy_table->mark(slot_offset, reservation);
+	// If a transmitter table is linked, mark it there, too.
+	if (transmitter_reservation_table != nullptr)
+		transmitter_reservation_table->mark(slot_offset, reservation);
 	// If this is a multi-slot transmission reservation, set the following ones, too.
 	if (reservation.getNumRemainingSlots() > 0) {
 		Reservation::Action action = reservation.getAction();
@@ -75,6 +75,24 @@ bool ReservationTable::anyTxReservations(int32_t start, uint32_t length) const {
 	return false;
 }
 
+bool ReservationTable::anyRxReservations(int32_t slot_offset) const {
+    if (!this->isValid(slot_offset))
+        throw std::invalid_argument("ReservationTable::anyRxReservations for planning horizon smaller than queried offset!");
+    return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isRx();
+}
+
+bool ReservationTable::anyRxReservations(int32_t start, uint32_t length) const {
+    if (length == 1)
+        return anyRxReservations(start);
+    if (!this->isValid(start, length))
+        throw std::invalid_argument("ReservationTable::anyRxReservations invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
+    // A slot range contains a RX if any slot does
+    for (int32_t slot = start; slot < start + int32_t(length); slot++)
+        if (anyRxReservations(slot))
+            return true; // so a single busy one fails the check
+    return false;
+}
+
 bool ReservationTable::isIdle(int32_t slot_offset) const {
 	return !this->isUtilized(slot_offset);
 }
@@ -97,7 +115,7 @@ bool ReservationTable::isUtilized(int32_t start, uint32_t length) const {
 }
 
 int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter) const {
-	if (consider_transmitter && phy_table == nullptr)
+	if (consider_transmitter && transmitter_reservation_table == nullptr)
 		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_transmitter==true for unset PHY table.");
 	if (!isValid(start, length))
 		throw std::invalid_argument("Invalid slot range!");
@@ -106,7 +124,7 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
 			if (!consider_transmitter)
 				return i;
 			else {
-				if (!phy_table->anyTxReservations(i, length))
+				if (!transmitter_reservation_table->anyTxReservations(i, length))
 					return i;
 			}
 		}
@@ -115,8 +133,8 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
 }
 
 //int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter) const {
-//	if (consider_transmitter && !phy_table)
-//		throw std::runtime_error("ReservationTable::findEarliestIdleRange that should consider the transmitter with an unset phy_table.");
+//	if (consider_transmitter && !transmitter_reservation_table)
+//		throw std::runtime_error("ReservationTable::findEarliestIdleRange that should consider the transmitter with an unset transmitter_reservation_table.");
 //	if (!isValid(start, length))
 //		throw std::invalid_argument("Invalid slot range!");
 //	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
@@ -124,7 +142,7 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
 //		if (this->isIdle(i, length)) {
 //			if (!consider_transmitter) // Don't care about an idle transmitter?
 //				return i; // Just return the slot since this table is idle.
-//			else if (!phy_table->anyTxReservations(i, length)) // Do care? Then check whether it is idle, too.
+//			else if (!transmitter_reservation_table->anyTxReservations(i, length)) // Do care? Then check whether it is idle, too.
 //				return i;
 //		}
 //	}
@@ -272,8 +290,12 @@ bool ReservationTable::operator!=(const ReservationTable& other) const {
 	return !((*this) == other);
 }
 
-void ReservationTable::linkPhyTable(ReservationTable* phy_table) {
-	this->phy_table = phy_table;
+void ReservationTable::linkTransmitterReservationTable(ReservationTable* tx_table) {
+	this->transmitter_reservation_table = tx_table;
+}
+
+void ReservationTable::linkReceiverReservationTable(ReservationTable* rx_table) {
+    this->receiver_reservation_tables.push_back(rx_table);
 }
 
 ReservationTable::~ReservationTable() = default;

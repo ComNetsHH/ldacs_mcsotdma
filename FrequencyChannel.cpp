@@ -57,6 +57,11 @@ bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isBlacklisted() const {
 	return this->is_blacklisted;
 }
 
+bool
+TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator!=(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel &other) const {
+    return !(*this == other);
+}
+
 
 
 

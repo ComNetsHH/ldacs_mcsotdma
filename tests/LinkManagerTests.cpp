@@ -18,50 +18,45 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
      */
 	class LinkManagerTests : public CppUnit::TestFixture {
 		private:
+	        TestEnvironment* env;
+
 			LinkManager* link_manager;
 			ReservationManager* reservation_manager;
-			MacId own_id = MacId(42);
-			MacId communication_partner_id = MacId(43);
-			uint32_t planning_horizon = 128;
-			uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
+			MacId own_id;
+			MacId communication_partner_id;
+            uint32_t planning_horizon;
+            uint64_t center_frequency1, center_frequency2, center_frequency3, bc_frequency, bandwidth;
 			unsigned long num_bits_going_out = 800*100;
 			MACLayer* mac;
 			ARQLayer* arq_layer;
 			RLCLayer* rlc_layer;
 			PHYLayer* phy_layer;
 			NetworkLayer* net_layer;
-		
+
 		public:
 			void setUp() override {
-				phy_layer = new PHYLayer(planning_horizon);
-				mac = new MACLayer(own_id, planning_horizon);
+                own_id = MacId(42);
+                communication_partner_id = MacId(43);
+			    env = new TestEnvironment(own_id, communication_partner_id);
+
+                planning_horizon = env->planning_horizon;
+                center_frequency1 = env->center_frequency1;
+                center_frequency2 = env->center_frequency2;
+                center_frequency3 = env->center_frequency3;
+                bc_frequency = env->bc_frequency;
+                bandwidth = env->bandwidth;
+
+				phy_layer = env->phy_layer;
+				mac = env->mac_layer;
 				reservation_manager = mac->reservation_manager;
-				reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
-				reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-				reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-				reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-				reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				
 				link_manager = mac->getLinkManager(communication_partner_id);
-				arq_layer = new ARQLayer();
-				mac->setUpperLayer(arq_layer);
-				arq_layer->setLowerLayer(mac);
-				net_layer = new NetworkLayer();
-				rlc_layer = new RLCLayer(own_id);
-				net_layer->setLowerLayer(rlc_layer);
-				rlc_layer->setUpperLayer(net_layer);
-				rlc_layer->setLowerLayer(arq_layer);
-				arq_layer->setUpperLayer(rlc_layer);
-				phy_layer->setUpperLayer(mac);
-				mac->setLowerLayer(phy_layer);
+				arq_layer = env->arq_layer;
+				net_layer = env->net_layer;
+				rlc_layer = env->rlc_layer;
 			}
-			
+
 			void tearDown() override {
-				delete mac;
-				delete arq_layer;
-				delete rlc_layer;
-				delete phy_layer;
-				delete net_layer;
+				delete env;
 			}
 
 			/**
@@ -264,7 +259,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				MACLayer other_mac = MACLayer(communication_partner_id, planning_horizon);
 				other_mac.setUpperLayer(arq_layer);
 				other_mac.setLowerLayer(phy_layer);
-				other_mac.reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
+                other_mac.reservation_manager->setTransmitterReservationTable(
+                        phy_layer->getTransmitterReservationTable());
 				other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
@@ -347,7 +343,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				MACLayer other_mac = MACLayer(communication_partner_id, planning_horizon);
 				other_mac.setUpperLayer(arq_layer);
 				other_mac.setLowerLayer(phy_layer);
-				other_mac.reservation_manager->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
+                other_mac.reservation_manager->setTransmitterReservationTable(
+                        phy_layer->getTransmitterReservationTable());
 				other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
@@ -479,15 +476,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * Tests slot reservations after the receiver of a request has picked a candidate.
 			 */
 			void testReservationsAfterCandidateSelection() {
-			    // Prepare a request.
+                // Send request.
+                testReservationsAfterRequest();
+                // Copy request proposal (otherwise we have two sides trying to delete this packet -> memory error).
+                L2Packet* request_sent = phy_layer->outgoing_packets.at(0);
                 L2Packet* request = link_manager->lme->prepareRequest();
-                link_manager->lme->populateRequest(request);
+                ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
 
                 // Configure a receiver side.
                 PHYLayer phy_layer_rx = PHYLayer(planning_horizon);
                 MACLayer mac_rx = MACLayer(communication_partner_id, planning_horizon);
                 ReservationManager* reservation_manager_rx = mac_rx.reservation_manager;
-                reservation_manager_rx->setPhyTransmitterTable(phy_layer->getTransmitterReservationTable());
+                reservation_manager_rx->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
                 reservation_manager_rx->addFrequencyChannel(false, bc_frequency, bandwidth);
                 reservation_manager_rx->addFrequencyChannel(true, center_frequency1, bandwidth);
                 reservation_manager_rx->addFrequencyChannel(true, center_frequency2, bandwidth);
@@ -566,8 +566,78 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 
 			void testReservationsAfterReplyCameIn() {
-			    //
+			    // Send request.
                 testReservationsAfterRequest();
+                // Copy request proposal (otherwise we have two sides trying to delete this packet -> memory error).
+                L2Packet* request_sent = phy_layer->outgoing_packets.at(0);
+                L2Packet* request = link_manager->lme->prepareRequest();
+                ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
+
+                // Configure a receiver side.
+                PHYLayer phy_layer_rx = PHYLayer(planning_horizon);
+                MACLayer mac_rx = MACLayer(communication_partner_id, planning_horizon);
+                ReservationManager* reservation_manager_rx = mac_rx.reservation_manager;
+                reservation_manager_rx->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
+                reservation_manager_rx->addFrequencyChannel(false, bc_frequency, bandwidth);
+                reservation_manager_rx->addFrequencyChannel(true, center_frequency1, bandwidth);
+                reservation_manager_rx->addFrequencyChannel(true, center_frequency2, bandwidth);
+                reservation_manager_rx->addFrequencyChannel(true, center_frequency3, bandwidth);
+                LinkManager* link_manager_rx = mac_rx.getLinkManager(own_id);
+                ARQLayer arq_layer_rx = ARQLayer();
+                mac_rx.setUpperLayer(&arq_layer_rx);
+                arq_layer_rx.setLowerLayer(&mac_rx);
+                NetworkLayer net_layer_rx = NetworkLayer();
+                RLCLayer rlc_layer_rx = RLCLayer(communication_partner_id);
+                net_layer_rx.setLowerLayer(&rlc_layer_rx);
+                rlc_layer_rx.setUpperLayer(&net_layer_rx);
+                rlc_layer_rx.setLowerLayer(&arq_layer_rx);
+                arq_layer_rx.setUpperLayer(&rlc_layer_rx);
+                phy_layer_rx.setUpperLayer(&mac_rx);
+                mac_rx.setLowerLayer(&phy_layer_rx);
+
+                // Receive the request, compute the reply.
+                CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
+                link_manager_rx->receiveFromLower(request);
+                CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
+
+                coutd.setVerbose(true);
+
+                // Increment time until the reply has been sent.
+                std::vector<uint64_t> frequencies;
+                frequencies.push_back(center_frequency1);
+                frequencies.push_back(center_frequency2);
+                frequencies.push_back(center_frequency3);
+                uint64_t selected_frequency = link_manager_rx->current_channel->getCenterFrequency();
+                int selected_reply_offset = -1;
+                size_t num_tx = 0;
+                for (uint64_t frequency : frequencies) {
+                    ReservationTable *table_rx = reservation_manager_rx->getReservationTable(
+                            reservation_manager_rx->getFreqChannelByCenterFreq(frequency));
+                    // ... for the selected frequency channel...
+                    if (frequency == selected_frequency) {
+                        for (size_t t = 0; t < table_rx->getPlanningHorizon(); t++) {
+                            const Reservation &reservation = table_rx->getReservation(t);
+                            if (reservation.isTx()) {
+                                num_tx++;
+                                selected_reply_offset = t;
+                            }
+                        }
+                    }
+                }
+                // Sanity checks.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
+                CPPUNIT_ASSERT(selected_reply_offset > -1);
+
+                for (int t = 0; t < selected_reply_offset; t++) {
+                    mac->update(1);
+                    mac->execute();
+                }
+
+                // Receive the reply.
+//                L2Packet* reply = link_manager_rx->lme->scheduled_replies.begin()->second;
+//                mac->receiveFromLower(reply);
+
+                coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
@@ -591,6 +661,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLocking);
             CPPUNIT_TEST(testReservationsAfterRequest);
             CPPUNIT_TEST(testReservationsAfterCandidateSelection);
+            CPPUNIT_TEST(testReservationsAfterReplyCameIn);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
