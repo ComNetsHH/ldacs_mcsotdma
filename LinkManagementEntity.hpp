@@ -21,6 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         friend class LinkManagementProcessTests;
         friend class LinkManagerTests;
+        friend class BCLinkManagerTests;
         friend class SystemTests;
 
     public:
@@ -169,8 +170,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         std::map<uint64_t , L2Packet*> scheduled_replies;
         /** Number of attempts to renew a link before giving up. */
         unsigned int link_renewal_attempts = 3;
+        const int32_t default_minimum_slot_offset_for_new_reservations = 2;
         /** The minimum number of slots a proposed slot should be in the future. */
-        const int32_t minimum_slot_offset_for_new_slot_reservations = 1;
+        int32_t minimum_slot_offset_for_new_reservations = default_minimum_slot_offset_for_new_reservations;
         /** The number of frequency channels that should be proposed when a new link request is prepared. */
         unsigned int num_proposed_channels = 2;
         /** The number of time slots that should be proposed when a new link request is prepared. */

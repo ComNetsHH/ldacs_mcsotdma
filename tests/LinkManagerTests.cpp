@@ -486,62 +486,83 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 phy_layer_rx.setUpperLayer(&mac_rx);
                 mac_rx.setLowerLayer(&phy_layer_rx);
 
-                coutd.setVerbose(true);
+//                coutd.setVerbose(true);
 
                 // Receive the request.
                 CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
                 link_manager_rx->receiveFromLower(request);
                 CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
 
-                // ONLY the first slot out of the selected candidate should be RX, everything else IDLE.
                 std::vector<uint64_t> frequencies;
                 frequencies.push_back(center_frequency1);
                 frequencies.push_back(center_frequency2);
                 frequencies.push_back(center_frequency3);
                 frequencies.push_back(bc_frequency);
                 auto request_payload = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
-
+                uint64_t selected_frequency = link_manager_rx->current_channel->getCenterFrequency();
+                // Go through all frequencies...
+                size_t num_tx = 0, num_rx = 0;
+                size_t t_tx = 0;
                 for (uint64_t frequency : frequencies) {
-                    ReservationTable* table = reservation_manager_rx->getReservationTable(reservation_manager_rx->getFreqChannelByCenterFreq(frequency));
-                    for (size_t t = 0; t < table->getPlanningHorizon(); t++) {
-                        const Reservation& reservation = table->getReservation(t);
-                        std::cout << "t=" << t << " -> " << reservation << std::endl;
-                        // Time slot 't' not within the proposed slots
-//                        if (std::find(request_payload->proposed_slots.begin(), request_payload->proposed_slots.end(), t) == request_payload->proposed_slots.end())
-//                            CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
-//                        // Time slot 't' within the proposed slots
-//                        else {
-//                            if (frequency == request_payload->proposed_channels.at(0)->getCenterFrequency())
-//                                CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
-//                            else
-//                                CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
-//                        }
+                    ReservationTable *table_rx = reservation_manager_rx->getReservationTable(
+                            reservation_manager_rx->getFreqChannelByCenterFreq(frequency));
+                    // ... for the selected frequency channel...
+                    if (frequency == selected_frequency) {
+                        for (size_t t = 0; t < table_rx->getPlanningHorizon(); t++) {
+                            const Reservation &reservation = table_rx->getReservation(t);
+                            if (reservation.isTx()) {
+                                num_tx++;
+                                t_tx = t;
+                                // The TX slot should be one out of the proposed slots.
+                                CPPUNIT_ASSERT(std::find(request_payload->proposed_slots.begin(),
+                                                         request_payload->proposed_slots.end(), t) !=
+                                               request_payload->proposed_slots.end());
+                            } else if (reservation.isRx()) {
+                                num_rx++;
+                                // The TX slot should've been found first.
+                                CPPUNIT_ASSERT(t_tx > 0);
+                                // The RX slot should be exactly one tx_offset further than the TX slot.
+                                CPPUNIT_ASSERT_EQUAL(t_tx + link_manager_rx->lme->tx_offset, t);
+                            } else // All other slots must be idle.
+                                CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
+                        }
+                    // ... for all other frequency channels...
+                    } else {
+                        for (size_t t = 0; t < table_rx->getPlanningHorizon(); t++) {
+                            const Reservation &reservation = table_rx->getReservation(t);
+                            // all slots should be IDLE.
+                            CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
+                        }
                     }
                 }
+                // There should be exactly one RX slot,
+                CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx);
+                // and one TX slot.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
 
-                coutd.setVerbose(false);
+//                coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
-//			CPPUNIT_TEST(testTrafficEstimate);
-//            CPPUNIT_TEST(testTrafficEstimateOverTimeslots);
-//			CPPUNIT_TEST(testNewLinkEstablishment);
-//			CPPUNIT_TEST(testComputeProposal);
-//			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
-//			CPPUNIT_TEST(testNewLinkRequest);
-//			CPPUNIT_TEST(testOnTransmissionSlot);
-//			CPPUNIT_TEST(testSetBaseHeader);
-//			CPPUNIT_TEST(testSetBeaconHeader);
-//			CPPUNIT_TEST(testSetUnicastHeader);
-//			CPPUNIT_TEST(testSetRequestHeader);
-//			CPPUNIT_TEST(testProcessIncomingBase);
-//			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
-//			CPPUNIT_TEST(testProcessIncomingUnicast);
-//			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
-//			CPPUNIT_TEST(testPrepareLinkReply);
-//			CPPUNIT_TEST(testReplyToRequest);
-//			CPPUNIT_TEST(testLocking);
-//            CPPUNIT_TEST(testReservationsAfterRequest);
+			CPPUNIT_TEST(testTrafficEstimate);
+            CPPUNIT_TEST(testTrafficEstimateOverTimeslots);
+			CPPUNIT_TEST(testNewLinkEstablishment);
+			CPPUNIT_TEST(testComputeProposal);
+			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
+			CPPUNIT_TEST(testNewLinkRequest);
+			CPPUNIT_TEST(testOnTransmissionSlot);
+			CPPUNIT_TEST(testSetBaseHeader);
+			CPPUNIT_TEST(testSetBeaconHeader);
+			CPPUNIT_TEST(testSetUnicastHeader);
+			CPPUNIT_TEST(testSetRequestHeader);
+			CPPUNIT_TEST(testProcessIncomingBase);
+			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
+			CPPUNIT_TEST(testProcessIncomingUnicast);
+			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
+			CPPUNIT_TEST(testPrepareLinkReply);
+			CPPUNIT_TEST(testReplyToRequest);
+			CPPUNIT_TEST(testLocking);
+            CPPUNIT_TEST(testReservationsAfterRequest);
             CPPUNIT_TEST(testReservationsAfterCandidateSelection);
 		CPPUNIT_TEST_SUITE_END();
 	};
