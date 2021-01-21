@@ -379,6 +379,17 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
                 minimum_slot_offset_for_new_reservations = tx_offset + default_minimum_slot_offset_for_new_reservations;
             request->getPayloads().at(i) = p2pSlotSelection();
             coutd << "populated link request: " << *request_header << " -> ";
+            // Save current proposal.
+            auto* proposal = (const ProposalPayload*) request->getPayloads().at(i);
+            last_proposed_resources.clear();
+            for (size_t j = 0; j < proposal->proposed_channels.size(); j++) {
+                const FrequencyChannel* channel = proposal->proposed_channels.at(j);
+                unsigned int num_candidates_in_this_channel = proposal->num_candidates.at(j);
+                for (size_t k = 0; k < num_candidates_in_this_channel; k++) {
+                    unsigned int t = proposal->proposed_slots.at(k);
+                    last_proposed_resources[channel].push_back(t);
+                }
+            }
             break;
         }
     }

@@ -347,7 +347,7 @@ void LinkManager::assign(const FrequencyChannel* channel) {
         this->current_channel = channel;
         this->current_reservation_table = reservation_manager->getReservationTable(channel);
 	} else
-		coutd << *this << ":assign, but channel or reservation table are already assigned; ignoring -> ";
+		coutd << *this << "::assign, but channel or reservation table are already assigned; ignoring -> ";
 }
 
 void LinkManager::reassign(const FrequencyChannel* channel) {

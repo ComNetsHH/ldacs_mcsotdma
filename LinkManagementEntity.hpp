@@ -185,6 +185,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         /** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
         unsigned int tx_offset = 5;
         const FrequencyChannel* next_channel = nullptr;
+
+        /** Saves the last proposed (frequency channel, time slot)-pairs. */
+        std::map<const FrequencyChannel*, std::vector<unsigned int>> last_proposed_resources;
     };
 }
 

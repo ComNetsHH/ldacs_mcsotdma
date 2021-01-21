@@ -445,10 +445,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                     for (unsigned int offset = 0; offset < table->getPlanningHorizon(); offset++) {
                         const Reservation& reservation = table->getReservation(offset);
                         // ... it should be marked as RX for the proposed slots...
-                        if (std::find(proposed_slots.begin(), proposed_slots.end(), offset) != proposed_slots.end())
+                        if (std::find(proposed_slots.begin(), proposed_slots.end(), offset) != proposed_slots.end()) {
                             CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+                            // And this channel should be saved in the last saved proposal...
+                            CPPUNIT_ASSERT(link_manager->lme->last_proposed_resources.find(channel) != link_manager->lme->last_proposed_resources.end());
+                            // ... together with this particular slot offset.
+                            const std::vector<unsigned int>& proposed_slots_in_this_channel = link_manager->lme->last_proposed_resources[channel];
+                            CPPUNIT_ASSERT(std::find(proposed_slots_in_this_channel.begin(), proposed_slots_in_this_channel.end(), offset) != proposed_slots_in_this_channel.end());
                         // ... and idle for all others.
-                        else
+                        } else
                             CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
                     }
                 }
