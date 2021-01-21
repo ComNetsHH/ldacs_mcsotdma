@@ -397,16 +397,7 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
             // Save current proposal.
             auto* proposal = (const ProposalPayload*) request->getPayloads().at(i);
             last_proposal_absolute_time = owner->mac->getCurrentSlot();
-            last_proposed_resources.clear();
-//            for (size_t j = 0; j < proposal->proposed_channels.size(); j++) {
-            for (const auto& item : proposal->proposed_resources) {
-                const FrequencyChannel* channel = item.first;
-                unsigned int num_candidates_in_this_channel = item.second.size();
-                for (size_t k = 0; k < num_candidates_in_this_channel; k++) {
-                    unsigned int t = item.second.at(k);
-                    last_proposed_resources[channel].push_back(t);
-                }
-            }
+            last_proposed_resources = proposal->proposed_resources;
             break;
         }
     }
