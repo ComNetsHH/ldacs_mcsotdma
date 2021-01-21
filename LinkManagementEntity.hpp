@@ -32,15 +32,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         class ProposalPayload : public L2Packet::Payload {
         public:
-            ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : target_num_channels(num_freq_channels), target_num_slots(num_slots), num_slots_per_candidate(1) {
+            ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : target_num_channels(num_freq_channels), target_num_slots(num_slots), burst_length(1) {
                 if (target_num_slots > pow(2, 4))
                     throw std::runtime_error("Cannot encode more than 16 candidate slots.");
             }
 
             /** Copy constructor. */
             ProposalPayload(const ProposalPayload& other)
-                    : proposed_channels(other.proposed_channels), proposed_slots(other.proposed_slots), num_candidates(other.num_candidates),
-                      target_num_channels(other.target_num_channels), target_num_slots(other.target_num_slots), num_slots_per_candidate(other.num_slots_per_candidate) {}
+                    : proposed_resources(other.proposed_resources), target_num_channels(other.target_num_channels), target_num_slots(other.target_num_slots), burst_length(other.burst_length) {}
 
             unsigned int getBits() const override {
                 return 8 * target_num_channels // 1B per frequency channel
@@ -49,17 +48,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                        + 8; // 1B to denote candidate slot length
             }
 
-            std::vector<const FrequencyChannel*> proposed_channels;
-            /** Starting slots. */
-            std::vector<unsigned int> proposed_slots;
-            /** Actual number of candidates per frequency channel. */
-            std::vector<unsigned int> num_candidates;
+            /** <channel, <start slots>>-map of proposed resources. */
+            std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
             /** Target number of frequency channels to propose. */
             unsigned int target_num_channels;
             /** Target number of slots to propose. */
             unsigned int target_num_slots;
             /** Number of slots to reserve. */
-            unsigned int num_slots_per_candidate;
+            unsigned int burst_length;
         };
 
 
@@ -188,6 +184,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         /** Saves the last proposed (frequency channel, time slot)-pairs. */
         std::map<const FrequencyChannel*, std::vector<unsigned int>> last_proposed_resources;
+        uint64_t last_proposal_absolute_time = 0;
     };
 }
 

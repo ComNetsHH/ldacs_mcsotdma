@@ -155,15 +155,19 @@ void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 	lme->populateRequest(packet);
 	// And mark the proposed slots as RX.
 	auto* proposal = (LinkManagementEntity::ProposalPayload*) packet->getPayloads().at(1);
-    for (size_t i = 0; i < proposal->proposed_channels.size(); i++) {
-        const FrequencyChannel* channel = proposal->proposed_channels.at(i);
+//    for (size_t i = 0; i < proposal->proposed_channels.size(); i++) {
+    size_t i = 0;
+    for (const auto& item : proposal->proposed_resources) {
+        const FrequencyChannel* channel = item.first;
         ReservationTable* table = reservation_manager->getReservationTable(channel);
         std::vector<unsigned int> proposed_slots;
         // ... and each slot...
-        for (size_t j = 0; j < proposal->target_num_slots; j++) {
-            int32_t offset = (int32_t) proposal->proposed_slots.at(i*proposal->target_num_slots + j);
-            table->mark(offset, Reservation(link_id, Reservation::Action::RX, proposal->num_slots_per_candidate - 1));
+        for (size_t j = 0; j < item.second.size(); j++) {
+            int32_t offset = (int32_t) item.second.at(j);
+//            int32_t offset = (int32_t) proposal->proposed_slots.at(i*proposal->target_num_slots + j);
+            table->mark(offset, Reservation(link_id, Reservation::Action::RX, proposal->burst_length - 1));
         }
+        i++;
     }
 }
 

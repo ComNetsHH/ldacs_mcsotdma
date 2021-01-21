@@ -243,7 +243,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
                 required_slots = lm_me->estimateCurrentNumSlots();
                 auto* request_payload = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
-                CPPUNIT_ASSERT_EQUAL(required_slots, request_payload->num_slots_per_candidate);
+                CPPUNIT_ASSERT_EQUAL(required_slots, request_payload->burst_length);
                 // Link request should've been sent, so we're 'awaiting_reply'.
                 CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_establishment_status);
                 // Reservation timeout should still be default.

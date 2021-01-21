@@ -35,8 +35,26 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
     // Make sure we're expecting a reply.
     if (owner->link_establishment_status != owner->Status::awaiting_reply)
         throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
-    assert(payload->proposed_channels.size() == 1);
-    const FrequencyChannel* channel = payload->proposed_channels.at(0);
+    assert(payload->proposed_resources.size() == 1);
+    const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
+
+    // Clear all scheduled requests, as one apparently made it through.
+    scheduled_requests.clear();
+    // Remove all RX reservations for proposed resources that, since we are processing this reply, don't need to be listened to anymore.
+    if (last_proposed_resources.empty())
+        throw std::runtime_error("LinkManagementEntity::processLinkReply for unsaved last proposal.");
+    for (const auto& item : last_proposed_resources) {
+        const FrequencyChannel* proposed_channel = item.first;
+        const std::vector<unsigned int>& proposed_slots_in_this_channel = item.second;
+        ReservationTable* table = owner->reservation_manager->getReservationTable(proposed_channel);
+        for (unsigned int offset : proposed_slots_in_this_channel) {
+            // TODO test this
+            unsigned int normalized_offset = last_proposal_absolute_time - owner->mac->getCurrentSlot() + offset;
+            if (owner->mac->getCurrentSlot() != last_proposal_absolute_time + offset)
+                table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+        }
+    }
+    last_proposed_resources.clear();
 
     // Configuring an initial channel...
     if (owner->current_channel == nullptr) {
@@ -53,7 +71,6 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
     // Renewing an existing link...
     } else {
         coutd << "renewing link -> ";
-        scheduled_requests.clear();
         if (channel == owner->current_channel) {
             coutd << "no channel change -> increasing timeout: " << tx_timeout;
             tx_timeout += default_tx_timeout;
@@ -122,9 +139,8 @@ void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentReq
         const FrequencyChannel* reply_channel = chosen_candidate.first;
         assert(reply->getPayloads().size() == 2);
         auto* reply_payload = (ProposalPayload*) reply->getPayloads().at(1);
-        reply_payload->proposed_channels.push_back(reply_channel);
         int32_t slot_offset = chosen_candidate.second;
-        reply_payload->proposed_slots.push_back(slot_offset);
+        reply_payload->proposed_resources[reply_channel].push_back(slot_offset);
         // Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
         unsigned int timeout = ((L2HeaderLinkEstablishmentRequest*&) header)->timeout,
                 offset = ((L2HeaderLinkEstablishmentRequest*&) header)->offset,
@@ -143,23 +159,24 @@ LinkManagementEntity::findViableCandidatesInRequest(L2HeaderLinkEstablishmentReq
                                                     ProposalPayload *&payload) const {
         assert(payload && "LinkManager::findViableCandidatesInRequest for nullptr ProposalPayload*");
         const MacId& dest_id = header->icao_dest_id;
-        if (payload->proposed_channels.empty())
+        if (payload->proposed_resources.empty())
             throw std::invalid_argument("LinkManager::findViableCandidatesInRequest for an empty proposal.");
 
         // Go through all proposed channels...
         std::vector<std::pair<const FrequencyChannel*, unsigned int>> viable_candidates;
-        for (size_t i = 0; i < payload->proposed_channels.size(); i++) {
-            const FrequencyChannel* channel = payload->proposed_channels.at(i);
+//        for (size_t i = 0; i < payload->proposed_channels.size(); i++) {
+        for (const auto& item : payload->proposed_resources) {
+            const FrequencyChannel* channel = item.first;
             coutd << " -> proposed channel " << channel->getCenterFrequency() << "kHz:";
             // ... and all slots proposed on this channel ...
-            unsigned int num_candidates_on_this_channel = payload->num_candidates.at(i);
+            unsigned int num_candidates_on_this_channel = item.second.size();
             for (size_t j = 0; j < num_candidates_on_this_channel; j++) {
-                unsigned int slot_offset = payload->proposed_slots.at(j);
+                unsigned int slot_offset = item.second.at(j);
                 coutd << " @" << slot_offset;
                 // ... and check if they're idle for us ...
                 const ReservationTable* table = owner->reservation_manager->getReservationTable(channel);
                 // ... if they are, then save them.
-                if (table->isIdle(slot_offset, payload->num_slots_per_candidate) && owner->mac->isTransmitterIdle(slot_offset, payload->num_slots_per_candidate)) {
+                if (table->isIdle(slot_offset, payload->burst_length) && owner->mac->isTransmitterIdle(slot_offset, payload->burst_length)) {
                     coutd << " (viable)";
                     viable_candidates.emplace_back(channel, slot_offset);
                 } else
@@ -225,8 +242,8 @@ L2Packet* LinkManagementEntity::getControlMessage() {
         scheduled_replies.erase(it);
         // Save chosen link transition.
         assert(control_message->getPayloads().size() == 2);
-        assert(((ProposalPayload*) control_message->getPayloads().at(1))->proposed_channels.size() == 1);
-        const FrequencyChannel* channel = ((ProposalPayload*) control_message->getPayloads().at(1))->proposed_channels.at(0);
+        assert(((ProposalPayload*) control_message->getPayloads().at(1))->proposed_resources.size() == 1);
+        const FrequencyChannel* channel = (((ProposalPayload*) control_message->getPayloads().at(1))->proposed_resources.begin())->first;
         next_channel = channel;
     } else if (hasPendingRequest()) {
         control_message = prepareRequest(); // Sets the callback, s.t. the actual proposal is computed then.
@@ -271,13 +288,13 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet *reply, int32_t slot_offse
         if (reply->getPayloads().size() < 2)
             throw std::invalid_argument("LinkManagementEntity::scheduleLinkReply for proposal-less reply.");
         auto* proposal = (ProposalPayload*) reply->getPayloads().at(1);
-        if (proposal->proposed_channels.empty())
+        if (proposal->proposed_resources.empty())
             throw std::invalid_argument("LinkManagementEntity::scheduleLinkReply for proposal without a FrequencyChannel.");
-        if (proposal->proposed_slots.empty())
+        if ((*proposal->proposed_resources.begin()).second.empty())
             throw std::invalid_argument("LinkManagementEntity::scheduleLinkReply for proposal without a time slot.");
 
         // Get ReservationTable for the selected channel.
-        const FrequencyChannel* selected_channel = proposal->proposed_channels.at(0);
+        const FrequencyChannel* selected_channel = proposal->proposed_resources.begin()->first;
         ReservationTable* table = owner->reservation_manager->getReservationTable(selected_channel);
 
         // Make sure the selected slot is idle (sanity check).
@@ -290,7 +307,7 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet *reply, int32_t slot_offse
         coutd << "-> scheduled reply in " << slot_offset << " slots on " << *selected_channel << " -> ";
 
         // ... and mark the first slot of the proposed reservation as RX to listen for a transmission there, which can establish this link fully.
-        unsigned int first_slot = proposal->proposed_slots.at(0) + tx_offset;
+        unsigned int first_slot = proposal->proposed_resources[selected_channel].at(0) + tx_offset;
         table->mark(first_slot, Reservation(owner->link_id, Reservation::Action::RX));
         coutd << "marked first RX slot of chosen candidate (" << *selected_channel << ", offset " << first_slot << ") -> ";
 //
@@ -347,11 +364,9 @@ LinkManagementEntity::ProposalPayload *LinkManagementEntity::p2pSlotSelection() 
         table->lock(candidate_slots);
 
         // Fill proposal.
-        proposal->proposed_channels.push_back(table->getLinkedChannel()); // Frequency channel.
-        proposal->num_candidates.push_back(candidate_slots.size()); // Number of candidates (could be fewer than the target).
-        proposal->num_slots_per_candidate = tx_burst_num_slots;
+        proposal->burst_length = tx_burst_num_slots;
         for (int32_t slot : candidate_slots) // The candidate slots.
-            proposal->proposed_slots.push_back(slot);
+            proposal->proposed_resources[table->getLinkedChannel()].push_back(slot);
     }
     return proposal;
 }
@@ -381,12 +396,14 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
             coutd << "populated link request: " << *request_header << " -> ";
             // Save current proposal.
             auto* proposal = (const ProposalPayload*) request->getPayloads().at(i);
+            last_proposal_absolute_time = owner->mac->getCurrentSlot();
             last_proposed_resources.clear();
-            for (size_t j = 0; j < proposal->proposed_channels.size(); j++) {
-                const FrequencyChannel* channel = proposal->proposed_channels.at(j);
-                unsigned int num_candidates_in_this_channel = proposal->num_candidates.at(j);
+//            for (size_t j = 0; j < proposal->proposed_channels.size(); j++) {
+            for (const auto& item : proposal->proposed_resources) {
+                const FrequencyChannel* channel = item.first;
+                unsigned int num_candidates_in_this_channel = item.second.size();
                 for (size_t k = 0; k < num_candidates_in_this_channel; k++) {
-                    unsigned int t = proposal->proposed_slots.at(k);
+                    unsigned int t = item.second.at(k);
                     last_proposed_resources[channel].push_back(t);
                 }
             }

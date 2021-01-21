@@ -133,20 +133,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
 				
 				// Should've considered several distinct frequency channels.
-				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels), proposal->proposed_channels.size());
-				for (size_t i = 1; i < proposal->proposed_channels.size(); i++) {
-					const FrequencyChannel* channel0 = proposal->proposed_channels.at(i-1);
-					const FrequencyChannel* channel1 = proposal->proposed_channels.at(i);
-					CPPUNIT_ASSERT(channel1->getCenterFrequency() != channel0->getCenterFrequency());
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels), proposal->proposed_resources.size());
+				for (auto it = proposal->proposed_resources.begin(); it != proposal->proposed_resources.end(); it++) {
+				    if (it == proposal->proposed_resources.begin()) // start at 2nd item
+                        continue;
+				    auto it_cpy = it;
+				    it_cpy--;
+                    const FrequencyChannel* channel0 = it_cpy->first;
+                    const FrequencyChannel* channel1 = it->first;
+                    CPPUNIT_ASSERT(channel1->getCenterFrequency() != channel0->getCenterFrequency());
 				}
 				
 				// Should've considered a number of candidate slots per frequency channel.
-				for (auto num_slots_in_this_candidate : proposal->num_candidates) {
+				size_t total = 0;
+				for (auto item : proposal->proposed_resources) {
 					// Since all are idle, we should've found the target number each time.
-					CPPUNIT_ASSERT_EQUAL(link_manager->lme->num_proposed_slots, num_slots_in_this_candidate);
+					CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_slots), item.second.size());
+					total += item.second.size();
 				}
 				// and so the grand total should be the number of proposed slots times the number of proposed channels.
-				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels * link_manager->lme->num_proposed_slots), proposal->proposed_slots.size());
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels * link_manager->lme->num_proposed_slots), total);
 				
 				// To have a look...
 //				coutd.setVerbose(true);
@@ -268,7 +274,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2Packet* request = other_link_manager.lme->prepareRequest();
 				request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection();
 				// The number of proposed channels should be adequate.
-				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels), ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_channels.size());
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels), ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources.size());
 				auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
 				auto body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
 				auto viable_candidates = link_manager->lme->findViableCandidatesInRequest(header, body);
@@ -380,14 +386,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				auto* proposal1 = (LinkManagementEntity::ProposalPayload*) request1->getPayloads().at(1);
 				auto* proposal2 = (LinkManagementEntity::ProposalPayload*) request2->getPayloads().at(1);
 				// We have a sufficiently large planning horizon s.t. the frequency channels can be the same.
-				CPPUNIT_ASSERT_EQUAL(proposal1->proposed_channels.size(), proposal2->proposed_channels.size());
-				for (size_t i = 0; i < proposal1->proposed_channels.size(); i++)
-					CPPUNIT_ASSERT_EQUAL(proposal1->proposed_channels.at(i), proposal2->proposed_channels.at(i));
-				// But the slots mustn't be the same.
-				for (int32_t slot1 : proposal1->proposed_slots) { // Any out of the first proposed slots...
-					for (int32_t slot2 : proposal2->proposed_slots) // can't equal any of the others.
-						CPPUNIT_ASSERT(slot1 != slot2);
+				CPPUNIT_ASSERT_EQUAL(proposal1->proposed_resources.size(), proposal2->proposed_resources.size());
+				for (const auto& item : proposal1->proposed_resources)
+				    CPPUNIT_ASSERT(proposal2->proposed_resources.find(item.first) != proposal2->proposed_resources.end());
+                // But the slots mustn't be the same.
+				for (const auto& item : proposal1->proposed_resources) {
+				    const FrequencyChannel* channel = item.first;
+				    const std::vector<unsigned int> slots1 = item.second, slots2 = proposal2->proposed_resources[channel];
+                    for (int32_t slot1 : slots1) { // Any out of the first proposed slots...
+                        for (int32_t slot2 : slots2) // can't equal any of the others.
+                            CPPUNIT_ASSERT(slot1 != slot2);
+                    }
 				}
+
 			}
 
 			/**
@@ -430,19 +441,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 L2Packet* request = phy_layer->outgoing_packets.at(0);
                 auto* request_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
                 auto* request_body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
-                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_channels), request_body->proposed_channels.size());
-                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_slots * request_body->target_num_channels), request_body->proposed_slots.size());
+                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_channels), request_body->proposed_resources.size());
+                size_t total = 0;
+                for (const auto& item : request_body->proposed_resources)
+                    total += item.second.size();
+                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_slots * request_body->target_num_channels), total);
                 // For each frequency channel...
-                for (size_t i = 0; i < request_body->proposed_channels.size(); i++) {
-                    const FrequencyChannel* channel = request_body->proposed_channels.at(i);
+                for (const auto& item : request_body->proposed_resources) {
+                    const FrequencyChannel* channel = item.first;
                     ReservationTable* table = reservation_manager->getReservationTable(channel);
                     std::vector<unsigned int> proposed_slots;
                     // ... and each slot...
                     for (size_t j = 0; j < request_body->target_num_slots; j++) {
-                        unsigned int slot = request_body->proposed_slots.at(i*request_body->target_num_slots + j);
+                        unsigned int slot = request_body->proposed_resources[channel].at(j);
                         proposed_slots.push_back(slot);
                     }
-                    for (unsigned int offset = 0; offset < table->getPlanningHorizon(); offset++) {
+                    for (int offset = 0; offset < table->getPlanningHorizon(); offset++) {
                         const Reservation& reservation = table->getReservation(offset);
                         // ... it should be marked as RX for the proposed slots...
                         if (std::find(proposed_slots.begin(), proposed_slots.end(), offset) != proposed_slots.end()) {
@@ -519,9 +533,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                                 num_tx++;
                                 t_tx = t;
                                 // The TX slot should be one out of the proposed slots.
-                                CPPUNIT_ASSERT(std::find(request_payload->proposed_slots.begin(),
-                                                         request_payload->proposed_slots.end(), t) !=
-                                               request_payload->proposed_slots.end());
+                                bool found_slot = false;
+                                for (const auto& item : request_payload->proposed_resources) {
+                                    if (std::find(item.second.begin(), item.second.end(), t) != item.second.end())
+                                        found_slot = true;
+                                }
+                                CPPUNIT_ASSERT_EQUAL(true, found_slot);
                             } else if (reservation.isRx()) {
                                 num_rx++;
                                 // The TX slot should've been found first.
@@ -546,6 +563,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
 
 //                coutd.setVerbose(false);
+			}
+
+			void testReservationsAfterReplyCameIn() {
+			    //
+                testReservationsAfterRequest();
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
