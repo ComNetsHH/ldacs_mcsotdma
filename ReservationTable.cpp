@@ -125,7 +125,7 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
 		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_transmitter==true for unset transmitter table.");
 	if (consider_receivers && receiver_reservation_tables.empty())
         throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_receivers==true for unset receiver tables.");
-	bool idle = false, tx_idle = false, rx_idle = false;
+	bool tx_idle = false, rx_idle = false;
 	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
 		if (this->isIdle(i, length)) {
 		    // Neither TX nor RX matter
@@ -145,8 +145,8 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
             // !TX && RX
             } else {
                 rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable *table) {
-                    return table->isIdle(i, length);
-                });
+                        return table->isIdle(i, length);
+                    });
                 if (rx_idle)
                     return i;
             }
@@ -256,9 +256,10 @@ bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_
         if (receiver_reservation_tables.empty())
             throw std::runtime_error("ReservationTable::lock with lock_rx=true and unset receiver reservation table.");
         if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offsets](ReservationTable* table) {
-            return table->canLock(slot_offsets);
-        }))
+                return table->canLock(slot_offsets);
+            })) {
             return false;
+        }
     }
     // Then apply locking.
 	for (int32_t t : slot_offsets)
