@@ -265,9 +265,14 @@ bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_
         slot_utilization_vec.at(convertOffsetToIndex(t)).lock();
 	if (lock_tx)
 	    transmitter_reservation_table->lock(slot_offsets, false, false);
-	if (lock_rx)
-	    for (auto* rx_table : receiver_reservation_tables)
-	        rx_table->lock(slot_offsets, false, false);
+	if (lock_rx) {
+        for (auto *rx_table : receiver_reservation_tables)
+            if (rx_table->canLock(slot_offsets)) {
+                rx_table->lock(slot_offsets, false, false);
+                // Lock just *one* receiver table, i.e. the first one where you can.
+                return true;
+            }
+    }
 	return true;
 }
 
