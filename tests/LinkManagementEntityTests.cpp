@@ -91,11 +91,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         void testPopulateRequest() {
 //            coutd.setVerbose(true);
+
             L2Packet* request = lme->prepareRequest();
             lme->populateRequest(request);
             auto proposal = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
             const auto& map = proposal->proposed_resources;
             CPPUNIT_ASSERT_EQUAL(size_t(lme->num_proposed_channels), map.size());
+
             for (const auto& item1 : map) {
                 const FrequencyChannel* channel1 = item1.first;
                 const std::vector<unsigned int>& offsets1 = item1.second;

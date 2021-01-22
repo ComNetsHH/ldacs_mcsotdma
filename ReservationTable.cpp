@@ -242,31 +242,40 @@ std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offse
 	return start_slots;
 }
 
-bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_rx, bool lock_tx) {
-	for (int32_t t : slot_offsets) {
-		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).lock())
-			return false;
-		if (lock_tx) {
-		    if (transmitter_reservation_table == nullptr)
-		        throw std::runtime_error("ReservationTable::lock with lock_tx=true and unset transmitter reservation table.");
-		    if (!transmitter_reservation_table->lock(slot_offsets, false, false))
-		        return false;
-		}
-		if (lock_rx) {
-		    if (receiver_reservation_tables.empty())
-                throw std::runtime_error("ReservationTable::lock with lock_rx=true and unset receiver reservation table.");
-		    bool succeeded = false;
-		    for (ReservationTable* rx_table : receiver_reservation_tables) {
-		        if (rx_table->lock(slot_offsets, false, false)) {
-		            succeeded = true;
-                    break;
-                }
-		    }
-		    if (!succeeded)
-		        return false;
-		}
-	}
+bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_tx, bool lock_rx) {
+    // Ensure that you *can* lock all tables that should be locked *before* actually doing so.
+    if (!canLock(slot_offsets))
+        return false;
+    if (lock_tx) {
+        if (transmitter_reservation_table == nullptr)
+            throw std::runtime_error("ReservationTable::lock with lock_tx=true and unset transmitter reservation table.");
+        if (!transmitter_reservation_table->canLock(slot_offsets))
+            return false;
+    }
+    if (lock_rx) {
+        if (receiver_reservation_tables.empty())
+            throw std::runtime_error("ReservationTable::lock with lock_rx=true and unset receiver reservation table.");
+        if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offsets](ReservationTable* table) {
+            return table->canLock(slot_offsets);
+        }))
+            return false;
+    }
+    // Then apply locking.
+	for (int32_t t : slot_offsets)
+        slot_utilization_vec.at(convertOffsetToIndex(t)).lock();
+	if (lock_tx)
+	    transmitter_reservation_table->lock(slot_offsets, false, false);
+	if (lock_rx)
+	    for (auto* rx_table : receiver_reservation_tables)
+	        rx_table->lock(slot_offsets, false, false);
 	return true;
+}
+
+bool ReservationTable::canLock(const std::vector<int32_t> &slot_offsets) const {
+    for (int32_t t : slot_offsets)
+        if (!slot_utilization_vec.at(convertOffsetToIndex(t)).isIdle())
+            return false;
+    return true;
 }
 
 int32_t ReservationTable::findEarliestOffset(int32_t start_offset, const Reservation& reservation) const {

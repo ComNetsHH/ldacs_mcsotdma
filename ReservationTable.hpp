@@ -21,6 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class ReservationTable {
 		public:
 			friend class ReservationTableTests;
+			friend class LinkManagementEntity;
 			
 			/**
 			 * @param planning_horizon The number of time slots this reservation table will keep saved. It denotes the number of slots both into the future, as well as a history of as many slots. The number of slots saved is correspondingly planning_horizon*2.
@@ -73,11 +74,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**
 			 * Locks the given slot_offsets in this reservation table so that they are not considered for later link establishment proposals' candidate slot_offsets.
 			 * @param slot_offsets
-			 * @param lock_rx Whether to lock a hardware receiver, too.
 			 * @param lock_tx Whether to lock the hardware transmitter, too.
+			 * @param lock_rx Whether to lock a hardware receiver, too.
 			 * @return Whether locking succeeded.
 			 */
-			bool lock(const std::vector<int32_t>& slot_offsets, bool lock_rx, bool lock_tx);
+			bool lock(const std::vector<int32_t>& slot_offsets, bool lock_tx, bool lock_rx);
 			
 			/**
 			 * @param start_offset The minimum slot offset to start the search.
@@ -203,6 +204,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @throws runtime_error If no suitable slot range can be found.
 			 */
 			int32_t findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter, bool consider_receivers) const;
+
+			bool canLock(const std::vector<int32_t>& slot_offsets) const;
 			
 		protected:
 			/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */
