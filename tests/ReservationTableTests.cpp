@@ -5,6 +5,8 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../ReservationTable.hpp"
+#include "../coutdebug.hpp"
+#include <algorithm>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	
@@ -71,7 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					}
 					CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
 				}
-				for (int32_t offset = int32_t(this->planning_horizon + move_into_invalid_range);
+				for (auto offset = int32_t(this->planning_horizon + move_into_invalid_range);
 				     offset > int32_t(this->planning_horizon); offset--) {
 					bool exception_thrown = false;
 					try {
@@ -208,7 +210,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				uint32_t length = 4;
 				bool exception_thrown = false;
 				try {
-					table->findEarliestIdleRange(start, length, false);
+					table->findEarliestIdleRange(start, length, false, false);
 				} catch (const std::invalid_argument& e) {
 					exception_thrown = true;
 				}
@@ -219,7 +221,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				length = 3;
 				exception_thrown = false;
 				try {
-					int32_t start_of_idle_range = table->findEarliestIdleRange(start, length, false);
+					int32_t start_of_idle_range = table->findEarliestIdleRange(start, length, false, false);
 					CPPUNIT_ASSERT_EQUAL(start, start_of_idle_range);
 				} catch (const std::exception& e) {
 					exception_thrown = true;
@@ -229,28 +231,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				
 				// Starting at 'now' works too.
 				start = 0;
-				int32_t start_of_idle_range = table->findEarliestIdleRange(start, length, false);
+				int32_t start_of_idle_range = table->findEarliestIdleRange(start, length, false, false);
 				CPPUNIT_ASSERT_EQUAL(start, start_of_idle_range);
 				
 				// But starting in the p
-				int32_t idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
+				int32_t idle_slot_range_start = table->findEarliestIdleRange(0, 5, false, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(0), idle_slot_range_start);
 				table->mark(0, reservation);
 				// x00000
 				// 012345
-				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
+				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(1), idle_slot_range_start);
 				table->mark(5, reservation);
 				// x0000x0000
 				// 0123456789
-				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
+				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(6), idle_slot_range_start);
 				table->mark(11, reservation);
 				// x0000x00000x0
 				// 0123456789012
-				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false);
+				idle_slot_range_start = table->findEarliestIdleRange(0, 5, false, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(6), idle_slot_range_start);
-				idle_slot_range_start = table->findEarliestIdleRange(7, 5, false);
+				idle_slot_range_start = table->findEarliestIdleRange(7, 5, false, false);
 				CPPUNIT_ASSERT_EQUAL(int32_t(12), idle_slot_range_start);
 			}
 			
@@ -321,7 +323,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
 				unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
 				// At first, all slots are free.
-				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false);
+				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false, false);
 				// So we should have no problem finding enough candidates.
 				CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 				// And these should be consecutive slots starting at 0.
@@ -340,7 +342,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				table->mark(19, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
 				table->mark(20, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
 				table->mark(25, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false);
+				std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false, false);
 				// We should only be able to find 4 candidates.
 				CPPUNIT_ASSERT_EQUAL(size_t(4), candidate_slots.size());
 				// And these should be the following starting slots:
@@ -348,6 +350,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(int32_t(7), candidate_slots.at(1));
 				CPPUNIT_ASSERT_EQUAL(int32_t(8), candidate_slots.at(2));
 				CPPUNIT_ASSERT_EQUAL(int32_t(14), candidate_slots.at(3));
+			}
+
+			void testFindCandidateSlotsRespectRX() {
+			    ReservationTable rx_table = ReservationTable(planning_horizon);
+			    table->linkReceiverReservationTable(&rx_table);
+                CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
+                unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
+                // At first, all slots are free.
+                std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false, true);
+                // So we should have no problem finding enough candidates.
+                CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
+                // And these should be consecutive slots starting at 0.
+                for (int32_t i = 0; i < num_candidates; i++)
+                    CPPUNIT_ASSERT_EQUAL(int32_t(min_offset + i), candidate_slots.at(i));
+
+                // Now mark some slots as busy for the receiver.
+                rx_table.lock({0}, false, false);
+                candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false, true);
+                CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
+                // And these should be consecutive slots starting at 1.
+                for (int32_t i = 0; i < num_candidates; i++)
+                    CPPUNIT_ASSERT_EQUAL(int32_t(min_offset + i + 1), candidate_slots.at(i));
+
+                rx_table.lock({2}, false, false);
+                range_length = 1;
+                candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false, true);
+                CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
+                // And these should be consecutive slots starting at 1 and exclude 2.
+                std::vector<int> expected_slots = {1, 3, 4, 5, 6};
+                for (int32_t i = 0, j = 0; i < num_candidates; i++)
+                    CPPUNIT_ASSERT(std::find(expected_slots.begin(), expected_slots.end(), 5) != expected_slots.end());
 			}
 			
 			void testFindEarliestOffset() {
@@ -547,11 +580,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testLocking() {
 				// Find some candidate
 				unsigned int num_candidates = 3;
-				std::vector<int32_t> slots = table->findCandidateSlots(0, num_candidates, 5, false);
+				std::vector<int32_t> slots = table->findCandidateSlots(0, num_candidates, 5, false, false);
 				// Now lock these slots.
-				table->lock(slots);
+				table->lock(slots, false, false);
 				// So these slots should *not* be considered for a further request.
-				std::vector<int32_t> slots2 = table->findCandidateSlots(0, num_candidates, 5, false);
+				std::vector<int32_t> slots2 = table->findCandidateSlots(0, num_candidates, 5, false, false);
 				CPPUNIT_ASSERT_EQUAL(slots.size(), slots2.size());
 				
 				for (int32_t i : slots) { // for every slot out of the first set
@@ -581,6 +614,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testFindCandidateSlotsAllIdle);
 			CPPUNIT_TEST(testFindCandidateSlotsComplicated);
 			CPPUNIT_TEST(testFindEarliestOffset);
+            CPPUNIT_TEST(testFindCandidateSlotsRespectRX);
 			CPPUNIT_TEST(testMultiSlotTransmissionReservationTx);
 			CPPUNIT_TEST(testMultiSlotTransmissionReservationRx);
 			CPPUNIT_TEST(testMultiSlotTransmissionReservationBusy);

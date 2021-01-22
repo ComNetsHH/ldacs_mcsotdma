@@ -65,15 +65,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param num_candidates The number of candidate slots that should be found.
 			 * @param range_length The number of slots that should be idle for each range that starts at the returned offsets.
 			 * @param consider_transmitter Whether transmitter utilization should be taken into account, s.t. slots that are already marked for transmission are not included.
+			 * @param consider_receivers Whether receiver utilization should be taken into account, s.t. slots where no receiver is available are not included.
 			 * @return The start slots of each candidate. The size of the returned container should be checked to ensure that enough candidates were found.
 			 */
-			std::vector<int32_t> findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length, bool consider_transmitter) const;
+			std::vector<int32_t> findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length, bool consider_transmitter, bool consider_receivers) const;
 			
 			/**
 			 * Locks the given slot_offsets in this reservation table so that they are not considered for later link establishment proposals' candidate slot_offsets.
 			 * @param slot_offsets
+			 * @param lock_rx Whether to lock a hardware receiver, too.
+			 * @param lock_tx Whether to lock the hardware transmitter, too.
+			 * @return Whether locking succeeded.
 			 */
-			void lock(const std::vector<int32_t>& slot_offsets);
+			bool lock(const std::vector<int32_t>& slot_offsets, bool lock_rx, bool lock_tx);
 			
 			/**
 			 * @param start_offset The minimum slot offset to start the search.
@@ -194,10 +198,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param start Slot offset that marks the earliest opportunity.
 			 * @param length Number of slots of the slot range.
 			 * @param consider_transmitter Whether a linked transmitter reservation table should be queried for being idle, too.
+			 * @param consider_receivers Whether linked receiver reservation tables should be queried for being idle, too.
 			 * @return Slot offset that marks the beginning of a completely idle slot range.
 			 * @throws runtime_error If no suitable slot range can be found.
 			 */
-			int32_t findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter) const;
+			int32_t findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter, bool consider_receivers) const;
 			
 		protected:
 			/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */

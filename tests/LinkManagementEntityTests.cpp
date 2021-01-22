@@ -13,59 +13,44 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
      * The LinkManagementEntity is a module of the LinkManager.
      * As such, it cannot be easily tested on its own. Most tests are put into LinkManagerTests or even SystemTests.
      */
-    class LinkManagementProcessTests : public CppUnit::TestFixture {
+    class LinkManagementEntityTests : public CppUnit::TestFixture {
     private:
+        TestEnvironment* env;
+
         LinkManager* link_manager;
         ReservationManager* reservation_manager;
-        MacId own_id = MacId(42);
-        MacId communication_partner_id = MacId(43);
-        uint32_t planning_horizon = 128;
-        uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
+        MacId own_id;
+        MacId communication_partner_id;
+        uint32_t planning_horizon;
+        uint64_t center_frequency1, center_frequency2, center_frequency3, bc_frequency, bandwidth;
         unsigned long num_bits_going_out = 800*100;
         MACLayer* mac;
-        ARQLayer* arq_layer;
-        RLCLayer* rlc_layer;
-        PHYLayer* phy_layer;
-        NetworkLayer* net_layer;
 
         unsigned int tx_timeout = 5, init_offset = 1, tx_offset = 3, num_renewal_attempts = 2;
         LinkManagementEntity* lme;
 
     public:
         void setUp() override {
-            phy_layer = new PHYLayer(planning_horizon);
-            mac = new MACLayer(own_id, planning_horizon);
+            own_id = MacId(42);
+            communication_partner_id = MacId(43);
+            env = new TestEnvironment(own_id, communication_partner_id);
+
+            planning_horizon = env->planning_horizon;
+            center_frequency1 = env->center_frequency1;
+            center_frequency2 = env->center_frequency2;
+            center_frequency3 = env->center_frequency3;
+            bc_frequency = env->bc_frequency;
+            bandwidth = env->bandwidth;
+
+            mac = env->mac_layer;
             reservation_manager = mac->reservation_manager;
-            reservation_manager->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
-            reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-            reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-            reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-            reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
+            link_manager = mac->getLinkManager(communication_partner_id);
 
-            link_manager = new LinkManager(communication_partner_id, reservation_manager, mac);
-            arq_layer = new ARQLayer();
-            mac->setUpperLayer(arq_layer);
-            arq_layer->setLowerLayer(mac);
-            net_layer = new NetworkLayer();
-            rlc_layer = new RLCLayer(own_id);
-            net_layer->setLowerLayer(rlc_layer);
-            rlc_layer->setUpperLayer(net_layer);
-            rlc_layer->setLowerLayer(arq_layer);
-            arq_layer->setUpperLayer(rlc_layer);
-            phy_layer->setUpperLayer(mac);
-            mac->setLowerLayer(phy_layer);
-
-            lme = new LinkManagementEntity(link_manager);
+            lme = link_manager->lme;
         }
 
         void tearDown() override {
-            delete mac;
-            delete link_manager;
-            delete arq_layer;
-            delete rlc_layer;
-            delete phy_layer;
-            delete net_layer;
-            delete lme;
+            delete env;
         }
 
         void testSchedule() {
@@ -105,7 +90,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         }
 
         void testPopulateRequest() {
-            coutd.setVerbose(true);
+//            coutd.setVerbose(true);
             L2Packet* request = lme->prepareRequest();
             lme->populateRequest(request);
             auto proposal = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
@@ -128,10 +113,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                     }
                 }
             }
-            coutd.setVerbose(false);
+//            coutd.setVerbose(false);
         }
 
-        CPPUNIT_TEST_SUITE(LinkManagementProcessTests);
+        CPPUNIT_TEST_SUITE(LinkManagementEntityTests);
             CPPUNIT_TEST(testSchedule);
             CPPUNIT_TEST(testUpdate);
             CPPUNIT_TEST(testPopulateRequest);

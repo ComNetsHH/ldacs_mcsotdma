@@ -27,8 +27,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class BCLinkManagerTests;
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
-
 		friend class LinkManagementEntity;
+        friend class LinkManagementEntityTests;
 			
 		public:
 			enum Status {

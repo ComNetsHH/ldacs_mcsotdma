@@ -22,11 +22,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void update(uint64_t num_slots);
 			
 			ReservationTable* getTransmitterReservationTable();
+			std::vector<ReservationTable*> getReceiverReservationTables();
 		
 		protected:
 			/** Is notified by MAC ReservationTables of their reservations. */
-			ReservationTable* transmitter_reservations = nullptr;
-			std::vector<ReservationTable*> receiver_reservations;
+			ReservationTable* transmitter_reservation_table = nullptr;
+			std::vector<ReservationTable*> receiver_reservation_tables;
 	};
 }
 

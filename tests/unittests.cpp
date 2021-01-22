@@ -15,7 +15,7 @@
 #include "MCSOTDMA_MacTests.cpp"
 #include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
-#include "LinkManagementProcessTests.cpp"
+#include "LinkManagementEntityTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
@@ -31,7 +31,7 @@ int main() {
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(SystemTests::suite());
-	runner.addTest(LinkManagementProcessTests::suite());
+	runner.addTest(LinkManagementEntityTests::suite());
 	
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

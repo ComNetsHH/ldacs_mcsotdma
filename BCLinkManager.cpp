@@ -162,7 +162,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() const {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->target_collision_probability);
-	std::vector<int32_t> candidate_slots = current_reservation_table->findCandidateSlots(lme->getMinOffset(), num_candidates, 1, true);
+	std::vector<int32_t> candidate_slots = current_reservation_table->findCandidateSlots(lme->getMinOffset(), num_candidates, 1, true, false);
 	int32_t slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
 	if (slot < 0)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection chose a slot in the past.");

@@ -3,7 +3,9 @@
 //
 
 #include <cassert>
+#include <iostream>
 #include "ReservationManager.hpp"
+#include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 

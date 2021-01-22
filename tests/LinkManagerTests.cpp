@@ -261,6 +261,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				other_mac.setLowerLayer(phy_layer);
                 other_mac.reservation_manager->setTransmitterReservationTable(
                         phy_layer->getTransmitterReservationTable());
+                for (ReservationTable* table : phy_layer->getReceiverReservationTables())
+                    other_mac.reservation_manager->addReceiverReservationTable(table);
 				other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
@@ -345,6 +347,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				other_mac.setLowerLayer(phy_layer);
                 other_mac.reservation_manager->setTransmitterReservationTable(
                         phy_layer->getTransmitterReservationTable());
+                for (ReservationTable* table : phy_layer->getReceiverReservationTables())
+                    other_mac.reservation_manager->addReceiverReservationTable(table);
 				other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
@@ -359,10 +363,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
 				// And increment time until it has sent the reply.
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
-				while (!p2p_manager->lme->scheduled_replies.empty()) {
+				size_t num_slots = 0, num_slots_max = 100;
+				while (!p2p_manager->lme->scheduled_replies.empty() && num_slots++ < num_slots_max) {
 					mac->update(1);
 					mac->execute();
 				}
+				CPPUNIT_ASSERT(num_slots < num_slots_max);
 				CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
 				L2Packet* reply = phy_layer->outgoing_packets.at(0);
 				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
@@ -600,7 +606,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 link_manager_rx->receiveFromLower(request);
                 CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
 
-                coutd.setVerbose(true);
+//                coutd.setVerbose(true);
 
                 // Increment time until the reply has been sent.
                 std::vector<uint64_t> frequencies;
@@ -637,7 +643,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //                L2Packet* reply = link_manager_rx->lme->scheduled_replies.begin()->second;
 //                mac->receiveFromLower(reply);
 
-                coutd.setVerbose(false);
+//                coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);

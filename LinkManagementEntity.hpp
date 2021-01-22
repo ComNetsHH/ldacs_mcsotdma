@@ -19,7 +19,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
      */
     class LinkManagementEntity {
 
-        friend class LinkManagementProcessTests;
+        friend class LinkManagementEntityTests;
         friend class LinkManagerTests;
         friend class BCLinkManagerTests;
         friend class SystemTests;
