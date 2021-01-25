@@ -606,7 +606,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 link_manager_rx->receiveFromLower(request);
                 CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
 
-//                coutd.setVerbose(true);
+                coutd.setVerbose(true);
 
                 // Increment time until the reply has been sent.
                 std::vector<uint64_t> frequencies;
@@ -614,8 +614,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 frequencies.push_back(center_frequency2);
                 frequencies.push_back(center_frequency3);
                 uint64_t selected_frequency = link_manager_rx->current_channel->getCenterFrequency();
-                int selected_reply_offset = -1;
-                size_t num_tx = 0;
+                int reply_tx_offset = -1, first_rx_offset = -1;
+                size_t num_tx = 0, num_rx = 0, num_other_reservations = 0;
                 for (uint64_t frequency : frequencies) {
                     ReservationTable *table_rx = reservation_manager_rx->getReservationTable(
                             reservation_manager_rx->getFreqChannelByCenterFreq(frequency));
@@ -623,27 +623,48 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                     if (frequency == selected_frequency) {
                         for (size_t t = 0; t < table_rx->getPlanningHorizon(); t++) {
                             const Reservation &reservation = table_rx->getReservation(t);
-                            if (reservation.isTx()) {
+                            if (reservation.isTx() || reservation.isTxCont()) {
                                 num_tx++;
-                                selected_reply_offset = t;
+                                reply_tx_offset = t;
                             }
+                            else if (reservation.isRx()) {
+                                num_rx++;
+                                first_rx_offset = t;
+                            } else if (!reservation.isIdle())
+                                num_other_reservations++;
                         }
                     }
                 }
-                // Sanity checks.
-                CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
-                CPPUNIT_ASSERT(selected_reply_offset > -1);
 
-                for (int t = 0; t < selected_reply_offset; t++) {
+                // Just one TX reserved.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
+                // Just one RX reserved.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx);
+                // No other reservations.
+                CPPUNIT_ASSERT_EQUAL(size_t(0), num_other_reservations);
+                // TX offset found.
+                CPPUNIT_ASSERT(reply_tx_offset > -1);
+                // RX offset found.
+                CPPUNIT_ASSERT(first_rx_offset > -1);
+                // First RX is one offset away from first TX.
+                CPPUNIT_ASSERT_EQUAL(((unsigned int) reply_tx_offset) + link_manager_rx->lme->tx_offset, (unsigned int) first_rx_offset);
+
+                std::pair<size_t, size_t> reservations;
+                for (int t = 0; t < reply_tx_offset; t++) {
                     mac->update(1);
-                    mac->execute();
+                    reservations = mac->execute();
                 }
+                // One P2P RX and one BC RX should be processed in the last time slot.
+                CPPUNIT_ASSERT_EQUAL(size_t(2), reservations.second);
+                // And zero TX.
+                CPPUNIT_ASSERT_EQUAL(size_t(0), reservations.first);
 
                 // Receive the reply.
 //                L2Packet* reply = link_manager_rx->lme->scheduled_replies.begin()->second;
 //                mac->receiveFromLower(reply);
 
-//                coutd.setVerbose(false);
+                coutd.setVerbose(false);
+
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);

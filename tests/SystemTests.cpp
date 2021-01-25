@@ -72,12 +72,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Notify about outgoing data, which schedules a broadcast slot.
 				mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 				// While it is scheduled, increment time.
-				while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
+                size_t num_slots = 0, max_slots = 10;
+				while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
 					mac_layer_me->update(1);
 					mac_layer_you->update(1);
 					mac_layer_me->execute();
 					mac_layer_you->execute();
 				}
+				CPPUNIT_ASSERT(num_slots < max_slots);
 				// Ensure that it has been received.
 				CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
 //				coutd.setVerbose(false);
@@ -94,25 +96,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				rlc_layer_me->should_there_be_more_data = false;
 				// New data for communication partner.
 				mac_layer_me->notifyOutgoing(512, communication_partner_id);
-				while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
+                size_t num_slots = 0, max_slots = 10;
+				while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
 					// Order is important: if 'you' updates last, the reply may already be sent, and we couldn't check the next condition (or check for both 'awaiting_reply' OR 'established').
 					mac_layer_you->update(1);
 					mac_layer_me->update(1);
 					mac_layer_me->execute();
 					mac_layer_you->execute();
 				}
+				CPPUNIT_ASSERT(num_slots < max_slots);
 				// Link request should've been sent, so we're 'awaiting_reply'.
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
 				LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 				// Reservation timeout should still be default.
 				CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout, lm_me->lme->tx_timeout);
 				// Increment time until status is 'link_established'.
-				while (mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status != LinkManager::link_established) {
+				num_slots = 0;
+				while (mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status != LinkManager::link_established && num_slots < max_slots) {
 					mac_layer_me->update(1);
 					mac_layer_you->update(1);
 					mac_layer_me->execute();
 					mac_layer_you->execute();
 				}
+				CPPUNIT_ASSERT(num_slots < max_slots);
 				// Link reply should've arrived, so *our* link should be established...
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
 				// ... and *their* link should indicate that the reply has been sent.

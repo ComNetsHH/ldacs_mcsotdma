@@ -125,6 +125,11 @@ void BCLinkManager::update(uint64_t num_slots) {
     LinkManager::update(num_slots);
 	for (uint64_t i = 0; i < num_slots; i++)
 		contention_estimator.update();
+	if (current_reservation_table->getReservation(0).isIdle()) {
+	    coutd << "marking BC reception: ";
+        markReservations(1, 0, 0, 1, SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX);
+        coutd << std::endl;
+    }
 }
 
 unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {

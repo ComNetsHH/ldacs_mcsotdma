@@ -19,15 +19,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			bool isAnyReceiverIdle(unsigned int slot_offset, unsigned int num_slots) const override;
 			
-			void update(uint64_t num_slots);
+			void update(uint64_t num_slots) override;
 			
 			ReservationTable* getTransmitterReservationTable();
 			std::vector<ReservationTable*> getReceiverReservationTables();
-		
-		protected:
+
+            void onReception(L2Packet *packet, uint64_t center_frequency) override;
+
+    protected:
 			/** Is notified by MAC ReservationTables of their reservations. */
 			ReservationTable* transmitter_reservation_table = nullptr;
 			std::vector<ReservationTable*> receiver_reservation_tables;
+			/** Collects the number of packets intended for this user that were missed because no receiver was tuned to the channel. */
+			size_t statistic_num_missed_packets = 0;
 	};
 }
 

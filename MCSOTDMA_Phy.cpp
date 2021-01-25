@@ -3,6 +3,8 @@
 //
 
 #include "MCSOTDMA_Phy.hpp"
+#include "MCSOTDMA_Mac.hpp"
+#include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -31,13 +33,35 @@ MCSOTDMA_Phy::~MCSOTDMA_Phy() {
 }
 
 void MCSOTDMA_Phy::update(uint64_t num_slots) {
+    // Clear RX frequencies.
+    IPhy::update(num_slots);
+    // Update reservation tables.
 	transmitter_reservation_table->update(num_slots);
+	for (auto* rx_table : receiver_reservation_tables)
+	    rx_table->update(num_slots);
 }
 
 ReservationTable* MCSOTDMA_Phy::getTransmitterReservationTable() {
 	return this->transmitter_reservation_table;
 }
 
-std::vector<ReservationTable *> MCSOTDMA_Phy::getReceiverReservationTables() {
+std::vector<ReservationTable*> MCSOTDMA_Phy::getReceiverReservationTables() {
     return this->receiver_reservation_tables;
+}
+
+void MCSOTDMA_Phy::onReception(L2Packet *packet, uint64_t center_frequency) {
+    // Make sure a receiver is tuned to this channel at the moment.
+    if (std::any_of(rx_frequencies.begin(), rx_frequencies.end(), [center_frequency](uint64_t rx_freq){
+            return center_frequency == rx_freq;
+        })) {
+        coutd << "PHY receives packet -> ";
+        IPhy::onReception(packet, center_frequency);
+    } else {
+        coutd << "PHY doesn't receive packet (no RX tuned to frequency '" << center_frequency << "'.";
+        if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == ((MCSOTDMA_Mac*) upper_layer)->getMacId()) {
+            statistic_num_missed_packets++;
+            coutd << " (this was destined to us, so I'm counting it as a missed packet).";
+        }
+        coutd << std::endl;
+    }
 }

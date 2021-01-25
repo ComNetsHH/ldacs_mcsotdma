@@ -28,7 +28,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void passToLower(L2Packet* packet, unsigned int center_frequency) override;
 			
-			void receiveFromLower(L2Packet* packet) override;
+			void receiveFromLower(L2Packet* packet, uint64_t center_frequency) override;
 			
 			/**
 			 * @param id
@@ -39,7 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void passToUpper(L2Packet* packet) override;
 			
 			/** Notify this MAC that time has passed. */
-			void update(int64_t num_slots) override;
+			void update(uint64_t num_slots) override;
 			
 			/**
 			 * Execute reservations valid in the current time slot.

@@ -394,7 +394,7 @@ void LinkManager::update(uint64_t num_slots) {
 }
 
 void LinkManager::onReceptionSlot() {
-    lme->onReceptionSlot();
+//    lme->onReceptionSlot();
 }
 
 
