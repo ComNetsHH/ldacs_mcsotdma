@@ -342,18 +342,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Assign as BC link manager.
 				LinkManager* bc_manager = mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 				// Prepare a link establishment request.
-				MACLayer other_mac = MACLayer(communication_partner_id, planning_horizon);
-				other_mac.setUpperLayer(arq_layer);
-				other_mac.setLowerLayer(phy_layer);
-                other_mac.reservation_manager->setTransmitterReservationTable(
-                        phy_layer->getTransmitterReservationTable());
-                for (ReservationTable* table : phy_layer->getReceiverReservationTables())
-                    other_mac.reservation_manager->addReceiverReservationTable(table);
-				other_mac.reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-				other_mac.reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-				LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
+				TestEnvironment env2 = TestEnvironment(communication_partner_id, own_id);
+				MACLayer& other_mac = *env2.mac_layer;
+				LinkManager& other_link_manager = *other_mac.getLinkManager(own_id);
 				L2Packet* request = other_link_manager.lme->prepareRequest();
 				request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection();
 //				coutd.setVerbose(true);
@@ -429,10 +420,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 // Increment time until the reply has been sent.
                 CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
                 size_t num_slots = 0, max_num_slots = 10;
-                while (bc_link_manager->broadcast_slot_scheduled && num_slots < max_num_slots) {
+                while (bc_link_manager->broadcast_slot_scheduled && num_slots++ < max_num_slots) {
                     mac->update(1);
                     mac->execute();
-                    num_slots++;
                 }
                 CPPUNIT_ASSERT(num_slots < max_num_slots);
                 CPPUNIT_ASSERT_EQUAL(false, bc_link_manager->broadcast_slot_scheduled);
@@ -606,7 +596,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 link_manager_rx->receiveFromLower(request);
                 CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
 
-                coutd.setVerbose(true);
+//                coutd.setVerbose(true);
 
                 // Increment time until the reply has been sent.
                 std::vector<uint64_t> frequencies;
@@ -663,8 +653,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //                L2Packet* reply = link_manager_rx->lme->scheduled_replies.begin()->second;
 //                mac->receiveFromLower(reply);
 
-                coutd.setVerbose(false);
-
+//                coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);

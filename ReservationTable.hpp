@@ -34,6 +34,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * Marks the slot at 'offset' with a reservation.
 			 * @param slot_offset
 			 * @param reservation
+			 * @throws std::invalid_argument If linked transmitter or receiver tables have no capacity for a corresponding TX/RX reservation.
 			 */
 			Reservation* mark(int32_t slot_offset, const Reservation& reservation);
 			
@@ -97,6 +98,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @return Whether the specified slot is marked as idle.
 			 */
 			bool isIdle(int32_t slot_offset) const;
+
+			bool isLocked(int32_t slot_offset) const;
 			
 			/**
 			 * @param slot_offset Offset to the current slot. Positive values for future slots, zero for the current slot and negative values for past slots.

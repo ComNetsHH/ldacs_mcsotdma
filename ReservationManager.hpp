@@ -101,7 +101,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * Reservations can query this table to see if a particular time slot is already utilized by any (of possibly several) receiver.
 			 * @param rx_table
 			 */
-			void addReceiverReservationTable(ReservationTable* rx_table);
+			void addReceiverReservationTable(ReservationTable*& rx_table);
 
 		protected:
 			

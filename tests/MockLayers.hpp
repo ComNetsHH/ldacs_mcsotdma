@@ -202,8 +202,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             phy_layer = new PHYLayer(planning_horizon);
             mac_layer = new MACLayer(own_id, planning_horizon);
             mac_layer->reservation_manager->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
-            for (ReservationTable* table : phy_layer->getReceiverReservationTables())
+            for (ReservationTable*& table : phy_layer->getReceiverReservationTables())
                 mac_layer->reservation_manager->addReceiverReservationTable(table);
+//            // Mark broadcast RX slots. TODO remove this once BC has been properly implemented
+//			for (size_t i = 0; i < planning_horizon; i++)
+//				phy_layer->getReceiverReservationTables().at(1)->mark(i, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
             mac_layer->reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
             mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
             mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);

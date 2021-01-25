@@ -165,7 +165,11 @@ void LinkManager::packetBeingSentCallback(L2Packet* packet) {
         for (size_t j = 0; j < item.second.size(); j++) {
             int32_t offset = (int32_t) item.second.at(j);
 //            int32_t offset = (int32_t) proposal->proposed_slots.at(i*proposal->target_num_slots + j);
-            table->mark(offset, Reservation(link_id, Reservation::Action::RX, proposal->burst_length - 1));
+            try {
+                table->mark(offset, Reservation(link_id, Reservation::Action::RX, proposal->burst_length - 1));
+            } catch (const std::exception& e) {
+                throw std::runtime_error("LinkManager::packetBeingSentCallback couldn't mark RX slots: " + std::string(e.what()));
+            }
         }
         i++;
     }

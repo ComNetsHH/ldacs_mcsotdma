@@ -34,13 +34,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             own_id = MacId(42);
             communication_partner_id = MacId(43);
             env = new TestEnvironment(own_id, communication_partner_id);
-
             planning_horizon = env->planning_horizon;
             center_frequency1 = env->center_frequency1;
             center_frequency2 = env->center_frequency2;
             center_frequency3 = env->center_frequency3;
             bc_frequency = env->bc_frequency;
             bandwidth = env->bandwidth;
+            // Assume one receiver is always busy.
+            for (size_t i = 0; i < planning_horizon; i++)
+                env->phy_layer->getReceiverReservationTables().at(1)->mark(i, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 
             mac = env->mac_layer;
             reservation_manager = mac->reservation_manager;

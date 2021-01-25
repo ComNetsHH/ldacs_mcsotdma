@@ -371,17 +371,14 @@ LinkManagementEntity::ProposalPayload *LinkManagementEntity::p2pSlotSelection() 
         // ... and try to find candidate slots,
         // where a receiver has to be idle during all slots, so that we can listen for a reply there...
         std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_reservations, this->num_proposed_slots, tx_burst_num_slots, false, true);
-        coutd << "found " << candidate_slots.size() << " slots: ";
-        ReservationTable* rx_table = table->receiver_reservation_tables.at(0);
-        for (int32_t t : candidate_slots) {
-            coutd << t << "=" << rx_table->getReservation(t) << " ";
-        }
-        coutd << std::endl;
+        coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
+        for (int32_t slot : candidate_slots)
+            coutd << slot << " ";
+        coutd << " -> ";
 
         // ... and lock them s.t. future proposals don't consider them.
         if (!table->lock(candidate_slots, false, true))
             throw std::runtime_error("LME::p2pSlotSelection failed to lock resources.");
-
 
         // Fill proposal.
         proposal->burst_length = tx_burst_num_slots;

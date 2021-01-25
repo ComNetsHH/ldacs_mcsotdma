@@ -45,8 +45,12 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
     assert(lower_layer && "IMac::update for unset lower layer.");
     lower_layer->update(num_slots);
 	// Notify the broadcast channel manager.
-	auto* bc_link_manager = (BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-	bc_link_manager->update(num_slots);
+	try {
+        auto *bc_link_manager = (BCLinkManager *) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+        bc_link_manager->update(num_slots);
+    } catch (const std::exception& e) {
+	    throw std::runtime_error("MCOSTDMA_Mac::update couldn't update BCLinkManager: " + std::string(e.what()));
+	}
 	// Notify all other LinkManagers.
 	for (auto item : link_managers)
 	    item.second->update(num_slots);

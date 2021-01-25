@@ -599,6 +599,92 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				for (int32_t i = 0; i < num_candidates; i++)
 					CPPUNIT_ASSERT_EQUAL(i+(int32_t) num_candidates, slots2.at(i));
 			}
+
+			void testLinkedTXTable() {
+			    ReservationTable tx_table = ReservationTable(planning_horizon);
+			    table->linkTransmitterReservationTable(&tx_table);
+
+			    table->mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX));
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX, tx_table.getReservation(0).getAction());
+
+                table->mark(1, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX_CONT));
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX, tx_table.getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table->getReservation(1).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, tx_table.getReservation(1).getAction());
+
+                table->mark(2, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX));
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX, tx_table.getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table->getReservation(1).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, tx_table.getReservation(1).getAction());
+                // RX in own table, but RX does *not* forward to a transmitter table.
+                CPPUNIT_ASSERT_EQUAL(Reservation::RX, table->getReservation(2).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, tx_table.getReservation(2).getAction());
+
+                // A 2nd TX reservation should throw an exception because we support only one transmitter.
+                ReservationTable second_table = ReservationTable(planning_horizon);
+                second_table.linkTransmitterReservationTable(&tx_table);
+                CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX)), std::invalid_argument);
+
+                table->lock({3}, true, false);
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(3).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, tx_table.getReservation(3).getAction());
+			}
+
+			void testLinkedRXTables() {
+			    ReservationTable rx_table1 = ReservationTable(planning_horizon), rx_table2 = ReservationTable(planning_horizon);
+			    table->linkReceiverReservationTable(&rx_table1);
+                table->linkReceiverReservationTable(&rx_table2);
+
+                // RX reservation should forward to *one* receiver table.
+                table->mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX));
+                CPPUNIT_ASSERT_EQUAL(Reservation::RX, table->getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::RX, rx_table1.getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table2.getReservation(0).getAction());
+
+                // TX reservations shouldn't.
+                table->mark(1, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX));
+                CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(1).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table1.getReservation(1).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table2.getReservation(1).getAction());
+
+                // a 2nd RX reservation should forward to the *other* receiver table.
+                ReservationTable second_table = ReservationTable(planning_horizon);
+                second_table.linkReceiverReservationTable(&rx_table1);
+                second_table.linkReceiverReservationTable(&rx_table2);
+                second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX));
+                CPPUNIT_ASSERT_EQUAL(Reservation::RX, table->getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::RX, second_table.getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::RX, rx_table1.getReservation(0).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::RX, rx_table2.getReservation(0).getAction());
+
+                // a 3rd RX reservation should throw an exception because we only have two linked receiver tables and both are not idle
+                ReservationTable third_table = ReservationTable(planning_horizon);
+                third_table.linkReceiverReservationTable(&rx_table1);
+                third_table.linkReceiverReservationTable(&rx_table2);
+                CPPUNIT_ASSERT_THROW(third_table.mark(0,  Reservation(SYMBOLIC_ID_UNSET, Reservation::RX)), std::invalid_argument);
+
+                // Now test locking.
+                bool locked = table->lock({2}, false, true);
+                CPPUNIT_ASSERT_EQUAL(true, locked);
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(2).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table1.getReservation(2).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table2.getReservation(2).getAction());
+
+                locked = second_table.lock({2}, false, true);
+                CPPUNIT_ASSERT_EQUAL(true, locked);
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(2).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table1.getReservation(2).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table2.getReservation(2).getAction());
+
+                locked = third_table.lock({2}, false, true);
+                CPPUNIT_ASSERT_EQUAL(false, locked);
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(2).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table1.getReservation(2).getAction());
+                CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table2.getReservation(2).getAction());
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -626,6 +712,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testAnyTxReservations);
             CPPUNIT_TEST(testAnyRxReservations);
 			CPPUNIT_TEST(testLocking);
+            CPPUNIT_TEST(testLinkedTXTable);
+            CPPUNIT_TEST(testLinkedRXTables);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

@@ -6,9 +6,7 @@
 #include <algorithm>
 #include <math.h>
 #include <limits>
-#include <iostream>
 #include "ReservationTable.hpp"
-#include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -29,20 +27,35 @@ uint32_t ReservationTable::getPlanningHorizon() const {
 Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& reservation) {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::mark planning_horizon=" + std::to_string(planning_horizon) + " smaller than queried slot_offset=" + std::to_string(slot_offset) + "!");
+	// Ensure that linked tables have capacity.
+	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+	    if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))
+	        throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward TX reservation because the linked transmitter table is not idle.");
+    if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX) {
+        if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset](ReservationTable *table) {
+            return table->isIdle(slot_offset) || table->isLocked(slot_offset);
+        })) {
+            throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
+        }
+    }
 	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
 	// Update the number of idle slots.
-	if (!reservation.isIdle())
+	if (currently_idle && !reservation.isIdle()) // idle -> non-idle
 		num_idle_future_slots--;
-	else if (!currently_idle) // changing from non-idle to idle
+	else if (!currently_idle && reservation.isIdle()) // non-idle -> idle
 		num_idle_future_slots++;
 	// If a transmitter table is linked, mark it there, too.
 	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
 		transmitter_reservation_table->mark(slot_offset, reservation);
 	// Same for receiver tables
 	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX)
-	    for (ReservationTable* rx_table : receiver_reservation_tables)
-	        rx_table->mark(slot_offset, reservation);
+	    for (ReservationTable* rx_table : receiver_reservation_tables) {
+	        if (rx_table->getReservation(slot_offset).isIdle()) {
+                rx_table->mark(slot_offset, reservation);
+                break;
+            }
+        }
 	// If this is a multi-slot transmission reservation, set the following ones, too.
 	if (reservation.getNumRemainingSlots() > 0) {
 		Reservation::Action action = reservation.getAction();
@@ -58,6 +71,12 @@ bool ReservationTable::isUtilized(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::isUtilized for planning horizon smaller than queried offset!");
 	return !this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
+}
+
+bool ReservationTable::isLocked(int32_t slot_offset) const {
+    if (!this->isValid(slot_offset))
+        throw std::invalid_argument("ReservationTable::isLocked for planning horizon smaller than queried offset!");
+    return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isLocked();
 }
 
 bool ReservationTable::anyTxReservations(int32_t slot_offset) const {
@@ -125,7 +144,7 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
 		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_transmitter==true for unset transmitter table.");
 	if (consider_receivers && receiver_reservation_tables.empty())
         throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_receivers==true for unset receiver tables.");
-	bool tx_idle = false, rx_idle = false;
+	bool tx_idle, rx_idle;
 	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
 		if (this->isIdle(i, length)) {
 		    // Neither TX nor RX matter
@@ -134,10 +153,11 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
 		    // Both RX && TX matter
 		    else if (consider_transmitter && consider_receivers) {
                 tx_idle = !transmitter_reservation_table->isIdle(i, length);
-                rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [start, length](ReservationTable* table) {
-                        return table->isIdle(start, length);
+                rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable* table) {
+                        return table->isIdle(i, length);
                         });
-                return tx_idle && rx_idle;
+                if (tx_idle && rx_idle)
+                    return i;
             // TX && !RX
 		    } else if (consider_transmitter && !consider_receivers) {
                 if (transmitter_reservation_table->isIdle(i, length))
@@ -269,7 +289,8 @@ bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_
 	if (lock_rx) {
         for (auto *rx_table : receiver_reservation_tables)
             if (rx_table->canLock(slot_offsets)) {
-                rx_table->lock(slot_offsets, false, false);
+                if (!rx_table->lock(slot_offsets, false, false))
+                    throw std::runtime_error("ReservationTable::lock couldn't lock receiver table.");
                 // Lock just *one* receiver table, i.e. the first one where you can.
                 return true;
             }
