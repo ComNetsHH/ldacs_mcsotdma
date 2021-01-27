@@ -22,11 +22,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			friend class ReservationTableTests;
 			friend class LinkManagementEntity;
+			friend class LinkManagerTests;
 			
 			/**
 			 * @param planning_horizon The number of time slots this reservation table will keep saved. It denotes the number of slots both into the future, as well as a history of as many slots. The number of slots saved is correspondingly planning_horizon*2.
 			 */
 			explicit ReservationTable(uint32_t planning_horizon);
+
+			/**
+			 * @param planning_horizon The number of time slots this reservation table will keep saved. It denotes the number of slots both into the future, as well as a history of as many slots. The number of slots saved is correspondingly planning_horizon*2.
+			 * @param default_reservation The default reservation for new time slots (e.g. when update() is called).
+			 */
+			ReservationTable(uint32_t planning_horizon, const Reservation& default_reservation);
 			
 			virtual ~ReservationTable();
 			
@@ -226,6 +233,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			/** The ReservationTables of any receiver may be linked, so that all RX reservations can be forwarded to them. */
 			std::vector<ReservationTable*> receiver_reservation_tables;
+			Reservation default_reservation;
 	};
 }
 

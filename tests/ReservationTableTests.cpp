@@ -685,6 +685,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table1.getReservation(2).getAction());
                 CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table2.getReservation(2).getAction());
 			}
+
+			void testDefaultReservation() {
+			    ReservationTable bc_table = ReservationTable(planning_horizon, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
+			    for (const auto& reservation : bc_table.slot_utilization_vec) {
+                    CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
+                    CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
+                }
+			}
 		
 		CPPUNIT_TEST_SUITE(ReservationTableTests);
 			CPPUNIT_TEST(testConstructor);
@@ -714,6 +722,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLocking);
             CPPUNIT_TEST(testLinkedTXTable);
             CPPUNIT_TEST(testLinkedRXTables);
+            CPPUNIT_TEST(testDefaultReservation);
 		CPPUNIT_TEST_SUITE_END();
 	};
 	

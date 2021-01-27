@@ -7,17 +7,24 @@
 #include <math.h>
 #include <limits>
 #include "ReservationTable.hpp"
+#include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 ReservationTable::ReservationTable(uint32_t planning_horizon)
-	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<Reservation>(uint64_t(planning_horizon * 2 + 1))), last_updated(), num_idle_future_slots(planning_horizon + 1) {
+	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<Reservation>(uint64_t(planning_horizon * 2 + 1))), last_updated(), num_idle_future_slots(planning_horizon + 1), default_reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE) {
 	// The planning horizon denotes how many slots we want to be able to look into future and past.
 	// Since the current moment in time must also be represented, we need planning_horizon*2+1 values.
 	// If we use UINT32_MAX, then we wouldn't be able to store 2*UINT32_MAX+1 in UINT64, so throw an exception if this is attempted.
 	if (planning_horizon == UINT32_MAX)
 		throw std::invalid_argument("Cannot instantiate a reservation table with a planning horizon of UINT32_MAX. It must be at least one slot less.");
 	// In practice, allocating even much less results in a std::bad_alloc anyway...
+}
+
+ReservationTable::ReservationTable(uint32_t planning_horizon, const Reservation &default_reservation) : ReservationTable(planning_horizon) {
+    this->default_reservation = default_reservation;
+    for (auto& it : slot_utilization_vec)
+        it = default_reservation;
 }
 
 uint32_t ReservationTable::getPlanningHorizon() const {
@@ -35,6 +42,8 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
         if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset](ReservationTable *table) {
             return table->isIdle(slot_offset) || table->isLocked(slot_offset);
         })) {
+            for (const auto& rx_table : receiver_reservation_tables)
+                coutd << rx_table->getReservation(slot_offset) << std::endl;
             throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
         }
     }
@@ -46,13 +55,20 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	else if (!currently_idle && reservation.isIdle()) // non-idle -> idle
 		num_idle_future_slots++;
 	// If a transmitter table is linked, mark it there, too.
-	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
-		transmitter_reservation_table->mark(slot_offset, reservation);
+	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT)) {
+	    // Need a copy here s.t. the linked table's recursive call won't set all slots now.
+        Reservation cpy = Reservation(reservation);
+        cpy.setNumRemainingSlots(0);
+        transmitter_reservation_table->mark(slot_offset, reservation);
+    }
 	// Same for receiver tables
 	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX)
 	    for (ReservationTable* rx_table : receiver_reservation_tables) {
 	        if (rx_table->getReservation(slot_offset).isIdle()) {
-                rx_table->mark(slot_offset, reservation);
+                // Need a copy here s.t. the linked table's recursive call won't set all slots now.
+	            Reservation cpy = Reservation(reservation);
+	            cpy.setNumRemainingSlots(0);
+                rx_table->mark(slot_offset, cpy);
                 break;
             }
         }
@@ -220,7 +236,7 @@ void ReservationTable::update(uint64_t num_slots) {
 	std::move(this->slot_utilization_vec.begin() + num_slots, this->slot_utilization_vec.end(), this->slot_utilization_vec.begin());
 	// All new elements are initialized as idle.
 	for (auto it = slot_utilization_vec.end() - 1; it >= slot_utilization_vec.end() - num_slots; it--)
-		*it = Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::IDLE);
+		*it = default_reservation;
 	last_updated += num_slots;
 }
 

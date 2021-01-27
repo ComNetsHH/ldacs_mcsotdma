@@ -228,6 +228,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Assign a reservation table.
 				ReservationTable* table = reservation_manager->reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
+				CPPUNIT_ASSERT_EQUAL(size_t(2), table->receiver_reservation_tables.size());
+				for (size_t t = 0; t < planning_horizon; t++) {
+				    size_t num_idle = 0;
+				    for (const auto& rx_table : table->receiver_reservation_tables)
+				        if (rx_table->isIdle(t))
+				            num_idle++;
+                    CPPUNIT_ASSERT_EQUAL(size_t(1), num_idle);
+				}
+
+//				coutd.setVerbose(true);
 				// Prepare incoming packet.
 				auto* packet = new L2Packet();
 				unsigned int offset = 5, length_next = 2, timeout = 3;
