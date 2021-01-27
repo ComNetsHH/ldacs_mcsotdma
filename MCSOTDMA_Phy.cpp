@@ -11,8 +11,8 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 MCSOTDMA_Phy::MCSOTDMA_Phy(uint32_t planning_horizon) : transmitter_reservation_table(new ReservationTable(planning_horizon)) {
     // Add one P2P receiver.
     receiver_reservation_tables.push_back(new ReservationTable(planning_horizon));
-    // And one BC receiver.
-    receiver_reservation_tables.push_back(new ReservationTable(planning_horizon, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX)));
+    // Don't add a BC receiver. This is assumed as always busy.
+//    receiver_reservation_tables.push_back(new ReservationTable(planning_horizon, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX)));
 }
 
 bool MCSOTDMA_Phy::isTransmitterIdle(unsigned int slot_offset, unsigned int num_slots) const {

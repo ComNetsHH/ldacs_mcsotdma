@@ -59,7 +59,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	    // Need a copy here s.t. the linked table's recursive call won't set all slots now.
         Reservation cpy = Reservation(reservation);
         cpy.setNumRemainingSlots(0);
-        transmitter_reservation_table->mark(slot_offset, reservation);
+        transmitter_reservation_table->mark(slot_offset, cpy);
     }
 	// Same for receiver tables
 	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX)

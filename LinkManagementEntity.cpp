@@ -30,6 +30,33 @@ std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int tx_tim
     return slots;
 }
 
+void LinkManagementEntity::clearPendingRxReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time) {
+    coutd << "removing RX reservations on proposed resources: ";
+    // Remove all RX reservations for proposed resources that, since we are processing this reply, don't need to be listened to anymore.
+    if (proposed_resources.empty())
+        throw std::runtime_error("LinkManagementEntity::processLinkReply for unsaved last proposal.");
+    for (const auto& item : proposed_resources) {
+        const FrequencyChannel* proposed_channel = item.first;
+        const std::vector<unsigned int>& proposed_slots_in_this_channel = item.second;
+        ReservationTable* table = owner->reservation_manager->getReservationTable(proposed_channel);
+        for (unsigned int offset : proposed_slots_in_this_channel) {
+            // Number of time slots that have passed since the proposal.
+            uint64_t time_difference = current_time - absolute_proposal_time;
+            // Ignore slots that have already passed.
+            if (time_difference < offset) {
+                // Normalize offsets to current time.
+                unsigned int normalized_offset = offset - time_difference;
+                const Reservation *reservation = &table->getReservation(normalized_offset);
+                coutd << "f=" << *proposed_channel << ",t=" << normalized_offset << ":" << *reservation << " ";
+                if (reservation->getAction() != Reservation::RX)
+                    throw std::runtime_error("LinkManagementEntity::processLinkReply should clear a pending RX reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
+                table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+            }
+        }
+    }
+    coutd << "-> ";
+}
+
 void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
                                             const ProposalPayload*& payload) {
     // Make sure we're expecting a reply.
@@ -41,29 +68,7 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
     // Clear all scheduled requests, as one apparently made it through.
     coutd << "clearing " << scheduled_requests.size() << " pending requests -> ";
     scheduled_requests.clear();
-    coutd << "removing RX reservations on proposed resources: ";
-    // Remove all RX reservations for proposed resources that, since we are processing this reply, don't need to be listened to anymore.
-    if (last_proposed_resources.empty())
-        throw std::runtime_error("LinkManagementEntity::processLinkReply for unsaved last proposal.");
-    for (const auto& item : last_proposed_resources) {
-        const FrequencyChannel* proposed_channel = item.first;
-        const std::vector<unsigned int>& proposed_slots_in_this_channel = item.second;
-        ReservationTable* table = owner->reservation_manager->getReservationTable(proposed_channel);
-        for (unsigned int offset : proposed_slots_in_this_channel) {
-            // TODO test this
-            unsigned int normalized_offset = last_proposal_absolute_time - owner->mac->getCurrentSlot() + offset;
-            if (owner->mac->getCurrentSlot() != last_proposal_absolute_time + offset) {
-                const Reservation* reservation = &table->getReservation(normalized_offset);
-                coutd << "f=" << *proposed_channel << ",t=" << normalized_offset << ":" << *reservation << "->";
-                if (reservation->getAction() != Reservation::RX)
-                    throw std::runtime_error("LinkManagementEntity::processLinkReply should clear a pending RX reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
-                reservation = table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-                coutd << *reservation << " ";
-            } else
-                coutd << "leaving current resource f=" << *proposed_channel << ", t=" << normalized_offset << ":" << table->getReservation(normalized_offset) << " ";
-        }
-    }
-    coutd << "-> ";
+    clearPendingRxReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
     last_proposed_resources.clear();
 
     // Configuring an initial channel...

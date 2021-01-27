@@ -133,7 +133,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				L2Packet* packet = phy_layer->outgoing_packets.at(0);
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, packet->getDestination());
 				auto* base_header = (L2HeaderBase*) packet->getHeaders().at(0);
-				CPPUNIT_ASSERT_EQUAL(own_id, base_header->icao_id);
+				CPPUNIT_ASSERT_EQUAL(own_id, base_header->icao_src_id);
 				CPPUNIT_ASSERT_EQUAL(own_id, packet->getOrigin());
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, packet->getDestination());
 				CPPUNIT_ASSERT_EQUAL(uint(1), base_header->length_next);

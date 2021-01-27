@@ -273,8 +273,8 @@ void LinkManager::setHeaderFields(L2Header* header) {
 }
 
 void LinkManager::setBaseHeaderFields(L2HeaderBase*& header) {
-	header->icao_id = mac->getMacId();
-	coutd << " icao_id=" << mac->getMacId();
+	header->icao_src_id = mac->getMacId();
+	coutd << " icao_src_id=" << mac->getMacId();
 	header->offset = lme->getTxOffset();
 	coutd << " offset=" << lme->getTxOffset();
 	if (lme->getTxBurstSlots() == 0)
@@ -345,7 +345,7 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 		coutd << "updating reservations: ";
 		// This is an incoming packet, so we must've been listening.
 		// Mark future slots as RX slots, too.
-		markReservations(timeout, 0, offset, length_next, header->icao_id, Reservation::RX);
+		markReservations(timeout, 0, offset, length_next, header->icao_src_id, Reservation::RX);
 		coutd << " -> ";
 	}
 }
@@ -364,6 +364,8 @@ void LinkManager::reassign(const FrequencyChannel* channel) {
 }
 
 size_t LinkManager::getRandomInt(size_t start, size_t end) {
+    if (start == end)
+        return start;
 	std::random_device random_device;
 	std::mt19937 generator(random_device());
 	std::uniform_int_distribution<> distribution(0, end - 1);

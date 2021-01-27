@@ -192,7 +192,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testSetBaseHeader() {
 				L2HeaderBase header = L2HeaderBase();
 				link_manager->setHeaderFields(&header);
-				CPPUNIT_ASSERT_EQUAL(own_id, header.icao_id);
+				CPPUNIT_ASSERT_EQUAL(own_id, header.icao_src_id);
 				CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_offset, header.offset);
 				CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_burst_num_slots, header.length_next);
 				CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_timeout, header.timeout);
@@ -228,15 +228,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Assign a reservation table.
 				ReservationTable* table = reservation_manager->reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
-				CPPUNIT_ASSERT_EQUAL(size_t(2), table->receiver_reservation_tables.size());
-				for (size_t t = 0; t < planning_horizon; t++) {
-				    size_t num_idle = 0;
-				    for (const auto& rx_table : table->receiver_reservation_tables)
-				        if (rx_table->isIdle(t))
-				            num_idle++;
-                    CPPUNIT_ASSERT_EQUAL(size_t(1), num_idle);
-				}
-
 //				coutd.setVerbose(true);
 				// Prepare incoming packet.
 				auto* packet = new L2Packet();
@@ -660,8 +651,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 CPPUNIT_ASSERT_EQUAL(size_t(0), reservations.first);
 
                 // Receive the reply.
-//                L2Packet* reply = link_manager_rx->lme->scheduled_replies.begin()->second;
-//                mac->receiveFromLower(reply);
+                L2Packet* reply = link_manager_rx->lme->scheduled_replies.begin()->second;
+                mac->receiveFromLower(reply, selected_frequency);
 
 //                coutd.setVerbose(false);
 			}

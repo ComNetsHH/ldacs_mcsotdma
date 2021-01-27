@@ -155,6 +155,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         void decrementTimeout();
 
+        /**
+         * Clears all RX reservations in the proposed_resources map.
+         * Used to clear those RX reservations that were made when a request is sent, and when a reply has been received; future RX reservations of other candidate slots don't matter anymore.
+         * @param proposed_resources
+         * @param absolute_proposal_time
+         * @param current_time
+         */
+        void clearPendingRxReservations(const std::map<const FrequencyChannel *, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time);
+
     protected:
         /** Number of times a link should be attempted to be renewed. */
         unsigned int num_renewal_attempts = 0;

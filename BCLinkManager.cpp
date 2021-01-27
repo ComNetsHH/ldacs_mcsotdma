@@ -125,8 +125,8 @@ void BCLinkManager::update(uint64_t num_slots) {
     LinkManager::update(num_slots);
 	for (uint64_t i = 0; i < num_slots; i++)
 		contention_estimator.update();
-	if (current_reservation_table->getReservation(0).isIdle()) {
-	    coutd << "marking BC reception: ";
+    if (current_reservation_table->getReservation(0).isIdle()) {
+        coutd << "marking BC reception: ";
         markReservations(1, 0, 0, 1, SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX);
         coutd << std::endl;
     }
@@ -168,6 +168,8 @@ unsigned int BCLinkManager::broadcastSlotSelection() const {
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->target_collision_probability);
 	std::vector<int32_t> candidate_slots = current_reservation_table->findCandidateSlots(lme->getMinOffset(), num_candidates, 1, true, false);
+	if (candidate_slots.empty())
+	    throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
 	int32_t slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
 	if (slot < 0)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection chose a slot in the past.");

@@ -40,13 +40,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             center_frequency3 = env->center_frequency3;
             bc_frequency = env->bc_frequency;
             bandwidth = env->bandwidth;
-            // Assume one receiver is always busy.
-            for (size_t i = 0; i < planning_horizon; i++)
-                env->phy_layer->getReceiverReservationTables().at(1)->mark(i, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 
             mac = env->mac_layer;
             reservation_manager = mac->reservation_manager;
             link_manager = mac->getLinkManager(communication_partner_id);
+            link_manager->assign(reservation_manager->getFreqChannelByCenterFreq(center_frequency1));
 
             lme = link_manager->lme;
         }
@@ -120,10 +118,54 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //            coutd.setVerbose(false);
         }
 
+        void testClearPendingRxReservations() {
+            std::map<const FrequencyChannel *, std::vector<unsigned int>> proposed_resources;
+            auto* rx_table = link_manager->current_reservation_table;
+            auto* rx_table_2 = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(center_frequency2));
+            rx_table->receiver_reservation_tables.clear();
+            rx_table_2->receiver_reservation_tables.clear();
+            // Make some reservations.
+            for (size_t offset = 2; offset < 10; offset++) {
+                rx_table->mark(offset, Reservation(communication_partner_id, Reservation::RX));
+                rx_table_2->mark(offset, Reservation(communication_partner_id, Reservation::RX));
+                // These will be cleared afterwards.
+                if (offset > 5)
+                    proposed_resources[rx_table->getLinkedChannel()].push_back(offset);
+                else
+                    proposed_resources[rx_table_2->getLinkedChannel()].push_back(offset);
+            }
+            // Make sure setting worked.
+            for (size_t offset = 0; offset < planning_horizon; offset++) {
+                if (offset >= 2 && offset < 10)
+                    CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, rx_table->getReservation(offset).getAction());
+                else
+                    CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, rx_table->getReservation(offset).getAction());
+            }
+            // Clear proposed <channel, slots>.
+            lme->clearPendingRxReservations(proposed_resources, 0, 0);
+            // Ensure that the proposed resources were cleared, all others weren't.
+            for (size_t offset = 0; offset < planning_horizon; offset++) {
+                if (offset >= 2 && offset < 10) {
+                    if (offset <= 5)
+                        CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, rx_table->getReservation(offset).getAction());
+                    else
+                        CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, rx_table->getReservation(offset).getAction());
+                    if (offset > 5)
+                        CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, rx_table_2->getReservation(offset).getAction());
+                    else
+                        CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, rx_table_2->getReservation(offset).getAction());
+                } else {
+                    CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, rx_table->getReservation(offset).getAction());
+                    CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, rx_table_2->getReservation(offset).getAction());
+                }
+            }
+        }
+
         CPPUNIT_TEST_SUITE(LinkManagementEntityTests);
             CPPUNIT_TEST(testSchedule);
             CPPUNIT_TEST(testUpdate);
             CPPUNIT_TEST(testPopulateRequest);
+            CPPUNIT_TEST(testClearPendingRxReservations);
         CPPUNIT_TEST_SUITE_END();
     };
 }
