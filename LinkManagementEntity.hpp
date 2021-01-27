@@ -161,8 +161,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          * @param proposed_resources
          * @param absolute_proposal_time
          * @param current_time
+         * @return Number of cleared reservations
          */
-        void clearPendingRxReservations(const std::map<const FrequencyChannel *, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time);
+        size_t clearPendingRxReservations(const std::map<const FrequencyChannel *, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time);
 
     protected:
         /** Number of times a link should be attempted to be renewed. */

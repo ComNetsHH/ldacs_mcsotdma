@@ -30,11 +30,12 @@ std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int tx_tim
     return slots;
 }
 
-void LinkManagementEntity::clearPendingRxReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time) {
+size_t LinkManagementEntity::clearPendingRxReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time) {
     coutd << "removing RX reservations on proposed resources: ";
     // Remove all RX reservations for proposed resources that, since we are processing this reply, don't need to be listened to anymore.
     if (proposed_resources.empty())
         throw std::runtime_error("LinkManagementEntity::processLinkReply for unsaved last proposal.");
+    size_t num_removed = 0;
     for (const auto& item : proposed_resources) {
         const FrequencyChannel* proposed_channel = item.first;
         const std::vector<unsigned int>& proposed_slots_in_this_channel = item.second;
@@ -51,10 +52,12 @@ void LinkManagementEntity::clearPendingRxReservations(const std::map<const Frequ
                 if (reservation->getAction() != Reservation::RX)
                     throw std::runtime_error("LinkManagementEntity::processLinkReply should clear a pending RX reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
                 table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+                num_removed++;
             }
         }
     }
     coutd << "-> ";
+    return num_removed;
 }
 
 void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
@@ -68,8 +71,9 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
     // Clear all scheduled requests, as one apparently made it through.
     coutd << "clearing " << scheduled_requests.size() << " pending requests -> ";
     scheduled_requests.clear();
-    clearPendingRxReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
+    size_t num_cleared_reservations = clearPendingRxReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
     last_proposed_resources.clear();
+    coutd << num_cleared_reservations << " cleared -> ";
 
     // Configuring an initial channel...
     if (owner->current_channel == nullptr) {

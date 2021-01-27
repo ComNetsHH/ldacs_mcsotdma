@@ -125,14 +125,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             rx_table->receiver_reservation_tables.clear();
             rx_table_2->receiver_reservation_tables.clear();
             // Make some reservations.
+            size_t num_to_clear = 0;
             for (size_t offset = 2; offset < 10; offset++) {
                 rx_table->mark(offset, Reservation(communication_partner_id, Reservation::RX));
                 rx_table_2->mark(offset, Reservation(communication_partner_id, Reservation::RX));
                 // These will be cleared afterwards.
-                if (offset > 5)
+                if (offset > 5) {
                     proposed_resources[rx_table->getLinkedChannel()].push_back(offset);
-                else
+                    num_to_clear++;
+                } else {
                     proposed_resources[rx_table_2->getLinkedChannel()].push_back(offset);
+                    num_to_clear++;
+                }
             }
             // Make sure setting worked.
             for (size_t offset = 0; offset < planning_horizon; offset++) {
@@ -142,7 +146,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                     CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, rx_table->getReservation(offset).getAction());
             }
             // Clear proposed <channel, slots>.
-            lme->clearPendingRxReservations(proposed_resources, 0, 0);
+            CPPUNIT_ASSERT_EQUAL(num_to_clear, lme->clearPendingRxReservations(proposed_resources, 0, 0));
             // Ensure that the proposed resources were cleared, all others weren't.
             for (size_t offset = 0; offset < planning_horizon; offset++) {
                 if (offset >= 2 && offset < 10) {

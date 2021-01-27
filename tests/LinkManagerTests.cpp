@@ -436,10 +436,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 auto* request_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
                 auto* request_body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
                 CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_channels), request_body->proposed_resources.size());
-                size_t total = 0;
+                size_t total_proposed_resources = 0;
                 for (const auto& item : request_body->proposed_resources)
-                    total += item.second.size();
-                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_slots * request_body->target_num_channels), total);
+                    total_proposed_resources += item.second.size();
+                CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_slots * request_body->target_num_channels), total_proposed_resources);
                 // For each frequency channel...
                 for (const auto& item : request_body->proposed_resources) {
                     const FrequencyChannel* channel = item.first;
@@ -465,6 +465,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                             CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, reservation.getAction());
                     }
                 }
+                // Test it another way, too, by counting all RX reservations.
+                size_t expected_num_rx_reservations = link_manager->lme->num_proposed_channels * link_manager->lme->num_proposed_slots;
+                size_t actual_num_rx_reservations = 0;
+                for (size_t t = 0; t < planning_horizon; t++)
+                    for (const auto& freq : {center_frequency1, center_frequency2, center_frequency3}) {
+                        ReservationTable* rx_table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(freq));
+                        if (rx_table->getReservation(t).isRx())
+                            actual_num_rx_reservations++;
+                    }
+                CPPUNIT_ASSERT_EQUAL(expected_num_rx_reservations, actual_num_rx_reservations);
 
 //                coutd.setVerbose(false);
 			}
@@ -599,11 +609,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 //                coutd.setVerbose(true);
 
-                // Increment time until the reply has been sent.
+                // Make sure there are as many RX reservations as there a proposed resources.
                 std::vector<uint64_t> frequencies;
                 frequencies.push_back(center_frequency1);
                 frequencies.push_back(center_frequency2);
                 frequencies.push_back(center_frequency3);
+                size_t expected_num_rx_reservations = link_manager->lme->num_proposed_channels * link_manager->lme->num_proposed_slots;
+                size_t actual_num_rx_reservations = 0;
+                for (size_t t = 0; t < planning_horizon; t++)
+                    for (const auto& freq : frequencies) {
+                        ReservationTable* rx_table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(freq));
+                        if (rx_table->getReservation(t).isRx())
+                            actual_num_rx_reservations++;
+                    }
+                CPPUNIT_ASSERT_EQUAL(expected_num_rx_reservations, actual_num_rx_reservations);
+
+                // Increment time until the reply has been sent.
                 uint64_t selected_frequency = link_manager_rx->current_channel->getCenterFrequency();
                 int reply_tx_offset = -1, first_rx_offset = -1;
                 size_t num_tx = 0, num_rx = 0, num_other_reservations = 0;
@@ -653,6 +674,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 // Receive the reply.
                 L2Packet* reply = link_manager_rx->lme->scheduled_replies.begin()->second;
                 mac->receiveFromLower(reply, selected_frequency);
+
+                // Make sure that there's no future RX reservations anymore - all should've been cleared now that we've received a reply.
+                for (size_t t = 1; t < planning_horizon; t++)
+                    CPPUNIT_ASSERT_EQUAL(false, link_manager->current_reservation_table->getReservation(t).isRx());
 
 //                coutd.setVerbose(false);
 			}
