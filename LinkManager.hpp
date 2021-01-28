@@ -38,8 +38,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				link_not_established,
 				/** Link establishment request has been prepared and we're waiting for the reply. */
 				awaiting_reply,
-				/** Link establishment reply has been sent and we're waiting for the first message. */
-				reply_sent,
+				/** Link establishment reply has been prepared and we're waiting for the first message. */
+				awaiting_data_tx,
 				/** Link renewal has been completed. After expiry, the new reservations take action. */
 				link_renewal_complete
 			};
@@ -225,8 +225,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 str = "link_established";
                 break;
             }
-            case LinkManager::reply_sent: {
-                str = "reply_sent";
+            case LinkManager::awaiting_data_tx: {
+                str = "awaiting_data_tx";
                 break;
             }
 

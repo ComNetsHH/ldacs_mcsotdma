@@ -122,7 +122,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// Link reply should've arrived, so *our* link should be established...
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
 				// ... and *their* link should indicate that the reply has been sent.
-				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::reply_sent, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
 				// Reservation timeout should still be default.
 				CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout, lm_me->lme->tx_timeout);
 				// Make sure that all corresponding slots are marked as TX on our side.
@@ -236,7 +236,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 // Link reply should've arrived, so *our* link should be established...
                 CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
                 // ... and *their* link should indicate that the reply has been sent.
-                CPPUNIT_ASSERT_EQUAL(LinkManager::Status::reply_sent, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
+                CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
                 // Reservation timeout should still be default.
                 CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout, lm_me->lme->tx_timeout);
                 // Make sure that all corresponding slots are marked as TX on our side.

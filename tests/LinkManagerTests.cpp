@@ -366,7 +366,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
 				// Link establishment status should've been updated.
-				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::reply_sent, p2p_manager->link_establishment_status);
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, p2p_manager->link_establishment_status);
 //				coutd.setVerbose(false);
 			}
 			
@@ -551,6 +551,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx);
                 // and one TX slot.
                 CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
+                // The link should still be unestablished - it updates to awaiting_data_tx only when the reply is actually sent.
+                CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager_rx->link_establishment_status);
+                CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
 
 //                coutd.setVerbose(false);
 			}
@@ -564,26 +567,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
 
                 // Configure a receiver side.
-                PHYLayer phy_layer_rx = PHYLayer(planning_horizon);
-                MACLayer mac_rx = MACLayer(communication_partner_id, planning_horizon);
-                ReservationManager* reservation_manager_rx = mac_rx.reservation_manager;
-                reservation_manager_rx->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
-                reservation_manager_rx->addFrequencyChannel(false, bc_frequency, bandwidth);
-                reservation_manager_rx->addFrequencyChannel(true, center_frequency1, bandwidth);
-                reservation_manager_rx->addFrequencyChannel(true, center_frequency2, bandwidth);
-                reservation_manager_rx->addFrequencyChannel(true, center_frequency3, bandwidth);
-                LinkManager* link_manager_rx = mac_rx.getLinkManager(own_id);
-                ARQLayer arq_layer_rx = ARQLayer();
-                mac_rx.setUpperLayer(&arq_layer_rx);
-                arq_layer_rx.setLowerLayer(&mac_rx);
-                NetworkLayer net_layer_rx = NetworkLayer();
-                RLCLayer rlc_layer_rx = RLCLayer(communication_partner_id);
-                net_layer_rx.setLowerLayer(&rlc_layer_rx);
-                rlc_layer_rx.setUpperLayer(&net_layer_rx);
-                rlc_layer_rx.setLowerLayer(&arq_layer_rx);
-                arq_layer_rx.setUpperLayer(&rlc_layer_rx);
-                phy_layer_rx.setUpperLayer(&mac_rx);
-                mac_rx.setLowerLayer(&phy_layer_rx);
+                TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
+                LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+                ReservationManager* reservation_manager_rx = env_rx.mac_layer->reservation_manager;
 
                 // Receive the request, compute the reply.
                 CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
@@ -714,6 +700,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 //                coutd.setVerbose(false);
 			}
+
+			void testReservationsAfterFirstDataTx() {
+			    coutd.setVerbose(true);
+                TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
+                LinkManager* lm_rx = env_rx.mac_layer->getLinkManager(own_id);
+                coutd.setVerbose(false);
+			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -737,6 +730,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             CPPUNIT_TEST(testReservationsAfterRequest);
             CPPUNIT_TEST(testReservationsAfterCandidateSelection);
             CPPUNIT_TEST(testReservationsAfterReplyCameIn);
+            CPPUNIT_TEST(testReservationsAfterFirstDataTx);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

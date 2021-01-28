@@ -203,7 +203,7 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
                 lme->onRequestTransmission();
             } else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
                 coutd << "[reply]... ";
-                link_establishment_status = (link_establishment_status == link_not_established ? reply_sent : link_renewal_complete);
+                link_establishment_status = (link_establishment_status == link_not_established ? awaiting_data_tx : link_renewal_complete);
                 sending_reply = true;
             } else
                 throw std::logic_error("LinkManager::onTransmissionBurst for non-reply and non-request control message.");
@@ -322,12 +322,12 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 	// ... and if we are ...
 	} else {
 		// ... update status if we've been expecting it.
-		if (link_establishment_status == reply_sent) {
+		if (link_establishment_status == awaiting_data_tx) {
 			coutd << "link is now established";
 			link_establishment_status = link_established;
 			mac->notifyAboutNewLink(link_id);
 		} else if (link_establishment_status != link_established && link_establishment_status != link_renewal_complete) {
-			throw std::runtime_error("LinkManager::processIncomingUnicast for some status other than 'link_established' or 'reply_sent' or 'link_renewal_complete': " + std::to_string(link_establishment_status));
+			throw std::runtime_error("LinkManager::processIncomingUnicast for some status other than 'link_established' or 'awaiting_data_tx' or 'link_renewal_complete': " + std::to_string(link_establishment_status));
 		}
 	}
 }
