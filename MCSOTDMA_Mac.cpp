@@ -132,6 +132,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	coutd << *this << "::receiveFromLower(from=" << packet->getOrigin() << ", to=" << dest_id << ", f=" << center_frequency << "kHz)... ";
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
+	statistic_num_packets_received++;
 	// Forward broadcasts to the BCLinkManager...
 	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
 		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet);

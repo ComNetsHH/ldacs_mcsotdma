@@ -10,6 +10,9 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MCSOTDMA_Phy : public IPhy {
+
+	    friend class MCSOTDMA_PhyTests;
+
 		public:
 			explicit MCSOTDMA_Phy(uint32_t planning_horizon);
 			
@@ -31,7 +34,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ReservationTable* transmitter_reservation_table = nullptr;
 			std::vector<ReservationTable*> receiver_reservation_tables;
 			/** Collects the number of packets intended for this user that were missed because no receiver was tuned to the channel. */
-			size_t statistic_num_missed_packets = 0;
+			size_t statistic_num_received_packets = 0, statistic_num_missed_packets = 0;
 	};
 }
 

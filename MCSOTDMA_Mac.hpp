@@ -19,6 +19,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MCSOTDMA_Mac : public IMac {
 		public:
 			friend class MCSOTDMA_MacTests;
+            friend class MCSOTDMA_PhyTests;
 			friend class LinkManagementEntityTests;
 			
 			MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);
@@ -72,6 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const size_t num_transmitters = 1, num_receivers = 2;
 			/** Holds the current belief of neighbor positions. */
 			std::map<MacId, CPRPosition> position_map;
+			size_t statistic_num_packets_received = 0;
 	};
 
     inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {
