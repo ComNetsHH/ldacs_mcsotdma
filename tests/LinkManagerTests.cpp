@@ -491,26 +491,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
 
                 // Configure a receiver side.
-                PHYLayer phy_layer_rx = PHYLayer(planning_horizon);
-                MACLayer mac_rx = MACLayer(communication_partner_id, planning_horizon);
-                ReservationManager* reservation_manager_rx = mac_rx.reservation_manager;
-                reservation_manager_rx->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
-                reservation_manager_rx->addFrequencyChannel(false, bc_frequency, bandwidth);
-                reservation_manager_rx->addFrequencyChannel(true, center_frequency1, bandwidth);
-                reservation_manager_rx->addFrequencyChannel(true, center_frequency2, bandwidth);
-                reservation_manager_rx->addFrequencyChannel(true, center_frequency3, bandwidth);
-                LinkManager* link_manager_rx = mac_rx.getLinkManager(own_id);
-                ARQLayer arq_layer_rx = ARQLayer();
-                mac_rx.setUpperLayer(&arq_layer_rx);
-                arq_layer_rx.setLowerLayer(&mac_rx);
-                NetworkLayer net_layer_rx = NetworkLayer();
-                RLCLayer rlc_layer_rx = RLCLayer(communication_partner_id);
-                net_layer_rx.setLowerLayer(&rlc_layer_rx);
-                rlc_layer_rx.setUpperLayer(&net_layer_rx);
-                rlc_layer_rx.setLowerLayer(&arq_layer_rx);
-                arq_layer_rx.setUpperLayer(&rlc_layer_rx);
-                phy_layer_rx.setUpperLayer(&mac_rx);
-                mac_rx.setLowerLayer(&phy_layer_rx);
+                TestEnvironment env2 = TestEnvironment(communication_partner_id, own_id);
+                LinkManager* link_manager_rx = env2.mac_layer->getLinkManager(own_id);
+                ReservationManager* reservation_manager_rx = env2.mac_layer->reservation_manager;
 
 //                coutd.setVerbose(true);
 
