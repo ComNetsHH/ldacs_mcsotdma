@@ -184,8 +184,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         /** The number of time slots that should be proposed when a new link request is prepared. */
         unsigned int num_proposed_slots = 3;
         /** Number of repetitions a reservation remains valid for. */
-        unsigned int default_tx_timeout = 10,
-                tx_timeout = default_tx_timeout;
+        const unsigned int default_tx_timeout = 10;
+        unsigned int tx_timeout = default_tx_timeout;
         /** Number of slots occupied per transmission burst. */
         unsigned int tx_burst_num_slots = 1;
         /** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */

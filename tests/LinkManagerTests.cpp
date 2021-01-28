@@ -676,8 +676,41 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 mac->receiveFromLower(reply, selected_frequency);
 
                 // Make sure that there's no future RX reservations anymore - all should've been cleared now that we've received a reply.
-                for (size_t t = 1; t < planning_horizon; t++)
-                    CPPUNIT_ASSERT_EQUAL(false, link_manager->current_reservation_table->getReservation(t).isRx());
+                for (auto freq : frequencies) {
+                    ReservationTable* table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(freq));
+                    for (size_t t = 1; t < planning_horizon; t++)
+                        CPPUNIT_ASSERT_EQUAL(false, table->getReservation(t).isRx());
+                }
+
+                // Make sure that TX reservations are made.
+                std::vector<unsigned int> tx_offsets;
+                for (auto freq : frequencies) {
+                    ReservationTable* table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(freq));
+                    for (size_t t = 1; t < planning_horizon; t++) {
+                        // No reservations on any other channel...
+                        if (freq != selected_frequency)
+                            CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
+                        // ... except for the selected frequency channel, there...
+                        else {
+                            const Reservation& reservation = table->getReservation(t);
+                            // ... we should have some TX reservations
+                            if (reservation.isTx())
+                                tx_offsets.push_back(t);
+                            // ... and nothing else.
+                            else
+                                CPPUNIT_ASSERT_EQUAL(true, reservation.isIdle());
+                        }
+                    }
+                }
+                // As many TX reservations as a new link's timeout value.
+                CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->default_tx_timeout), tx_offsets.size());
+                // Timeout should be set to the default.
+                CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager->lme->tx_timeout);
+                // One TX reservation every 'tx_offset' slots.
+                for (size_t i = 1; i < tx_offsets.size(); i++)
+                    CPPUNIT_ASSERT_EQUAL(tx_offsets.at(i - 1) + link_manager->lme->tx_offset, tx_offsets.at(i));
+                // First TX reservation after one 'tx_offset".
+                CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_offset, tx_offsets.at(0));
 
 //                coutd.setVerbose(false);
 			}
