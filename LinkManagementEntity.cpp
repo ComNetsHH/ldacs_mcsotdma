@@ -22,7 +22,7 @@ std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int tx_tim
                                                              unsigned int tx_offset) const {
     std::vector<uint64_t> slots;
     // For each transmission burst from last to first according to this reservation...
-    for (long i = 0, offset = init_offset + (tx_timeout-1)*tx_offset; slots.size() < num_renewal_attempts && offset >= init_offset; offset -= tx_offset, i++) {
+    for (long i = 0, offset = init_offset + (tx_timeout-1)*tx_offset; slots.size() < this->num_renewal_attempts && offset >= init_offset; offset -= tx_offset, i++) {
         // ... add every second burst
         if (i % 2 == 1)
             slots.push_back(owner->mac->getCurrentSlot() + offset);
@@ -83,7 +83,8 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
         coutd << "resetting timeout to " << tx_timeout << " -> marking TX reservations:";
         owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
         coutd << " -> configuring request slots -> ";
-        configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
+        num_renewal_attempts = max_link_renewal_attempts;
+        configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
         owner->link_establishment_status = owner->Status::link_established;
         owner->mac->notifyAboutNewLink(owner->link_id);
         coutd << "link is now established -> ";
@@ -96,7 +97,8 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
             coutd << tx_timeout << " and marking TX reservations: ";
             owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
             coutd << " -> configuring request slots -> ";
-            configure(link_renewal_attempts, tx_timeout, 0, tx_offset);
+            num_renewal_attempts = max_link_renewal_attempts;
+            configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
             coutd << "link status update: " << owner->link_establishment_status;
             owner->link_establishment_status = owner->Status::link_established;
             coutd << "->" << owner->link_establishment_status;

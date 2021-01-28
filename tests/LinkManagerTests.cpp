@@ -712,6 +712,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                 // First TX reservation after one 'tx_offset".
                 CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_offset, tx_offsets.at(0));
 
+                // Make sure request slots are marked.
+                CPPUNIT_ASSERT(link_manager->lme->max_link_renewal_attempts > 0);
+                CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->max_link_renewal_attempts), link_manager->lme->scheduled_requests.size());
+                uint64_t expiry_offset = tx_offsets.at(0) + link_manager->lme->tx_offset * link_manager->lme->tx_timeout;
+                uint64_t current_absolute_slot = mac->getCurrentSlot();
+                for (uint64_t request_slot : link_manager->lme->scheduled_requests) {
+                    CPPUNIT_ASSERT(request_slot < expiry_offset);
+                    CPPUNIT_ASSERT_EQUAL(true, std::any_of(tx_offsets.begin(), tx_offsets.end(), [request_slot, current_absolute_slot](uint64_t tx_slot){
+                        // `request_slot` are absolute slots, so subtracting the current absolute slot transforms to an offset,
+                        // which makes it comparable to `tx_slot`, which is also an offset.
+                        return tx_slot == (request_slot - current_absolute_slot);
+                    }));
+                }
+
+                // The link should now be established.
+                CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+
 //                coutd.setVerbose(false);
 			}
 		
