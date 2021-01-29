@@ -183,7 +183,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * It is also ensured that corresponding future slot reservations are marked.
 		 */
 		void testLinkEstablishmentMultiSlotBurst() {
-//                coutd.setVerbose(true);
+                coutd.setVerbose(true);
 			// Single message.
 			rlc_layer_me->should_there_be_more_data = false;
 			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
@@ -200,6 +200,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->update(1);
 				mac_layer_me->execute();
 				mac_layer_you->execute();
+				lm_me->updateTrafficEstimate(expected_num_slots * bits_per_slot);
 				required_slots = lm_me->estimateCurrentNumSlots();
 				CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			}
@@ -292,7 +293,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					}
 				}
 			}
-//                coutd.setVerbose(false);
+                coutd.setVerbose(false);
 		}
 
 		/**

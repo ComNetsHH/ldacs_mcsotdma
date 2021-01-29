@@ -626,7 +626,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// A 2nd TX reservation should throw an exception because we support only one transmitter.
 			ReservationTable second_table = ReservationTable(planning_horizon);
 			second_table.linkTransmitterReservationTable(&tx_table);
-			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX)), std::invalid_argument);
+			CPPUNIT_ASSERT_NO_THROW(second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX))); // No problem setting same reservation again.
+			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(MacId(1), Reservation::TX)), std::invalid_argument); // This one has a different target, so it should throw.
 
 			table->lock({3}, true, false);
 			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(3).getAction());
@@ -664,7 +665,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ReservationTable third_table = ReservationTable(planning_horizon);
 			third_table.linkReceiverReservationTable(&rx_table1);
 			third_table.linkReceiverReservationTable(&rx_table2);
-			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX)), std::invalid_argument);
+			CPPUNIT_ASSERT_NO_THROW(third_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX))); // No problem setting same reservation again.
+			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(MacId(1), Reservation::RX)), std::invalid_argument); // This one has a different target, so it should throw.
 
 			// Now test locking.
 			bool locked = table->lock({2}, false, true);
