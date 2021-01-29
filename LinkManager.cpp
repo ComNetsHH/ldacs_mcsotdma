@@ -163,11 +163,10 @@ void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 		ReservationTable* table = reservation_manager->getReservationTable(channel);
 		std::vector<unsigned int> proposed_slots;
 		// ... and each slot...
-		for (size_t j = 0; j < item.second.size(); j++) {
-			int32_t offset = (int32_t) item.second.at(j);
-//            int32_t offset = (int32_t) proposal->proposed_slots.at(i*proposal->target_num_slots + j);
+		for (int32_t offset : item.second) {
 			try {
-				table->mark(offset, Reservation(link_id, Reservation::Action::RX, proposal->burst_length - 1));
+				// Even for multi-slot reservations, only the first slot should be marked, as the reply must fit within one slot.
+				table->mark(offset, Reservation(link_id, Reservation::Action::RX, 0));
 			} catch (const std::exception& e) {
 				throw std::runtime_error("LinkManager::packetBeingSentCallback couldn't mark RX slots: " + std::string(e.what()));
 			}

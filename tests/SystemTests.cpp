@@ -183,10 +183,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * It is also ensured that corresponding future slot reservations are marked.
 		 */
 		void testLinkEstablishmentMultiSlotBurst() {
-                coutd.setVerbose(true);
+//            coutd.setVerbose(true);
 			// Single message.
 			rlc_layer_me->should_there_be_more_data = false;
 			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
 			// Update traffic estimate s.t. multi-slot bursts should be used.
 			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
 			unsigned int expected_num_slots = 3;
@@ -229,71 +230,56 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout, lm_me->lme->tx_timeout);
-			// Make sure that all corresponding slots are marked as TX on our side.
+
+			// Make sure that all corresponding slots are marked as TX on our side,
 			ReservationTable* table_me = lm_me->current_reservation_table;
-			for (int offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
-				for (int i = 0; i < expected_num_slots; i++) {
-					const Reservation& reservation = table_me->getReservation(offset + i);
-					if (i == 0)
-						CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
-					else
-						CPPUNIT_ASSERT_EQUAL(true, reservation.isTxCont());
-					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
-				}
-			}
-			// Make sure that the same slots are marked as RX on their side.
-			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
 			ReservationTable* table_you = lm_you->current_reservation_table;
-			std::vector<int> reserved_time_slots;
-			for (int offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
-				for (int i = 0; i < expected_num_slots; i++) {
-					const Reservation& reservation = table_you->getReservation(offset + i);
-					CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
-					CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
-					reserved_time_slots.push_back(offset + i);
-				}
+			for (size_t offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
+				const Reservation& reservation_tx = table_me->getReservation(offset);
+				const Reservation& reservation_rx = table_you->getReservation(offset);
+				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
+				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
+				// and one RX where the first data transmission is expected is marked on their side.
+				if (offset == lm_me->lme->tx_offset)
+					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
+				else
+					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isIdle());
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
 			// Wait until the next transmission.
-			for (size_t i = 0; i < lm_you->lme->tx_offset; i++) {
-				mac_layer_me->update(1);
-				mac_layer_you->update(1);
-				std::pair<size_t, size_t> exes_me = mac_layer_me->execute();
-				std::pair<size_t, size_t> exes_you = mac_layer_you->execute();
-				// Since the link is now established, reservation tables should match:
-				// The number of transmissions I send must equal the number of receptions you receive...
-				CPPUNIT_ASSERT_EQUAL(exes_me.first, exes_you.second);
-				// ... and vice-versa.
-				CPPUNIT_ASSERT_EQUAL(exes_me.second, exes_you.first);
-			}
+			mac_layer_me->update(lm_you->lme->tx_offset);
+			mac_layer_you->update(lm_you->lme->tx_offset);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
 			// *Their* status should now show an established link.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
 			// Reservation timeout should be 1 less now.
 			CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout - 1, lm_me->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());
-			// Ensure reservations are still valid.
-			for (size_t i = 0; i < reserved_time_slots.size(); i++) {
-				int offset = reserved_time_slots.at(i);
-				const Reservation& reservation = table_you->getReservation(offset - lm_you->lme->tx_offset); // Normalize saved offsets to current time
-				CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
-				CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
-				// All in-between current and next reservation should be IDLE.
-				if (i < reserved_time_slots.size() - 1) {
-					int next_offset = reserved_time_slots.at(i + 1);
-					for (int j = offset + 1; j < next_offset; j++) {
-						const Reservation& next_reservation = table_you->getReservation(j);
-						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
-						CPPUNIT_ASSERT_EQUAL(true, next_reservation.isIdle());
-					}
-				} else {
-					for (int j = reserved_time_slots.at(reserved_time_slots.size() - 1) + 1; j < planning_horizon; j++) {
-						const Reservation& next_reservation = table_you->getReservation(j);
-						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
-						CPPUNIT_ASSERT_EQUAL(true, next_reservation.isIdle());
-					}
+			// Ensure reservations match now, with multi-slot TX and matching multi-slot RX.
+			for (size_t offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
+				const Reservation& reservation_tx = table_me->getReservation(offset);
+				const Reservation& reservation_rx = table_you->getReservation(offset);
+				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
+				uint remaining_slots = uint(expected_num_slots - 1);
+				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
+				CPPUNIT_ASSERT_EQUAL(remaining_slots, reservation_tx.getNumRemainingSlots());
+				CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isRx());
+				CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx.getTarget());
+				CPPUNIT_ASSERT_EQUAL(remaining_slots, reservation_rx.getNumRemainingSlots());
+				for (size_t t = 1; t <= remaining_slots; t++) {
+					const Reservation &reservation_tx_next = table_me->getReservation(offset + t);
+					const Reservation &reservation_rx_next = table_you->getReservation(offset + t);
+					CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX_CONT, reservation_tx_next.getAction());
+					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx_next.getTarget());
+					CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation_rx_next.getAction());
+					CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx_next.getTarget());
 				}
 			}
-                coutd.setVerbose(false);
+//            coutd.setVerbose(false);
 		}
 
 		/**
@@ -450,9 +436,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
-			CPPUNIT_TEST(testBroadcast);
-			CPPUNIT_TEST(testLinkEstablishment);
-//            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+//			CPPUNIT_TEST(testBroadcast);
+//			CPPUNIT_TEST(testLinkEstablishment);
+            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
 //            CPPUNIT_TEST(testLinkIsExpiring);
 //			CPPUNIT_TEST(testLinkRenewal);
 //			CPPUNIT_TEST(testEncapsulatedUnicast);

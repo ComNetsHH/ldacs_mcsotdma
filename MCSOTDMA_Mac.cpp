@@ -56,9 +56,16 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 		item.second->update(num_slots);
 	// Notify the PHY about the channels to which receivers are tuned to in this time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
+	size_t num_rx = 0;
 	for (const auto& pair : reservations) {
-		if (pair.first.isRx())
-			lower_layer->tuneReceiver(pair.second->getCenterFrequency());
+		if (pair.first.isRx()) {
+			num_rx++;
+			try {
+				lower_layer->tuneReceiver(pair.second->getCenterFrequency());
+			} catch (const std::runtime_error& e) {
+				throw std::runtime_error("MCSOTDMA(" + std::to_string(id.getId()) + ")::update(" + std::to_string(num_slots) + ") couldn't tune receiver for " + std::to_string(num_rx) + " RX reservations.");
+			}
+		}
 	}
 }
 
