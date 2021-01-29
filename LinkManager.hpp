@@ -210,6 +210,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MovingAverage traffic_estimate;
 		/** Takes care of link management. It resides in its own class to modularize the code. */
 		LinkManagementEntity* lme = nullptr;
+		size_t statistic_num_received_packets = 0, statistic_num_sent_packets = 0;
 
 	};
 

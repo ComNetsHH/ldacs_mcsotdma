@@ -82,7 +82,7 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 		tx_timeout = default_tx_timeout;
 		coutd << "resetting timeout to " << tx_timeout << " -> marking TX reservations:";
 		owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
-		coutd << " -> configuring request slots -> ";
+		coutd << " -> configuring link renewal request slots -> ";
 		num_renewal_attempts = max_link_renewal_attempts;
 		configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
 		coutd << scheduled_requests.size() << " scheduled -> ";

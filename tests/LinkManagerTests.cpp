@@ -94,7 +94,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->update(1);
 				CPPUNIT_ASSERT_EQUAL(expected_estimate, link_manager->getCurrentTrafficEstimate());
 			}
-			// ... and then shrink it per slot by not notying about any new data
+			// ... and then shrink it per slot by not notifying about any new data
 			for (size_t i = 0; i < link_manager->traffic_estimate.values.size(); i++) {
 				mac->update(1);
 				expected_estimate -= ((double) bits_to_send / ((double) link_manager->traffic_estimate.values.size()));
@@ -702,7 +702,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testReservationsAfterFirstDataTx() {
 			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
 			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
-			ReservationManager* reservation_manager_rx = env_rx.mac_layer->reservation_manager;
 
 			// Send request.
 			testReservationsAfterRequest();
@@ -774,8 +773,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(expected_num_reservations, actual_num_reservations);
 
+			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->max_link_renewal_attempts), link_manager->lme->scheduled_requests.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_requests.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager->lme->scheduled_replies.size());
+
 //                coutd.setVerbose(false);
 		}
+
+
 
 	CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);

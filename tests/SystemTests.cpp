@@ -91,12 +91,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * It is also ensured that corresponding future slot reservations are marked.
 		 */
 		void testLinkEstablishment() {
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			// Single message.
 			rlc_layer_me->should_there_be_more_data = false;
 			// New data for communication partner.
 			mac_layer_me->notifyOutgoing(512, communication_partner_id);
-			size_t num_slots = 0, max_slots = 10;
+			size_t num_slots = 0, max_slots = 20;
+			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
 			while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
 				// Order is important: if 'you' updates last, the reply may already be sent, and we couldn't check the next condition (or check for both 'awaiting_reply' OR 'established').
 				mac_layer_you->update(1);
@@ -105,14 +109,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 			}
 			CPPUNIT_ASSERT(num_slots < max_slots);
-			// Link request should've been sent, so we're 'awaiting_reply'.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
-			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+
+			// Link request should've been sent, so we're 'awaiting_reply', and they're not established (as the reply hasn't been sent yet).
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, lm_you->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->statistic_num_sent_packets);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout, lm_me->lme->tx_timeout);
 			// Increment time until status is 'link_established'.
 			num_slots = 0;
-			while (mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status != LinkManager::link_established && num_slots < max_slots) {
+			while (mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status != LinkManager::link_established && num_slots++ < max_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -121,69 +129,50 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			// Link reply should've arrived, so *our* link should be established...
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(communication_partner_id)->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_me->statistic_num_received_packets);
 			// ... and *their* link should indicate that the reply has been sent.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout, lm_me->lme->tx_timeout);
-			// Make sure that all corresponding slots are marked as TX on our side.
+			// Make sure that all corresponding slots are marked as TX on our side,
 			ReservationTable* table_me = lm_me->current_reservation_table;
-			for (int offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
-				const Reservation& reservation = table_me->getReservation(offset);
-				CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
-				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
-			}
-			// Make sure that the same slots are marked as RX on their side.
-			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
 			ReservationTable* table_you = lm_you->current_reservation_table;
-			std::vector<int> reserved_time_slots;
-			for (int offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
-				const Reservation& reservation = table_you->getReservation(offset);
-				CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
-				CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
-				reserved_time_slots.push_back(offset);
+			for (size_t offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
+				const Reservation& reservation_tx = table_me->getReservation(offset);
+				const Reservation& reservation_rx = table_you->getReservation(offset);
+				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
+				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
+				// and one RX where the first data transmission is expected is marked on their side.
+				if (offset == lm_me->lme->tx_offset)
+					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
+				else
+					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isIdle());
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
-			// Wait until the next transmission.
-			for (size_t i = 0; i < lm_you->lme->tx_offset; i++) {
-				mac_layer_me->update(1);
-				mac_layer_you->update(1);
-				std::pair<size_t, size_t> exes_me = mac_layer_me->execute();
-				std::pair<size_t, size_t> exes_you = mac_layer_you->execute();
-				// Since the link is now established, reservation tables should match:
-				// The number of transmissions I send must equal the number of receptions you receive...
-				CPPUNIT_ASSERT_EQUAL(exes_me.first, exes_you.second);
-				// ... and vice-versa.
-				CPPUNIT_ASSERT_EQUAL(exes_me.second, exes_you.first);
-			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
+			// Jump in time to the next transmission.
+			mac_layer_me->update(lm_you->lme->tx_offset);
+			mac_layer_you->update(lm_you->lme->tx_offset);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
 			// *Their* status should now show an established link.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_establishment_status);
 			// Reservation timeout should be 1 less now.
 			CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout - 1, lm_me->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());
-			// Ensure reservations are still valid.
-			for (size_t i = 0; i < reserved_time_slots.size(); i++) {
-				int offset = reserved_time_slots.at(i);
-				const Reservation& reservation = table_you->getReservation(offset - lm_you->lme->tx_offset); // Normalize saved offsets to current time
-				CPPUNIT_ASSERT_EQUAL(own_id, reservation.getTarget());
-				CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
-				// All in-between current and next reservation should be IDLE.
-				if (i < reserved_time_slots.size() - 1) {
-					int next_offset = reserved_time_slots.at(i + 1);
-					for (int j = offset + 1; j < next_offset; j++) {
-						const Reservation& next_reservation = table_you->getReservation(j);
-						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
-						CPPUNIT_ASSERT_EQUAL(true, next_reservation.isIdle());
-					}
-					coutd << std::endl;
-				} else {
-					for (int j = reserved_time_slots.at(reserved_time_slots.size() - 1) + 1; j < planning_horizon; j++) {
-						const Reservation& next_reservation = table_you->getReservation(j);
-						CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, next_reservation.getTarget());
-						CPPUNIT_ASSERT_EQUAL(true, next_reservation.isIdle());
-					}
-				}
+			CPPUNIT_ASSERT_EQUAL(size_t(2), lm_you->statistic_num_received_packets);
+			// Ensure reservations now match: one side has TX, other side has RX.
+			for (size_t offset = lm_me->lme->tx_offset; offset < lm_me->lme->tx_timeout * lm_me->lme->tx_offset; offset += lm_me->lme->tx_offset) {
+				const Reservation& reservation_tx = table_me->getReservation(offset);
+				const Reservation& reservation_rx = table_you->getReservation(offset);
+				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
+				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
+				CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isRx());
+				CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx.getTarget());
 			}
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
 		}
 
 
@@ -461,7 +450,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testBroadcast);
-//			CPPUNIT_TEST(testLinkEstablishment);
+			CPPUNIT_TEST(testLinkEstablishment);
 //            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
 //            CPPUNIT_TEST(testLinkIsExpiring);
 //			CPPUNIT_TEST(testLinkRenewal);

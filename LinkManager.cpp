@@ -59,6 +59,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 		else
 			coutd << "' -> ";
 	}
+	statistic_num_received_packets++;
 	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
@@ -229,6 +230,7 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 		for (L2Header* header : segment->getHeaders())
 			setHeaderFields(header);
 
+	statistic_num_sent_packets++;
 	return segment;
 }
 
@@ -384,9 +386,9 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 		if (current_reservation != reservation)
 			current_reservation_table->mark(current_offset, reservation);
 		if (current_reservation.getAction() != action)
-			coutd << " @" << current_offset << ":" << current_reservation.getAction() << "->" << action;
+			coutd << " @" << current_offset << ":" << current_reservation << "->" << reservation;
 		else
-			coutd << " @" << current_offset;
+			coutd << " @" << current_offset << ":" << reservation;
 	}
 }
 

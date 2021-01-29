@@ -114,6 +114,7 @@ L2Packet* BCLinkManager::onTransmissionBurst(unsigned int num_slots) {
 		// must send beacon
 		// and schedule a new beacon slot
 	}
+	statistic_num_sent_packets++;
 	return packet;
 }
 
