@@ -36,11 +36,11 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		throw std::invalid_argument("ReservationTable::mark planning_horizon=" + std::to_string(planning_horizon) + " smaller than queried slot_offset=" + std::to_string(slot_offset) + "!");
 	// Ensure that linked tables have capacity.
 	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
-		if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset) || transmitter_reservation_table->getReservation(slot_offset) == reservation))
+		if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))
 			throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward TX reservation because the linked transmitter table is not idle.");
 	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX) {
-		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset, reservation](ReservationTable* table) {
-			return table->isIdle(slot_offset) || table->isLocked(slot_offset) || table->getReservation(slot_offset) == reservation;
+		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset](ReservationTable* table) {
+			return table->isIdle(slot_offset) || table->isLocked(slot_offset);
 		})) {
 			for (const auto& rx_table : receiver_reservation_tables)
 				coutd << rx_table->getReservation(slot_offset) << std::endl;
