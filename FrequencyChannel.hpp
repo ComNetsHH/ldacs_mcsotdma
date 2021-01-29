@@ -9,48 +9,54 @@
 #include <ostream>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
-	
+
 	/** A logical frequency channel. */
 	class FrequencyChannel {
-		public:
-			FrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
-			FrequencyChannel(const FrequencyChannel& other);
-			
-			uint64_t getCenterFrequency() const;
-			
-			uint64_t getBandwidth() const;
-			
-			bool isPointToPointChannel() const;
-			
-			bool isBroadcastChannel() const;
-			
-			bool isBlacklisted() const;
-			
-			void setBlacklisted(bool value);
-			
-			bool operator==(const FrequencyChannel& other) const;
-            bool operator!=(const FrequencyChannel& other) const;
-			bool operator<(const FrequencyChannel& other) const;
-			bool operator<=(const FrequencyChannel& other) const;
-			bool operator>(const FrequencyChannel& other) const;
-			bool operator>=(const FrequencyChannel& other) const;
-		
-		protected:
-			/** Whether this is a point-to-point frequency channel for unicast communication. */
-			const bool is_p2p;
-			/** Center frequency in Hertz. */
-			const uint64_t center_frequency;
-			/** Bandwidth in Hertz. */
-			const uint64_t bandwidth;
-			/** FrequencyChannel object are local to each user, so they can blacklist a channel through this flag. */
-			bool is_blacklisted;
+	public:
+		FrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth);
+
+		FrequencyChannel(const FrequencyChannel& other);
+
+		uint64_t getCenterFrequency() const;
+
+		uint64_t getBandwidth() const;
+
+		bool isPointToPointChannel() const;
+
+		bool isBroadcastChannel() const;
+
+		bool isBlacklisted() const;
+
+		void setBlacklisted(bool value);
+
+		bool operator==(const FrequencyChannel& other) const;
+
+		bool operator!=(const FrequencyChannel& other) const;
+
+		bool operator<(const FrequencyChannel& other) const;
+
+		bool operator<=(const FrequencyChannel& other) const;
+
+		bool operator>(const FrequencyChannel& other) const;
+
+		bool operator>=(const FrequencyChannel& other) const;
+
+	protected:
+		/** Whether this is a point-to-point frequency channel for unicast communication. */
+		const bool is_p2p;
+		/** Center frequency in Hertz. */
+		const uint64_t center_frequency;
+		/** Bandwidth in Hertz. */
+		const uint64_t bandwidth;
+		/** FrequencyChannel object are local to each user, so they can blacklist a channel through this flag. */
+		bool is_blacklisted;
 	};
-	
+
 	inline std::ostream& operator<<(std::ostream& stream, const FrequencyChannel& channel) {
-	    if (channel.isPointToPointChannel())
-		    return stream << std::to_string(channel.getCenterFrequency()) << "kHz";
-	    else
-	        return stream << "BC";
+		if (channel.isPointToPointChannel())
+			return stream << std::to_string(channel.getCenterFrequency()) << "kHz";
+		else
+			return stream << "BC";
 	}
 }
 

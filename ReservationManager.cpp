@@ -13,14 +13,14 @@ ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_hor
 
 void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth) {
 //    ReservationTable* table = is_p2p ? new ReservationTable(this->planning_horizon) : new ReservationTable(this->planning_horizon, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
-    auto* table = new ReservationTable(planning_horizon);
+	auto* table = new ReservationTable(planning_horizon);
 	auto* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
 	table->linkFrequencyChannel(channel);
 	if (transmitter_table != nullptr)
-        table->linkTransmitterReservationTable(this->transmitter_table);
+		table->linkTransmitterReservationTable(this->transmitter_table);
 	if (is_p2p) {
-        for (ReservationTable* rx_table : receiver_reservation_tables)
-            table->linkReceiverReservationTable(rx_table);
+		for (ReservationTable* rx_table : receiver_reservation_tables)
+			table->linkReceiverReservationTable(rx_table);
 		frequency_channels.push_back(channel);
 		p2p_reservation_tables.push_back(table);
 		p2p_channel_map[*channel] = frequency_channels.size() - 1;
@@ -50,26 +50,26 @@ void ReservationManager::update(uint64_t num_slots) {
 }
 
 ReservationManager::~ReservationManager() {
-    for (FrequencyChannel* channel : frequency_channels)
-        delete channel;
-    for (ReservationTable* table : p2p_reservation_tables)
-        delete table;
-    delete broadcast_reservation_table;
-    delete broadcast_frequency_channel;
+	for (FrequencyChannel* channel : frequency_channels)
+		delete channel;
+	for (ReservationTable* table : p2p_reservation_tables)
+		delete table;
+	delete broadcast_reservation_table;
+	delete broadcast_frequency_channel;
 }
 
 size_t ReservationManager::getNumEntries() const {
-    return frequency_channels.size();
+	return frequency_channels.size();
 }
 
 ReservationTable* ReservationManager::getLeastUtilizedP2PReservationTable() {
-    // Keeping an up-to-date priority queue is less efficient than manually searching through all channels upon request,
-    // because reservations are made very often, while finding the least utilized table is needed relatively rarely.
-    ReservationTable* least_used_table = p2p_reservation_tables.at(0);
-    for (auto it = p2p_reservation_tables.begin() + 1; it < p2p_reservation_tables.end(); it++)
-        if (least_used_table->getNumIdleSlots() < (*it)->getNumIdleSlots())
-            least_used_table = *it;
-    return least_used_table;
+	// Keeping an up-to-date priority queue is less efficient than manually searching through all channels upon request,
+	// because reservations are made very often, while finding the least utilized table is needed relatively rarely.
+	ReservationTable* least_used_table = p2p_reservation_tables.at(0);
+	for (auto it = p2p_reservation_tables.begin() + 1; it < p2p_reservation_tables.end(); it++)
+		if (least_used_table->getNumIdleSlots() < (*it)->getNumIdleSlots())
+			least_used_table = *it;
+	return least_used_table;
 }
 
 std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison>
@@ -176,5 +176,5 @@ FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center
 }
 
 void ReservationManager::addReceiverReservationTable(ReservationTable*& rx_table) {
-    this->receiver_reservation_tables.push_back(rx_table);
+	this->receiver_reservation_tables.push_back(rx_table);
 }

@@ -4,7 +4,7 @@
 
 #include "coutdebug.hpp"
 
-coutdebug::coutdebug(bool verbose)  : verbose(verbose){
+coutdebug::coutdebug(bool verbose) : verbose(verbose) {
 	// Empty constructor.
 }
 

@@ -54,7 +54,7 @@ double ContentionEstimator::getAverageBroadcastRate() const {
 			n++;
 		}
 	}
-	return n > 0.0 ? r/n : 0.0;
+	return n > 0.0 ? r / n : 0.0;
 }
 
 

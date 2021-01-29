@@ -11,7 +11,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac,
                              unsigned int num_slots_contention_estimate)
-     : LinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
+		: LinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
 	if (link_id != SYMBOLIC_LINK_ID_BROADCAST)
 		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
 	link_establishment_status = link_established;
@@ -22,7 +22,7 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
 }
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
-	: BCLinkManager(link_id, reservation_manager, mac, 5000 /* past 60s for 12ms slots */) {}
+		: BCLinkManager(link_id, reservation_manager, mac, 5000 /* past 60s for 12ms slots */) {}
 
 L2Packet* BCLinkManager::prepareBeacon() {
 	auto* beacon = new L2Packet();
@@ -122,14 +122,14 @@ unsigned int BCLinkManager::getNumActiveNeighbors() const {
 }
 
 void BCLinkManager::update(uint64_t num_slots) {
-    LinkManager::update(num_slots);
+	LinkManager::update(num_slots);
 	for (uint64_t t = 0; t < num_slots; t++)
 		contention_estimator.update();
-    if (current_reservation_table->getReservation(0).isIdle()) {
-        coutd << "marking BC reception: ";
-        markReservations(1, 0, 0, 1, SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX);
-        coutd << std::endl;
-    }
+	if (current_reservation_table->getReservation(0).isIdle()) {
+		coutd << "marking BC reception: ";
+		markReservations(1, 0, 0, 1, SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX);
+		coutd << std::endl;
+	}
 }
 
 unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {
@@ -146,7 +146,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		double p = ((double) nchoosek(m, n)) * pow(r, n) * pow(1 - r, m - n);
 		// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
 		unsigned int k = n == 0 ? 1 : ceil(1.0 / (1.0 - pow(1.0 - target_collision_prob, 1.0 / n)));
-		expected_num_bc_accesses += p*k;
+		expected_num_bc_accesses += p * k;
 	}
 	return ceil(expected_num_bc_accesses);
 }
@@ -169,7 +169,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() const {
 	unsigned int num_candidates = getNumCandidateSlots(this->target_collision_probability);
 	std::vector<int32_t> candidate_slots = current_reservation_table->findCandidateSlots(lme->getMinOffset(), num_candidates, 1, true, false);
 	if (candidate_slots.empty())
-	    throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
+		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
 	int32_t slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
 	if (slot < 0)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection chose a slot in the past.");

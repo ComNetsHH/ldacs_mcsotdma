@@ -12,7 +12,7 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 ReservationTable::ReservationTable(uint32_t planning_horizon)
-	: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<Reservation>(uint64_t(planning_horizon * 2 + 1))), last_updated(), num_idle_future_slots(planning_horizon + 1), default_reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE) {
+		: planning_horizon(planning_horizon), slot_utilization_vec(std::vector<Reservation>(uint64_t(planning_horizon * 2 + 1))), last_updated(), num_idle_future_slots(planning_horizon + 1), default_reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE) {
 	// The planning horizon denotes how many slots we want to be able to look into future and past.
 	// Since the current moment in time must also be represented, we need planning_horizon*2+1 values.
 	// If we use UINT32_MAX, then we wouldn't be able to store 2*UINT32_MAX+1 in UINT64, so throw an exception if this is attempted.
@@ -21,10 +21,10 @@ ReservationTable::ReservationTable(uint32_t planning_horizon)
 	// In practice, allocating even much less results in a std::bad_alloc anyway...
 }
 
-ReservationTable::ReservationTable(uint32_t planning_horizon, const Reservation &default_reservation) : ReservationTable(planning_horizon) {
-    this->default_reservation = default_reservation;
-    for (auto& it : slot_utilization_vec)
-        it = default_reservation;
+ReservationTable::ReservationTable(uint32_t planning_horizon, const Reservation& default_reservation) : ReservationTable(planning_horizon) {
+	this->default_reservation = default_reservation;
+	for (auto& it : slot_utilization_vec)
+		it = default_reservation;
 }
 
 uint32_t ReservationTable::getPlanningHorizon() const {
@@ -36,17 +36,17 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		throw std::invalid_argument("ReservationTable::mark planning_horizon=" + std::to_string(planning_horizon) + " smaller than queried slot_offset=" + std::to_string(slot_offset) + "!");
 	// Ensure that linked tables have capacity.
 	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
-	    if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))
-	        throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward TX reservation because the linked transmitter table is not idle.");
-    if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX) {
-        if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset](ReservationTable *table) {
-            return table->isIdle(slot_offset) || table->isLocked(slot_offset);
-        })) {
-            for (const auto& rx_table : receiver_reservation_tables)
-                coutd << rx_table->getReservation(slot_offset) << std::endl;
-            throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
-        }
-    }
+		if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))
+			throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward TX reservation because the linked transmitter table is not idle.");
+	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX) {
+		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset](ReservationTable* table) {
+			return table->isIdle(slot_offset) || table->isLocked(slot_offset);
+		})) {
+			for (const auto& rx_table : receiver_reservation_tables)
+				coutd << rx_table->getReservation(slot_offset) << std::endl;
+			throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
+		}
+	}
 	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
 	// Update the number of idle slots.
@@ -56,22 +56,22 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		num_idle_future_slots++;
 	// If a transmitter table is linked, mark it there, too.
 	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT)) {
-	    // Need a copy here s.t. the linked table's recursive call won't set all slots now.
-        Reservation cpy = Reservation(reservation);
-        cpy.setNumRemainingSlots(0);
-        transmitter_reservation_table->mark(slot_offset, cpy);
-    }
+		// Need a copy here s.t. the linked table's recursive call won't set all slots now.
+		Reservation cpy = Reservation(reservation);
+		cpy.setNumRemainingSlots(0);
+		transmitter_reservation_table->mark(slot_offset, cpy);
+	}
 	// Same for receiver tables
 	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX)
-	    for (ReservationTable* rx_table : receiver_reservation_tables) {
-	        if (rx_table->getReservation(slot_offset).isIdle()) {
-                // Need a copy here s.t. the linked table's recursive call won't set all slots now.
-	            Reservation cpy = Reservation(reservation);
-	            cpy.setNumRemainingSlots(0);
-                rx_table->mark(slot_offset, cpy);
-                break;
-            }
-        }
+		for (ReservationTable* rx_table : receiver_reservation_tables) {
+			if (rx_table->getReservation(slot_offset).isIdle()) {
+				// Need a copy here s.t. the linked table's recursive call won't set all slots now.
+				Reservation cpy = Reservation(reservation);
+				cpy.setNumRemainingSlots(0);
+				rx_table->mark(slot_offset, cpy);
+				break;
+			}
+		}
 	// If this is a multi-slot transmission reservation, set the following ones, too.
 	if (reservation.getNumRemainingSlots() > 0) {
 		Reservation::Action action = reservation.getAction();
@@ -90,16 +90,16 @@ bool ReservationTable::isUtilized(int32_t slot_offset) const {
 }
 
 bool ReservationTable::isLocked(int32_t slot_offset) const {
-    if (!this->isValid(slot_offset))
-        throw std::invalid_argument("ReservationTable::isLocked for planning horizon smaller than queried offset!");
-    return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isLocked();
+	if (!this->isValid(slot_offset))
+		throw std::invalid_argument("ReservationTable::isLocked for planning horizon smaller than queried offset!");
+	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isLocked();
 }
 
 bool ReservationTable::anyTxReservations(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::anyTxReservations for planning horizon smaller than queried offset!");
 	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isTx()
-		|| this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isTxCont();
+	       || this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isTxCont();
 }
 
 bool ReservationTable::anyTxReservations(int32_t start, uint32_t length) const {
@@ -115,21 +115,21 @@ bool ReservationTable::anyTxReservations(int32_t start, uint32_t length) const {
 }
 
 bool ReservationTable::anyRxReservations(int32_t slot_offset) const {
-    if (!this->isValid(slot_offset))
-        throw std::invalid_argument("ReservationTable::anyRxReservations for planning horizon smaller than queried offset!");
-    return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isRx();
+	if (!this->isValid(slot_offset))
+		throw std::invalid_argument("ReservationTable::anyRxReservations for planning horizon smaller than queried offset!");
+	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isRx();
 }
 
 bool ReservationTable::anyRxReservations(int32_t start, uint32_t length) const {
-    if (length == 1)
-        return anyRxReservations(start);
-    if (!this->isValid(start, length))
-        throw std::invalid_argument("ReservationTable::anyRxReservations invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
-    // A slot range contains a RX if any slot does
-    for (int32_t slot = start; slot < start + int32_t(length); slot++)
-        if (anyRxReservations(slot))
-            return true; // so a single busy one fails the check
-    return false;
+	if (length == 1)
+		return anyRxReservations(start);
+	if (!this->isValid(start, length))
+		throw std::invalid_argument("ReservationTable::anyRxReservations invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
+	// A slot range contains a RX if any slot does
+	for (int32_t slot = start; slot < start + int32_t(length); slot++)
+		if (anyRxReservations(slot))
+			return true; // so a single busy one fails the check
+	return false;
 }
 
 bool ReservationTable::isIdle(int32_t slot_offset) const {
@@ -143,8 +143,8 @@ bool ReservationTable::isIdle(int32_t start, uint32_t length) const {
 		throw std::invalid_argument("ReservationTable::isIdle invalid slot range: start=" + std::to_string(start) + " length=" + std::to_string(length));
 	// A slot range is idle if ALL slots within are idle.
 	for (int32_t slot = start; slot < start + int32_t(length); slot++)
- 		if (isUtilized(slot))
-		    return false; // so a single busy one fails the check
+		if (isUtilized(slot))
+			return false; // so a single busy one fails the check
 	return true;
 }
 
@@ -154,41 +154,41 @@ bool ReservationTable::isUtilized(int32_t start, uint32_t length) const {
 }
 
 int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter, bool consider_receivers) const {
-    if (!isValid(start, length))
-        throw std::invalid_argument("Invalid slot range!");
+	if (!isValid(start, length))
+		throw std::invalid_argument("Invalid slot range!");
 	if (consider_transmitter && transmitter_reservation_table == nullptr)
 		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_transmitter==true for unset transmitter table.");
 	if (consider_receivers && receiver_reservation_tables.empty())
-        throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_receivers==true for unset receiver tables.");
+		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_receivers==true for unset receiver tables.");
 	bool tx_idle, rx_idle;
 	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
 		if (this->isIdle(i, length)) {
-		    // Neither TX nor RX matter
-		    if (!consider_transmitter && !consider_receivers)
-		        return i;
-		    // Both RX && TX matter
-		    else if (consider_transmitter && consider_receivers) {
-                tx_idle = !transmitter_reservation_table->isIdle(i, length);
-                rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable* table) {
-                        return table->isIdle(i, length);
-                        });
-                if (tx_idle && rx_idle)
-                    return i;
-            // TX && !RX
-		    } else if (consider_transmitter && !consider_receivers) {
-                if (transmitter_reservation_table->isIdle(i, length))
-                    return i;
-            // !TX && RX
-            } else {
-                rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable *table) {
-                        return table->isIdle(i, length);
-                    });
-                if (rx_idle)
-                    return i;
-            }
+			// Neither TX nor RX matter
+			if (!consider_transmitter && !consider_receivers)
+				return i;
+				// Both RX && TX matter
+			else if (consider_transmitter && consider_receivers) {
+				tx_idle = !transmitter_reservation_table->isIdle(i, length);
+				rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable* table) {
+					return table->isIdle(i, length);
+				});
+				if (tx_idle && rx_idle)
+					return i;
+				// TX && !RX
+			} else if (consider_transmitter && !consider_receivers) {
+				if (transmitter_reservation_table->isIdle(i, length))
+					return i;
+				// !TX && RX
+			} else {
+				rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable* table) {
+					return table->isIdle(i, length);
+				});
+				if (rx_idle)
+					return i;
+			}
 		}
 	}
-    throw std::range_error("No idle slot range of specified length found.");
+	throw std::range_error("No idle slot range of specified length found.");
 }
 
 //int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter) const {
@@ -231,7 +231,7 @@ void ReservationTable::update(uint64_t num_slots) {
 			num_busy_slots++;
 	}
 	num_idle_future_slots += num_busy_slots; // As these go out of scope, we may have more idle slots now.
-	
+
 	// Shift all elements to the front, old ones are overwritten.
 	std::move(this->slot_utilization_vec.begin() + num_slots, this->slot_utilization_vec.end(), this->slot_utilization_vec.begin());
 	// All new elements are initialized as idle.
@@ -279,46 +279,46 @@ std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offse
 }
 
 bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_tx, bool lock_rx) {
-    // Ensure that you *can* lock all tables that should be locked *before* actually doing so.
-    if (!canLock(slot_offsets))
-        return false;
-    if (lock_tx) {
-        if (transmitter_reservation_table == nullptr)
-            throw std::runtime_error("ReservationTable::lock with lock_tx=true and unset transmitter reservation table.");
-        if (!transmitter_reservation_table->canLock(slot_offsets))
-            return false;
-    }
-    if (lock_rx) {
-        if (receiver_reservation_tables.empty())
-            throw std::runtime_error("ReservationTable::lock with lock_rx=true and unset receiver reservation table.");
-        if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offsets](ReservationTable* table) {
-                return table->canLock(slot_offsets);
-            })) {
-            return false;
-        }
-    }
-    // Then apply locking.
-	for (int32_t t : slot_offsets)
-        slot_utilization_vec.at(convertOffsetToIndex(t)).lock();
-	if (lock_tx)
-	    transmitter_reservation_table->lock(slot_offsets, false, false);
+	// Ensure that you *can* lock all tables that should be locked *before* actually doing so.
+	if (!canLock(slot_offsets))
+		return false;
+	if (lock_tx) {
+		if (transmitter_reservation_table == nullptr)
+			throw std::runtime_error("ReservationTable::lock with lock_tx=true and unset transmitter reservation table.");
+		if (!transmitter_reservation_table->canLock(slot_offsets))
+			return false;
+	}
 	if (lock_rx) {
-        for (auto *rx_table : receiver_reservation_tables)
-            if (rx_table->canLock(slot_offsets)) {
-                if (!rx_table->lock(slot_offsets, false, false))
-                    throw std::runtime_error("ReservationTable::lock couldn't lock receiver table.");
-                // Lock just *one* receiver table, i.e. the first one where you can.
-                return true;
-            }
-    }
+		if (receiver_reservation_tables.empty())
+			throw std::runtime_error("ReservationTable::lock with lock_rx=true and unset receiver reservation table.");
+		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offsets](ReservationTable* table) {
+			return table->canLock(slot_offsets);
+		})) {
+			return false;
+		}
+	}
+	// Then apply locking.
+	for (int32_t t : slot_offsets)
+		slot_utilization_vec.at(convertOffsetToIndex(t)).lock();
+	if (lock_tx)
+		transmitter_reservation_table->lock(slot_offsets, false, false);
+	if (lock_rx) {
+		for (auto* rx_table : receiver_reservation_tables)
+			if (rx_table->canLock(slot_offsets)) {
+				if (!rx_table->lock(slot_offsets, false, false))
+					throw std::runtime_error("ReservationTable::lock couldn't lock receiver table.");
+				// Lock just *one* receiver table, i.e. the first one where you can.
+				return true;
+			}
+	}
 	return true;
 }
 
-bool ReservationTable::canLock(const std::vector<int32_t> &slot_offsets) const {
-    for (int32_t t : slot_offsets)
-        if (!slot_utilization_vec.at(convertOffsetToIndex(t)).isIdle())
-            return false;
-    return true;
+bool ReservationTable::canLock(const std::vector<int32_t>& slot_offsets) const {
+	for (int32_t t : slot_offsets)
+		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).isIdle())
+			return false;
+	return true;
 }
 
 int32_t ReservationTable::findEarliestOffset(int32_t start_offset, const Reservation& reservation) const {
@@ -388,7 +388,7 @@ void ReservationTable::linkTransmitterReservationTable(ReservationTable* tx_tabl
 }
 
 void ReservationTable::linkReceiverReservationTable(ReservationTable* rx_table) {
-    this->receiver_reservation_tables.push_back(rx_table);
+	this->receiver_reservation_tables.push_back(rx_table);
 }
 
 ReservationTable::~ReservationTable() = default;
