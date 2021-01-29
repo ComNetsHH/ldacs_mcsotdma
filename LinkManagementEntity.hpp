@@ -48,6 +48,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
                        + 8; // 1B to denote candidate slot length
             }
 
+            Payload* copy() const override {
+                return new ProposalPayload(*this);
+            }
+
             /** <channel, <start slots>>-map of proposed resources. */
             std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
             /** Target number of frequency channels to propose. */

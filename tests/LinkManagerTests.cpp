@@ -226,7 +226,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testProcessIncomingBase() {
 				// Assign a reservation table.
-				ReservationTable* table = reservation_manager->reservation_tables.at(0);
+				ReservationTable* table = reservation_manager->p2p_reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
 //				coutd.setVerbose(true);
 				// Prepare incoming packet.
@@ -254,7 +254,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testProcessIncomingLinkEstablishmentRequest() {
 				// Assign a reservation table.
-				ReservationTable* table = reservation_manager->reservation_tables.at(0);
+				ReservationTable* table = reservation_manager->p2p_reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
 				// Prepare a link establishment request by our communication partner.
 				MACLayer other_mac = MACLayer(communication_partner_id, planning_horizon);
@@ -284,7 +284,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			void testProcessIncomingUnicast() {
 				// Assign a reservation table.
-				ReservationTable* table = reservation_manager->reservation_tables.at(0);
+				ReservationTable* table = reservation_manager->p2p_reservation_tables.at(0);
 				link_manager->current_reservation_table = table;
 				// Set this link as established.
 				// When we receive a packet intended for us...
@@ -702,10 +702,81 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 
 			void testReservationsAfterFirstDataTx() {
-			    coutd.setVerbose(true);
                 TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
-                LinkManager* lm_rx = env_rx.mac_layer->getLinkManager(own_id);
-                coutd.setVerbose(false);
+                LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+                ReservationManager* reservation_manager_rx = env_rx.mac_layer->reservation_manager;
+
+                // Send request.
+                testReservationsAfterRequest();
+                // Copy request proposal (otherwise we have two sides trying to delete this packet -> memory error).
+                L2Packet* request_sent = phy_layer->outgoing_packets.at(0);
+                L2Packet* request = link_manager->lme->prepareRequest();
+                ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
+                // Receive the request.
+                link_manager_rx->receiveFromLower(request);
+                // Increment time until the reply has been sent.
+                size_t num_slots = 0, max_num_slots = 20;
+                while (env_rx.phy_layer->outgoing_packets.empty() && num_slots++ < max_num_slots) {
+                    env_rx.mac_layer->update(1);
+                    env_rx.mac_layer->execute();
+                }
+                CPPUNIT_ASSERT(num_slots < max_num_slots);
+
+                // Receive the reply.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), env_rx.phy_layer->outgoing_packets.size());
+                L2Packet* reply_sent = env_rx.phy_layer->outgoing_packets.at(0);
+                // Copy the content to avoid double-free memory error.
+                L2Packet* reply = link_manager_rx->lme->prepareReply(own_id);
+                ((LinkManagementEntity::ProposalPayload*) reply->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) reply_sent->getPayloads().at(1))->proposed_resources;
+                // Receive the reply.
+                uint64_t selected_freq = env_rx.phy_layer->outgoing_packet_freqs.at(0);
+                phy_layer->tuneReceiver(selected_freq);
+                phy_layer->onReception(reply, selected_freq);
+
+//                coutd.setVerbose(true);
+
+                // Should've only sent the request so far.
+                CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
+                // Increment time until the first data transmission.
+                uint64_t slots_until_tx = link_manager->lme->tx_offset;
+                mac->update(slots_until_tx);
+                env_rx.mac_layer->update(slots_until_tx);
+                mac->execute();
+                // Should have the first transmission "sent" now.
+                CPPUNIT_ASSERT_EQUAL(size_t(2), phy_layer->outgoing_packets.size());
+                // Let RX receive it.
+                auto* data_packet = phy_layer->outgoing_packets.at(1)->copy();
+                CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
+                link_manager_rx->receiveFromLower(data_packet);
+
+                // It should now have an established link.
+                CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager_rx->link_establishment_status);
+                // Both sides should have matching (TX, RX)-pairs of reservations.
+                ReservationTable *table_tx = link_manager->current_reservation_table, *table_rx = link_manager_rx->current_reservation_table;
+                size_t expected_num_reservations = link_manager->lme->default_tx_timeout, actual_num_reservations = 0;
+                std::vector<size_t> expected_offsets;
+                for (size_t t = 0; t < expected_num_reservations; t++)
+                    expected_offsets.push_back(t*link_manager->lme->tx_offset);
+                for (size_t t = 0; t < planning_horizon; t++) {
+                    const Reservation &res_tx = table_tx->getReservation(t), &res_rx = table_rx->getReservation(t);
+                    if (res_tx.isTx()) {
+                        actual_num_reservations++;
+                        CPPUNIT_ASSERT_EQUAL(communication_partner_id, res_tx.getTarget());
+                        CPPUNIT_ASSERT_EQUAL(own_id, res_rx.getTarget());
+                        CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, res_rx.getAction());
+                        CPPUNIT_ASSERT_EQUAL(true, std::any_of(expected_offsets.begin(), expected_offsets.end(), [t](size_t offset){
+                            return offset == t;
+                        }));
+                    } else {
+                        CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, res_tx.getAction());
+                        CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, res_rx.getAction());
+                        CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, res_tx.getTarget());
+                        CPPUNIT_ASSERT_EQUAL(SYMBOLIC_ID_UNSET, res_rx.getTarget());
+                    }
+                }
+                CPPUNIT_ASSERT_EQUAL(expected_num_reservations, actual_num_reservations);
+
+//                coutd.setVerbose(false);
 			}
 		
 		CPPUNIT_TEST_SUITE(LinkManagerTests);

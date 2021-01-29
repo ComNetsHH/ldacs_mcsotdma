@@ -323,7 +323,7 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 	} else {
 		// ... update status if we've been expecting it.
 		if (link_establishment_status == awaiting_data_tx) {
-			coutd << "link is now established";
+			coutd << "link is now established -> ";
 			link_establishment_status = link_established;
 			mac->notifyAboutNewLink(link_id);
 		} else if (link_establishment_status != link_established && link_establishment_status != link_renewal_complete) {
@@ -375,16 +375,17 @@ size_t LinkManager::getRandomInt(size_t start, size_t end) {
 void LinkManager::markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action) {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("LinkManager::markReservations for unset ReservationTable.");
-	coutd << "marking next " << timeout << " " << action << " reservations (offset=" << offset << ", init_offset=" << init_offset << ", length=" << length << ", target_id=" << target_id << ", action=" << action << ")";
+	coutd << "marking next " << timeout << " " << length << "-slot-" << action << " reservations:";
 	unsigned int remaining_slots = length > 0 ? length - 1 : 0;
 	Reservation reservation = Reservation(target_id, action, remaining_slots);
 	for (size_t i = 0; i < timeout; i++) {
 		int32_t current_offset = (i+1) * offset + init_offset;
-		Reservation::Action old_action = current_reservation_table->getReservation(current_offset).getAction();
-		current_reservation_table->mark(current_offset, reservation);
-		if (old_action != action)
-		    coutd << " @" << current_offset << ":" << old_action << "->" << action;
-		else
+		const Reservation& current_reservation = current_reservation_table->getReservation(current_offset);
+		if (current_reservation != reservation)
+            current_reservation_table->mark(current_offset, reservation);
+        if (current_reservation.getAction() != action)
+            coutd << " @" << current_offset << ":" << current_reservation.getAction() << "->" << action;
+        else
             coutd << " @" << current_offset;
 	}
 }
@@ -395,7 +396,8 @@ LinkManager::~LinkManager() {
 
 void LinkManager::update(uint64_t num_slots) {
     if (!traffic_estimate.hasBeenUpdated())
-        traffic_estimate.put(0);
+        for (uint64_t t = 0; t < num_slots; t++)
+            traffic_estimate.put(0);
     traffic_estimate.reset();
 }
 

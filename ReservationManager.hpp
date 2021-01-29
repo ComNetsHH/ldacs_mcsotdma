@@ -114,10 +114,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			
 			/** Number of slots to remember both in the past and in the future. */
 			uint32_t planning_horizon;
-			/** Keeps frequency channels in the same order as reservation_tables. */
+			/** Keeps frequency channels in the same order as p2p_reservation_tables. */
 			std::vector<TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel*> frequency_channels;
 			/** Keeps reservation table in the same order as frequency_channels. */
-			std::vector<TUHH_INTAIRNET_MCSOTDMA::ReservationTable*> reservation_tables;
+			std::vector<TUHH_INTAIRNET_MCSOTDMA::ReservationTable*> p2p_reservation_tables;
 			/** Map pointer to index s.t. getReservationTable(ptr) doesn't have to search.. */
 			std::map<const FrequencyChannel, size_t> p2p_channel_map;
 			/** Maps pointer to index s.t. getFrequencyChannel(ptr) doesn't have to search. */

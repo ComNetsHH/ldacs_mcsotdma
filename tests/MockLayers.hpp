@@ -27,6 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				if (connected_phy == nullptr) {
                     coutd << " -> buffered." << std::endl;
                     outgoing_packets.push_back(data);
+                    outgoing_packet_freqs.push_back(center_frequency);
                 } else {
                     coutd << " -> sent." << std::endl;
                     connected_phy->onReception(data, center_frequency);
@@ -43,6 +44,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			
 			std::vector<L2Packet*> outgoing_packets;
+			std::vector<unsigned int> outgoing_packet_freqs;
 			PHYLayer* connected_phy = nullptr;
 	};
 	
@@ -98,12 +100,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			class RLCPayload : public L2Packet::Payload {
 				public:
 					explicit RLCPayload(unsigned int num_bits) : num_bits(num_bits) {}
+					RLCPayload(const RLCPayload& other) : num_bits(other.num_bits) {}
 					
 					unsigned int getBits() const override {
 						return num_bits;
 					}
-				
-				protected:
+
+                Payload *copy() const override {
+                    return new RLCPayload(*this);
+                }
+
+            protected:
 					unsigned int num_bits;
 			};
 			

@@ -20,8 +20,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8;
 			
 			explicit BeaconPayload(const MacId& beacon_owner_id) : beacon_owner_id(beacon_owner_id) {}
-			
-			~BeaconPayload() override {
+
+			BeaconPayload(const BeaconPayload& other) : BeaconPayload(other.beacon_owner_id) {
+			    for (const auto& item : other.local_reservations)
+			        local_reservations.push_back(item);
+			}
+
+            Payload *copy() const override {
+                return new BeaconPayload(*this);
+            }
+
+        ~BeaconPayload() override {
 				for (const auto& pair : local_reservations)
 					delete pair.second;
 			}

@@ -86,7 +86,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(0), phy->outgoing_packets.size());
 				LinkManager* link_manager = mac->getLinkManager(communication_partner_id);
 				link_manager->link_establishment_status = LinkManager::link_established;
-				reservation_manager->reservation_tables.at(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
+				reservation_manager->p2p_reservation_tables.at(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
 				mac->update(1);
 				mac->execute();
 				// Now there should be one.

@@ -252,7 +252,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void testCollectCurrentReservations() {
 				reservation_manager->addFrequencyChannel(false, 1000, 500);
 				reservation_manager->addFrequencyChannel(true, 2000, 500);
-				reservation_manager->reservation_tables.at(0)->mark(1, Reservation(MacId(42), Reservation::TX));
+				reservation_manager->p2p_reservation_tables.at(0)->mark(1, Reservation(MacId(42), Reservation::TX));
 				reservation_manager->broadcast_reservation_table->mark(1, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
 				reservation_manager->update(1);
 				auto reservations = reservation_manager->collectCurrentReservations();

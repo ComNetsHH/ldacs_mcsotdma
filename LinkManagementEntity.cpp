@@ -85,6 +85,7 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
         coutd << " -> configuring request slots -> ";
         num_renewal_attempts = max_link_renewal_attempts;
         configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
+        coutd << scheduled_requests.size() << " scheduled -> ";
         owner->link_establishment_status = owner->Status::link_established;
         owner->mac->notifyAboutNewLink(owner->link_id);
         coutd << "link is now established -> ";
@@ -99,6 +100,7 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
             coutd << " -> configuring request slots -> ";
             num_renewal_attempts = max_link_renewal_attempts;
             configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
+            coutd << scheduled_requests.size() << " scheduled -> ";
             coutd << "link status update: " << owner->link_establishment_status;
             owner->link_establishment_status = owner->Status::link_established;
             coutd << "->" << owner->link_establishment_status;
@@ -232,7 +234,7 @@ L2Packet *LinkManagementEntity::prepareReply(const MacId& destination_id) const 
     // Reply header.
     auto* reply_header = new L2HeaderLinkEstablishmentReply();
     reply_header->icao_dest_id = destination_id;
-    // Reply payload will be populated by receiveFromLower.
+    // Reply payload will be populated later.
     auto* reply_payload = new ProposalPayload(1, 1);
     reply->addPayload(reply_header, reply_payload);
     return reply;

@@ -123,7 +123,7 @@ unsigned int BCLinkManager::getNumActiveNeighbors() const {
 
 void BCLinkManager::update(uint64_t num_slots) {
     LinkManager::update(num_slots);
-	for (uint64_t i = 0; i < num_slots; i++)
+	for (uint64_t t = 0; t < num_slots; t++)
 		contention_estimator.update();
     if (current_reservation_table->getReservation(0).isIdle()) {
         coutd << "marking BC reception: ";
