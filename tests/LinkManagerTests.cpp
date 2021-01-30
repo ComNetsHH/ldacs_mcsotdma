@@ -809,6 +809,35 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(false);
 		}
 
+		void testLinkRenewalRequest() {
+			testReservationsAfterFirstDataTx();
+			// Renewal attempts *are* made if there's more data.
+			rlc_layer->should_there_be_more_data = true;
+
+			// 1st request + 1 data packet should've been sent so far.
+			size_t expected_num_sent_packets = 2;
+			CPPUNIT_ASSERT_EQUAL(expected_num_sent_packets, phy_layer->outgoing_packets.size());
+
+//			coutd.setVerbose(true);
+			size_t num_slots = 0, max_slots = 1000;
+			// Increment time to each request slot...
+			while (num_slots++ < max_slots && !link_manager->lme->scheduled_requests.empty()) {
+				uint64_t request_slot = *std::min_element(link_manager->lme->scheduled_requests.begin(), link_manager->lme->scheduled_requests.end());
+				mac->update(request_slot - mac->getCurrentSlot());
+				mac->execute();
+				expected_num_sent_packets++;
+				// ... make sure a new request has been sent
+				CPPUNIT_ASSERT_EQUAL(expected_num_sent_packets, phy_layer->outgoing_packets.size());
+				L2Packet* request = phy_layer->outgoing_packets.at(phy_layer->outgoing_packets.size() - 1);
+				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request,request->getHeaders().at(1)->frame_type);
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->lme->scheduled_requests.empty());
+
+//			coutd.setVerbose(false);
+		}
+
 
 	CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -834,6 +863,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReservationsAfterReplyCameIn);
 			CPPUNIT_TEST(testReservationsAfterFirstDataTx);
 			CPPUNIT_TEST(testLinkExpiry);
+			CPPUNIT_TEST(testLinkRenewalRequest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
