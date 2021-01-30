@@ -288,18 +288,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Ensures status at both parties are correct, that the sender has sent the request and the receiver has a reply pending.
 		 */
 		void testLinkIsExpiring() {
-			coutd.setVerbose(true);
-
 			// Establish link and send first burst.
 			testLinkEstablishment();
 			rlc_layer_me->should_there_be_more_data = true;
 			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
 			unsigned int expected_tx_timeout = lm_me->lme->default_tx_timeout - 1;
 			CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->lme->tx_timeout);
 			// Now increment time until a request is generated.
 			uint64_t num_slots_until_request = *std::min_element(lm_me->lme->scheduled_requests.begin(), lm_me->lme->scheduled_requests.end()) - mac_layer_me->getCurrentSlot();
 			CPPUNIT_ASSERT(lm_me->lme->tx_timeout > 0);
 			CPPUNIT_ASSERT_EQUAL((size_t) lm_me->lme->num_renewal_attempts, lm_me->lme->scheduled_requests.size());
+
+			coutd.setVerbose(true);
 			for (uint64_t i = 0; i < num_slots_until_request; i++) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
@@ -313,39 +314,40 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, latest_request->getHeaders().at(1)->frame_type);
 			// We should now be in the 'awaiting_reply' state.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_establishment_status);
-			// And the next transmission burst should be marked as RX.
+			// And the next transmission burst should be marked as RX for us,
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, lm_me->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
+			// and as TX for them
+			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_you->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
 			// And the one after that as TX.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_me->current_reservation_table->getReservation(2 * lm_me->lme->tx_offset).getAction());
 
-			// Increment time until the reply is sent.
-			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->lme->scheduled_replies.size());
-			while (!lm_you->lme->scheduled_replies.empty()) {
-				mac_layer_me->update(1);
-				mac_layer_you->update(1);
-				mac_layer_me->execute();
-				mac_layer_you->execute();
-			}
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->lme->scheduled_replies.size());
-			// Renewal should now be complete on our side.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_me->link_establishment_status);
-			// The remaining slots should be marked as TX.
-			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_me->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
+//			// Increment time until the reply is sent.
+//			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->lme->scheduled_replies.size());
+//			while (!lm_you->lme->scheduled_replies.empty()) {
+//				mac_layer_me->update(1);
+//				mac_layer_you->update(1);
+//				mac_layer_me->execute();
+//				mac_layer_you->execute();
+//			}
+//			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->lme->scheduled_replies.size());
+//			// Renewal should now be complete on our side.
+//			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_me->link_establishment_status);
+//			// The remaining slots should be marked as TX.
+//			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_me->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
 
-			// Trigger the timeout, which should apply the transition.
-			while (lm_me->lme->tx_timeout > 0) {
-				mac_layer_me->update(1);
-				mac_layer_you->update(1);
-				mac_layer_me->execute();
-				mac_layer_you->execute();
-			}
-
-			// Both sides should have an established link now.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_me->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_you->link_establishment_status);
-			// And agree on the frequency channel.
-			CPPUNIT_ASSERT_EQUAL(*lm_me->current_channel, *lm_you->current_channel);
+//			// Trigger the timeout, which should apply the transition.
+//			while (lm_me->lme->tx_timeout > 0) {
+//				mac_layer_me->update(1);
+//				mac_layer_you->update(1);
+//				mac_layer_me->execute();
+//				mac_layer_you->execute();
+//			}
+//
+//			// Both sides should have an established link now.
+//			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_me->link_establishment_status);
+//			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_you->link_establishment_status);
+//			// And agree on the frequency channel.
+//			CPPUNIT_ASSERT_EQUAL(*lm_me->current_channel, *lm_you->current_channel);
 
 			coutd.setVerbose(false);
 		}
@@ -436,8 +438,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
-//			CPPUNIT_TEST(testBroadcast);
-//			CPPUNIT_TEST(testLinkEstablishment);
+			CPPUNIT_TEST(testBroadcast);
+			CPPUNIT_TEST(testLinkEstablishment);
             CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
 //            CPPUNIT_TEST(testLinkIsExpiring);
 //			CPPUNIT_TEST(testLinkRenewal);

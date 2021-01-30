@@ -127,7 +127,9 @@ void LinkManagementEntity::onReceptionSlot() {
 void LinkManagementEntity::decrementTimeout() {
 	if (tx_timeout == 0)
 		throw std::runtime_error("LinkManagementEntity::decrementTimeout attempted to decrement timeout past zero.");
+	coutd << "timeout " << tx_timeout << "->";
 	tx_timeout--;
+	coutd << tx_timeout << " -> ";
 	if (tx_timeout == 0) {
 		coutd << "timeout reached -> ";
 		if (owner->link_establishment_status == LinkManager::link_renewal_complete) {
@@ -287,12 +289,17 @@ bool LinkManagementEntity::hasControlMessage() {
 }
 
 bool LinkManagementEntity::hasPendingRequest() {
-	for (unsigned long current_slot : scheduled_requests) {
+	for (auto it = scheduled_requests.begin(); it != scheduled_requests.end(); it++) {
+		uint64_t current_slot = *it;
 		if (current_slot == owner->mac->getCurrentSlot()) {
 			if (owner->mac->isThereMoreData(owner->getLinkId()))
 				return true;
-		} else if (current_slot < owner->mac->getCurrentSlot())
-			throw std::invalid_argument("LinkManagementEntity::hasControlMessage has missed a scheduled request.");
+		} else if (current_slot < owner->mac->getCurrentSlot()) {
+			if (owner->mac->isThereMoreData(owner->getLinkId()))
+				throw std::invalid_argument("LinkManagementEntity::hasControlMessage has missed a scheduled request: " + std::to_string(current_slot) + " (current slot: " + std::to_string(owner->mac->getCurrentSlot()) + ").");
+			else
+				scheduled_requests.erase(it--);
+		}
 	}
 	return false;
 }
@@ -329,7 +336,7 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet* reply, int32_t slot_offse
 		scheduled_replies[absolute_slot] = reply;
 		coutd << "-> scheduled reply in " << slot_offset << " slots on " << *selected_channel << " -> ";
 
-		// ... and mark the first slot of the proposed reservation as RX to listen for a transmission there, which can establish this link fully.
+		// ... and mark the *next* slot after the reply as RX to listen for a transmission there, which can establish this link fully.
 		unsigned int first_slot = proposal->proposed_resources[selected_channel].at(0) + tx_offset;
 		table->mark(first_slot, Reservation(owner->link_id, Reservation::Action::RX));
 		coutd << "marked first RX slot of chosen candidate (" << *selected_channel << ", offset " << first_slot << ") -> ";

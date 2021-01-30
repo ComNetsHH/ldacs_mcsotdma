@@ -755,7 +755,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (size_t t = 0; t < expected_num_reservations; t++)
 				expected_offsets.push_back(t * link_manager->lme->tx_offset);
 			for (size_t t = 0; t < planning_horizon; t++) {
-				const Reservation& res_tx = table_tx->getReservation(t), & res_rx = table_rx->getReservation(t);
+				const Reservation& res_tx = table_tx->getReservation(t), &res_rx = table_rx->getReservation(t);
 				if (res_tx.isTx()) {
 					actual_num_reservations++;
 					CPPUNIT_ASSERT_EQUAL(communication_partner_id, res_tx.getTarget());
@@ -781,6 +781,33 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //                coutd.setVerbose(false);
 		}
 
+		/**
+		 * Ensures that the local timeout counter on the TX side decreases with the number of transmissions made.
+		 */
+		void testLinkExpiry() {
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_timeout, link_manager->lme->default_tx_timeout);
+			testReservationsAfterFirstDataTx();
+			// No renewal attempts are made if there's no more data.
+			rlc_layer->should_there_be_more_data = false;
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT(link_manager->lme->default_tx_timeout > 0);
+			unsigned int current_timeout = link_manager->lme->default_tx_timeout - 1;
+			CPPUNIT_ASSERT_EQUAL(current_timeout, link_manager->lme->tx_timeout);
+
+//			coutd.setVerbose(true);
+
+			unsigned int final_slot = current_timeout * link_manager->lme->tx_offset;
+			// Have the link expire.
+			for (unsigned int t = 0; t < final_slot; t += link_manager->lme->tx_offset) {
+				mac->update(link_manager->lme->tx_offset);
+				mac->execute();
+				current_timeout--;
+				CPPUNIT_ASSERT_EQUAL(current_timeout, link_manager->lme->tx_timeout);
+			}
+			// Should now be "not established" again.
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_establishment_status);
+//			coutd.setVerbose(false);
+		}
 
 
 	CPPUNIT_TEST_SUITE(LinkManagerTests);
@@ -806,6 +833,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReservationsAfterCandidateSelection);
 			CPPUNIT_TEST(testReservationsAfterReplyCameIn);
 			CPPUNIT_TEST(testReservationsAfterFirstDataTx);
+			CPPUNIT_TEST(testLinkExpiry);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
