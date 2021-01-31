@@ -156,7 +156,7 @@ void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentReq
 			(ProposalPayload*&) payload);
 	if (!viable_candidates.empty()) {
 		// Choose a candidate out of the set.
-		auto chosen_candidate = viable_candidates.at(owner->getRandomInt(0, viable_candidates.size()));
+		auto chosen_candidate = viable_candidates.at(LinkManager::getRandomInt(0, viable_candidates.size()));
 		coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
 		// Prepare a link reply.
 		L2Packet* reply = prepareReply(origin);
@@ -166,10 +166,8 @@ void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentReq
 		auto* reply_payload = (ProposalPayload*) reply->getPayloads().at(1);
 		int32_t slot_offset = chosen_candidate.second;
 		reply_payload->proposed_resources[reply_channel].push_back(slot_offset);
-		// Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
-
 		owner->assign(reply_channel);
-		owner->scheduleLinkReply(reply, slot_offset);
+		scheduleLinkReply(reply, slot_offset);
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
 }
@@ -321,7 +319,7 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet* reply, int32_t slot_offse
 
 		ReservationTable* table;
 		const FrequencyChannel* channel;
-		bool link_renewal = owner->link_establishment_status == LinkManager::link_established;
+		const bool link_renewal = owner->link_establishment_status == LinkManager::link_established;
 
 		// For link renewal requests...
 		if (link_renewal) {
@@ -337,24 +335,30 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet* reply, int32_t slot_offse
 			table = owner->reservation_manager->getReservationTable(channel);
 		}
 
-		// Make sure the selected slot is idle (sanity check).
-		if (table->isUtilized(slot_offset))
+		// Make sure the selected slot is reserved for this link or idle (sanity check).
+		const Reservation& current_reservation = table->getReservation(slot_offset);
+		if (!current_reservation.isIdle() && current_reservation.getTarget() != owner->getLinkId()) {
+			coutd << std::endl << "Reservation in question: " << current_reservation << std::endl;
 			throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
+		}
 
 		// Mark the next slot as TX to transmit the reply...
 		table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
 		scheduled_replies[absolute_slot] = reply;
 		coutd << "-> scheduled reply in " << slot_offset << " slots on " << *channel << " -> ";
 
-		// Mark the first RX slot of the new link
+		// First data transmissions are expected...
+		unsigned int expected_data_tx_slot;
 		if (link_renewal) {
-
+			// ... after this link has expired, on the new frequency channel for link renewals.
+//			expected_data_tx_slot = proposal->proposed_resources[proposal->proposed_resources.begin()->first].at(0);
 		} else {
-			const FrequencyChannel* proposed_channel = proposal->proposed_resources.begin()->first;
-			unsigned int first_slot = proposal->proposed_resources[proposed_channel].at(0) + tx_offset;
-			table->mark(first_slot, Reservation(owner->link_id, Reservation::Action::RX));
-			coutd << "marked first RX slot of chosen candidate (" << *proposed_channel << ", offset " << first_slot << ") -> ";
+			// ... one burst after the first slot of the selected resource (where the reply is sent).
+			expected_data_tx_slot = proposal->proposed_resources[channel].at(0) + tx_offset;
+			table->mark(expected_data_tx_slot, Reservation(owner->link_id, Reservation::Action::RX));
 		}
+//		table->mark(expected_data_tx_slot, Reservation(owner->link_id, Reservation::Action::RX));
+		coutd << "marked first RX slot of chosen candidate (" << *channel << ", offset " << expected_data_tx_slot << ") -> ";
 	}
 }
 
@@ -450,7 +454,7 @@ void LinkManagementEntity::onRequestTransmission() {
 	if (owner->link_establishment_status != LinkManager::link_not_established) {
 		// ... mark the next transmission burst as RX to receive the reply.
 		owner->current_reservation_table->mark(tx_offset, Reservation(owner->getLinkId(), Reservation::Action::RX));
-		// Upon initial requests...
+	// Upon initial requests...
 	} else {
 		// ... do nothing.
 	}

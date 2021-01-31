@@ -106,13 +106,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void assign(const FrequencyChannel* channel);
 
-		/**
-		 * Schedules a link reply.
-		 * @param reply
-		 * @param slot_offset
-		 */
-		void scheduleLinkReply(L2Packet* reply, int32_t slot_offset);
-
 		virtual void update(uint64_t num_slots);
 
 	protected:
