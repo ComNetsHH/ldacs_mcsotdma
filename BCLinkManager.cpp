@@ -6,6 +6,7 @@
 #include "BCLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
+#include "BCLinkManagementEntity.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -14,6 +15,8 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
 		: LinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
 	if (link_id != SYMBOLIC_LINK_ID_BROADCAST)
 		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
+	delete lme;
+	lme = new BCLinkManagementEntity(this);
 	link_establishment_status = link_established;
 	// Broadcast reservations don't remain valid.
 	lme->setTxTimeout(0);
@@ -43,7 +46,7 @@ L2Packet* BCLinkManager::prepareBeacon() {
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
 	// Update the contention estimator.
-	coutd << "updated contention estimate";
+	coutd << "updated contention estimate -> ";
 	contention_estimator.reportBroadcast(origin);
 }
 

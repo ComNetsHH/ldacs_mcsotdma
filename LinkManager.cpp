@@ -63,6 +63,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 	assert(!packet->getHeaders().empty() && "LinkManager::receiveFromLower(empty packet)");
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
+	bool contains_data = false;
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
 		auto*& header = (L2Header*&) packet->getHeaders().at(i);
 		auto*& payload = (L2Packet::Payload*&) packet->getPayloads().at(i);
@@ -82,23 +83,28 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 //				delete payload;
 //				payload = nullptr;
 				coutd << std::endl;
+				statistic_num_received_beacons++;
 				break;
 			}
 			case L2Header::broadcast: {
 				coutd << "processing broadcast -> ";
 				processIncomingBroadcast(packet->getOrigin(), (L2HeaderBroadcast*&) header);
+				statistic_num_received_broadcasts++;
+				contains_data = true;
 				break;
 			}
 			case L2Header::unicast: {
 				coutd << "processing unicast -> ";
 				processIncomingUnicast((L2HeaderUnicast*&) header, payload);
+				statistic_num_received_unicasts++;
+				contains_data = true;
 				break;
 			}
 			case L2Header::link_establishment_request: {
-				coutd << "processing link establishment request";
+				coutd << "processing link establishment request -> ";
+				statistic_num_received_requests++;
 				lme->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
 				                        (const LinkManagementEntity::ProposalPayload*&) payload, packet->getOrigin());
-
 //				delete header;
 //				header = nullptr;
 //				delete payload;
@@ -108,6 +114,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
 				lme->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const LinkManagementEntity::ProposalPayload*&) payload);
+				statistic_num_received_replies++;
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 //				delete header;
 //				header = nullptr;
@@ -121,8 +128,13 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 		}
 	}
 	// After processing, the packet is passed to the upper layer.
-	coutd << "passing to upper layer." << std::endl;
-	mac->passToUpper(packet);
+	if (contains_data) {
+		coutd << "passing to upper layer." << std::endl;
+		mac->passToUpper(packet);
+	} else {
+		coutd << "deleting control packet." << std::endl;
+		delete packet;
+	}
 }
 
 void LinkManager::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
@@ -155,7 +167,7 @@ void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 	// Populate the request with a proposal.
 	lme->populateRequest(packet);
 	// And mark the proposed slots as RX.
-	auto* proposal = (LinkManagementEntity::ProposalPayload*) packet->getPayloads().at(1);
+	auto* proposal = (LinkManagementEntity::ProposalPayload*) packet->getPayloads().at(packet->getRequestIndex());
 //    for (size_t i = 0; i < proposal->proposed_channels.size(); i++) {
 	size_t i = 0;
 	for (const auto& item : proposal->proposed_resources) {

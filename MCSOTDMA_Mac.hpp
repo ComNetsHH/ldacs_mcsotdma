@@ -52,16 +52,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * */
 		std::pair<size_t, size_t> execute();
 
-		/**
-		 * When a LinkManager computes a link reply in response to a request, it may have to be sent on a different FrequencyChannel.
-		 * For example, the request may have been received by the Broadcast LinkManager, and the reply sent on some unicast LinkManager.
-		 * In this case, this function delegates the sending of the reply to the corresponding LinkManager and sets the corresponding FrequencyChannel of the LinkManager.
-		 * @param reply
-		 * @param channel
-		 * @param slot_offset
-		 */
-		void forwardLinkReply(L2Packet* reply, const FrequencyChannel* channel, int32_t slot_offset);
-
 	protected:
 		/**
 		 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.

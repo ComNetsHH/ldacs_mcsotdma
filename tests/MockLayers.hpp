@@ -31,6 +31,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			} else {
 				coutd << " -> sent." << std::endl;
 				connected_phy->onReception(data, center_frequency);
+				outgoing_packets.push_back(data->copy());
+				outgoing_packet_freqs.push_back(center_frequency);
 			}
 		}
 

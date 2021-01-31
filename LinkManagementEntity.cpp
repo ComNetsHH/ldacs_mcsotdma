@@ -168,12 +168,8 @@ void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentReq
 		reply_payload->proposed_resources[reply_channel].push_back(slot_offset);
 		// Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
 
-		// The request may have been received by the broadcast link manager,
-		// while the reply must be sent on a unicast channel,
-		// so we have to forward the reply to the corresponding P2P LinkManager.
-		owner->mac->forwardLinkReply(reply, reply_channel, slot_offset); // TODO I don't think the BC link manager ever receives such a packet (it only *sends* requests)
-//		owner->assign(reply_channel);
-//		owner->scheduleLinkReply(reply, slot_offset);
+		owner->assign(reply_channel);
+		owner->scheduleLinkReply(reply, slot_offset);
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
 }
@@ -217,9 +213,11 @@ L2Packet* LinkManagementEntity::prepareRequest() const {
 	// Instantiate base header.
 	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
 	request->addPayload(base_header, nullptr);
-	// Instantiate request header.
 	// If the link is not yet established, the request must be sent on the broadcast channel.
-	MacId dest_id = owner->link_establishment_status == owner->link_not_established ? SYMBOLIC_LINK_ID_BROADCAST : owner->link_id;
+	if (owner->link_establishment_status == LinkManager::link_not_established)
+		request->addPayload(new L2HeaderBroadcast(), nullptr);
+	// Instantiate request header.
+	MacId dest_id = owner->link_id;
 	auto* request_header = new L2HeaderLinkEstablishmentRequest(dest_id, link_should_be_arq_protected, 0, 0, 0);
 	auto* body = new ProposalPayload(num_proposed_channels, num_proposed_slots);
 	request->addPayload(request_header, body);

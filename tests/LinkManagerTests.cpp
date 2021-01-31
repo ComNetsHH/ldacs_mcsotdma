@@ -113,9 +113,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->notifyOutgoing(num_bits_going_out);
 			// The RLC should've received a link request.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->control_message_injections.size());
-			CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().size());
+			CPPUNIT_ASSERT(rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getRequestIndex() > -1);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().size());
 			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(0)->frame_type);
-			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(1)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(1)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(2)->frame_type);
 			// And the LinkManager status should've updated.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
 		}
@@ -124,7 +126,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			testNewLinkEstablishment();
 			L2Packet* request = rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0);
 			LinkManagementEntity::ProposalPayload* proposal = link_manager->lme->p2pSlotSelection();
-			CPPUNIT_ASSERT_EQUAL(size_t(2), request->getPayloads().size());
+			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
 
 			// Should've considered several distinct frequency channels.
 			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels), proposal->proposed_resources.size());
@@ -164,9 +166,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::awaiting_reply);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->control_message_injections.size());
 			L2Packet* request = rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0);
-			CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+			CPPUNIT_ASSERT(rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getRequestIndex() > -1);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), request->getHeaders().size());
 			CPPUNIT_ASSERT(request->getHeaders().at(0)->frame_type == L2Header::base);
-			CPPUNIT_ASSERT(request->getHeaders().at(1)->frame_type == L2Header::link_establishment_request);
+			CPPUNIT_ASSERT(request->getHeaders().at(1)->frame_type == L2Header::broadcast);
+			CPPUNIT_ASSERT(request->getHeaders().at(2)->frame_type == L2Header::link_establishment_request);
 		}
 
 		void testTransmissionSlotOnUnestablishedLink() {
@@ -346,8 +350,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MACLayer& other_mac = *env2.mac_layer;
 			LinkManager& other_link_manager = *other_mac.getLinkManager(own_id);
 			L2Packet* request = other_link_manager.lme->prepareRequest();
-			request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection();
-			coutd.setVerbose(true);
+			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
+			request->getPayloads().at(request->getRequestIndex()) = other_link_manager.lme->p2pSlotSelection();
+//			coutd.setVerbose(true);
 			coutd << request->getOrigin() << std::endl;
 			// Receive it on the BC.
 			mac->receiveFromLower(request, bc_frequency);
@@ -368,7 +373,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
 			// Link establishment status should've been updated.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, p2p_manager->link_establishment_status);
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
 		}
 
 		void testLocking() {
@@ -415,7 +420,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->notifyOutgoing(1024, communication_partner_id);
 			// Request should've been injected.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->control_message_injections.size());
-			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(1)->frame_type);
+			CPPUNIT_ASSERT(rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getRequestIndex() > -1);
 			// Broadcast LinkManager should've been notified.
 			CPPUNIT_ASSERT_EQUAL(true, bc_link_manager->broadcast_slot_scheduled);
 
@@ -435,7 +440,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Now RX reservations should've been made at all proposed slots.
 			L2Packet* request = phy_layer->outgoing_packets.at(0);
 			auto* request_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
-			auto* request_body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
+			auto* request_body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(request->getRequestIndex());
 			CPPUNIT_ASSERT_EQUAL(size_t(request_body->target_num_channels), request_body->proposed_resources.size());
 			size_t total_proposed_resources = 0;
 			for (const auto& item : request_body->proposed_resources)
@@ -489,7 +494,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Copy request proposal (otherwise we have two sides trying to delete this packet -> memory error).
 			L2Packet* request_sent = phy_layer->outgoing_packets.at(0);
 			L2Packet* request = link_manager->lme->prepareRequest();
-			((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
+			((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(request->getRequestIndex()))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(request_sent->getRequestIndex()))->proposed_resources;
 
 			// Configure a receiver side.
 			TestEnvironment env2 = TestEnvironment(communication_partner_id, own_id);
@@ -500,6 +505,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Receive the request.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
+			L2Packet* copy = request->copy();
 			link_manager_rx->receiveFromLower(request);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
 
@@ -508,7 +514,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			frequencies.push_back(center_frequency2);
 			frequencies.push_back(center_frequency3);
 			frequencies.push_back(bc_frequency);
-			auto request_payload = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
+			auto request_payload = (LinkManagementEntity::ProposalPayload*) copy->getPayloads().at(1);
 			uint64_t selected_frequency = link_manager_rx->current_channel->getCenterFrequency();
 			// Go through all frequencies...
 			size_t num_tx = 0, num_rx = 0;
@@ -555,7 +561,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// The link should still be unestablished - it updates to awaiting_data_tx only when the reply is actually sent.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager_rx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
-
+			delete copy;
 //                coutd.setVerbose(false);
 		}
 
@@ -565,7 +571,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Copy request proposal (otherwise we have two sides trying to delete this packet -> memory error).
 			L2Packet* request_sent = phy_layer->outgoing_packets.at(0);
 			L2Packet* request = link_manager->lme->prepareRequest();
-			((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
+			((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(request->getRequestIndex()))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(request_sent->getRequestIndex()))->proposed_resources;
 
 			// Configure a receiver side.
 			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
@@ -710,7 +716,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Copy request proposal (otherwise we have two sides trying to delete this packet -> memory error).
 			L2Packet* request_sent = phy_layer->outgoing_packets.at(0);
 			L2Packet* request = link_manager->lme->prepareRequest();
-			((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(1))->proposed_resources;
+			((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(request->getRequestIndex()))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(request_sent->getRequestIndex()))->proposed_resources;
 			// Receive the request.
 			link_manager_rx->receiveFromLower(request);
 			// Increment time until the reply has been sent.
@@ -860,7 +866,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->control_message_injections.size());
 			mac->notifyOutgoing(1024, communication_partner_id);
 
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			// Increment time until link is established.
 			size_t num_slots = 0, max_num_slots = 1000;
 			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
@@ -887,7 +893,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkManager* link_manager_rx = mac_rx->getLinkManager(own_id);
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager_rx->current_reservation_table->getReservation(0).getAction());
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager_rx->current_reservation_table->getReservation(link_manager->lme->tx_offset).getAction());
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
 		}
 
 

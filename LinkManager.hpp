@@ -24,6 +24,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class LinkManager : public L2PacketSentCallback {
 
+		friend class LinkManagementEntity;
+
+		friend class BCLinkManagementEntity;
+
 		friend class LinkManagerTests;
 
 		friend class BCLinkManagerTests;
@@ -31,8 +35,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_MacTests;
 
 		friend class SystemTests;
-
-		friend class LinkManagementEntity;
 
 		friend class LinkManagementEntityTests;
 
@@ -210,7 +212,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MovingAverage traffic_estimate;
 		/** Takes care of link management. It resides in its own class to modularize the code. */
 		LinkManagementEntity* lme = nullptr;
-		size_t statistic_num_received_packets = 0, statistic_num_sent_packets = 0;
+		size_t statistic_num_received_packets = 0,
+			statistic_num_received_data_packets = 0,
+			statistic_num_received_requests = 0,
+			statistic_num_received_replies = 0,
+			statistic_num_received_beacons = 0,
+			statistic_num_received_broadcasts = 0,
+			statistic_num_received_unicasts = 0,
+			statistic_num_sent_packets = 0,
+			statistic_num_sent_data_packets = 0,
+			statistic_num_sent_requests = 0,
+			statistic_num_sent_replies = 0,
+			statistic_num_sent_beacons = 0,
+			statistic_num_sent_broadcasts = 0,
+			statistic_num_sent_unicasts = 0;
 
 	};
 

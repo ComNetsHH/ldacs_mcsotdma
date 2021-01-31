@@ -89,14 +89,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param header
 		 * @param payload
 		 */
-		void processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
+		virtual void processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
 
 		/**
 		 * When a LinkManager receoves a link request, it should forward it to this function.
 		 * @param header
 		 * @param payload
 		 */
-		void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
+		virtual void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
 
 		void onTransmissionBurst();
 

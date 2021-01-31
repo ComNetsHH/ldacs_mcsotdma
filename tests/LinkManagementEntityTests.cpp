@@ -91,12 +91,32 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //            coutd.setVerbose(false);
 		}
 
+		void testPrepareRequestUnestablished() {
+			L2Packet* request = lme->prepareRequest();
+			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, request->getDestination());
+		}
+
+		void testPrepareRequestEstablished() {
+			lme->owner->link_establishment_status = LinkManager::link_established;
+			L2Packet* request = lme->prepareRequest();
+			CPPUNIT_ASSERT_EQUAL(communication_partner_id, request->getDestination());
+		}
+
 		void testPopulateRequest() {
 //            coutd.setVerbose(true);
 
 			L2Packet* request = lme->prepareRequest();
 			lme->populateRequest(request);
-			auto proposal = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
+
+			LinkManagementEntity::ProposalPayload* proposal = nullptr;
+			for (size_t i = 0; i < request->getHeaders().size(); i++) {
+				if (request->getHeaders().at(i)->frame_type == L2Header::FrameType::link_establishment_request) {
+					proposal = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(i);
+					break;
+				}
+			}
+			CPPUNIT_ASSERT(proposal != nullptr);
+
 			const auto& map = proposal->proposed_resources;
 			CPPUNIT_ASSERT_EQUAL(size_t(lme->num_proposed_channels), map.size());
 
@@ -170,6 +190,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	CPPUNIT_TEST_SUITE(LinkManagementEntityTests);
 			CPPUNIT_TEST(testScheduleRequests);
 			CPPUNIT_TEST(testUpdate);
+			CPPUNIT_TEST(testPrepareRequestUnestablished);
+			CPPUNIT_TEST(testPrepareRequestEstablished);
 			CPPUNIT_TEST(testPopulateRequest);
 			CPPUNIT_TEST(testClearPendingRxReservations);
 		CPPUNIT_TEST_SUITE_END();
