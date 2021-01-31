@@ -157,9 +157,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool hasPendingReply();
 
 		/**
-		 * @return A payload that should accompany a link request.
+		 * @param burst_num_slots Number of consecutive slots per burst.
+		 * @param num_channels Number of frequency channels to propose.
+		 * @param num_slots_per_channel Number of time slots per frequency channel to propose.
+		 * @param min_offset Minimum slot offset until the first time.
+		 * @return A payload that should accompany a link establishment request.
 		 */
-		ProposalPayload* p2pSlotSelection();
+		ProposalPayload* p2pSlotSelection(unsigned int burst_num_slots, unsigned int num_channels, unsigned int num_slots_per_channel, unsigned int min_offset);
 
 		void decrementTimeout();
 
@@ -203,6 +207,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void processRenewalReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
 
+		/**
+		 * @return Slot offset until link expiry.
+		 */
+		unsigned int getExpiryOffset() const;
+
 	protected:
 		/** Number of times a link should be attempted to be renewed. */
 		unsigned int num_renewal_attempts = 0;
@@ -216,7 +225,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int max_link_renewal_attempts = 3;
 		const int32_t default_minimum_slot_offset_for_new_reservations = 2;
 		/** The minimum number of slots a proposed slot should be in the future. */
-		int32_t minimum_slot_offset_for_new_reservations = default_minimum_slot_offset_for_new_reservations;
+		int32_t min_offset_new_reservations = default_minimum_slot_offset_for_new_reservations;
 		/** The number of frequency channels that should be proposed when a new link request is prepared. */
 		unsigned int num_proposed_channels = 2;
 		/** The number of time slots that should be proposed when a new link request is prepared. */

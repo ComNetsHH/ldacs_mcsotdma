@@ -125,7 +125,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testComputeProposal() {
 			testNewLinkEstablishment();
 			L2Packet* request = rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0);
-			LinkManagementEntity::ProposalPayload* proposal = link_manager->lme->p2pSlotSelection();
+			LinkManagementEntity::ProposalPayload* proposal = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
 			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
 
 			// Should've considered several distinct frequency channels.
@@ -274,7 +274,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
 //				coutd.setVerbose(true);
 			L2Packet* request = other_link_manager.lme->prepareRequest();
-			request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection();
+			request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
 			// The number of proposed channels should be adequate.
 			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels), ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources.size());
 			auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
@@ -351,7 +351,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkManager& other_link_manager = *other_mac.getLinkManager(own_id);
 			L2Packet* request = other_link_manager.lme->prepareRequest();
 			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
-			request->getPayloads().at(request->getRequestIndex()) = other_link_manager.lme->p2pSlotSelection();
+			request->getPayloads().at(request->getRequestIndex()) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
 //			coutd.setVerbose(true);
 			coutd << request->getOrigin() << std::endl;
 			// Receive it on the BC.
@@ -379,10 +379,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLocking() {
 			// Compute one request.
 			L2Packet* request1 = link_manager->lme->prepareRequest();
-			request1->getPayloads().at(1) = link_manager->lme->p2pSlotSelection();
+			request1->getPayloads().at(1) = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
 			// And another one.
 			L2Packet* request2 = link_manager->lme->prepareRequest();
-			request2->getPayloads().at(1) = link_manager->lme->p2pSlotSelection();
+			request2->getPayloads().at(1) = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
 			// Because the first proposed slots have been locked, they shouldn't be the same as the next.
 			auto* proposal1 = (LinkManagementEntity::ProposalPayload*) request1->getPayloads().at(1);
 			auto* proposal2 = (LinkManagementEntity::ProposalPayload*) request2->getPayloads().at(1);

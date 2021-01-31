@@ -119,6 +119,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action);
 
+		void markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation);
+
 		/**
 		 * When a beacon packet comes in from the PHY, this processes it.
 		 * @oaram origin_id

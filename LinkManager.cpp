@@ -381,22 +381,26 @@ size_t LinkManager::getRandomInt(size_t start, size_t end) {
 	return distribution(generator);
 }
 
-void LinkManager::markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action) {
-	if (current_reservation_table == nullptr)
-		throw std::runtime_error("LinkManager::markReservations for unset ReservationTable.");
-	coutd << "marking next " << timeout << " " << length << "-slot-" << action << " reservations:";
-	unsigned int remaining_slots = length > 0 ? length - 1 : 0;
-	Reservation reservation = Reservation(target_id, action, remaining_slots);
+void LinkManager::markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation) {
+	coutd << "marking next " << timeout << " " << reservation.getNumRemainingSlots() + 1 << "-slot-" << reservation.getAction() << " reservations:";
 	for (size_t i = 0; i < timeout; i++) {
 		int32_t current_offset = (i + 1) * offset + init_offset;
-		const Reservation& current_reservation = current_reservation_table->getReservation(current_offset);
+		const Reservation& current_reservation = table->getReservation(current_offset);
 		if (current_reservation != reservation)
-			current_reservation_table->mark(current_offset, reservation);
-		if (current_reservation.getAction() != action)
+			table->mark(current_offset, reservation);
+		if (current_reservation.getAction() != reservation.getAction())
 			coutd << " @" << current_offset << ":" << current_reservation << "->" << reservation;
 		else
 			coutd << " @" << current_offset << ":" << reservation;
 	}
+}
+
+void LinkManager::markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action) {
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("LinkManager::markReservations for unset ReservationTable.");
+	unsigned int remaining_slots = length > 0 ? length - 1 : 0;
+	Reservation reservation = Reservation(target_id, action, remaining_slots);
+	markReservations(current_reservation_table, timeout, init_offset, offset, reservation);
 }
 
 LinkManager::~LinkManager() {

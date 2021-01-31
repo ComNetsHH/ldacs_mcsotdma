@@ -73,6 +73,7 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 	last_proposed_resources.clear();
 	coutd << num_cleared_reservations << " cleared -> ";
 
+	// Differentiate between initial and renewal replies.
 	if (owner->current_channel == nullptr)
 		processInitialReply(header, payload);
 	else
@@ -98,11 +99,14 @@ void LinkManagementEntity::processInitialReply(const L2HeaderLinkEstablishmentRe
 void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentReply*& header, const LinkManagementEntity::ProposalPayload*& payload) {
 	coutd << "renewing link -> ";
 	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
+	if ((*payload->proposed_resources.begin()).second.size() != 1)
+		throw std::invalid_argument("LinkManagementEntity::processRenewalReply for invalid number of slots.");
+	unsigned int initial_slot = (*payload->proposed_resources.begin()).second.at(0);
 	if (channel == owner->current_channel) {
-		coutd << "no channel change -> increasing timeout: " << tx_timeout;
+		coutd << "no channel change -> increasing timeout: " << tx_timeout << "->";
 		tx_timeout += default_tx_timeout;
 		coutd << tx_timeout << " and marking TX reservations: ";
-		owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+		owner->markReservations(tx_timeout, initial_slot, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
 		coutd << " -> configuring request slots -> ";
 		num_renewal_attempts = max_link_renewal_attempts;
 		configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
@@ -114,7 +118,8 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 		coutd << "channel change -> saving new channel (" << *owner->current_channel << "->" << *channel << ") -> ";
 		next_channel = channel;
 		coutd << " and marking TX reservations: ";
-		owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+		ReservationTable* table = owner->reservation_manager->getReservationTable(next_channel);
+		owner->markReservations(table, default_tx_timeout, initial_slot, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
 		coutd << "link status update: " << owner->link_establishment_status;
 		owner->link_establishment_status = owner->Status::link_renewal_complete;
 		coutd << "->" << owner->link_establishment_status << " -> ";
@@ -397,27 +402,26 @@ unsigned int LinkManagementEntity::getTxOffset() const {
 }
 
 unsigned int LinkManagementEntity::getMinOffset() const {
-	return minimum_slot_offset_for_new_reservations;
+	return min_offset_new_reservations;
 }
 
-LinkManagementEntity::ProposalPayload* LinkManagementEntity::p2pSlotSelection() {
+LinkManagementEntity::ProposalPayload* LinkManagementEntity::p2pSlotSelection(const unsigned int burst_num_slots, const unsigned int num_channels, const unsigned int num_slots_per_channel, const unsigned int min_offset) {
 	auto* proposal = new ProposalPayload(num_proposed_channels, num_proposed_slots);
 
 	// Find resource proposals...
 	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
 	auto table_priority_queue = owner->reservation_manager->getSortedP2PReservationTables();
 	// ... until we have considered the target number of channels ...
-	tx_burst_num_slots = owner->estimateCurrentNumSlots();
 	coutd << "p2pSlotSelection to reserve " << tx_burst_num_slots << " slots -> ";
-	for (size_t num_channels_considered = 0; num_channels_considered < this->num_proposed_channels; num_channels_considered++) {
+	for (size_t num_channels_considered = 0; num_channels_considered < num_channels; num_channels_considered++) {
 		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
-			throw std::runtime_error("LinkManager::prepareRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_proposed_channels) + " and there are no more.");
+			throw std::runtime_error("LinkManager::prepareRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_channels) + " and there are no more.");
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
 		// ... and try to find candidate slots,
 		// where a receiver has to be idle during all slots, so that we can listen for a reply there...
-		std::vector<int32_t> candidate_slots = table->findCandidateSlots(this->minimum_slot_offset_for_new_reservations, this->num_proposed_slots, tx_burst_num_slots, false, true);
+		std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_slots_per_channel, burst_num_slots, false, true);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
 			coutd << slot << " ";
@@ -428,7 +432,7 @@ LinkManagementEntity::ProposalPayload* LinkManagementEntity::p2pSlotSelection() 
 			throw std::runtime_error("LME::p2pSlotSelection failed to lock resources.");
 
 		// Fill proposal.
-		proposal->burst_length = tx_burst_num_slots;
+		proposal->burst_length = burst_num_slots;
 		for (int32_t slot : candidate_slots) // The candidate slots.
 			proposal->proposed_resources[table->getLinkedChannel()].push_back(slot);
 	}
@@ -440,31 +444,32 @@ unsigned int LinkManagementEntity::getTxBurstSlots() const {
 }
 
 void LinkManagementEntity::populateRequest(L2Packet*& request) {
-	for (size_t i = 0; i < request->getHeaders().size(); i++) {
-		L2Header* header = request->getHeaders().at(i);
-		if (header->frame_type == L2Header::link_establishment_request) {
-			// Set the destination ID (may be broadcast until now).
-			auto* request_header = (L2HeaderLinkEstablishmentRequest*) header;
-			request_header->icao_dest_id = owner->link_id;
-			request_header->offset = tx_offset;
-			request_header->timeout = default_tx_timeout;
-			// Remember this request's number of slots.
-			tx_burst_num_slots = owner->estimateCurrentNumSlots();
-			request_header->length_next = tx_burst_num_slots;
-			// Compute a current proposal.
-			if (owner->link_establishment_status == LinkManager::link_not_established)
-				minimum_slot_offset_for_new_reservations = default_minimum_slot_offset_for_new_reservations;
-			else
-				minimum_slot_offset_for_new_reservations = tx_offset + default_minimum_slot_offset_for_new_reservations;
-			request->getPayloads().at(i) = p2pSlotSelection();
-			coutd << "populated link request: " << *request_header << " -> ";
-			// Save current proposal.
-			auto* proposal = (const ProposalPayload*) request->getPayloads().at(i);
-			last_proposal_absolute_time = owner->mac->getCurrentSlot();
-			last_proposed_resources = proposal->proposed_resources;
-			break;
-		}
-	}
+	int request_index = request->getRequestIndex();
+	if (request_index == -1)
+		throw std::invalid_argument("LinkManagementEntity::populateRequest for non-request packet.");
+	auto* request_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(request_index);
+	// Set the destination ID (may be broadcast until now).
+	request_header->icao_dest_id = owner->link_id;
+	request_header->offset = tx_offset;
+	request_header->timeout = default_tx_timeout;
+	// Remember this request's number of slots.
+	tx_burst_num_slots = owner->estimateCurrentNumSlots();
+	request_header->length_next = tx_burst_num_slots;
+	// Compute a current proposal.
+	unsigned int min_offset;
+	// For initial establishment...
+	if (owner->link_establishment_status == LinkManager::link_not_established)
+		min_offset = default_minimum_slot_offset_for_new_reservations; // have the minimum offset
+	// For renewal...
+	else
+//		min_offset = tx_offset + default_minimum_slot_offset_for_new_reservations; // look for slots *after* this link has expired
+		min_offset = getExpiryOffset(); // look for slots *after* this link has expired
+	request->getPayloads().at(request_index) = p2pSlotSelection(tx_burst_num_slots, num_proposed_channels, num_proposed_slots, min_offset);
+	coutd << "populated link request: " << *request_header << " -> ";
+	// Save current proposal.
+	auto* proposal = (const ProposalPayload*) request->getPayloads().at(request_index);
+	last_proposal_absolute_time = owner->mac->getCurrentSlot();
+	last_proposed_resources = proposal->proposed_resources;
 }
 
 void LinkManagementEntity::onRequestTransmission() {
@@ -476,4 +481,8 @@ void LinkManagementEntity::onRequestTransmission() {
 	} else {
 		// ... do nothing.
 	}
+}
+
+unsigned int LinkManagementEntity::getExpiryOffset() const {
+	return tx_timeout*tx_offset;
 }
