@@ -167,14 +167,13 @@ void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentReq
 		int32_t slot_offset = chosen_candidate.second;
 		reply_payload->proposed_resources[reply_channel].push_back(slot_offset);
 		// Pass it on to the corresponding LinkManager (this could've been received on the broadcast channel).
-		unsigned int timeout = ((L2HeaderLinkEstablishmentRequest*&) header)->timeout,
-				offset = ((L2HeaderLinkEstablishmentRequest*&) header)->offset,
-				length = ((L2HeaderLinkEstablishmentRequest*&) header)->length_next;
 
 		// The request may have been received by the broadcast link manager,
 		// while the reply must be sent on a unicast channel,
 		// so we have to forward the reply to the corresponding P2P LinkManager.
-		owner->mac->forwardLinkReply(reply, reply_channel, slot_offset);
+		owner->mac->forwardLinkReply(reply, reply_channel, slot_offset); // TODO I don't think the BC link manager ever receives such a packet (it only *sends* requests)
+//		owner->assign(reply_channel);
+//		owner->scheduleLinkReply(reply, slot_offset);
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
 }
@@ -310,8 +309,7 @@ bool LinkManagementEntity::hasPendingReply() {
 
 void LinkManagementEntity::scheduleLinkReply(L2Packet* reply, int32_t slot_offset) {
 	uint64_t absolute_slot = owner->mac->getCurrentSlot() + slot_offset;
-	auto it = scheduled_replies.find(absolute_slot);
-	if (it != scheduled_replies.end())
+	if (scheduled_replies.find(absolute_slot) != scheduled_replies.end())
 		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
 	else {
 		// Sanity check.
@@ -323,33 +321,42 @@ void LinkManagementEntity::scheduleLinkReply(L2Packet* reply, int32_t slot_offse
 		if ((*proposal->proposed_resources.begin()).second.empty())
 			throw std::invalid_argument("LinkManagementEntity::scheduleLinkReply for proposal without a time slot.");
 
-		// Get ReservationTable for the selected channel.
-		const FrequencyChannel* selected_channel = proposal->proposed_resources.begin()->first;
-		ReservationTable* table = owner->reservation_manager->getReservationTable(selected_channel);
+		ReservationTable* table;
+		const FrequencyChannel* channel;
+		bool link_renewal = owner->link_establishment_status == LinkManager::link_established;
+
+		// For link renewal requests...
+		if (link_renewal) {
+			coutd << "link renewal request -> ";
+			// ... we send the reply on the current channel.
+			table = owner->current_reservation_table;
+			channel = owner->current_reservation_table->getLinkedChannel();
+		// For link establishment requests...
+		} else {
+			coutd << "link establishment request -> ";
+			// ... we send the reply on the selected channel.
+			channel = proposal->proposed_resources.begin()->first;
+			table = owner->reservation_manager->getReservationTable(channel);
+		}
 
 		// Make sure the selected slot is idle (sanity check).
 		if (table->isUtilized(slot_offset))
 			throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
 
-		// Mark the selected slot as TX to transmit the reply...
+		// Mark the next slot as TX to transmit the reply...
 		table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
 		scheduled_replies[absolute_slot] = reply;
-		coutd << "-> scheduled reply in " << slot_offset << " slots on " << *selected_channel << " -> ";
+		coutd << "-> scheduled reply in " << slot_offset << " slots on " << *channel << " -> ";
 
-		// ... and mark the *next* slot after the reply as RX to listen for a transmission there, which can establish this link fully.
-		unsigned int first_slot = proposal->proposed_resources[selected_channel].at(0) + tx_offset;
-		table->mark(first_slot, Reservation(owner->link_id, Reservation::Action::RX));
-		coutd << "marked first RX slot of chosen candidate (" << *selected_channel << ", offset " << first_slot << ") -> ";
-//
-//
-//        if (owner->link_establishment_status == LinkManager::link_not_established) {
-//            // ... and mark reservations: we're sending a reply, so we're the receiver.
-//            coutd << "-> first-time link setup; mark RX slots -> ";
-//            owner->markReservations(timeout, slot_offset, offset, length, reply->getDestination(), Reservation::Action::RX);
-//            coutd << " -> ";
-//        } else {
-//            // ... renewal negotiation: might have to change the FrequencyChannel, so do nothing now.
-//        }
+		// Mark the first RX slot of the new link
+		if (link_renewal) {
+
+		} else {
+			const FrequencyChannel* proposed_channel = proposal->proposed_resources.begin()->first;
+			unsigned int first_slot = proposal->proposed_resources[proposed_channel].at(0) + tx_offset;
+			table->mark(first_slot, Reservation(owner->link_id, Reservation::Action::RX));
+			coutd << "marked first RX slot of chosen candidate (" << *proposed_channel << ", offset " << first_slot << ") -> ";
+		}
 	}
 }
 

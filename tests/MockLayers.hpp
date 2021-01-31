@@ -121,8 +121,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit RLCLayer(const MacId& own_id) : own_id(own_id) {}
 
 		virtual ~RLCLayer() {
-			for (L2Packet* packet : injections)
-				delete packet;
+			for (auto it = control_message_injections.begin(); it != control_message_injections.end(); it++)
+				for (L2Packet* packet : it->second)
+					delete packet;
 			for (L2Packet* packet : receptions)
 				delete packet;
 		}
@@ -138,14 +139,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
 			coutd << "RLC received injection for '" << packet->getDestination() << "'... ";
-			injections.push_back(packet);
+			auto it = control_message_injections.find(packet->getDestination());
+			if (it == control_message_injections.end()) {
+				control_message_injections[packet->getDestination()] = std::vector<L2Packet*>();
+				control_message_injections[packet->getDestination()].push_back(packet);
+			} else
+				it->second.push_back(packet);
 			lower_layer->notifyOutgoing(packet->getBits(), packet->getDestination());
 		}
 
 		L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
 			coutd << "RLC::requestSegment -> ";
 			L2Packet* segment;
-			if (injections.empty()) {
+			if (control_message_injections.find(mac_id) == control_message_injections.end() || control_message_injections.at(mac_id).empty()) {
+				// Broadcast...
 				if (mac_id == SYMBOLIC_LINK_ID_BROADCAST) {
 					coutd << "returning new broadcast -> ";
 					segment = new L2Packet();
@@ -163,8 +170,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			} else {
 				coutd << "returning injection -> ";
-				segment = injections.at(injections.size() - 1);
-				injections.pop_back();
+				segment = control_message_injections.at(mac_id).at(control_message_injections.at(mac_id).size() - 1);
+				control_message_injections.at(mac_id).pop_back();
 			}
 			return segment;
 		}
@@ -173,7 +180,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			return should_there_be_more_data;
 		}
 
-		std::vector<L2Packet*> injections;
+		std::map<MacId, std::vector<L2Packet*>> control_message_injections;
 		std::vector<L2Packet*> receptions;
 		bool should_there_be_more_data = true;
 	protected:

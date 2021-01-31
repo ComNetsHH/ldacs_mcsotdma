@@ -72,11 +72,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testMakeReservation() {
 			// No injected link request yet.
-			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc->injections.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc->control_message_injections.size());
 			mac->notifyOutgoing(1024, communication_partner_id);
 			CPPUNIT_ASSERT(mac->getLinkManager(communication_partner_id)->link_establishment_status == LinkManager::Status::awaiting_reply);
 			// Now there should be one.
-			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc->injections.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc->control_message_injections.size());
 		}
 
 		void testUpdate() {

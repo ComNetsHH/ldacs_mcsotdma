@@ -143,7 +143,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	// Forward broadcasts to the BCLinkManager...
 	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
 		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet);
-		// Forward intended for us to the corresponding LinkManager that manages the packet's sender
+	// Forward packet intended for us to the corresponding LinkManager that manages the packet's sender
 	else if (dest_id == id)
 		getLinkManager(packet->getOrigin())->receiveFromLower(packet);
 	else
