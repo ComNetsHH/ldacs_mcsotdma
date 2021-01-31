@@ -60,13 +60,11 @@ size_t LinkManagementEntity::clearPendingRxReservations(const std::map<const Fre
 	return num_removed;
 }
 
-void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply*& header,
-                                            const ProposalPayload*& payload) {
+void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload) {
 	// Make sure we're expecting a reply.
 	if (owner->link_establishment_status != owner->Status::awaiting_reply)
 		throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
 	assert(payload->proposed_resources.size() == 1);
-	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
 
 	// Clear all scheduled requests, as one apparently made it through.
 	coutd << "clearing " << scheduled_requests.size() << " pending requests -> ";
@@ -75,44 +73,51 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 	last_proposed_resources.clear();
 	coutd << num_cleared_reservations << " cleared -> ";
 
-	// Configuring an initial channel...
-	if (owner->current_channel == nullptr) {
-		coutd << "assigning channel -> ";
-		owner->assign(channel);
-		tx_timeout = default_tx_timeout;
-		coutd << "resetting timeout to " << tx_timeout << " -> marking TX reservations:";
+	if (owner->current_channel == nullptr)
+		processInitialReply(header, payload);
+	else
+		processRenewalReply(header, payload);
+}
+
+void LinkManagementEntity::processInitialReply(const L2HeaderLinkEstablishmentReply*& header, const LinkManagementEntity::ProposalPayload*& payload) {
+	coutd << "establishing link -> assigning channel -> ";
+	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
+	owner->assign(channel);
+	tx_timeout = default_tx_timeout;
+	coutd << "resetting timeout to " << tx_timeout << " -> marking TX reservations:";
+	owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+	coutd << " -> configuring link renewal request slots -> ";
+	num_renewal_attempts = max_link_renewal_attempts;
+	configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
+	coutd << scheduled_requests.size() << " scheduled -> ";
+	owner->link_establishment_status = owner->Status::link_established;
+	owner->mac->notifyAboutNewLink(owner->link_id);
+	coutd << "link is now established -> ";
+}
+
+void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentReply*& header, const LinkManagementEntity::ProposalPayload*& payload) {
+	coutd << "renewing link -> ";
+	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
+	if (channel == owner->current_channel) {
+		coutd << "no channel change -> increasing timeout: " << tx_timeout;
+		tx_timeout += default_tx_timeout;
+		coutd << tx_timeout << " and marking TX reservations: ";
 		owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
-		coutd << " -> configuring link renewal request slots -> ";
+		coutd << " -> configuring request slots -> ";
 		num_renewal_attempts = max_link_renewal_attempts;
 		configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
 		coutd << scheduled_requests.size() << " scheduled -> ";
+		coutd << "link status update: " << owner->link_establishment_status;
 		owner->link_establishment_status = owner->Status::link_established;
-		owner->mac->notifyAboutNewLink(owner->link_id);
-		coutd << "link is now established -> ";
-		// Renewing an existing link...
+		coutd << "->" << owner->link_establishment_status;
 	} else {
-		coutd << "renewing link -> ";
-		if (channel == owner->current_channel) {
-			coutd << "no channel change -> increasing timeout: " << tx_timeout;
-			tx_timeout += default_tx_timeout;
-			coutd << tx_timeout << " and marking TX reservations: ";
-			owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
-			coutd << " -> configuring request slots -> ";
-			num_renewal_attempts = max_link_renewal_attempts;
-			configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
-			coutd << scheduled_requests.size() << " scheduled -> ";
-			coutd << "link status update: " << owner->link_establishment_status;
-			owner->link_establishment_status = owner->Status::link_established;
-			coutd << "->" << owner->link_establishment_status;
-		} else {
-			coutd << "channel change -> saving new channel (" << *owner->current_channel << "->" << *channel << ") -> ";
-			next_channel = channel;
-			coutd << " and marking TX reservations: ";
-			owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
-			coutd << "link status update: " << owner->link_establishment_status;
-			owner->link_establishment_status = owner->Status::link_renewal_complete;
-			coutd << "->" << owner->link_establishment_status << " -> ";
-		}
+		coutd << "channel change -> saving new channel (" << *owner->current_channel << "->" << *channel << ") -> ";
+		next_channel = channel;
+		coutd << " and marking TX reservations: ";
+		owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+		coutd << "link status update: " << owner->link_establishment_status;
+		owner->link_establishment_status = owner->Status::link_renewal_complete;
+		coutd << "->" << owner->link_establishment_status << " -> ";
 	}
 }
 
@@ -151,13 +156,22 @@ void LinkManagementEntity::decrementTimeout() {
 
 void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
                                               const ProposalPayload*& payload, const MacId& origin) {
+	if (owner->link_establishment_status == LinkManager::link_not_established)
+		processInitialRequest(header, payload, origin);
+	else
+		processRenewalRequest(header, payload, origin);
+
+}
+
+void LinkManagementEntity::processInitialRequest(const L2HeaderLinkEstablishmentRequest*& header, const LinkManagementEntity::ProposalPayload*& payload, const MacId& origin) {
+	coutd << "processing initial link establishment request -> ";
 	auto viable_candidates = findViableCandidatesInRequest(
 			(L2HeaderLinkEstablishmentRequest*&) header,
 			(ProposalPayload*&) payload);
 	if (!viable_candidates.empty()) {
 		// Choose a candidate out of the set.
 		auto chosen_candidate = viable_candidates.at(LinkManager::getRandomInt(0, viable_candidates.size()));
-		coutd << " -> picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
+		coutd << "picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
 		// Prepare a link reply.
 		L2Packet* reply = prepareReply(origin);
 		// Populate the payload.
@@ -170,6 +184,10 @@ void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentReq
 		scheduleLinkReply(reply, slot_offset);
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
+}
+
+void LinkManagementEntity::processRenewalRequest(const L2HeaderLinkEstablishmentRequest*& header, const LinkManagementEntity::ProposalPayload*& payload, const MacId& origin) {
+	coutd << "processing renewal request -> ";
 }
 
 std::vector<std::pair<const FrequencyChannel*, unsigned int>>

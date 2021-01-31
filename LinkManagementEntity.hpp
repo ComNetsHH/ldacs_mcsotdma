@@ -173,6 +173,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		size_t clearPendingRxReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time);
 
+		/**
+		 * Processes a link establishment request when the link is not established.
+		 * @param header
+		 * @param payload
+		 * @param origin
+		 */
+		void processInitialRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
+
+		/**
+		 * Processes a link establishment request when the link is already established.
+		 * @param header
+		 * @param payload
+		 * @param origin
+		 */
+		void processRenewalRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
+
+		/**
+		 * Processes a link establishment reply when the link is not established.
+		 * @param header
+		 * @param payload
+		 */
+		void processInitialReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
+
+		/**
+		 * Processes a link establishment reply when the link is already established.
+		 * @param header
+		 * @param payload
+		 */
+		void processRenewalReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
+
 	protected:
 		/** Number of times a link should be attempted to be renewed. */
 		unsigned int num_renewal_attempts = 0;
