@@ -55,10 +55,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testScheduleRequests() {
 			tx_timeout = 5, init_offset = 1, tx_offset = 3, num_renewal_attempts = 2;
-			lme->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
-			const std::vector<uint64_t>& slots = lme->scheduled_requests;
-			CPPUNIT_ASSERT_EQUAL(num_renewal_attempts, lme->num_renewal_attempts);
-			CPPUNIT_ASSERT_EQUAL(size_t(lme->num_renewal_attempts), slots.size());
+			const std::vector<uint64_t>& slots = lme->scheduleRequests(tx_timeout, init_offset, tx_offset, num_renewal_attempts);
+			CPPUNIT_ASSERT_EQUAL(size_t(num_renewal_attempts), slots.size());
 			// Manual check: init offset=1, tx every 3 slots, 5 txs -> tx at [1,4,7,10,13].
 			CPPUNIT_ASSERT_EQUAL(uint64_t(10), slots.at(0));
 			CPPUNIT_ASSERT_EQUAL(uint64_t(4), slots.at(1));
@@ -66,7 +64,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testUpdate() {
 //            coutd.setVerbose(true);
-			lme->configure(num_renewal_attempts, tx_timeout, init_offset, tx_offset);
+			lme->scheduled_requests = lme->scheduleRequests(tx_timeout, init_offset, tx_offset, lme->max_link_renewal_attempts);
 			const auto& request_slots = lme->scheduled_requests;
 			size_t num_request_triggers = 0;
 			while (num_request_triggers < num_renewal_attempts) {

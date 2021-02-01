@@ -11,22 +11,18 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 LinkManagementEntity::LinkManagementEntity(LinkManager* owner) : owner(owner) {}
 
-void LinkManagementEntity::configure(unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset,
-                                     unsigned int tx_offset) {
-	this->num_renewal_attempts = num_renewal_attempts;
-	// Schedule the absolute slots for sending requests.
-	scheduled_requests = scheduleRequests(tx_timeout, init_offset, tx_offset);
-}
-
-std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int tx_timeout, unsigned int init_offset,
-                                                             unsigned int tx_offset) const {
+std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int timeout, unsigned int init_offset,
+                                                             unsigned int burst_offset, unsigned int num_attempts) const {
 	std::vector<uint64_t> slots;
 	// For each transmission burst from last to first according to this reservation...
-	for (long i = 0, offset = init_offset + (tx_timeout - 1) * tx_offset; slots.size() < this->num_renewal_attempts && offset >= init_offset; offset -= tx_offset, i++) {
+	for (long i = 0, offset = init_offset + (timeout - 1) * burst_offset; slots.size() < num_attempts && offset >= init_offset; offset -= burst_offset, i++) {
 		// ... add every second burst
-		if (i % 2 == 1)
+		if (i % 2 == 1) {
 			slots.push_back(owner->mac->getCurrentSlot() + offset);
+			coutd << "t=" << offset << " ";
+		}
 	}
+	coutd << "-> ";
 	return slots;
 }
 
@@ -88,8 +84,9 @@ void LinkManagementEntity::processInitialReply(const L2HeaderLinkEstablishmentRe
 	coutd << "resetting timeout to " << tx_timeout << " -> marking TX reservations:";
 	owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
 	coutd << " -> configuring link renewal request slots -> ";
-	num_renewal_attempts = max_link_renewal_attempts;
-	configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
+	// Schedule the absolute slots for sending requests.
+	this->num_renewal_attempts = max_link_renewal_attempts;
+	scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, num_renewal_attempts);
 	coutd << scheduled_requests.size() << " scheduled -> ";
 	owner->link_establishment_status = owner->Status::link_established;
 	owner->mac->notifyAboutNewLink(owner->link_id);
@@ -108,8 +105,9 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 		coutd << tx_timeout << " and marking TX reservations: ";
 		owner->markReservations(tx_timeout, initial_slot, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
 		coutd << " -> configuring request slots -> ";
-		num_renewal_attempts = max_link_renewal_attempts;
-		configure(num_renewal_attempts, tx_timeout, 0, tx_offset);
+		// Schedule the absolute slots for sending requests.
+		this->num_renewal_attempts = max_link_renewal_attempts;
+		scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, num_renewal_attempts);
 		coutd << scheduled_requests.size() << " scheduled -> ";
 		coutd << "link status update: " << owner->link_establishment_status;
 		owner->link_establishment_status = owner->Status::link_established;
@@ -462,8 +460,8 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
 		min_offset = default_minimum_slot_offset_for_new_reservations; // have the minimum offset
 	// For renewal...
 	else
-//		min_offset = tx_offset + default_minimum_slot_offset_for_new_reservations; // look for slots *after* this link has expired
-		min_offset = getExpiryOffset(); // look for slots *after* this link has expired
+		min_offset = tx_offset + default_minimum_slot_offset_for_new_reservations; // look for slots *after* this link has expired
+//		min_offset = getExpiryOffset(); // look for slots *after* this link has expired
 	request->getPayloads().at(request_index) = p2pSlotSelection(tx_burst_num_slots, num_proposed_channels, num_proposed_slots, min_offset);
 	coutd << "populated link request: " << *request_header << " -> ";
 	// Save current proposal.

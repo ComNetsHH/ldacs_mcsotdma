@@ -389,9 +389,9 @@ void LinkManager::markReservations(ReservationTable* table, unsigned int timeout
 		if (current_reservation != reservation)
 			table->mark(current_offset, reservation);
 		if (current_reservation.getAction() != reservation.getAction())
-			coutd << " @" << current_offset << ":" << current_reservation << "->" << reservation;
+			coutd << " t=" << current_offset << ":" << current_reservation << "->" << reservation;
 		else
-			coutd << " @" << current_offset << ":" << reservation;
+			coutd << " t=" << current_offset << ":" << reservation;
 	}
 }
 

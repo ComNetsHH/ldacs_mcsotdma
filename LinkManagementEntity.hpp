@@ -69,15 +69,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit LinkManagementEntity(LinkManager* owner);
 
 		/**
-		 * When a new reservation is established, this resets the process and starts it anew.
-		 * @param num_renewal_attempts
-		 * @param tx_timeout
-		 * @param init_offset
-		 * @param tx_offset
-		 */
-		void configure(unsigned int num_renewal_attempts, unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset);
-
-		/**
 		 * @return Whether a link management control message should be sent.
 		 */
 		bool hasControlMessage();
@@ -144,7 +135,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void onRequestTransmission();
 
 	protected:
-		std::vector<uint64_t> scheduleRequests(unsigned int tx_timeout, unsigned int init_offset, unsigned int tx_offset) const;
+		std::vector<uint64_t> scheduleRequests(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
 
 		std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, ProposalPayload*& payload) const;
 
@@ -238,7 +229,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Number of slots until the next transmission. Should be set to the P2P frame length, or dynamically for broadcast-type transmissions. */
 		unsigned int tx_offset = 5;
 		const FrequencyChannel* next_channel = nullptr;
-
 		/** Saves the last proposed (frequency channel, time slot)-pairs. */
 		std::map<const FrequencyChannel*, std::vector<unsigned int>> last_proposed_resources;
 		uint64_t last_proposal_absolute_time = 0;
