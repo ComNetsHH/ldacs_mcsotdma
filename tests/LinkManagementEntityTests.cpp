@@ -166,7 +166,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(Reservation::Action::IDLE, rx_table->getReservation(offset).getAction());
 			}
 			// Clear proposed <channel, slots>.
-			CPPUNIT_ASSERT_EQUAL(num_to_clear, lme->clearPendingRxReservations(proposed_resources, 0, 0));
+			CPPUNIT_ASSERT_EQUAL(num_to_clear, lme->clearPendingRequestReservations(proposed_resources, 0, 0));
 			// Ensure that the proposed resources were cleared, all others weren't.
 			for (size_t offset = 0; offset < planning_horizon; offset++) {
 				if (offset >= 2 && offset < 10) {

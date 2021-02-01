@@ -74,7 +74,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		virtual L2Packet* onTransmissionBurst(unsigned int num_slots);
 
-		void onReceptionSlot();
+		virtual void onReceptionSlot();
 
 		/**
 		 * When a packet on this link comes in from the PHY, this notifies the LinkManager.

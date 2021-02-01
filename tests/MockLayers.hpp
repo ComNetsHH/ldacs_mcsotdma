@@ -179,12 +179,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		bool isThereMoreData(const MacId& mac_id) const override {
-			return should_there_be_more_data;
+			if (mac_id == SYMBOLIC_LINK_ID_BROADCAST)
+				return should_there_be_more_broadcast_data;
+			else
+				return should_there_be_more_p2p_data;
 		}
 
 		std::map<MacId, std::vector<L2Packet*>> control_message_injections;
 		std::vector<L2Packet*> receptions;
-		bool should_there_be_more_data = true;
+		bool should_there_be_more_p2p_data = true, should_there_be_more_broadcast_data = false;
 	protected:
 		MacId own_id;
 	};

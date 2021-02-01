@@ -130,7 +130,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int getTxBurstSlots() const;
 
+		void setTxBurstSlots(unsigned int value);
+
 		void onRequestTransmission();
+
+		void update(uint64_t num_slots);
 
 	protected:
 		std::vector<uint64_t> scheduleRequests(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
@@ -166,7 +170,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param current_time
 		 * @return Number of cleared reservations
 		 */
-		size_t clearPendingRxReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time);
+		size_t clearPendingRequestReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time);
 
 		/**
 		 * Processes a link establishment request when the link is not established.
@@ -247,6 +251,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<const FrequencyChannel*, std::vector<unsigned int>> last_proposed_resources;
 		uint64_t last_proposal_absolute_time = 0;
 		bool link_renewal_pending = false;
+		/** Whether the tx_timeout field has been set from a packet reception in this slot. Prevents double-decrementing the tx_timeout counter. */
+		bool updated_timeout_this_slot = false;
 	};
 }
 

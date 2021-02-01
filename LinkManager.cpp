@@ -209,13 +209,16 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 		coutd << "requesting " << num_bits << " bits." << std::endl;
 		segment = mac->requestSegment(num_bits, getLinkId());
 	}
-	// Update LME.
+
+	// Update LME's timeout.
 	lme->onTransmissionBurst();
-	// Set header fields.
+
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionBurst received segment with <=1 headers.");
-	if (!sending_reply)
+	if (!sending_reply) {
+		// Set header fields.
 		for (L2Header* header : segment->getHeaders())
 			setHeaderFields(header);
+	}
 
 	statistic_num_sent_packets++;
 	return segment;
@@ -331,6 +334,25 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 			coutd << "awaiting reply, so not marking RX slots -> ";
 			return;
 		}
+		coutd << "updating link management parameters: ";
+		coutd << "timeout:";
+		if (lme->getTxTimeout() != timeout) {
+			coutd << lme->getTxTimeout() << "->" << timeout << " ";
+			lme->setTxTimeout(timeout);
+		} else
+			coutd << "(unchanged@" << lme->getTxTimeout() << ")";
+		coutd << ", offset:";
+		if (lme->getTxOffset() != offset) {
+			coutd << lme->getTxOffset() << "->" << offset << " ";
+			lme->setTxOffset(offset);
+		} else
+			coutd << "(unchanged@" << lme->getTxOffset() << ")";
+		coutd << ", length_next:";
+		if (lme->getTxBurstSlots() != length_next) {
+			coutd << lme->getTxBurstSlots() << "->" << length_next << " ";
+			lme->setTxBurstSlots(length_next);
+		} else
+			coutd << "(unchanged@" << lme->getTxBurstSlots() << ") -> ";
 		coutd << "updating reservations: ";
 		// This is an incoming packet, so we must've been listening.
 		// Mark future slots as RX slots, too.
@@ -391,10 +413,11 @@ void LinkManager::update(uint64_t num_slots) {
 		for (uint64_t t = 0; t < num_slots; t++)
 			traffic_estimate.put(0);
 	traffic_estimate.reset();
+	lme->update(num_slots);
 }
 
 void LinkManager::onReceptionSlot() {
-//    lme->onReceptionSlot();
+    lme->onReceptionSlot();
 }
 
 

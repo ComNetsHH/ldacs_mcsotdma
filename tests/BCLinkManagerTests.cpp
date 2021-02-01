@@ -121,7 +121,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
 			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
 			// So that querying whether there's more data returns false -> no next broadcast
-			rlc_layer->should_there_be_more_data = false;
+			rlc_layer->should_there_be_more_p2p_data = false;
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
 			size_t num_slots = 0, max_slots = 10;
 			while (((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
@@ -144,12 +144,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testNotifyOutgoingMulti() {
 //				coutd.setVerbose(true);
+			rlc_layer->should_there_be_more_broadcast_data = true;
 			mac->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 			Reservation reservation = mac->reservation_manager->getBroadcastReservationTable()->getReservation(link_manager->lme->getMinOffset());
 			CPPUNIT_ASSERT_EQUAL(true, reservation.isTx());
 			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
 			// So that a next broadcast must be scheduled.
-			rlc_layer->should_there_be_more_data = true;
+			rlc_layer->should_there_be_more_p2p_data = true;
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
 			size_t num_slots = 0, max_slots = 10;
 			while (phy_layer->outgoing_packets.empty() && num_slots++ < max_slots) {

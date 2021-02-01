@@ -26,8 +26,8 @@ std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int timeou
 	return slots;
 }
 
-size_t LinkManagementEntity::clearPendingRxReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time) {
-	coutd << "removing RX reservations on proposed resources: ";
+size_t LinkManagementEntity::clearPendingRequestReservations(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& proposed_resources, uint64_t absolute_proposal_time, uint64_t current_time) {
+	coutd << "removing reservations on proposed resources: ";
 	// Remove all RX reservations for proposed resources that, since we are processing this reply, don't need to be listened to anymore.
 	if (proposed_resources.empty())
 		throw std::runtime_error("LinkManagementEntity::processLinkReply for unsaved last proposal.");
@@ -42,12 +42,13 @@ size_t LinkManagementEntity::clearPendingRxReservations(const std::map<const Fre
 			// Ignore slots that have already passed.
 			if (time_difference < offset) {
 				// Normalize offsets to current time.
-				unsigned int normalized_offset = offset - time_difference;
-				const Reservation* reservation = &table->getReservation(normalized_offset);
-				coutd << "f=" << *proposed_channel << ",t=" << normalized_offset << ":" << *reservation << " ";
-				if (reservation->getAction() != Reservation::RX)
-					throw std::runtime_error("LinkManagementEntity::processLinkReply should clear a pending RX reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
+				unsigned long normalized_offset = offset - time_difference;
+				const Reservation* reservation = &table->getReservation((int) normalized_offset);
+				coutd << "f=" << *proposed_channel << ",t=" << normalized_offset << ":" << *reservation;
+				if (!reservation->isRx() && !reservation->isLocked())
+					throw std::runtime_error("LinkManagementEntity::processLinkReply should clear a pending reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
 				table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+				coutd << "->idle ";
 				num_removed++;
 			}
 		}
@@ -65,7 +66,7 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 	// Clear all scheduled requests, as one apparently made it through.
 	coutd << "clearing " << scheduled_requests.size() << " pending requests -> ";
 	scheduled_requests.clear();
-	size_t num_cleared_reservations = clearPendingRxReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
+	size_t num_cleared_reservations = clearPendingRequestReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
 	last_proposed_resources.clear();
 	coutd << num_cleared_reservations << " cleared -> ";
 	link_renewal_pending = false;
@@ -97,9 +98,9 @@ void LinkManagementEntity::processInitialReply(const L2HeaderLinkEstablishmentRe
 void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentReply*& header, const LinkManagementEntity::ProposalPayload*& payload) {
 	coutd << "renewing link -> ";
 	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
-	if ((*payload->proposed_resources.begin()).second.size() != 1)
+	if (payload->proposed_resources.at(channel).size() != 1)
 		throw std::invalid_argument("LinkManagementEntity::processRenewalReply for invalid number of slots.");
-	unsigned int initial_slot = (*payload->proposed_resources.begin()).second.at(0);
+	unsigned int initial_slot = payload->proposed_resources.at(channel).at(0);
 	if (channel == owner->current_channel) {
 		coutd << "no channel change -> increasing timeout: " << tx_timeout << "->";
 		tx_timeout += default_tx_timeout;
@@ -116,7 +117,7 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	} else {
 		coutd << "channel change -> saving new channel (" << *owner->current_channel << "->" << *channel << ") -> ";
 		next_channel = channel;
-		coutd << " and marking TX reservations: ";
+		coutd << "and marking TX reservations on " << *next_channel << ": ";
 		ReservationTable* table = owner->reservation_manager->getReservationTable(next_channel);
 		owner->markReservations(table, default_tx_timeout, initial_slot, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
 		coutd << "link status update: " << owner->link_establishment_status;
@@ -134,6 +135,18 @@ void LinkManagementEntity::onReceptionSlot() {
 }
 
 void LinkManagementEntity::decrementTimeout() {
+	// Don't update timeout if,
+	// (1) the link is not established right now
+	if (owner->link_establishment_status == LinkManager::link_not_established)
+		return;
+	// (2) we are in the process of establishment.
+	if ((!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_data_tx))
+		return;
+	// (3) it has already been updated this slot.
+	if (updated_timeout_this_slot)
+		return;
+	updated_timeout_this_slot = true;
+
 	if (tx_timeout == 0)
 		throw std::runtime_error("LinkManagementEntity::decrementTimeout attempted to decrement timeout past zero.");
 	coutd << "timeout " << tx_timeout << "->";
@@ -430,6 +443,7 @@ void LinkManagementEntity::scheduleRenewalReply(L2Packet* reply, int32_t slot_of
 }
 
 void LinkManagementEntity::setTxTimeout(unsigned int value) {
+	updated_timeout_this_slot = true;
 	tx_timeout = value;
 }
 
@@ -486,6 +500,10 @@ LinkManagementEntity::ProposalPayload* LinkManagementEntity::p2pSlotSelection(co
 
 unsigned int LinkManagementEntity::getTxBurstSlots() const {
 	return tx_burst_num_slots;
+}
+
+void LinkManagementEntity::setTxBurstSlots(unsigned int value) {
+	this->tx_burst_num_slots = value;
 }
 
 void LinkManagementEntity::populateRequest(L2Packet*& request) {
@@ -552,4 +570,8 @@ void LinkManagementEntity::onRequestTransmission() {
 
 unsigned int LinkManagementEntity::getExpiryOffset() const {
 	return tx_timeout*tx_offset;
+}
+
+void LinkManagementEntity::update(uint64_t num_slots) {
+	updated_timeout_this_slot = false;
 }

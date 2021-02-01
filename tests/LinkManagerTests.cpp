@@ -409,7 +409,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			    coutd.setVerbose(true);
 
 			// No need to schedule additional broadcast slots after sending the request.
-			rlc_layer->should_there_be_more_data = false;
+			rlc_layer->should_there_be_more_p2p_data = false;
 			// Injections into RLC should trigger notifications down to the corresponding LinkManager.
 			arq_layer->should_forward = true;
 			auto* bc_link_manager = (BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
@@ -796,7 +796,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_timeout, link_manager->lme->default_tx_timeout);
 			testReservationsAfterFirstDataTx();
 			// No renewal attempts are made if there's no more data.
-			rlc_layer->should_there_be_more_data = false;
+			rlc_layer->should_there_be_more_p2p_data = false;
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
 			CPPUNIT_ASSERT(link_manager->lme->default_tx_timeout > 0);
 			unsigned int current_timeout = link_manager->lme->default_tx_timeout - 1;
@@ -823,7 +823,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkRenewalRequest() {
 			testReservationsAfterFirstDataTx();
 			// Renewal attempts *are* made if there's more data.
-			rlc_layer->should_there_be_more_data = true;
+			rlc_layer->should_there_be_more_p2p_data = true;
 
 			// 1st request + 1 data packet should've been sent so far.
 			size_t expected_num_sent_packets = 2;
@@ -856,9 +856,134 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(false);
 		}
 
+		/**
+		 * Tests that both sides of a communication link update their timeout values synchronously until link expiry.
+		 */
 		void testReceiverTimeout() {
-			bool implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, implemented);
+//			coutd.setVerbose(true);
+			rlc_layer->should_there_be_more_broadcast_data = false;
+			rlc_layer->should_there_be_more_p2p_data = false;
+			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
+			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+			env_rx.phy_layer->connected_phy = phy_layer;
+			phy_layer->connected_phy = env_rx.phy_layer;
+			auto* mac_rx = env_rx.mac_layer;
+
+			mac->notifyOutgoing(512, communication_partner_id);
+			size_t num_slots = 0, max_num_slots = 100;
+			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac_rx->update(1);
+				mac->execute();
+				mac_rx->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
+			// No timeout changes yet since the link has just been established on one side.
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager->lme->tx_timeout);
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager_rx->lme->tx_timeout);
+
+			num_slots = 0;
+			while (link_manager_rx->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac_rx->update(1);
+				mac->execute();
+				mac_rx->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager_rx->link_establishment_status);
+			// First data transmission occurred - both sides should've updated their timeout.
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager->lme->tx_timeout);
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager_rx->lme->tx_timeout);
+
+			// Let's force non-renewal.
+			link_manager->lme->scheduled_requests.clear();
+
+			num_slots = 0;
+			unsigned int num_txs = 1;
+			// Now increment time until expiry.
+			while (link_manager->lme->tx_timeout > 0 && num_slots++ < max_num_slots) {
+				mac->update(link_manager->lme->tx_offset);
+				mac_rx->update(link_manager->lme->tx_offset);
+				mac->execute();
+				mac_rx->execute();
+				num_txs++;
+				// Timeout values should match.
+				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager->lme->tx_timeout);
+				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager_rx->lme->tx_timeout);
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager_rx->link_establishment_status);
+//			coutd.setVerbose(false);
+		}
+
+		/**
+		 * Tests that both sides of a communication link update their timeout values synchronously until link expiry even when transmissions are not received.
+		 */
+		void testReceiverTimeoutNoReceptions() {
+//			coutd.setVerbose(true);
+			rlc_layer->should_there_be_more_broadcast_data = false;
+			rlc_layer->should_there_be_more_p2p_data = false;
+			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
+			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+			env_rx.phy_layer->connected_phy = phy_layer;
+			phy_layer->connected_phy = env_rx.phy_layer;
+			auto* mac_rx = env_rx.mac_layer;
+
+			mac->notifyOutgoing(512, communication_partner_id);
+			size_t num_slots = 0, max_num_slots = 100;
+			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac_rx->update(1);
+				mac->execute();
+				mac_rx->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
+			// No timeout changes yet since the link has just been established on one side.
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager->lme->tx_timeout);
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager_rx->lme->tx_timeout);
+
+			num_slots = 0;
+			while (link_manager_rx->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac_rx->update(1);
+				mac->execute();
+				mac_rx->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager_rx->link_establishment_status);
+			// First data transmission occurred - both sides should've updated their timeout.
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager->lme->tx_timeout);
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager_rx->lme->tx_timeout);
+
+			// Let's force non-renewal.
+			link_manager->lme->scheduled_requests.clear();
+			// And "drop" all sent packets.
+			phy_layer->connected_phy = nullptr;
+
+			num_slots = 0;
+			unsigned int num_txs = 1;
+			// Now increment time until expiry.
+			while (link_manager->lme->tx_timeout > 0 && num_slots++ < max_num_slots) {
+				mac->update(link_manager->lme->tx_offset);
+				mac_rx->update(link_manager->lme->tx_offset);
+				mac->execute();
+				mac_rx->execute();
+				num_txs++;
+				// Timeout values should match.
+				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager->lme->tx_timeout);
+				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager_rx->lme->tx_timeout);
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager_rx->link_establishment_status);
+//			coutd.setVerbose(false);
 		}
 
 		void testLinkRenewalReply() {
@@ -867,7 +992,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer->connected_phy = env_rx.phy_layer;
 			auto* mac_rx = env_rx.mac_layer;
 
-			rlc_layer->should_there_be_more_data = true;
+			rlc_layer->should_there_be_more_p2p_data = true;
 			arq_layer->should_forward = true;
 			// Trigger link establishment.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->control_message_injections.size());
@@ -934,6 +1059,60 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			}
 
+			// Now increment time until the reply has been received.
+			num_slots = 0;
+			while (!link_manager_rx->lme->scheduled_replies.empty() && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac_rx->update(1);
+				mac->execute();
+				mac_rx->execute();
+				selected_slot--;
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+
+			// New status depends on whether a channel change is applied,
+			// if it is, the new status is `link_renewal_complete`
+			// if it isn't, it moves to 'link_established' directly.
+			CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::link_established || link_manager->link_establishment_status == LinkManager::link_renewal_complete);
+
+			// Next channels should match.
+			CPPUNIT_ASSERT_EQUAL(*link_manager->lme->next_channel, *link_manager_rx->lme->next_channel);
+
+			// For the transmitter, all selected resources should be unlocked, except for the selected one.
+//			size_t num_non_idle = 0;
+//			unsigned int agreed_slot;
+//			const FrequencyChannel* agreed_channel;
+
+			ReservationTable* table_new_tx = link_manager->reservation_manager->getReservationTable(selected_channel);
+			ReservationTable* table_new_rx = link_manager_rx->reservation_manager->getReservationTable(selected_channel);
+			for (size_t t = 0; t < link_manager->lme->tx_offset * link_manager->lme->default_tx_timeout; t++) {
+				if (t == selected_slot)
+					coutd << "\t---SELECTED SLOT---" << std::endl;
+				coutd << "t=" << t << "TX current: " << link_manager->current_reservation_table->getReservation(t) << " " << *link_manager->current_channel << std::endl;
+				coutd << "t=" << t << "TX new: " << table_new_tx->getReservation(t) << " " << *selected_channel << std::endl;
+				coutd << "t=" << t << "RX current: " << link_manager_rx->current_reservation_table->getReservation(t) << std::endl;
+				coutd << "t=" << t << "RX new: " << table_new_rx->getReservation(t) << std::endl;
+				if (t == link_manager->lme->getExpiryOffset() - link_manager->lme->tx_offset) // TODO decrement timeout on reception
+					coutd << "\t--- link expiry ---" << std::endl;
+				coutd << std::endl;
+			}
+
+//			for (auto it = payload->proposed_resources.begin(); it != payload->proposed_resources.end(); it++) {
+//				const auto* channel = it->first;
+//				std::vector<unsigned int> slots = it->second;
+//				ReservationTable* table_new_tx = link_manager->reservation_manager->getReservationTable(channel);
+//				for (auto t : slots) {
+//					const Reservation& reservation = table_new_tx->getReservation(t);
+//					coutd << reservation << std::endl;
+//					if (!reservation.isIdle()) {
+//						num_non_idle++;
+//						agreed_slot = t;
+//						agreed_channel = channel;
+//					}
+//				}
+//			}
+//			CPPUNIT_ASSERT_EQUAL(size_t(1), num_non_idle);
+
 //			coutd.setVerbose(false);
 		}
 
@@ -963,7 +1142,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReservationsAfterFirstDataTx);
 			CPPUNIT_TEST(testLinkExpiry);
 			CPPUNIT_TEST(testLinkRenewalRequest);
-//			CPPUNIT_TEST(testReceiverTimeout);
+			CPPUNIT_TEST(testReceiverTimeout);
+			CPPUNIT_TEST(testReceiverTimeoutNoReceptions);
 			CPPUNIT_TEST(testLinkRenewalReply);
 		CPPUNIT_TEST_SUITE_END();
 	};

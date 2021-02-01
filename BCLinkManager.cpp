@@ -179,3 +179,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection chose a slot in the past.");
 	return (unsigned int) slot;
 }
+
+void BCLinkManager::onReceptionSlot() {
+	// Don't decrement timeout, i.e. don't call base function.
+}

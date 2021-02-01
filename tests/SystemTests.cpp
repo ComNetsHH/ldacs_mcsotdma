@@ -68,7 +68,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testBroadcast() {
 //				coutd.setVerbose(true);
 			// Single message.
-			rlc_layer_me->should_there_be_more_data = false;
+			rlc_layer_me->should_there_be_more_p2p_data = false;
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer_you->receptions.size());
 			// Notify about outgoing data, which schedules a broadcast slot.
 			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
@@ -94,7 +94,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkEstablishment() {
 //			coutd.setVerbose(true);
 			// Single message.
-			rlc_layer_me->should_there_be_more_data = false;
+			rlc_layer_me->should_there_be_more_p2p_data = false;
 			// New data for communication partner.
 			mac_layer_me->notifyOutgoing(512, communication_partner_id);
 			size_t num_slots = 0, max_slots = 20;
@@ -186,7 +186,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkEstablishmentMultiSlotBurst() {
 //            coutd.setVerbose(true);
 			// Single message.
-			rlc_layer_me->should_there_be_more_data = false;
+			rlc_layer_me->should_there_be_more_p2p_data = false;
 			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
 			// Update traffic estimate s.t. multi-slot bursts should be used.
@@ -291,7 +291,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkIsExpiring() {
 			// Establish link and send first burst.
 			testLinkEstablishment();
-			rlc_layer_me->should_there_be_more_data = true;
+			rlc_layer_me->should_there_be_more_p2p_data = true;
 			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
 			unsigned int expected_tx_timeout = lm_me->lme->default_tx_timeout - 1;
@@ -365,7 +365,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				// Do link establishment and send one data packet.
 //				testLinkEstablishment();
 //				// Now there's more data.
-//				rlc_layer->should_there_be_more_data = true;
+//				rlc_layer->should_there_be_more_p2p_data = true;
 //				LinkManager* lm_me = mac_layer->getLinkManager(communication_partner_id);
 //				// We've sent one message so far, so the link remains valid until default-1.
 //				unsigned int expected_tx_timeout = lm_me->lme->default_tx_timeout - 1;
