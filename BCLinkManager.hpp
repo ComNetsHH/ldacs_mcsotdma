@@ -102,7 +102,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Applies Broadcast slot selection.
 		 * @return Slot offset of the chosen slot.
 		 */
-		unsigned int broadcastSlotSelection() const;
+		unsigned int broadcastSlotSelection();
 
 		/** Number of slots in-between beacons. */
 		unsigned int beacon_slot_interval = 32,

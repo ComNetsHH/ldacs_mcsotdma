@@ -830,7 +830,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(expected_num_sent_packets, phy_layer->outgoing_packets.size());
 
 //			coutd.setVerbose(true);
-			size_t num_slots = 0, max_slots = 1000;
+			size_t num_slots = 0, max_slots = link_manager->lme->scheduled_requests.size() + 5;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->lme->link_renewal_pending);
 			// Increment time to each request slot...
 			while (num_slots++ < max_slots && !link_manager->lme->scheduled_requests.empty()) {
 				uint64_t request_slot = *std::min_element(link_manager->lme->scheduled_requests.begin(), link_manager->lme->scheduled_requests.end());
@@ -847,11 +848,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// And next burst to receive the reply.
 				CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager->current_reservation_table->getReservation(link_manager->lme->tx_offset).getAction());
 			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->lme->link_renewal_pending);
 
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->lme->scheduled_requests.empty());
 
 //			coutd.setVerbose(false);
+		}
+
+		void testReceiverTimeout() {
+			bool implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, implemented);
 		}
 
 		void testLinkRenewalReply() {
@@ -866,7 +873,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->control_message_injections.size());
 			mac->notifyOutgoing(1024, communication_partner_id);
 
-//			coutd.setVerbose(true);
+			coutd.setVerbose(true);
 			// Increment time until link is established.
 			size_t num_slots = 0, max_num_slots = 1000;
 			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
@@ -888,41 +895,46 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->execute();
 				mac_rx->execute();
 			}
+			// Current slot should've been used to TX the request.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager->current_reservation_table->getReservation(0).getAction());
+			// And next burst the reply should be RX'd.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager->current_reservation_table->getReservation(link_manager->lme->tx_offset).getAction());
+			// For the other side, the current slot should RX the request.
 			LinkManager* link_manager_rx = mac_rx->getLinkManager(own_id);
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager_rx->current_reservation_table->getReservation(0).getAction());
+			// And the next burst be used to TX the reply.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager_rx->current_reservation_table->getReservation(link_manager->lme->tx_offset).getAction());
-//			coutd.setVerbose(false);
+			coutd.setVerbose(false);
 		}
 
 
 	CPPUNIT_TEST_SUITE(LinkManagerTests);
-			CPPUNIT_TEST(testTrafficEstimate);
-			CPPUNIT_TEST(testTrafficEstimateOverTimeslots);
-			CPPUNIT_TEST(testNewLinkEstablishment);
-			CPPUNIT_TEST(testComputeProposal);
-			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
-			CPPUNIT_TEST(testNewLinkRequest);
-			CPPUNIT_TEST(testOnTransmissionSlot);
-			CPPUNIT_TEST(testSetBaseHeader);
-			CPPUNIT_TEST(testSetBeaconHeader);
-			CPPUNIT_TEST(testSetUnicastHeader);
-			CPPUNIT_TEST(testSetRequestHeader);
-			CPPUNIT_TEST(testProcessIncomingBase);
-			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
-			CPPUNIT_TEST(testProcessIncomingUnicast);
-			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
-			CPPUNIT_TEST(testPrepareLinkReply);
-			CPPUNIT_TEST(testReplyToRequest);
-			CPPUNIT_TEST(testLocking);
-			CPPUNIT_TEST(testReservationsAfterRequest);
-			CPPUNIT_TEST(testReservationsAfterCandidateSelection);
-			CPPUNIT_TEST(testReservationsAfterReplyCameIn);
-			CPPUNIT_TEST(testReservationsAfterFirstDataTx);
-			CPPUNIT_TEST(testLinkExpiry);
-			CPPUNIT_TEST(testLinkRenewalRequest);
-//			CPPUNIT_TEST(testLinkRenewalReply);
+//			CPPUNIT_TEST(testTrafficEstimate);
+//			CPPUNIT_TEST(testTrafficEstimateOverTimeslots);
+//			CPPUNIT_TEST(testNewLinkEstablishment);
+//			CPPUNIT_TEST(testComputeProposal);
+//			CPPUNIT_TEST(testTransmissionSlotOnUnestablishedLink);
+//			CPPUNIT_TEST(testNewLinkRequest);
+//			CPPUNIT_TEST(testOnTransmissionSlot);
+//			CPPUNIT_TEST(testSetBaseHeader);
+//			CPPUNIT_TEST(testSetBeaconHeader);
+//			CPPUNIT_TEST(testSetUnicastHeader);
+//			CPPUNIT_TEST(testSetRequestHeader);
+//			CPPUNIT_TEST(testProcessIncomingBase);
+//			CPPUNIT_TEST(testProcessIncomingLinkEstablishmentRequest);
+//			CPPUNIT_TEST(testProcessIncomingUnicast);
+//			CPPUNIT_TEST(testPrepareLinkEstablishmentRequest);
+//			CPPUNIT_TEST(testPrepareLinkReply);
+//			CPPUNIT_TEST(testReplyToRequest);
+//			CPPUNIT_TEST(testLocking);
+//			CPPUNIT_TEST(testReservationsAfterRequest);
+//			CPPUNIT_TEST(testReservationsAfterCandidateSelection);
+//			CPPUNIT_TEST(testReservationsAfterReplyCameIn);
+//			CPPUNIT_TEST(testReservationsAfterFirstDataTx);
+//			CPPUNIT_TEST(testLinkExpiry);
+//			CPPUNIT_TEST(testLinkRenewalRequest);
+//			CPPUNIT_TEST(testReceiverTimeout);
+			CPPUNIT_TEST(testLinkRenewalReply);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

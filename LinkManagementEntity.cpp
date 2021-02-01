@@ -68,6 +68,7 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 	size_t num_cleared_reservations = clearPendingRxReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
 	last_proposed_resources.clear();
 	coutd << num_cleared_reservations << " cleared -> ";
+	link_renewal_pending = false;
 
 	// Differentiate between initial and renewal replies.
 	if (owner->current_channel == nullptr)
@@ -173,7 +174,7 @@ void LinkManagementEntity::processInitialRequest(const L2HeaderLinkEstablishment
 			(ProposalPayload*&) payload);
 	if (!viable_candidates.empty()) {
 		// Choose a candidate out of the set.
-		auto chosen_candidate = viable_candidates.at(LinkManager::getRandomInt(0, viable_candidates.size()));
+		auto chosen_candidate = viable_candidates.at(owner->getRandomInt(0, viable_candidates.size()));
 		coutd << "picked candidate (" << chosen_candidate.first->getCenterFrequency() << "kHz, offset " << chosen_candidate.second << ") -> ";
 		// Prepare a link reply.
 		L2Packet* reply = prepareReply(origin);
@@ -308,8 +309,10 @@ bool LinkManagementEntity::hasPendingRequest() {
 	for (auto it = scheduled_requests.begin(); it != scheduled_requests.end(); it++) {
 		uint64_t current_slot = *it;
 		if (current_slot == owner->mac->getCurrentSlot()) {
-			if (owner->mac->isThereMoreData(owner->getLinkId()))
+			if (owner->mac->isThereMoreData(owner->getLinkId())) {
+				link_renewal_pending = true;
 				return true;
+			}
 		} else if (current_slot < owner->mac->getCurrentSlot()) {
 			if (owner->mac->isThereMoreData(owner->getLinkId()))
 				throw std::invalid_argument("LinkManagementEntity::hasControlMessage has missed a scheduled request: " + std::to_string(current_slot) + " (current slot: " + std::to_string(owner->mac->getCurrentSlot()) + ").");
@@ -456,12 +459,11 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
 	// Compute a current proposal.
 	unsigned int min_offset;
 	// For initial establishment...
-	if (owner->link_establishment_status == LinkManager::link_not_established)
+	if (!link_renewal_pending)
 		min_offset = default_minimum_slot_offset_for_new_reservations; // have the minimum offset
 	// For renewal...
 	else
-		min_offset = tx_offset + default_minimum_slot_offset_for_new_reservations; // look for slots *after* this link has expired
-//		min_offset = getExpiryOffset(); // look for slots *after* this link has expired
+		min_offset = getExpiryOffset(); // look for slots *after* this link has expired
 	request->getPayloads().at(request_index) = p2pSlotSelection(tx_burst_num_slots, num_proposed_channels, num_proposed_slots, min_offset);
 	coutd << "populated link request: " << *request_header << " -> ";
 	// Save current proposal.

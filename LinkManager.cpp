@@ -3,7 +3,6 @@
 //
 
 #include <cassert>
-#include <random>
 #include "LinkManager.hpp"
 #include "coutdebug.hpp"
 #include "MCSOTDMA_Mac.hpp"
@@ -14,7 +13,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 LinkManager::LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
 		: link_id(link_id), reservation_manager(reservation_manager),
 		  link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-		  mac(mac), traffic_estimate(20) {
+		  mac(mac), traffic_estimate(20), random_device(new std::random_device), generator((*random_device)()) {
 	lme = new LinkManagementEntity(this);
 }
 
@@ -375,9 +374,7 @@ void LinkManager::reassign(const FrequencyChannel* channel) {
 size_t LinkManager::getRandomInt(size_t start, size_t end) {
 	if (start == end)
 		return start;
-	std::random_device random_device;
-	std::mt19937 generator(random_device());
-	std::uniform_int_distribution<> distribution(0, end - 1);
+	std::uniform_int_distribution<> distribution(start, end - 1);
 	return distribution(generator);
 }
 
@@ -405,6 +402,7 @@ void LinkManager::markReservations(unsigned int timeout, unsigned int init_offse
 
 LinkManager::~LinkManager() {
 	delete lme;
+	delete random_device;
 }
 
 void LinkManager::update(uint64_t num_slots) {

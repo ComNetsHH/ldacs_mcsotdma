@@ -232,6 +232,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Saves the last proposed (frequency channel, time slot)-pairs. */
 		std::map<const FrequencyChannel*, std::vector<unsigned int>> last_proposed_resources;
 		uint64_t last_proposal_absolute_time = 0;
+		bool link_renewal_pending = false;
 	};
 }
 

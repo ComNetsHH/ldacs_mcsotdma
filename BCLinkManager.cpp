@@ -167,7 +167,7 @@ void BCLinkManager::setTargetCollisionProbability(double p) {
 	this->target_collision_probability = p;
 }
 
-unsigned int BCLinkManager::broadcastSlotSelection() const {
+unsigned int BCLinkManager::broadcastSlotSelection() {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->target_collision_probability);

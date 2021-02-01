@@ -10,6 +10,7 @@
 #include "ReservationManager.hpp"
 #include "BeaconPayload.hpp"
 #include "MovingAverage.hpp"
+#include <random>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -182,7 +183,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param end
 		 * @return Uniformly drawn random integer from [start, end] (exclusive).
 		 */
-		static size_t getRandomInt(size_t start, size_t end);
+		size_t getRandomInt(size_t start, size_t end);
 
 		/**
 		 * Reassign both FrequencyChannel and corresponding ReservationTable.
@@ -221,6 +222,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			statistic_num_sent_beacons = 0,
 			statistic_num_sent_broadcasts = 0,
 			statistic_num_sent_unicasts = 0;
+
+		std::random_device* random_device;
+		std::mt19937 generator;
 
 	};
 
