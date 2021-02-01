@@ -161,25 +161,6 @@ void LinkManager::packetBeingSentCallback(L2Packet* packet) {
 	// This callback is used only for link requests.
 	// Populate the request with a proposal.
 	lme->populateRequest(packet);
-	// And mark the proposed slots as RX.
-	auto* proposal = (LinkManagementEntity::ProposalPayload*) packet->getPayloads().at(packet->getRequestIndex());
-//    for (size_t i = 0; i < proposal->proposed_channels.size(); i++) {
-	size_t i = 0;
-	for (const auto& item : proposal->proposed_resources) {
-		const FrequencyChannel* channel = item.first;
-		ReservationTable* table = reservation_manager->getReservationTable(channel);
-		std::vector<unsigned int> proposed_slots;
-		// ... and each slot...
-		for (int32_t offset : item.second) {
-			try {
-				// Even for multi-slot reservations, only the first slot should be marked, as the reply must fit within one slot.
-				table->mark(offset, Reservation(link_id, Reservation::Action::RX, 0));
-			} catch (const std::exception& e) {
-				throw std::runtime_error("LinkManager::packetBeingSentCallback couldn't mark RX slots: " + std::string(e.what()));
-			}
-		}
-		i++;
-	}
 }
 
 BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {

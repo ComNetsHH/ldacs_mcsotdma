@@ -98,8 +98,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void establishLink() const;
 
-		void scheduleLinkReply(L2Packet* reply, int32_t slot_offset);
-
 		void populateRequest(L2Packet*& request);
 
 		/**
@@ -137,7 +135,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 		std::vector<uint64_t> scheduleRequests(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
 
-		std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, ProposalPayload*& payload) const;
+		std::vector<std::pair<const FrequencyChannel*, unsigned int>> findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header, ProposalPayload*& payload, bool consider_transmitter, bool consider_receiver) const;
 
 		L2Packet* prepareRequest() const;
 
@@ -152,9 +150,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param num_channels Number of frequency channels to propose.
 		 * @param num_slots_per_channel Number of time slots per frequency channel to propose.
 		 * @param min_offset Minimum slot offset until the first time.
+		 * @param consider_tx Whether the transmitter must be idle during selected slots.
+		 * @param consider_rx Whether a receiver must be idle during selected slots.
 		 * @return A payload that should accompany a link establishment request.
 		 */
-		ProposalPayload* p2pSlotSelection(unsigned int burst_num_slots, unsigned int num_channels, unsigned int num_slots_per_channel, unsigned int min_offset);
+		ProposalPayload* p2pSlotSelection(unsigned int burst_num_slots, unsigned int num_channels, unsigned int num_slots_per_channel, unsigned int min_offset, bool consider_tx, bool consider_rx);
 
 		void decrementTimeout();
 
@@ -197,6 +197,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param payload
 		 */
 		void processRenewalReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
+
+		/**
+		 * Schedules a link reply as response to an initial link establishment request.
+		 * @param reply
+		 * @param slot_offset
+		 */
+		void scheduleInitialReply(L2Packet* reply, int32_t slot_offset);
+
+		/**
+		 * Schedules a link reply as response to a link renewal request.
+		 * @param reply
+		 * @param slot_offset
+		 */
+		void scheduleRenewalReply(L2Packet* reply, int32_t slot_offset);
 
 		/**
 		 * @return Slot offset until link expiry.

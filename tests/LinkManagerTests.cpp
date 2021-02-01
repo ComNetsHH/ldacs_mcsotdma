@@ -125,7 +125,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testComputeProposal() {
 			testNewLinkEstablishment();
 			L2Packet* request = rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0);
-			LinkManagementEntity::ProposalPayload* proposal = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
+			LinkManagementEntity::ProposalPayload* proposal = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations, false, true);
 			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
 
 			// Should've considered several distinct frequency channels.
@@ -274,12 +274,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
 //				coutd.setVerbose(true);
 			L2Packet* request = other_link_manager.lme->prepareRequest();
-			request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
+			request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations, false, true);
 			// The number of proposed channels should be adequate.
 			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->num_proposed_channels), ((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1))->proposed_resources.size());
 			auto header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(1);
 			auto body = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(1);
-			auto viable_candidates = link_manager->lme->findViableCandidatesInRequest(header, body);
+			auto viable_candidates = link_manager->lme->findViableCandidatesInRequest(header, body, true, false);
 			// And all slots should be viable.
 			CPPUNIT_ASSERT_EQUAL((size_t) link_manager->lme->num_proposed_channels * link_manager->lme->num_proposed_slots, viable_candidates.size());
 //				coutd.setVerbose(false);
@@ -351,12 +351,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkManager& other_link_manager = *other_mac.getLinkManager(own_id);
 			L2Packet* request = other_link_manager.lme->prepareRequest();
 			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
-			request->getPayloads().at(request->getRequestIndex()) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
+			request->getPayloads().at(request->getRequestIndex()) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations, false, true);
 //			coutd.setVerbose(true);
 			coutd << request->getOrigin() << std::endl;
 			// Receive it on the BC.
 			mac->receiveFromLower(request, bc_frequency);
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
 			// Fetch the now-instantiated P2P manager.
 			LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
 			// And increment time until it has sent the reply.
@@ -379,10 +379,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLocking() {
 			// Compute one request.
 			L2Packet* request1 = link_manager->lme->prepareRequest();
-			request1->getPayloads().at(1) = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
+			request1->getPayloads().at(1) = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations, false, true);
 			// And another one.
 			L2Packet* request2 = link_manager->lme->prepareRequest();
-			request2->getPayloads().at(1) = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations);
+			request2->getPayloads().at(1) = link_manager->lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations, false, true);
 			// Because the first proposed slots have been locked, they shouldn't be the same as the next.
 			auto* proposal1 = (LinkManagementEntity::ProposalPayload*) request1->getPayloads().at(1);
 			auto* proposal2 = (LinkManagementEntity::ProposalPayload*) request2->getPayloads().at(1);
@@ -873,7 +873,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->control_message_injections.size());
 			mac->notifyOutgoing(1024, communication_partner_id);
 
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			// Increment time until link is established.
 			size_t num_slots = 0, max_num_slots = 1000;
 			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
@@ -895,6 +895,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->execute();
 				mac_rx->execute();
 			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			// Current slot should've been used to TX the request.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager->current_reservation_table->getReservation(0).getAction());
 			// And next burst the reply should be RX'd.
@@ -904,7 +905,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager_rx->current_reservation_table->getReservation(0).getAction());
 			// And the next burst be used to TX the reply.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager_rx->current_reservation_table->getReservation(link_manager->lme->tx_offset).getAction());
-			coutd.setVerbose(false);
+			// And the first proposed slot on the new channel should be marked as RX.
+			const FrequencyChannel* selected_channel = link_manager_rx->lme->next_channel;
+			const ReservationTable* selected_table = link_manager_rx->reservation_manager->getReservationTable(selected_channel);
+			L2Packet* request = phy_layer->outgoing_packets.at(phy_layer->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
+			const auto* payload = (LinkManagementEntity::ProposalPayload*) request->getPayloads().at(request->getRequestIndex());
+			const std::vector<unsigned int>& proposed_slots = payload->proposed_resources.at(selected_channel);
+			size_t num_rx_reservations = 0;
+			unsigned int selected_slot = 0;
+			for (unsigned int slot : proposed_slots) {
+				if (selected_table->getReservation(slot).isRx()) {
+					coutd << "slot=" << slot << std::endl;
+					num_rx_reservations++;
+					selected_slot = slot;
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
+			CPPUNIT_ASSERT(selected_slot > 0);
+
+			// For the transmitter, all selected resources should be locked.
+			for (auto it = payload->proposed_resources.begin(); it != payload->proposed_resources.end(); it++) {
+				const auto* channel = it->first;
+				std::vector<unsigned int> slots = it->second;
+				ReservationTable* table = link_manager->reservation_manager->getReservationTable(channel);
+				for (auto t : slots) {
+					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isLocked());
+				}
+			}
+
+//			coutd.setVerbose(false);
 		}
 
 
@@ -933,7 +963,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReservationsAfterFirstDataTx);
 			CPPUNIT_TEST(testLinkExpiry);
 			CPPUNIT_TEST(testLinkRenewalRequest);
-			CPPUNIT_TEST(testReceiverTimeout);
+//			CPPUNIT_TEST(testReceiverTimeout);
 			CPPUNIT_TEST(testLinkRenewalReply);
 		CPPUNIT_TEST_SUITE_END();
 	};

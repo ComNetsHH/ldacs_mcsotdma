@@ -108,7 +108,7 @@ FrequencyChannel* ReservationManager::getFreqChannel(const ReservationTable* tab
 
 ReservationTable* ReservationManager::getReservationTable(const FrequencyChannel* channel) {
 	ReservationTable* table;
-	if (channel == broadcast_frequency_channel)
+	if (*channel == *broadcast_frequency_channel)
 		table = broadcast_reservation_table;
 	else {
 		auto it = p2p_channel_map.find(*channel);

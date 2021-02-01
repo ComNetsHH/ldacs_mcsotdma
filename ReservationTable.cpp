@@ -43,7 +43,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 			return table->isIdle(slot_offset) || table->isLocked(slot_offset);
 		})) {
 			for (const auto& rx_table : receiver_reservation_tables)
-				coutd << rx_table->getReservation(slot_offset) << std::endl;
+				coutd << std::endl << "Problematic reservation: " << rx_table->getReservation(slot_offset) << std::endl;
 			throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
 		}
 	}
@@ -299,17 +299,24 @@ bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_
 	}
 	// Then apply locking.
 	for (int32_t t : slot_offsets)
-		slot_utilization_vec.at(convertOffsetToIndex(t)).lock();
+		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).lock())
+			throw std::runtime_error("ReservationTable::lock didn't succeed."); // canLock must've been broken, so throw an error
+
 	if (lock_tx)
-		transmitter_reservation_table->lock(slot_offsets, false, false);
+		if (!transmitter_reservation_table->lock(slot_offsets, false, false))
+			throw std::runtime_error("ReservationTable::lock didn't succeed for transmitter table."); // canLock must've been broken, so throw an error
 	if (lock_rx) {
-		for (auto* rx_table : receiver_reservation_tables)
+		bool success = false;
+		for (auto* rx_table : receiver_reservation_tables) {
 			if (rx_table->canLock(slot_offsets)) {
 				if (!rx_table->lock(slot_offsets, false, false))
-					throw std::runtime_error("ReservationTable::lock couldn't lock receiver table.");
+					throw std::runtime_error("ReservationTable::lock didn't succeed for receiver table."); // canLock must've been broken, so throw an error
 				// Lock just *one* receiver table, i.e. the first one where you can.
-				return true;
+				success = true;
+				break;
 			}
+		}
+		return success;
 	}
 	return true;
 }
