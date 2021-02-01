@@ -160,7 +160,7 @@ void LinkManagementEntity::decrementTimeout() {
 
 void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
                                               const ProposalPayload*& payload, const MacId& origin) {
-	if (owner->link_establishment_status == LinkManager::link_not_established)
+	if (!link_renewal_pending)
 		processInitialRequest(header, payload, origin);
 	else
 		processRenewalRequest(header, payload, origin);
