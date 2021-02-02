@@ -688,8 +688,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_offset, tx_offsets.at(0));
 
 			// Make sure request slots are marked.
-			CPPUNIT_ASSERT(link_manager->lme->max_link_renewal_attempts > 0);
-			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->max_link_renewal_attempts), link_manager->lme->scheduled_requests.size());
+			CPPUNIT_ASSERT(link_manager->lme->max_num_renewal_attempts > 0);
+			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->max_num_renewal_attempts), link_manager->lme->scheduled_requests.size());
 			uint64_t expiry_offset = mac->getCurrentSlot() + link_manager->lme->getExpiryOffset();
 			uint64_t current_absolute_slot = mac->getCurrentSlot();
 			for (uint64_t request_slot : link_manager->lme->scheduled_requests) {
@@ -781,7 +781,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(expected_num_reservations, actual_num_reservations);
 
-			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->max_link_renewal_attempts), link_manager->lme->scheduled_requests.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->lme->max_num_renewal_attempts), link_manager->lme->scheduled_requests.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_requests.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager->lme->scheduled_replies.size());
@@ -1011,7 +1011,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established,link_manager->link_establishment_status);
 
 			// Increment time until link request has been sent.
-			size_t num_scheduled_requests = link_manager->lme->max_link_renewal_attempts;
+			size_t num_scheduled_requests = link_manager->lme->max_num_renewal_attempts;
 			CPPUNIT_ASSERT_EQUAL(num_scheduled_requests, link_manager->lme->scheduled_requests.size());
 			num_slots = 0;
 			while (link_manager->lme->scheduled_requests.size() != num_scheduled_requests - 1 && num_slots++ < max_num_slots) {

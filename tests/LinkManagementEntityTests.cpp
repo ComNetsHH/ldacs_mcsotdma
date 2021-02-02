@@ -64,7 +64,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testUpdate() {
 //            coutd.setVerbose(true);
-			lme->scheduled_requests = lme->scheduleRequests(tx_timeout, init_offset, tx_offset, lme->max_link_renewal_attempts);
+			lme->scheduled_requests = lme->scheduleRequests(tx_timeout, init_offset, tx_offset, lme->max_num_renewal_attempts);
 			const auto& request_slots = lme->scheduled_requests;
 			size_t num_request_triggers = 0;
 			while (num_request_triggers < num_renewal_attempts) {

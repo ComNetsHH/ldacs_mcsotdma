@@ -87,8 +87,7 @@ void LinkManagementEntity::processInitialReply(const L2HeaderLinkEstablishmentRe
 	owner->markReservations(tx_timeout, 0, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
 	coutd << " -> configuring link renewal request slots -> ";
 	// Schedule the absolute slots for sending requests.
-	this->num_renewal_attempts = max_link_renewal_attempts;
-	scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, num_renewal_attempts);
+	scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, max_num_renewal_attempts);
 	coutd << scheduled_requests.size() << " scheduled -> ";
 	owner->link_establishment_status = owner->Status::link_established;
 	owner->mac->notifyAboutNewLink(owner->link_id);
@@ -109,8 +108,7 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 		owner->markReservations(tx_timeout, initial_slot, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
 		coutd << " -> configuring request slots -> ";
 		// Schedule the absolute slots for sending requests.
-		this->num_renewal_attempts = max_link_renewal_attempts;
-		scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, num_renewal_attempts);
+		scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, max_num_renewal_attempts);
 		coutd << scheduled_requests.size() << " scheduled -> ";
 		coutd << "link status update: " << owner->link_establishment_status;
 		owner->link_establishment_status = owner->Status::link_established;

@@ -222,16 +222,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int getExpiryOffset() const;
 
 	protected:
-		/** Number of times a link should be attempted to be renewed. */
-		unsigned int num_renewal_attempts = 0;
+		/** Number of attempts to renew a link before giving up. */
+		const unsigned int max_num_renewal_attempts = 3;
 		/** A LinkManagementEntity is a module of a LinkManager. */
 		LinkManager* owner = nullptr;
 		/** The absolute points in time when requests should be sent. */
 		std::vector<uint64_t> scheduled_requests;
 		/** Link replies *must* be sent on specific slots. This container holds these bindings. */
 		std::map<uint64_t, L2Packet*> scheduled_replies;
-		/** Number of attempts to renew a link before giving up. */
-		const unsigned int max_link_renewal_attempts = 3;
 		const int32_t default_minimum_slot_offset_for_new_reservations = 2;
 		/** The minimum number of slots a proposed slot should be in the future. */
 		int32_t min_offset_new_reservations = default_minimum_slot_offset_for_new_reservations;
