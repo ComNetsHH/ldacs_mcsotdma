@@ -89,9 +89,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		virtual void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
 
-		void onTransmissionBurst();
+		/**
+		 * @return Whether the timeout has expired.
+		 */
+		bool onTransmissionBurst();
 
-		void onReceptionSlot();
+		/**
+		 * @return Whether the timeout has expired.
+		 */
+		bool onReceptionSlot();
 
 		/**
 		 * Prepares a link request and injects it into the upper layers.
@@ -136,6 +142,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void update(uint64_t num_slots);
 
+		void onTimeoutExpiry();
+
 	protected:
 		std::vector<uint64_t> scheduleRequests(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
 
@@ -160,7 +168,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		ProposalPayload* p2pSlotSelection(unsigned int burst_num_slots, unsigned int num_channels, unsigned int num_slots_per_channel, unsigned int min_offset, bool consider_tx, bool consider_rx);
 
-		void decrementTimeout();
+		/**
+		 * @return Whether the timeout has expired.
+		 */
+		bool decrementTimeout();
 
 		/**
 		 * Clears all RX reservations in the proposed_resources map.

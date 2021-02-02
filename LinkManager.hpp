@@ -156,7 +156,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Processes the base header of each incoming packet.
 		 * @param header
 		 */
-		void processIncomingBase(L2HeaderBase*& header);
+		virtual void processIncomingBase(L2HeaderBase*& header);
 
 		/**
 		 * Encodes this user's reserved transmission slots.

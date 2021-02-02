@@ -183,3 +183,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 void BCLinkManager::onReceptionSlot() {
 	// Don't decrement timeout, i.e. don't call base function.
 }
+
+void BCLinkManager::processIncomingBase(L2HeaderBase*& header) {
+	// Don't attempt to process the base header.
+}

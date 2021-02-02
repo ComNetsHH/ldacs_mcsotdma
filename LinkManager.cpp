@@ -211,7 +211,7 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 	}
 
 	// Update LME's timeout.
-	lme->onTransmissionBurst();
+	bool timeout_expiry = lme->onTransmissionBurst();
 
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionBurst received segment with <=1 headers.");
 	if (!sending_reply) {
@@ -219,6 +219,9 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 		for (L2Header* header : segment->getHeaders())
 			setHeaderFields(header);
 	}
+
+	if (timeout_expiry)
+		lme->onTimeoutExpiry();
 
 	statistic_num_sent_packets++;
 	return segment;
@@ -329,36 +332,38 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int length_next = header->length_next;
 	unsigned int offset = header->offset;
 	coutd << "timeout=" << timeout << " length_next=" << length_next << " offset=" << offset << " -> ";
-	if (timeout > 0) {
-		if (link_establishment_status == awaiting_reply) {
-			coutd << "awaiting reply, so not marking RX slots -> ";
-			return;
-		}
-		coutd << "updating link management parameters: ";
-		coutd << "timeout:";
-		if (lme->getTxTimeout() != timeout) {
-			coutd << lme->getTxTimeout() << "->" << timeout << " ";
-			lme->setTxTimeout(timeout);
-		} else
-			coutd << "(unchanged@" << lme->getTxTimeout() << ")";
-		coutd << ", offset:";
-		if (lme->getTxOffset() != offset) {
-			coutd << lme->getTxOffset() << "->" << offset << " ";
-			lme->setTxOffset(offset);
-		} else
-			coutd << "(unchanged@" << lme->getTxOffset() << ")";
-		coutd << ", length_next:";
-		if (lme->getTxBurstSlots() != length_next) {
-			coutd << lme->getTxBurstSlots() << "->" << length_next << " ";
-			lme->setTxBurstSlots(length_next);
-		} else
-			coutd << "(unchanged@" << lme->getTxBurstSlots() << ") -> ";
-		coutd << "updating reservations: ";
-		// This is an incoming packet, so we must've been listening.
-		// Mark future slots as RX slots, too.
-		markReservations(timeout, 0, offset, length_next, header->icao_src_id, Reservation::RX);
-		coutd << " -> ";
+	if (link_establishment_status == link_not_established && timeout == 0) {
+		coutd << "unestablished link and zero timeout, so not processing this further -> ";
+		return;
 	}
+	if (link_establishment_status == awaiting_reply) {
+		coutd << "awaiting reply, so not processing this further -> ";
+		return;
+	}
+	coutd << "updating link management parameters: ";
+	coutd << "timeout:";
+	if (lme->getTxTimeout() != timeout) {
+		coutd << lme->getTxTimeout() << "->" << timeout << " ";
+		lme->setTxTimeout(timeout);
+	} else
+		coutd << "(unchanged@" << lme->getTxTimeout() << ")";
+	coutd << ", offset:";
+	if (lme->getTxOffset() != offset) {
+		coutd << lme->getTxOffset() << "->" << offset << " ";
+		lme->setTxOffset(offset);
+	} else
+		coutd << "(unchanged@" << lme->getTxOffset() << ")";
+	coutd << ", length_next:";
+	if (lme->getTxBurstSlots() != length_next) {
+		coutd << lme->getTxBurstSlots() << "->" << length_next << " ";
+		lme->setTxBurstSlots(length_next);
+	} else
+		coutd << "(unchanged@" << lme->getTxBurstSlots() << ") -> ";
+	coutd << "updating reservations: ";
+	// This is an incoming packet, so we must've been listening.
+	// Mark future slots as RX slots, too.
+	markReservations(timeout, 0, offset, length_next, header->icao_src_id, Reservation::RX);
+	coutd << " -> ";
 }
 
 void LinkManager::assign(const FrequencyChannel* channel) {
@@ -417,7 +422,8 @@ void LinkManager::update(uint64_t num_slots) {
 }
 
 void LinkManager::onReceptionSlot() {
-    lme->onReceptionSlot();
+    if (lme->onReceptionSlot())
+    	lme->onTimeoutExpiry();
 }
 
 

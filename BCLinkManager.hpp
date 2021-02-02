@@ -79,6 +79,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		L2Packet* prepareBeacon();
 
+		void processIncomingBase(L2HeaderBase*& header) override;
+
 		void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 
 		void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;

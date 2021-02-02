@@ -99,8 +99,8 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
 	if (payload->proposed_resources.at(channel).size() != 1)
 		throw std::invalid_argument("LinkManagementEntity::processRenewalReply for invalid number of slots.");
+	// Have to subtract one offset so that the first reservation is marked without the subtraction (init_offset is exclusive in markReservations()).
 	unsigned int initial_slot = payload->proposed_resources.at(channel).at(0) - tx_offset;
-	coutd << "initial_slot=" << initial_slot << std::endl;
 	if (channel == owner->current_channel) {
 		coutd << "no channel change -> increasing timeout: " << tx_timeout << "->";
 		tx_timeout += default_tx_timeout;
@@ -125,25 +125,25 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	}
 }
 
-void LinkManagementEntity::onTransmissionBurst() {
-	decrementTimeout();
+bool LinkManagementEntity::onTransmissionBurst() {
+	return decrementTimeout();
 }
 
-void LinkManagementEntity::onReceptionSlot() {
-	decrementTimeout();
+bool LinkManagementEntity::onReceptionSlot() {
+	return decrementTimeout();
 }
 
-void LinkManagementEntity::decrementTimeout() {
+bool LinkManagementEntity::decrementTimeout() {
 	// Don't update timeout if,
 	// (1) the link is not established right now
 	if (owner->link_establishment_status == LinkManager::link_not_established)
-		return;
+		return false;
 	// (2) we are in the process of establishment.
 	if ((!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_data_tx))
-		return;
+		return false;
 	// (3) it has already been updated this slot.
 	if (updated_timeout_this_slot)
-		return;
+		return tx_timeout == 0;
 	updated_timeout_this_slot = true;
 
 	if (tx_timeout == 0)
@@ -151,22 +151,24 @@ void LinkManagementEntity::decrementTimeout() {
 	coutd << "timeout " << tx_timeout << "->";
 	tx_timeout--;
 	coutd << tx_timeout << " -> ";
-	if (tx_timeout == 0) {
-		coutd << "timeout reached -> ";
-		if (owner->link_establishment_status == LinkManager::link_renewal_complete) {
-			coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
-			owner->reassign(next_channel);
-			next_channel = nullptr;
-			coutd << "; restoring timeout to " << default_tx_timeout;
-			tx_timeout = default_tx_timeout;
-			coutd << "; updating status: " << owner->link_establishment_status;
-			owner->link_establishment_status = LinkManager::link_established;
-			coutd << "->" << owner->link_establishment_status << " -> link renewal complete -> ";
-		} else {
-			coutd << "no pending renewal, changing status: " << owner->link_establishment_status << "->";
-			owner->link_establishment_status = LinkManager::link_not_established;
-			coutd << owner->link_establishment_status << " -> link reset -> ";
-		}
+	return tx_timeout == 0;
+}
+
+void LinkManagementEntity::onTimeoutExpiry() {
+	coutd << "timeout reached -> ";
+	if (owner->link_establishment_status == LinkManager::link_renewal_complete) {
+		coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
+		owner->reassign(next_channel);
+		next_channel = nullptr;
+		coutd << "; restoring timeout to " << default_tx_timeout;
+		tx_timeout = default_tx_timeout;
+		coutd << "; updating status: " << owner->link_establishment_status;
+		owner->link_establishment_status = LinkManager::link_established;
+		coutd << "->" << owner->link_establishment_status << " -> link renewal complete -> ";
+	} else {
+		coutd << "no pending renewal, changing status: " << owner->link_establishment_status << "->";
+		owner->link_establishment_status = LinkManager::link_not_established;
+		coutd << owner->link_establishment_status << " -> link reset -> ";
 	}
 }
 
