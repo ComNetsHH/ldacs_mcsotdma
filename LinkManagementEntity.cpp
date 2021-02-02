@@ -161,10 +161,13 @@ void LinkManagementEntity::onTimeoutExpiry() {
 		coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
 		owner->reassign(next_channel);
 		next_channel = nullptr;
-		coutd << "; restoring timeout to " << default_tx_timeout;
+		coutd << "; restoring timeout to " << default_tx_timeout << "; ";
 		tx_timeout = default_tx_timeout;
-		coutd << "; scheduling renewal requests at ";
-		scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
+		// Only schedule request slots if we're the initiator, i.e. have sent requests before.
+		if (last_proposal_absolute_time > 0) {
+			coutd << "scheduling renewal requests at ";
+			scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
+		}
 		coutd << "updating status: " << owner->link_establishment_status;
 		owner->link_establishment_status = LinkManager::link_established;
 		coutd << "->" << owner->link_establishment_status << " -> link renewal complete -> ";

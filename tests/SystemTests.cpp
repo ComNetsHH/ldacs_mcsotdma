@@ -430,6 +430,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(lm_tx->lme->default_tx_timeout, lm_tx->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(lm_rx->lme->default_tx_timeout, lm_rx->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_rx->lme->scheduled_requests.size());
 
 			// Proceed until first reservation of new link.
 			while (lm_tx->current_reservation_table->getReservation(0).isIdle()) {
@@ -489,12 +490,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::RX), lm_tx->current_reservation_table->getReservation(lm_tx->lme->tx_offset));
 			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_rx->current_reservation_table->getReservation(lm_tx->lme->tx_offset));
+			// Proceed until the reply has been sent.
 			mac_layer_me->update(lm_tx->lme->tx_offset);
 			mac_layer_you->update(lm_tx->lme->tx_offset);
 			mac_layer_me->execute();
 			mac_layer_you->execute();
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete, lm_tx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_rx->link_establishment_status);
+			// Proceed until the link is renewed.
+			num_slots = 0;
+			while ((lm_tx->link_establishment_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
+				mac_layer_me->update(lm_tx->lme->tx_offset);
+				mac_layer_you->update(lm_tx->lme->tx_offset);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_tx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(*lm_tx->current_channel, *lm_rx->current_channel);
+			CPPUNIT_ASSERT_EQUAL(lm_tx->lme->default_tx_timeout, lm_tx->lme->tx_timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_rx->lme->default_tx_timeout, lm_rx->lme->tx_timeout);
+			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_rx->lme->scheduled_requests.size());
 
 			coutd.setVerbose(false);
 		}

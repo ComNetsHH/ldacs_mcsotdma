@@ -424,6 +424,7 @@ void LinkManager::update(uint64_t num_slots) {
 void LinkManager::onReceptionSlot() {
     if (lme->onReceptionSlot())
     	lme->onTimeoutExpiry();
+    coutd << "done." << std::endl;
 }
 
 
