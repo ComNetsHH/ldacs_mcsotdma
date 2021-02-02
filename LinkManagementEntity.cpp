@@ -102,28 +102,21 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	next_link_first_slot = payload->proposed_resources.at(channel).at(0);
 	// Have to subtract one offset so that the first reservation is marked without the subtraction (init_offset is exclusive in markReservations()).
 	unsigned int initial_slot_inclusive = next_link_first_slot - tx_offset;
-	if (channel == owner->current_channel) {
-		coutd << "no channel change -> increasing timeout: " << tx_timeout << "->";
-		tx_timeout += default_tx_timeout;
-		coutd << tx_timeout << " and marking TX reservations: ";
-		owner->markReservations(tx_timeout, initial_slot_inclusive, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
-		coutd << " -> configuring request slots -> ";
-		// Schedule the absolute slots for sending requests.
-		scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
-		coutd << scheduled_requests.size() << " scheduled -> ";
-		coutd << "link status update: " << owner->link_establishment_status;
-		owner->link_establishment_status = owner->Status::link_established;
-		coutd << "->" << owner->link_establishment_status;
+	ReservationTable* next_table;
+	if (*channel == *owner->current_channel) {
+		coutd << "no channel change -> ";
+		next_channel = owner->current_channel;
+		next_table = owner->current_reservation_table;
+		coutd << " marking TX reservations: ";
 	} else {
 		coutd << "channel change -> saving new channel (" << *owner->current_channel << "->" << *channel << ") -> ";
 		next_channel = channel;
+		next_table = owner->reservation_manager->getReservationTable(next_channel);
 		coutd << "and marking TX reservations on " << *next_channel << ": ";
-		ReservationTable* table = owner->reservation_manager->getReservationTable(next_channel);
-		owner->markReservations(table, default_tx_timeout, initial_slot_inclusive, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
-		coutd << "link status update: " << owner->link_establishment_status;
-		owner->link_establishment_status = owner->Status::link_renewal_complete;
-		coutd << "->" << owner->link_establishment_status << " -> ";
 	}
+	owner->markReservations(next_table, default_tx_timeout, initial_slot_inclusive, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
+	coutd << "link status update: " << owner->link_establishment_status << "->" << owner->Status::link_renewal_complete;
+	owner->link_establishment_status = owner->Status::link_renewal_complete;
 }
 
 bool LinkManagementEntity::onTransmissionBurst() {
@@ -486,6 +479,11 @@ LinkManagementEntity::ProposalPayload* LinkManagementEntity::p2pSlotSelection(co
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
+		// ... check if the channel is blacklisted ...
+		if (table->getLinkedChannel()->isBlacklisted()) {
+			num_channels_considered--;
+			continue;
+		}
 		// ... and try to find candidate slots,
 		std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_slots_per_channel, burst_num_slots, consider_tx, consider_rx);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
