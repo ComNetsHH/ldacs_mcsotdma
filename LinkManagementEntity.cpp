@@ -226,6 +226,7 @@ void LinkManagementEntity::processRenewalRequest(const L2HeaderLinkEstablishment
 		next_channel = reply_channel;
 		// And schedule a reply in the next burst.
 		scheduleRenewalReply(reply);
+		link_renewal_pending = true;
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
 }

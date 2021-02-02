@@ -384,8 +384,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(lm_rx->lme->default_tx_timeout - 1, lm_rx->lme->tx_timeout);
 
 				// Proceed until the first request.
+				CPPUNIT_ASSERT(lm_tx->lme->max_num_renewal_attempts > 0);
 				CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
-
+				num_slots = 0;
+				while (lm_tx->lme->scheduled_requests.size() > lm_tx->lme->max_num_renewal_attempts - 1 && num_slots++ < max_num_slots) {
+					mac_layer_me->update(lm_tx->lme->tx_offset);
+					mac_layer_you->update(lm_tx->lme->tx_offset);
+					mac_layer_me->execute();
+					mac_layer_you->execute();
+				}
+				CPPUNIT_ASSERT_EQUAL(true, lm_tx->lme->link_renewal_pending);
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_tx->link_establishment_status);
+				CPPUNIT_ASSERT_EQUAL(true, lm_rx->lme->link_renewal_pending);
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_rx->link_establishment_status);
 
 				coutd.setVerbose(false);
 		}
