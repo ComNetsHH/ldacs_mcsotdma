@@ -1085,33 +1085,43 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			ReservationTable* table_new_tx = link_manager->reservation_manager->getReservationTable(selected_channel);
 			ReservationTable* table_new_rx = link_manager_rx->reservation_manager->getReservationTable(selected_channel);
-			for (size_t t = 0; t < link_manager->lme->tx_offset * link_manager->lme->default_tx_timeout; t++) {
+			for (size_t t = 0; t <= link_manager->lme->getExpiryOffset(); t++) {
+				coutd << "t=" << t << "TX current: " << link_manager->current_reservation_table->getReservation(t) << " " << *link_manager->current_channel << std::endl;
+				coutd << "t=" << t << "TX new: " << table_new_tx->getReservation(t) << " " << *selected_channel << std::endl;
+				coutd << "t=" << t << "RX current: " << link_manager_rx->current_reservation_table->getReservation(t) << std::endl;
+				coutd << "t=" << t << "RX new: " << table_new_rx->getReservation(t) << std::endl;
+				if (t == link_manager->lme->getExpiryOffset())
+					coutd << "\t--- link expiry ---" << std::endl;
+				coutd << std::endl;
+				if (t == 0) {
+					// Receive reply.
+					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::RX), link_manager->current_reservation_table->getReservation(t));
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), link_manager_rx->current_reservation_table->getReservation(t));
+				} else if (t % link_manager->lme->tx_offset == 0) {
+					// Send data.
+					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), link_manager->current_reservation_table->getReservation(t));
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), link_manager_rx->current_reservation_table->getReservation(t));
+				}
+			}
+
+			size_t next_expiry_at = link_manager->lme->getExpiryOffset() + 1 + link_manager->lme->default_tx_timeout*link_manager->lme->tx_offset;
+			for (size_t t = link_manager->lme->getExpiryOffset() + 1; t < next_expiry_at; t++) {
 				if (t == selected_slot)
 					coutd << "\t---SELECTED SLOT---" << std::endl;
 				coutd << "t=" << t << "TX current: " << link_manager->current_reservation_table->getReservation(t) << " " << *link_manager->current_channel << std::endl;
 				coutd << "t=" << t << "TX new: " << table_new_tx->getReservation(t) << " " << *selected_channel << std::endl;
 				coutd << "t=" << t << "RX current: " << link_manager_rx->current_reservation_table->getReservation(t) << std::endl;
 				coutd << "t=" << t << "RX new: " << table_new_rx->getReservation(t) << std::endl;
-				if (t == link_manager->lme->getExpiryOffset() - link_manager->lme->tx_offset) // TODO decrement timeout on reception
-					coutd << "\t--- link expiry ---" << std::endl;
 				coutd << std::endl;
+				if (t >= selected_slot && (t-selected_slot) % link_manager->lme->tx_offset == 0) {
+					// No more reservations on the old channel.
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), link_manager->current_reservation_table->getReservation(t));
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), link_manager_rx->current_reservation_table->getReservation(t));
+					// But scheduled transmissions on the new one.
+					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), table_new_tx->getReservation(t));
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), table_new_rx->getReservation(t));
+				}
 			}
-
-//			for (auto it = payload->proposed_resources.begin(); it != payload->proposed_resources.end(); it++) {
-//				const auto* channel = it->first;
-//				std::vector<unsigned int> slots = it->second;
-//				ReservationTable* table_new_tx = link_manager->reservation_manager->getReservationTable(channel);
-//				for (auto t : slots) {
-//					const Reservation& reservation = table_new_tx->getReservation(t);
-//					coutd << reservation << std::endl;
-//					if (!reservation.isIdle()) {
-//						num_non_idle++;
-//						agreed_slot = t;
-//						agreed_channel = channel;
-//					}
-//				}
-//			}
-//			CPPUNIT_ASSERT_EQUAL(size_t(1), num_non_idle);
 
 //			coutd.setVerbose(false);
 		}

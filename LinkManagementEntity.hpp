@@ -211,10 +211,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/**
 		 * Schedules a link reply as response to a link renewal request.
+		 * It is always scheduled in the next transmission burst.
 		 * @param reply
-		 * @param slot_offset
 		 */
-		void scheduleRenewalReply(L2Packet* reply, int32_t slot_offset);
+		void scheduleRenewalReply(L2Packet* reply);
 
 		/**
 		 * @return Slot offset until link expiry.

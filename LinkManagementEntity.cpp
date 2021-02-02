@@ -100,7 +100,8 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
 	if (payload->proposed_resources.at(channel).size() != 1)
 		throw std::invalid_argument("LinkManagementEntity::processRenewalReply for invalid number of slots.");
-	unsigned int initial_slot = payload->proposed_resources.at(channel).at(0);
+	unsigned int initial_slot = payload->proposed_resources.at(channel).at(0) - tx_offset;
+	coutd << "initial_slot=" << initial_slot << std::endl;
 	if (channel == owner->current_channel) {
 		coutd << "no channel change -> increasing timeout: " << tx_timeout << "->";
 		tx_timeout += default_tx_timeout;
@@ -221,11 +222,12 @@ void LinkManagementEntity::processRenewalRequest(const L2HeaderLinkEstablishment
 		assert(reply->getPayloads().size() == 2);
 		auto* reply_payload = (ProposalPayload*) reply->getPayloads().at(1);
 		int32_t slot_offset = chosen_candidate.second;
+		slot_offset -= tx_offset;
 		reply_payload->proposed_resources[reply_channel].push_back(slot_offset);
 		// Remember the channel to switch to after expiry.
 		next_channel = reply_channel;
 		// And schedule a reply in the next burst.
-		scheduleRenewalReply(reply, tx_offset);
+		scheduleRenewalReply(reply);
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
 }
@@ -409,9 +411,9 @@ void LinkManagementEntity::scheduleInitialReply(L2Packet* reply, int32_t slot_of
 	}
 }
 
-void LinkManagementEntity::scheduleRenewalReply(L2Packet* reply, int32_t slot_offset) {
+void LinkManagementEntity::scheduleRenewalReply(L2Packet* reply) {
 	coutd << "schedule renewal reply -> ";
-	uint64_t absolute_slot = owner->mac->getCurrentSlot() + slot_offset;
+	uint64_t absolute_slot = owner->mac->getCurrentSlot() + tx_offset;
 	if (scheduled_replies.find(absolute_slot) != scheduled_replies.end())
 		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
 	else {
@@ -429,16 +431,17 @@ void LinkManagementEntity::scheduleRenewalReply(L2Packet* reply, int32_t slot_of
 		const FrequencyChannel* channel = owner->current_reservation_table->getLinkedChannel();
 
 		// Mark the slot as TX to transmit the reply...
-		table->mark(slot_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
+		table->mark(tx_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
 		scheduled_replies[absolute_slot] = reply;
-		coutd << "scheduled reply in " << slot_offset << " slots on " << *channel << " -> ";
+		coutd << "scheduled reply in " << tx_offset << " slots on " << *channel << " -> ";
 
 		// First data transmissions are expected after this link has expired, on the new frequency channel for link renewals.
 		const FrequencyChannel* selected_channel = proposal->proposed_resources.begin()->first;
-		unsigned int expected_data_tx_slot = proposal->proposed_resources[selected_channel].at(0);
+		unsigned int expected_data_tx_slot = proposal->proposed_resources[selected_channel].at(0) + tx_offset;
 		ReservationTable* selected_table = owner->reservation_manager->getReservationTable(selected_channel);
 		coutd << "marking first RX slot of chosen candidate (" << *selected_channel << ", offset " << expected_data_tx_slot << ") -> ";
-		selected_table->mark(expected_data_tx_slot, Reservation(owner->link_id, Reservation::Action::RX));
+		owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX));
+//		selected_table->mark(expected_data_tx_slot, Reservation(owner->link_id, Reservation::Action::RX));
 	}
 }
 

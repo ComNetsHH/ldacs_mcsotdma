@@ -15,7 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 * A Reservation can be associated to time slots and is used to denote target(s) of a communication link.
 	 * If the current user owns this reservation, it may further specify whether the slot should be used to receive or transmit data.
 	 */
-	class Reservation {
+class Reservation {
 	public:
 		/** What the slot that is associated to this reservation should be used for. */
 		enum Action {

@@ -111,15 +111,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	protected:
 		/**
-		 * Makes reservations.
+		 * Makes reservations on the current reservation table.
 		 * @param timeout Number of repetitions.
-		 * @param init_offset First offset to start with.
+		 * @param init_offset Excluding initial offset: first slot used will be init_offset+offset.
 		 * @param offset Increment offset each repetition.
 		 * @param length Number of slots.
 		 * @param action
 		 */
 		void markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action);
 
+		/**
+		 * Makes reservations on the given reservation table.
+		 * @param table
+		 * @param timeout Number of repetitions.
+		 * @param init_offset Excluding initial offset: first slot used will be init_offset+offset.
+		 * @param offset Increment offset each repetition.
+		 * @param reservation
+		 */
 		void markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation);
 
 		/**
