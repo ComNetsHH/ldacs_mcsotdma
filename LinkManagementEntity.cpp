@@ -149,26 +149,26 @@ bool LinkManagementEntity::decrementTimeout() {
 }
 
 void LinkManagementEntity::onTimeoutExpiry() {
-	coutd << "timeout reached -> ";
+	coutd << "timeout reached -> restoring timeout -> ";
+	tx_timeout = default_tx_timeout;
 	if (owner->link_establishment_status == LinkManager::link_renewal_complete) {
 		coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
 		owner->reassign(next_channel);
-		next_channel = nullptr;
-		coutd << "; restoring timeout to " << default_tx_timeout << "; ";
-		tx_timeout = default_tx_timeout;
 		// Only schedule request slots if we're the initiator, i.e. have sent requests before.
 		if (last_proposal_absolute_time > 0) {
 			coutd << "scheduling renewal requests at ";
 			scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
 		}
-		coutd << "updating status: " << owner->link_establishment_status;
+		coutd << "updating status: " << owner->link_establishment_status << "->" << LinkManager::link_established << " -> link renewal complete -> ";
 		owner->link_establishment_status = LinkManager::link_established;
-		coutd << "->" << owner->link_establishment_status << " -> link renewal complete -> ";
 	} else {
-		coutd << "no pending renewal, changing status: " << owner->link_establishment_status << "->";
+		coutd << "no pending renewal, updating status: " << owner->link_establishment_status << "->" << LinkManager::link_not_established << " -> cleared associated channel -> link reset ";
+		owner->reassign(nullptr);
 		owner->link_establishment_status = LinkManager::link_not_established;
-		coutd << owner->link_establishment_status << " -> link reset -> ";
 	}
+	link_renewal_pending = false;
+	next_channel = nullptr;
+	last_proposal_absolute_time = 0;
 }
 
 void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,

@@ -107,6 +107,8 @@ FrequencyChannel* ReservationManager::getFreqChannel(const ReservationTable* tab
 }
 
 ReservationTable* ReservationManager::getReservationTable(const FrequencyChannel* channel) {
+	if (channel == nullptr)
+		return nullptr;
 	ReservationTable* table;
 	if (*channel == *broadcast_frequency_channel)
 		table = broadcast_reservation_table;

@@ -370,13 +370,17 @@ void LinkManager::assign(const FrequencyChannel* channel) {
 	if (current_channel == nullptr && current_reservation_table == nullptr) {
 		this->current_channel = channel;
 		this->current_reservation_table = reservation_manager->getReservationTable(channel);
+		coutd << "assigned channel ";
+		if (channel == nullptr)
+			coutd << "NONE";
+		else
+			coutd << *channel;
+		 coutd << " -> ";
 	} else
 		coutd << *this << "::assign, but channel or reservation table are already assigned; ignoring -> ";
 }
 
 void LinkManager::reassign(const FrequencyChannel* channel) {
-    if (channel == nullptr)
-    	throw std::invalid_argument("LinkManager::reassign for nullptr channel.");
 	this->current_channel = channel;
 	this->current_reservation_table = reservation_manager->getReservationTable(channel);
 }

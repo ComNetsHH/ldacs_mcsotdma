@@ -809,7 +809,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (unsigned int t = 0; t < final_slot; t += link_manager->lme->tx_offset) {
 				mac->update(link_manager->lme->tx_offset);
 				mac->execute();
-				current_timeout--;
+				if (--current_timeout == 0) // timeout resets upon expiry
+					current_timeout = link_manager->lme->default_tx_timeout;
 				CPPUNIT_ASSERT_EQUAL(current_timeout, link_manager->lme->tx_timeout);
 			}
 			// Should now be "not established" again.
@@ -904,15 +905,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			num_slots = 0;
 			unsigned int num_txs = 1;
 			// Now increment time until expiry.
-			while (link_manager->lme->tx_timeout > 0 && num_slots++ < max_num_slots) {
+			while (link_manager->link_establishment_status != LinkManager::link_not_established && num_slots++ < max_num_slots) {
 				mac->update(link_manager->lme->tx_offset);
 				mac_rx->update(link_manager->lme->tx_offset);
 				mac->execute();
 				mac_rx->execute();
 				num_txs++;
 				// Timeout values should match.
-				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager->lme->tx_timeout);
-				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager_rx->lme->tx_timeout);
+				unsigned int expected_timeout = link_manager->lme->default_tx_timeout - num_txs == 0 ? link_manager->lme->default_tx_timeout : link_manager->lme->default_tx_timeout - num_txs;
+				CPPUNIT_ASSERT_EQUAL(expected_timeout, link_manager->lme->tx_timeout);
+				CPPUNIT_ASSERT_EQUAL(expected_timeout, link_manager_rx->lme->tx_timeout);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager->link_establishment_status);
@@ -970,15 +972,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			num_slots = 0;
 			unsigned int num_txs = 1;
 			// Now increment time until expiry.
-			while (link_manager->lme->tx_timeout > 0 && num_slots++ < max_num_slots) {
+			while (link_manager->link_establishment_status != LinkManager::link_not_established && num_slots++ < max_num_slots) {
 				mac->update(link_manager->lme->tx_offset);
 				mac_rx->update(link_manager->lme->tx_offset);
 				mac->execute();
 				mac_rx->execute();
 				num_txs++;
 				// Timeout values should match.
-				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager->lme->tx_timeout);
-				CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - num_txs, link_manager_rx->lme->tx_timeout);
+				unsigned int expected_timeout = link_manager->lme->default_tx_timeout - num_txs == 0 ? link_manager->lme->default_tx_timeout : link_manager->lme->default_tx_timeout - num_txs;
+				CPPUNIT_ASSERT_EQUAL(expected_timeout, link_manager->lme->tx_timeout);
+				CPPUNIT_ASSERT_EQUAL(expected_timeout, link_manager_rx->lme->tx_timeout);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager->link_establishment_status);

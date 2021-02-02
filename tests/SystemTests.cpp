@@ -708,7 +708,63 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Link timeout threshold is reached.
 		 * Ensures that if no negotiation has happened prior to expiry, the link is reset to unestablished.
 		 */
-		void testLinkRenewalFails() {}
+		void testLinkRenewalFails() {
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// Do link establishment.
+			size_t num_slots = 0, max_num_slots = 100;
+			LinkManager* lm_tx = mac_layer_me->getLinkManager(communication_partner_id),
+					*lm_rx = mac_layer_you->getLinkManager(own_id);
+			mac_layer_me->notifyOutgoing(512, communication_partner_id);
+			while (lm_rx->link_establishment_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+
+			// From now on, drop all packets.
+			phy_layer_me->connected_phy = nullptr;
+			phy_layer_you->connected_phy = nullptr;
+
+			num_slots = 0;
+			while (lm_tx->link_establishment_status != LinkManager::link_not_established) {
+				mac_layer_me->update(lm_tx->lme->tx_offset);
+				mac_layer_you->update(lm_tx->lme->tx_offset);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_tx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_rx->link_establishment_status);
+			CPPUNIT_ASSERT(lm_tx->current_channel == nullptr);
+			CPPUNIT_ASSERT(lm_tx->current_reservation_table == nullptr);
+			CPPUNIT_ASSERT(lm_rx->current_channel == nullptr);
+			CPPUNIT_ASSERT(lm_rx->current_reservation_table == nullptr);
+		}
+
+		void testLinkRenewalAfterExpiry() {
+			testLinkRenewalFails();
+			// Reconnect.
+			phy_layer_me->connected_phy = phy_layer_you;
+			phy_layer_you->connected_phy = phy_layer_me;
+			// Now try link establishment again.
+//			coutd.setVerbose(true);
+			size_t num_slots = 0, max_num_slots = 100;
+			LinkManager* lm_tx = mac_layer_me->getLinkManager(communication_partner_id),
+					*lm_rx = mac_layer_you->getLinkManager(own_id);
+			mac_layer_me->notifyOutgoing(512, communication_partner_id);
+			while (lm_rx->link_establishment_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_tx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_rx->link_establishment_status);
+		}
 
 
 		// TODO
@@ -731,6 +787,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             CPPUNIT_TEST(testLinkIsExpiring);
 			CPPUNIT_TEST(testLinkRenewalChannelChange);
 			CPPUNIT_TEST(testLinkRenewalSameChannel);
+			CPPUNIT_TEST(testLinkRenewalFails);
+			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 //			CPPUNIT_TEST(testEncapsulatedUnicast);
 		CPPUNIT_TEST_SUITE_END();
 	};
