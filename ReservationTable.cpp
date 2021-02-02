@@ -225,11 +225,10 @@ const Timestamp& ReservationTable::getCurrentSlot() const {
 void ReservationTable::update(uint64_t num_slots) {
 	// Count the number of busy slots that go out of scope on the time domain.
 	uint64_t num_busy_slots = 0;
-	for (auto it = slot_utilization_vec.begin(); it < slot_utilization_vec.begin() + num_slots; it++) {
-		Reservation reservation = *it;
-		if (!reservation.isIdle())
+	// Start counting at offset zero (current time slot) as history doesn't matter.
+	for (size_t t = 0; t < num_slots; t++)
+		if (!getReservation(t).isIdle())
 			num_busy_slots++;
-	}
 	num_idle_future_slots += num_busy_slots; // As these go out of scope, we may have more idle slots now.
 
 	// Shift all elements to the front, old ones are overwritten.

@@ -178,3 +178,7 @@ FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center
 void ReservationManager::addReceiverReservationTable(ReservationTable*& rx_table) {
 	this->receiver_reservation_tables.push_back(rx_table);
 }
+
+std::vector<FrequencyChannel*>& ReservationManager::getFreqChannels() {
+	return frequency_channels;
+}

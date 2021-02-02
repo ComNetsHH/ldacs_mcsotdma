@@ -53,6 +53,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		FrequencyChannel* getFreqChannelByIndex(size_t index);
 
+		std::vector<FrequencyChannel*>& getFreqChannels();
+
 		FrequencyChannel* getFreqChannel(const ReservationTable* table);
 
 		ReservationTable* getReservationTableByIndex(size_t index);

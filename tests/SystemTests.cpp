@@ -359,7 +359,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Tests link renewal with a channel change.
 		 */
 		void testLinkRenewalChannelChange() {
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// Do link establishment.
@@ -438,40 +438,63 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->execute();
 				mac_layer_you->execute();
 			}
+
 			// Make sure that all requests target correct slots.
 			for (size_t t = 0; t <= lm_tx->lme->getExpiryOffset(); t++) {
-				const Reservation& reservation = lm_tx->current_reservation_table->getReservation(t);
-				coutd << "t=" << t << ": " << reservation;
+				// Make sure there's no reservations on any other channel for both TX and RX.
+				size_t num_res_other_channels_tx = 0, num_res_other_channels_rx = 0;
+				for (const auto* channel : mac_layer_me->reservation_manager->getFreqChannels()) {
+					if (*channel != *lm_tx->current_channel) {
+						const Reservation& res_tx = mac_layer_me->reservation_manager->getReservationTable(channel)->getReservation(t);
+						if (!res_tx.isIdle())
+							num_res_other_channels_tx++;
+						const Reservation& res_rx = mac_layer_you->reservation_manager->getReservationTable(channel)->getReservation(t);
+						if (!res_rx.isIdle())
+							num_res_other_channels_rx++;
+					}
+				}
+				CPPUNIT_ASSERT_EQUAL(size_t(0), num_res_other_channels_tx);
+				CPPUNIT_ASSERT_EQUAL(size_t(0), num_res_other_channels_rx);
+
+				const Reservation& reservation_tx = lm_tx->current_reservation_table->getReservation(t);
+				const Reservation& reservation_rx = lm_rx->current_reservation_table->getReservation(t);
+				coutd << "t=" << t << ": " << reservation_tx << "|" << reservation_rx;
 				size_t current_slot = mac_layer_me->getCurrentSlot();
 				if (std::any_of(lm_tx->lme->scheduled_requests.begin(), lm_tx->lme->scheduled_requests.end(), [t, current_slot](uint64_t t_request){
 					return t_request - current_slot == t;
 				})) {
 					coutd << " REQUEST";
 					// Request slots should match TX slots.
-					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), reservation);
+					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), reservation_tx);
 					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), lm_rx->current_reservation_table->getReservation(t));
 				}
 				coutd << std::endl;
 				// Matching reservations.
 				if (t % lm_tx->lme->tx_offset == 0) {
-					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), reservation);
+					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), reservation_tx);
 					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), lm_rx->current_reservation_table->getReservation(t));
 				}
 			}
-//			for (uint64_t t : lm_tx->lme->scheduled_requests) {
-//				const Reservation& reservation = lm_tx->current_reservation_table->getReservation(t);
-//				CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), reservation);
-//			}
 
-//			// Proceed until the next renewal has been negotiated.
-//			num_slots = 0, max_num_slots = 100;
-//			while ((lm_tx->link_establishment_status != LinkManager::link_renewal_complete) && num_slots++ < max_num_slots) {
-//				mac_layer_me->update(1);
-//				mac_layer_you->update(1);
-//				mac_layer_me->execute();
-//				mac_layer_you->execute();
-//			}
-//			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			coutd.setVerbose(true);
+
+			// Proceed until the next renewal has been negotiated.
+			num_slots = 0, max_num_slots = 100;
+			while (lm_tx->lme->scheduled_requests.size() > lm_tx->lme->max_num_renewal_attempts - 1 && num_slots++ < max_num_slots) {
+				mac_layer_me->update(lm_tx->lme->tx_offset);
+				mac_layer_you->update(lm_tx->lme->tx_offset);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::RX), lm_tx->current_reservation_table->getReservation(lm_tx->lme->tx_offset));
+			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_rx->current_reservation_table->getReservation(lm_tx->lme->tx_offset));
+			mac_layer_me->update(lm_tx->lme->tx_offset);
+			mac_layer_you->update(lm_tx->lme->tx_offset);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete, lm_tx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_rx->link_establishment_status);
 
 			coutd.setVerbose(false);
 		}
