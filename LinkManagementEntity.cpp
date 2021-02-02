@@ -12,10 +12,10 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 LinkManagementEntity::LinkManagementEntity(LinkManager* owner) : owner(owner) {}
 
 std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int timeout, unsigned int init_offset,
-                                                             unsigned int burst_offset, unsigned int num_attempts) const {
+                                                             unsigned int tx_offset, unsigned int num_attempts) const {
 	std::vector<uint64_t> slots;
 	// For each transmission burst from last to first according to this reservation...
-	for (long i = 0, offset = init_offset + (timeout - 1) * burst_offset; slots.size() < num_attempts && offset >= init_offset; offset -= burst_offset, i++) {
+	for (long i = 0, offset = init_offset + (timeout - 1) * tx_offset; slots.size() < num_attempts && offset >= init_offset; offset -= tx_offset, i++) {
 		// ... add every second burst
 		if (i % 2 == 1) {
 			slots.push_back(owner->mac->getCurrentSlot() + offset);
@@ -99,16 +99,17 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
 	if (payload->proposed_resources.at(channel).size() != 1)
 		throw std::invalid_argument("LinkManagementEntity::processRenewalReply for invalid number of slots.");
+	next_link_first_slot = payload->proposed_resources.at(channel).at(0);
 	// Have to subtract one offset so that the first reservation is marked without the subtraction (init_offset is exclusive in markReservations()).
-	unsigned int initial_slot = payload->proposed_resources.at(channel).at(0) - tx_offset;
+	unsigned int initial_slot_inclusive = next_link_first_slot - tx_offset;
 	if (channel == owner->current_channel) {
 		coutd << "no channel change -> increasing timeout: " << tx_timeout << "->";
 		tx_timeout += default_tx_timeout;
 		coutd << tx_timeout << " and marking TX reservations: ";
-		owner->markReservations(tx_timeout, initial_slot, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
+		owner->markReservations(tx_timeout, initial_slot_inclusive, tx_offset, tx_burst_num_slots, owner->link_id, Reservation::TX);
 		coutd << " -> configuring request slots -> ";
 		// Schedule the absolute slots for sending requests.
-		scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, max_num_renewal_attempts);
+		scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
 		coutd << scheduled_requests.size() << " scheduled -> ";
 		coutd << "link status update: " << owner->link_establishment_status;
 		owner->link_establishment_status = owner->Status::link_established;
@@ -118,7 +119,7 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 		next_channel = channel;
 		coutd << "and marking TX reservations on " << *next_channel << ": ";
 		ReservationTable* table = owner->reservation_manager->getReservationTable(next_channel);
-		owner->markReservations(table, default_tx_timeout, initial_slot, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
+		owner->markReservations(table, default_tx_timeout, initial_slot_inclusive, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
 		coutd << "link status update: " << owner->link_establishment_status;
 		owner->link_establishment_status = owner->Status::link_renewal_complete;
 		coutd << "->" << owner->link_establishment_status << " -> ";
@@ -162,7 +163,9 @@ void LinkManagementEntity::onTimeoutExpiry() {
 		next_channel = nullptr;
 		coutd << "; restoring timeout to " << default_tx_timeout;
 		tx_timeout = default_tx_timeout;
-		coutd << "; updating status: " << owner->link_establishment_status;
+		coutd << "; scheduling renewal requests at ";
+		scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
+		coutd << "updating status: " << owner->link_establishment_status;
 		owner->link_establishment_status = LinkManager::link_established;
 		coutd << "->" << owner->link_establishment_status << " -> link renewal complete -> ";
 	} else {
@@ -440,9 +443,8 @@ void LinkManagementEntity::scheduleRenewalReply(L2Packet* reply) {
 		const FrequencyChannel* selected_channel = proposal->proposed_resources.begin()->first;
 		unsigned int expected_data_tx_slot = proposal->proposed_resources[selected_channel].at(0) + tx_offset;
 		ReservationTable* selected_table = owner->reservation_manager->getReservationTable(selected_channel);
-		coutd << "marking first RX slot of chosen candidate (" << *selected_channel << ", offset " << expected_data_tx_slot << ") -> ";
+		coutd << "marking RX slots of new link (" << *selected_channel << ", first offset " << expected_data_tx_slot << ") -> ";
 		owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX));
-//		selected_table->mark(expected_data_tx_slot, Reservation(owner->link_id, Reservation::Action::RX));
 	}
 }
 
@@ -578,4 +580,7 @@ unsigned int LinkManagementEntity::getExpiryOffset() const {
 
 void LinkManagementEntity::update(uint64_t num_slots) {
 	updated_timeout_this_slot = false;
+	if (next_link_first_slot > 0 && num_slots > next_link_first_slot)
+		throw std::invalid_argument("LinkManagementEntity::update would decrease the next_link_first_slot past zero.");
+	next_link_first_slot -= num_slots;
 }
