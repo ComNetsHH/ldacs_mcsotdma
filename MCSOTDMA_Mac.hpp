@@ -52,6 +52,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * */
 		std::pair<size_t, size_t> execute();
 
+        /**
+         * Retrieve the reservation manager so that it can be configured.
+         * @return The ReservationManager.
+         */
+        ReservationManager* getReservationManager();
+
 	protected:
 		/**
 		 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.

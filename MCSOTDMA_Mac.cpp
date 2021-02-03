@@ -185,3 +185,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 void MCSOTDMA_Mac::onReceptionSlot(const FrequencyChannel* channel) {
 	// Do nothing.
 }
+
+ReservationManager* MCSOTDMA_Mac::getReservationManager() {
+    return this->reservation_manager;
+}

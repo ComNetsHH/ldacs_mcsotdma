@@ -10,6 +10,9 @@ set(MCSOTDMA_SRC ReservationTable.cpp ReservationTable.hpp ReservationManager.cp
 # MC-SOTDMA unittest files.
 set(MCSOTDMA_TEST_SRC tests/unittests.cpp tests/ReservationTableTests.cpp tests/ReservationManagerTests.cpp tests/FrequencyChannelTests.cpp tests/ReservationTests.cpp tests/LinkManagerTests.cpp tests/MCSOTDMA_MacTests.cpp tests/MockLayers.hpp tests/BCLinkManagerTests.cpp tests/SystemTests.cpp tests/MovingAverageTests.cpp tests/ContentionEstimatorTests.cpp tests/LinkManagementEntityTests.cpp tests/MCSOTDMA_PhyTests.cpp)
 
+# Remove if not needed
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/include -I/usr/local/include/ -L/usr/local/Cellar/cppunit/1.15.1/lib")
+
 # MC-SOTDMA library target.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(tuhh_intairnet_mc-sotdma SHARED ${MCSOTDMA_SRC} ${GLUE_SRC_HPP})
