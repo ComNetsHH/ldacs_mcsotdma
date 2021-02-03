@@ -23,6 +23,7 @@ const MacId& LinkManager::getLinkId() const {
 
 void LinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << *this << "::notifyOutgoing(id='" << link_id << "')";
+	is_link_initiator = true;
 
 	// Update the moving average traffic estimate.
 	updateTrafficEstimate(num_bits);
@@ -392,7 +393,8 @@ size_t LinkManager::getRandomInt(size_t start, size_t end) {
 	return distribution(generator);
 }
 
-void LinkManager::markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation) {
+std::vector<unsigned int> LinkManager::markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation) {
+    std::vector<unsigned int> offsets;
 	coutd << "marking next " << timeout << " " << reservation.getNumRemainingSlots() + 1 << "-slot-" << reservation.getAction() << " reservations:";
 	for (size_t i = 0; i < timeout; i++) {
 		int32_t current_offset = (i + 1) * offset + init_offset;
@@ -403,7 +405,9 @@ void LinkManager::markReservations(ReservationTable* table, unsigned int timeout
 			coutd << " t=" << current_offset << ":" << current_reservation << "->" << reservation;
 		else
 			coutd << " t=" << current_offset << ":" << reservation;
+		offsets.push_back(current_offset);
 	}
+	return offsets;
 }
 
 void LinkManager::markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action) {

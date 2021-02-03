@@ -37,20 +37,22 @@ size_t LinkManagementEntity::clearPendingRequestReservations(const std::map<cons
 		const std::vector<unsigned int>& proposed_slots_in_this_channel = item.second;
 		ReservationTable* table = owner->reservation_manager->getReservationTable(proposed_channel);
 		for (unsigned int offset : proposed_slots_in_this_channel) {
-			// Number of time slots that have passed since the proposal.
-			uint64_t time_difference = current_time - absolute_proposal_time;
 			// Ignore slots that have already passed.
-			if (time_difference < offset) {
-				// Normalize offsets to current time.
-				unsigned long normalized_offset = offset - time_difference;
-				const Reservation* reservation = &table->getReservation((int) normalized_offset);
-				coutd << "f=" << *proposed_channel << ",t=" << normalized_offset << ":" << *reservation;
-				if (!reservation->isRx() && !reservation->isLocked())
-					throw std::runtime_error("LinkManagementEntity::processLinkReply should clear a pending reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
-				table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-				coutd << "->idle ";
-				num_removed++;
-			}
+//			if (current_time >= absolute_proposal_time) {
+				// Number of time slots that have passed since the proposal.
+				uint64_t time_difference = current_time - absolute_proposal_time;
+				if (time_difference < offset) {
+					// Normalize offsets to current time.
+					unsigned long normalized_offset = offset - time_difference;
+					const Reservation* reservation = &table->getReservation((int) normalized_offset);
+					coutd << "f=" << *proposed_channel << ",t=" << normalized_offset << ":" << *reservation;
+//					if (reservation->isIdle())
+//						throw std::runtime_error("LinkManagementEntity::clearPendingRequestReservations should clear a pending reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
+					table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+					coutd << "->idle ";
+					num_removed++;
+				}
+//			}
 		}
 	}
 	coutd << "-> ";
@@ -157,7 +159,7 @@ void LinkManagementEntity::onTimeoutExpiry() {
 		coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
 		owner->reassign(next_channel);
 		// Only schedule request slots if we're the initiator, i.e. have sent requests before.
-		if (last_proposal_absolute_time > 0) {
+		if (owner->is_link_initiator) {
 			coutd << "scheduling renewal requests at ";
 			scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
 		}
@@ -171,6 +173,7 @@ void LinkManagementEntity::onTimeoutExpiry() {
 	link_renewal_pending = false;
 	next_channel = nullptr;
 	last_proposal_absolute_time = 0;
+	last_proposed_resources.clear();
 }
 
 void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
@@ -225,19 +228,30 @@ void LinkManagementEntity::processRenewalRequest(const L2HeaderLinkEstablishment
 		int32_t slot_offset = chosen_candidate.second;
 		slot_offset -= tx_offset;
 		reply_payload->proposed_resources[reply_channel].push_back(slot_offset);
-		// Remember this choice.
-		last_proposed_resources = reply_payload->proposed_resources;
 		// Remember the channel to switch to after expiry.
 		next_channel = reply_channel;
 		// And schedule a reply in the next burst.
 		scheduleRenewalReply(reply);
 		link_renewal_pending = true;
+
+		// Clear reservations made from a previous request.
+		if (!last_proposed_resources.empty()) {
+			coutd << "clearing reservations from a previous request: ";
+			size_t num_cleared = clearPendingRequestReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
+			coutd << num_cleared << " cleared -> ";
+			last_proposal_absolute_time = 0;
+			last_proposed_resources.clear();
+		}
+
 		// First data transmissions are expected after this link has expired, on the new frequency channel for link renewals.
 		const FrequencyChannel* selected_channel = reply_payload->proposed_resources.begin()->first;
 		unsigned int expected_data_tx_slot = reply_payload->proposed_resources[selected_channel].at(0) + tx_offset;
 		ReservationTable* selected_table = owner->reservation_manager->getReservationTable(selected_channel);
 		coutd << "marking RX slots of new link (" << *selected_channel << ", first offset " << expected_data_tx_slot << ") -> ";
-		owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX));
+		std::vector<unsigned int> reservation_offsets = owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX));
+		// Remember the reservations we've just made, so that a later request could delete these again if necessary.
+		last_proposed_resources[selected_channel] = reservation_offsets;
+		last_proposal_absolute_time = owner->mac->getCurrentSlot() + tx_offset;
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
 }

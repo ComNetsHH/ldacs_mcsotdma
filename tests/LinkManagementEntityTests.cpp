@@ -138,7 +138,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //            coutd.setVerbose(false);
 		}
 
-		void testClearPendingRxReservations() {
+		void testClearPendingReservations() {
 			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
 			auto* rx_table = link_manager->current_reservation_table;
 			auto* rx_table_2 = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(center_frequency2));
@@ -191,7 +191,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testPrepareRequestUnestablished);
 			CPPUNIT_TEST(testPrepareRequestEstablished);
 			CPPUNIT_TEST(testPopulateRequest);
-			CPPUNIT_TEST(testClearPendingRxReservations);
+			CPPUNIT_TEST(testClearPendingReservations);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
