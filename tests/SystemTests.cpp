@@ -776,7 +776,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/**
 		 * Link timeout threshold is reached.
-		 * Ensures that a 2nd request is sent if the first one's request was dropped.
+		 * Ensures that a 2nd request is sent if the first one's reply was dropped, and that reservations made for this first request are cleared once the second one is taken.
 		 */
 		void testLinkExpiringAndLostReply() {
 			rlc_layer_me->should_there_be_more_p2p_data = true;
@@ -964,6 +964,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_rx->link_establishment_status);
 		}
 
+		/**
+		 * Observed a crash in OMNeT++: after link renewal was negotiated, the sender was informed of more data to send, which somehow crashed the system.
+		 */
+		void testSimulatorScenario() {
+//			coutd.setVerbose(true);
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// Proceed up to a negotiated link renewal.
+			size_t num_slots = 0, max_num_slots = 100;
+			LinkManager* lm_tx = mac_layer_me->getLinkManager(communication_partner_id),
+					*lm_rx = mac_layer_you->getLinkManager(own_id);
+			mac_layer_me->notifyOutgoing(512, communication_partner_id);
+			while (lm_tx->link_establishment_status != LinkManager::Status::link_renewal_complete && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+			}
+			// Proceed to one more data transmission.
+			mac_layer_me->update(lm_tx->lme->tx_offset);
+			mac_layer_you->update(lm_tx->lme->tx_offset);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			// Proceed one more slot.
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->notifyOutgoing(1024, communication_partner_id);
+		}
+
 
 		// TODO
 		void testEncapsulatedUnicast() {
@@ -989,6 +1020,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkExpiringAndLostReply);
 			CPPUNIT_TEST(testLinkRenewalFails);
 			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
+			CPPUNIT_TEST(testSimulatorScenario);
 //			CPPUNIT_TEST(testEncapsulatedUnicast);
 		CPPUNIT_TEST_SUITE_END();
 	};

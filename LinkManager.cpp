@@ -30,7 +30,7 @@ void LinkManager::notifyOutgoing(unsigned long num_bits) {
 
 	// Check establishment status.
 	// If the link is established...
-	if (link_establishment_status == Status::link_established) {
+	if (link_establishment_status == Status::link_established || link_establishment_status == link_renewal_complete) {
 		coutd << ": link already established";
 		// If the link is not yet established...
 	} else {
