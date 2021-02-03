@@ -225,11 +225,19 @@ void LinkManagementEntity::processRenewalRequest(const L2HeaderLinkEstablishment
 		int32_t slot_offset = chosen_candidate.second;
 		slot_offset -= tx_offset;
 		reply_payload->proposed_resources[reply_channel].push_back(slot_offset);
+		// Remember this choice.
+		last_proposed_resources = reply_payload->proposed_resources;
 		// Remember the channel to switch to after expiry.
 		next_channel = reply_channel;
 		// And schedule a reply in the next burst.
 		scheduleRenewalReply(reply);
 		link_renewal_pending = true;
+		// First data transmissions are expected after this link has expired, on the new frequency channel for link renewals.
+		const FrequencyChannel* selected_channel = reply_payload->proposed_resources.begin()->first;
+		unsigned int expected_data_tx_slot = reply_payload->proposed_resources[selected_channel].at(0) + tx_offset;
+		ReservationTable* selected_table = owner->reservation_manager->getReservationTable(selected_channel);
+		coutd << "marking RX slots of new link (" << *selected_channel << ", first offset " << expected_data_tx_slot << ") -> ";
+		owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX));
 	} else
 		coutd << "no candidates viable. Doing nothing." << std::endl;
 }
@@ -436,13 +444,6 @@ void LinkManagementEntity::scheduleRenewalReply(L2Packet* reply) {
 		table->mark(tx_offset, Reservation(reply->getDestination(), Reservation::Action::TX));
 		scheduled_replies[absolute_slot] = reply;
 		coutd << "scheduled reply in " << tx_offset << " slots on " << *channel << " -> ";
-
-		// First data transmissions are expected after this link has expired, on the new frequency channel for link renewals.
-		const FrequencyChannel* selected_channel = proposal->proposed_resources.begin()->first;
-		unsigned int expected_data_tx_slot = proposal->proposed_resources[selected_channel].at(0) + tx_offset;
-		ReservationTable* selected_table = owner->reservation_manager->getReservationTable(selected_channel);
-		coutd << "marking RX slots of new link (" << *selected_channel << ", first offset " << expected_data_tx_slot << ") -> ";
-		owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX));
 	}
 }
 
