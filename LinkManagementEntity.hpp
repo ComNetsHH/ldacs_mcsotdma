@@ -233,8 +233,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int getExpiryOffset() const;
 
 	protected:
-		/** Number of attempts to renew a link before giving up. */
-		const unsigned int max_num_renewal_attempts = 3;
+		/** Number of link renewal attempts that should be scheduled when a new link is established.. */
+		unsigned int max_num_renewal_attempts = 3;
 		/** A LinkManagementEntity is a module of a LinkManager. */
 		LinkManager* owner = nullptr;
 		/** The absolute points in time when requests should be sent. */

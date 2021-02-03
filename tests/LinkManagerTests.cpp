@@ -1081,11 +1081,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Next channels should match.
 			CPPUNIT_ASSERT_EQUAL(*link_manager->lme->next_channel, *link_manager_rx->lme->next_channel);
 
-			// For the transmitter, all selected resources should be unlocked, except for the selected one.
-//			size_t num_non_idle = 0;
-//			unsigned int agreed_slot;
-//			const FrequencyChannel* agreed_channel;
-
 			ReservationTable* table_new_tx = link_manager->reservation_manager->getReservationTable(selected_channel);
 			ReservationTable* table_new_rx = link_manager_rx->reservation_manager->getReservationTable(selected_channel);
 			for (size_t t = 0; t <= link_manager->lme->getExpiryOffset(); t++) {
