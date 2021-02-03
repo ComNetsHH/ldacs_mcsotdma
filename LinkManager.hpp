@@ -127,8 +127,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param init_offset Excluding initial offset: first slot used will be init_offset+offset.
 		 * @param offset Increment offset each repetition.
 		 * @param reservation
+		 * @return The offsets where reservations were made.
 		 */
-		void markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation);
+		std::vector<unsigned int> markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation);
 
 		/**
 		 * When a beacon packet comes in from the PHY, this processes it.
@@ -214,6 +215,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ReservationTable* current_reservation_table = nullptr;
 		/** Current traffic estimate of this link. */
 		MovingAverage traffic_estimate;
+		/** Whether this instance is the initiator of a link, i.e. sends the requests. */
+		bool is_link_initiator = false;
 		/** Takes care of link management. It resides in its own class to modularize the code. */
 		LinkManagementEntity* lme = nullptr;
 		size_t statistic_num_received_packets = 0,
