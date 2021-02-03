@@ -53,7 +53,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		FrequencyChannel* getFreqChannelByIndex(size_t index);
 
-		std::vector<FrequencyChannel*>& getFreqChannels();
+		std::vector<FrequencyChannel*>& getP2PFreqChannels();
 
 		FrequencyChannel* getFreqChannel(const ReservationTable* table);
 
@@ -117,7 +117,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 
 		/**
-		 * Searches through 'frequency_channels' for one that equals 'other'.
+		 * Searches through 'p2p_frequency_channels' for one that equals 'other'.
 		 * @param other
 		 * @return A pointer to the local instance that corresponds to 'other'.
 		 */
@@ -126,8 +126,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Number of slots to remember both in the past and in the future. */
 		uint32_t planning_horizon;
 		/** Keeps frequency channels in the same order as p2p_reservation_tables. */
-		std::vector<TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel*> frequency_channels;
-		/** Keeps reservation table in the same order as frequency_channels. */
+		std::vector<TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel*> p2p_frequency_channels;
+		/** Keeps reservation table in the same order as p2p_frequency_channels. */
 		std::vector<TUHH_INTAIRNET_MCSOTDMA::ReservationTable*> p2p_reservation_tables;
 		/** Map pointer to index s.t. getReservationTable(ptr) doesn't have to search.. */
 		std::map<const FrequencyChannel, size_t> p2p_channel_map;

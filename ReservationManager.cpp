@@ -9,7 +9,7 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), frequency_channels(), p2p_reservation_tables() {}
+ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), p2p_frequency_channels(), p2p_reservation_tables() {}
 
 void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth) {
 //    ReservationTable* table = is_p2p ? new ReservationTable(this->planning_horizon) : new ReservationTable(this->planning_horizon, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
@@ -21,9 +21,9 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	if (is_p2p) {
 		for (ReservationTable* rx_table : receiver_reservation_tables)
 			table->linkReceiverReservationTable(rx_table);
-		frequency_channels.push_back(channel);
+		p2p_frequency_channels.push_back(channel);
 		p2p_reservation_tables.push_back(table);
-		p2p_channel_map[*channel] = frequency_channels.size() - 1;
+		p2p_channel_map[*channel] = p2p_frequency_channels.size() - 1;
 		p2p_table_map[table] = p2p_reservation_tables.size() - 1;
 	} else {
 		if (broadcast_frequency_channel == nullptr && broadcast_reservation_table == nullptr) {
@@ -35,7 +35,7 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 }
 
 FrequencyChannel* ReservationManager::getFreqChannelByIndex(size_t index) {
-	return frequency_channels.at(index);
+	return p2p_frequency_channels.at(index);
 }
 
 ReservationTable* ReservationManager::getReservationTableByIndex(size_t index) {
@@ -50,7 +50,7 @@ void ReservationManager::update(uint64_t num_slots) {
 }
 
 ReservationManager::~ReservationManager() {
-	for (FrequencyChannel* channel : frequency_channels)
+	for (FrequencyChannel* channel : p2p_frequency_channels)
 		delete channel;
 	for (ReservationTable* table : p2p_reservation_tables)
 		delete table;
@@ -59,7 +59,7 @@ ReservationManager::~ReservationManager() {
 }
 
 size_t ReservationManager::getNumEntries() const {
-	return frequency_channels.size();
+	return p2p_frequency_channels.size();
 }
 
 ReservationTable* ReservationManager::getLeastUtilizedP2PReservationTable() {
@@ -102,7 +102,7 @@ FrequencyChannel* ReservationManager::getFreqChannel(const ReservationTable* tab
 	if (table == broadcast_reservation_table)
 		channel = broadcast_frequency_channel;
 	else
-		channel = frequency_channels.at(p2p_table_map.at(table));
+		channel = p2p_frequency_channels.at(p2p_table_map.at(table));
 	return channel;
 }
 
@@ -126,7 +126,7 @@ ReservationManager::getTxReservations(const MacId& id) const {
 	assert(broadcast_frequency_channel && broadcast_reservation_table && "ReservationManager::getTxReservations for unset broadcast channel / reservation table.");
 	auto local_reservations = std::vector<std::pair<FrequencyChannel, ReservationTable*>>();
 	local_reservations.emplace_back(FrequencyChannel(*broadcast_frequency_channel), broadcast_reservation_table->getTxReservations(id));
-	for (auto p2p_channel : frequency_channels) {
+	for (auto p2p_channel : p2p_frequency_channels) {
 		auto reservation_table = p2p_reservation_tables.at(p2p_channel_map.at(*p2p_channel));
 		auto tx_reservation_table = reservation_table->getTxReservations(id);
 		local_reservations.emplace_back(FrequencyChannel(*p2p_channel), tx_reservation_table);
@@ -158,7 +158,7 @@ void ReservationManager::updateTables(const std::vector<std::pair<FrequencyChann
 FrequencyChannel* ReservationManager::matchFrequencyChannel(const FrequencyChannel& other) const {
 	if (*broadcast_frequency_channel == other)
 		return broadcast_frequency_channel;
-	for (FrequencyChannel* channel : frequency_channels)
+	for (FrequencyChannel* channel : p2p_frequency_channels)
 		if (*channel == other)
 			return channel;
 	return nullptr;
@@ -171,7 +171,7 @@ void ReservationManager::setTransmitterReservationTable(ReservationTable* tx_tab
 FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center_frequency) {
 	if (broadcast_frequency_channel->getCenterFrequency() == center_frequency)
 		return broadcast_frequency_channel;
-	for (auto* channel : frequency_channels)
+	for (auto* channel : p2p_frequency_channels)
 		if (channel->getCenterFrequency() == center_frequency)
 			return channel;
 	return nullptr;
@@ -181,6 +181,6 @@ void ReservationManager::addReceiverReservationTable(ReservationTable*& rx_table
 	this->receiver_reservation_tables.push_back(rx_table);
 }
 
-std::vector<FrequencyChannel*>& ReservationManager::getFreqChannels() {
-	return frequency_channels;
+std::vector<FrequencyChannel*>& ReservationManager::getP2PFreqChannels() {
+	return p2p_frequency_channels;
 }

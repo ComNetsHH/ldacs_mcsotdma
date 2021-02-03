@@ -64,11 +64,13 @@ void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply
 	assert(payload->proposed_resources.size() == 1);
 
 	// Clear all scheduled requests, as one apparently made it through.
-	coutd << "clearing " << scheduled_requests.size() << " pending requests -> ";
+	coutd << "clearing " << scheduled_requests.size() << " pending requests: ";
 	scheduled_requests.clear();
+	coutd << " cleared -> ";
+	coutd << "unlocking resources: ";
 	size_t num_cleared_reservations = clearPendingRequestReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
 	last_proposed_resources.clear();
-	coutd << num_cleared_reservations << " cleared -> ";
+	coutd << num_cleared_reservations << " unlocked -> ";
 	link_renewal_pending = false;
 
 	// Differentiate between initial and renewal replies.
@@ -540,6 +542,13 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
 	// First establishment => we receive during the selected slot. Renewal => we transmit during the selected slot.
 	bool consider_tx = link_renewal_pending, consider_rx = !link_renewal_pending;
 	request->getPayloads().at(request_index) = p2pSlotSelection(tx_burst_num_slots, num_proposed_channels, num_proposed_slots, min_offset, consider_tx, consider_rx);
+	// Clear locked resources from a previous request.
+	if (!last_proposed_resources.empty()) {
+		coutd << "unlocking resources from previous request: ";
+		size_t num_cleared_reservations = clearPendingRequestReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
+		last_proposed_resources.clear();
+		coutd << num_cleared_reservations << " unlocked -> ";
+	}
 	// Save current proposal.
 	auto* proposal = (const ProposalPayload*) request->getPayloads().at(request_index);
 	last_proposal_absolute_time = owner->mac->getCurrentSlot();
