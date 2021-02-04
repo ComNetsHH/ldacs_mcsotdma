@@ -103,9 +103,9 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	const FrequencyChannel* channel = (*payload->proposed_resources.begin()).first;
 	if (payload->proposed_resources.at(channel).size() != 1)
 		throw std::invalid_argument("LinkManagementEntity::processRenewalReply for invalid number of slots.");
-	next_link_first_slot = payload->proposed_resources.at(channel).at(0);
+	first_slot_of_next_link = payload->proposed_resources.at(channel).at(0);
 	// Have to subtract one offset so that the first reservation is marked without the subtraction (init_offset is exclusive in markReservations()).
-	unsigned int initial_slot_inclusive = next_link_first_slot - tx_offset;
+	unsigned int initial_slot_inclusive = first_slot_of_next_link - tx_offset;
 	ReservationTable* next_table;
 	if (*channel == *owner->current_channel) {
 		coutd << "no channel change -> ";
@@ -134,14 +134,21 @@ bool LinkManagementEntity::onReceptionSlot() {
 bool LinkManagementEntity::decrementTimeout() {
 	// Don't update timeout if,
 	// (1) the link is not established right now
-	if (owner->link_establishment_status == LinkManager::link_not_established)
+	if (owner->link_establishment_status == LinkManager::link_not_established) {
+		coutd << "link not established; not decrementing timeout -> ";
 		return false;
+	}
 	// (2) we are in the process of establishment.
-	if ((!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_data_tx))
+	if ((!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_data_tx)) {
+		coutd << "link being established; not decrementing timeout -> ";
 		return false;
+	}
 	// (3) it has already been updated this slot.
-	if (updated_timeout_this_slot)
+	if (updated_timeout_this_slot) {
+		coutd << "already decremented timeout this slot; not decrementing timeout -> ";
 		return tx_timeout == 0;
+	}
+
 	updated_timeout_this_slot = true;
 
 	if (tx_timeout == 0)
@@ -161,14 +168,18 @@ void LinkManagementEntity::onTimeoutExpiry() {
 		// Only schedule request slots if we're the initiator, i.e. have sent requests before.
 		if (owner->is_link_initiator) {
 			coutd << "scheduling renewal requests at ";
-			scheduled_requests = scheduleRequests(tx_timeout, next_link_first_slot, tx_offset, max_num_renewal_attempts);
+			scheduled_requests = scheduleRequests(tx_timeout, first_slot_of_next_link, tx_offset, max_num_renewal_attempts);
+			first_slot_of_next_link = 0;
 		}
 		coutd << "updating status: " << owner->link_establishment_status << "->" << LinkManager::link_established << " -> link renewal complete -> ";
 		owner->link_establishment_status = LinkManager::link_established;
 	} else {
-		coutd << "no pending renewal, updating status: " << owner->link_establishment_status << "->" << LinkManager::link_not_established << " -> cleared associated channel -> link reset ";
+		coutd << "no pending renewal, updating status: " << owner->link_establishment_status << "->" << LinkManager::link_not_established << " -> cleared associated channel -> ";
 		owner->reassign(nullptr);
 		owner->link_establishment_status = LinkManager::link_not_established;
+		if (!last_proposed_resources.empty())
+			clearPendingRequestReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
+		coutd << " -> link reset -> ";
 	}
 	link_renewal_pending = false;
 	next_channel = nullptr;
@@ -611,7 +622,11 @@ unsigned int LinkManagementEntity::getExpiryOffset() const {
 
 void LinkManagementEntity::update(uint64_t num_slots) {
 	updated_timeout_this_slot = false;
-	if (next_link_first_slot > 0 && num_slots > next_link_first_slot)
-		throw std::invalid_argument("LinkManagementEntity::update would decrease the next_link_first_slot past zero.");
-	next_link_first_slot -= num_slots;
+	if (first_slot_of_next_link > 0) {
+		if (num_slots > first_slot_of_next_link)
+			throw std::invalid_argument("LinkManagementEntity::update would decrease the first_slot_of_next_link past zero.");
+		else
+			first_slot_of_next_link -= num_slots;
+	}
+
 }

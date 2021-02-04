@@ -265,7 +265,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				const Reservation& reservation_tx = table_me->getReservation(offset);
 				const Reservation& reservation_rx = table_you->getReservation(offset);
 				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
-				uint remaining_slots = uint(expected_num_slots - 1);
+				unsigned int remaining_slots = (unsigned int) expected_num_slots - 1;
 				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
 				CPPUNIT_ASSERT_EQUAL(remaining_slots, reservation_tx.getNumRemainingSlots());
@@ -907,6 +907,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Ensures that if no negotiation has happened prior to expiry, the link is reset to unestablished.
 		 */
 		void testLinkRenewalFails() {
+//			coutd.setVerbose(true);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// Do link establishment.
@@ -940,6 +941,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(lm_tx->current_reservation_table == nullptr);
 			CPPUNIT_ASSERT(lm_rx->current_channel == nullptr);
 			CPPUNIT_ASSERT(lm_rx->current_reservation_table == nullptr);
+
+			for (auto channel : mac_layer_me->reservation_manager->getP2PFreqChannels()) {
+				for (size_t t = 1; t < planning_horizon; t++) {
+					const Reservation& res_tx = mac_layer_me->getReservationManager()->getReservationTable(channel)->getReservation(t);
+					const Reservation& res_rx = mac_layer_you->getReservationManager()->getReservationTable(channel)->getReservation(t);
+					if (!res_tx.isIdle() || !res_rx.isIdle())
+						coutd << "f=" << *channel << " t=" << t << ": " << res_tx << "|" << res_rx << std::endl;
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_tx);
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_rx);
+				}
+			}
 		}
 
 		void testLinkRenewalAfterExpiry() {
@@ -1021,7 +1033,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkRenewalFails);
 			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 			CPPUNIT_TEST(testSimulatorScenario);
-//			CPPUNIT_TEST(testEncapsulatedUnicast);
+			CPPUNIT_TEST(testEncapsulatedUnicast);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
