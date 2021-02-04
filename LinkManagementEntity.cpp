@@ -377,16 +377,22 @@ bool LinkManagementEntity::hasControlMessage() {
 bool LinkManagementEntity::hasPendingRequest() {
 	for (auto it = scheduled_requests.begin(); it != scheduled_requests.end(); it++) {
 		uint64_t current_slot = *it;
+		// If the current request slot is right now...
 		if (current_slot == owner->mac->getCurrentSlot()) {
+			// ... and there's more data...
 			if (owner->mac->isThereMoreData(owner->getLinkId())) {
+				// ... return true.
 				link_renewal_pending = true;
 				return true;
-			}
-		} else if (current_slot < owner->mac->getCurrentSlot()) {
-			if (owner->mac->isThereMoreData(owner->getLinkId()))
-				throw std::invalid_argument("LinkManagementEntity::hasControlMessage has missed a scheduled request: " + std::to_string(current_slot) + " (current slot: " + std::to_string(owner->mac->getCurrentSlot()) + ").");
-			else
+			// ... and there's no more data ...
+			} else {
+				// ... then delete the request, it is not needed.
 				scheduled_requests.erase(it--);
+			}
+		// If the current slot lies in the past...
+		} else if (current_slot < owner->mac->getCurrentSlot()) {
+			// ... then throw an error, because it should've been deleted.
+			throw std::invalid_argument("LinkManagementEntity::hasControlMessage has missed a scheduled request: " + std::to_string(current_slot) + " (current slot: " + std::to_string(owner->mac->getCurrentSlot()) + ").");
 		}
 	}
 	return false;
@@ -590,7 +596,7 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
 
 void LinkManagementEntity::onRequestTransmission() {
 	// Upon a renewal request...
-	if (owner->link_establishment_status != LinkManager::link_not_established) {
+	if (link_renewal_pending) {
 		// ... mark the next transmission burst as RX to receive the reply.
 		owner->current_reservation_table->mark(tx_offset, Reservation(owner->getLinkId(), Reservation::Action::RX));
 	// Upon initial requests...
