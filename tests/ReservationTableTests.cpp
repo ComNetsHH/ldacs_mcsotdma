@@ -483,7 +483,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testCountReservedTxSlots() {
 			MacId id = MacId(42);
-			CPPUNIT_ASSERT_EQUAL(ulong(0), table->countReservedTxSlots(id));
+			CPPUNIT_ASSERT_EQUAL((unsigned long)(0), table->countReservedTxSlots(id));
 			unsigned long marked = 7;
 			for (unsigned long i = 0; i < marked; i++)
 				table->mark(i, Reservation(id, Reservation::TX));
