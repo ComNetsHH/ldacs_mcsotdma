@@ -211,9 +211,6 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 		segment = mac->requestSegment(num_bits, getLinkId());
 	}
 
-	// Update LME's timeout.
-	bool timeout_expiry = lme->onTransmissionBurst();
-
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionBurst received segment with <=1 headers.");
 	if (!sending_reply) {
 		// Set header fields.
@@ -221,8 +218,7 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 			setHeaderFields(header);
 	}
 
-	if (timeout_expiry)
-		lme->onTimeoutExpiry();
+	lme->onTransmissionSlot();
 
 	statistic_num_sent_packets++;
 	return segment;
@@ -363,7 +359,7 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	coutd << "updating reservations: ";
 	// This is an incoming packet, so we must've been listening.
 	// Mark future slots as RX slots, too.
-	markReservations(timeout, 0, offset, length_next, header->icao_src_id, Reservation::RX);
+	markReservations(timeout - 1, 0, offset, length_next, header->icao_src_id, Reservation::RX);
 	coutd << " -> ";
 }
 
@@ -432,10 +428,11 @@ void LinkManager::update(uint64_t num_slots) {
 }
 
 void LinkManager::onReceptionSlot() {
-    if (lme->onReceptionSlot()) {
-	    lme->onTimeoutExpiry();
-	    coutd << "done." << std::endl;
-    }
+    lme->onReceptionSlot();
+}
+
+void LinkManager::onSlotEnd() {
+	lme->onSlotEnd();
 }
 
 

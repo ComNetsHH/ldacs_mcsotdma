@@ -36,7 +36,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		class ProposalPayload : public L2Packet::Payload {
 		public:
 			ProposalPayload(unsigned int num_freq_channels, unsigned int num_slots) : target_num_channels(num_freq_channels), target_num_slots(num_slots), burst_length(1) {
-				if (target_num_slots > pow(2, 4))
+				if (target_num_slots > std::pow(2, 4))
 					throw std::runtime_error("Cannot encode more than 16 candidate slots.");
 			}
 
@@ -90,16 +90,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		virtual void processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const ProposalPayload*& payload, const MacId& origin);
 
 		/**
-		 * @return Whether the timeout has expired.
-		 */
-		bool onTransmissionBurst();
-
-		/**
-		 * @return Whether the timeout has expired.
-		 */
-		bool onReceptionSlot();
-
-		/**
 		 * Prepares a link request and injects it into the upper layers.
 		 */
 		void establishLink() const;
@@ -143,6 +133,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void update(uint64_t num_slots);
 
 		void onTimeoutExpiry();
+
+		void onReceptionSlot();
+
+		void onTransmissionSlot();
+
+		void onSlotEnd();
 
 	protected:
 		std::vector<uint64_t> scheduleRequests(unsigned int timeout, unsigned int init_offset, unsigned int tx_offset, unsigned int num_attempts) const;
@@ -264,6 +260,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool link_renewal_pending = false;
 		/** Whether the tx_timeout field has been set from a packet reception in this slot. Prevents double-decrementing the tx_timeout counter. */
 		bool updated_timeout_this_slot = false;
+		/** Whether a link has just been initiated. */
+		bool established_initial_link_this_slot = false;
+		/** Whether the current slot was used for a reception on this link. */
+		bool rx_during_this_slot = false;
+		/** Whether the current slot was used for a transmission on this link. */
+		bool tx_during_this_slot = false;
 	};
 }
 

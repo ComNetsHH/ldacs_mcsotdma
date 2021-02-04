@@ -66,6 +66,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void update(uint64_t num_slots) override;
 
+		void onSlotEnd() override;
+
 		/**
 		 * This probability is used during broadcast slot selection to determine the number slots to consider,
 		 * based on recent observations of neighbor broadcast activity.

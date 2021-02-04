@@ -96,6 +96,7 @@ void LinkManagementEntity::processInitialReply(const L2HeaderLinkEstablishmentRe
 	owner->link_establishment_status = owner->Status::link_established;
 	owner->mac->notifyAboutNewLink(owner->link_id);
 	coutd << "link is now established -> ";
+	established_initial_link_this_slot = true;
 }
 
 void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentReply*& header, const LinkManagementEntity::ProposalPayload*& payload) {
@@ -123,29 +124,26 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 	owner->link_establishment_status = owner->Status::link_renewal_complete;
 }
 
-bool LinkManagementEntity::onTransmissionBurst() {
-	return decrementTimeout();
-}
-
-bool LinkManagementEntity::onReceptionSlot() {
-	return decrementTimeout();
-}
-
 bool LinkManagementEntity::decrementTimeout() {
 	// Don't update timeout if,
 	// (1) the link is not established right now
 	if (owner->link_establishment_status == LinkManager::link_not_established) {
 		coutd << "link not established; not decrementing timeout -> ";
-		return false;
+		return tx_timeout == 0;
 	}
 	// (2) we are in the process of establishment.
 	if ((!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_data_tx)) {
 		coutd << "link being established; not decrementing timeout -> ";
-		return false;
+		return tx_timeout == 0;
 	}
 	// (3) it has already been updated this slot.
 	if (updated_timeout_this_slot) {
 		coutd << "already decremented timeout this slot; not decrementing timeout -> ";
+		return tx_timeout == 0;
+	}
+	// (4) the link was just now established.
+	if (established_initial_link_this_slot) {
+		coutd << "link was established in this slot; not decrementing timeout -> ";
 		return tx_timeout == 0;
 	}
 
@@ -621,12 +619,32 @@ unsigned int LinkManagementEntity::getExpiryOffset() const {
 }
 
 void LinkManagementEntity::update(uint64_t num_slots) {
-	updated_timeout_this_slot = false;
 	if (first_slot_of_next_link > 0) {
 		if (num_slots > first_slot_of_next_link)
 			throw std::invalid_argument("LinkManagementEntity::update would decrease the first_slot_of_next_link past zero.");
 		else
 			first_slot_of_next_link -= num_slots;
 	}
+	updated_timeout_this_slot = false;
+	established_initial_link_this_slot = false;
+	rx_during_this_slot = false;
+	tx_during_this_slot = false;
+}
 
+void LinkManagementEntity::onReceptionSlot() {
+	rx_during_this_slot = true;
+}
+
+void LinkManagementEntity::onTransmissionSlot() {
+	tx_during_this_slot = true;
+}
+
+void LinkManagementEntity::onSlotEnd() {
+	if (rx_during_this_slot && tx_during_this_slot)
+		throw std::runtime_error("LinkManagementEntity::onSlotEnd for both RX and TX in this slot?!");
+	if (rx_during_this_slot || tx_during_this_slot) {
+		coutd << *owner->mac << "::" << *owner << "::onSlotEnd -> ";
+		if (decrementTimeout())
+			onTimeoutExpiry();
+	}
 }

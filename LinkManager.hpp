@@ -109,6 +109,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		virtual void update(uint64_t num_slots);
 
+		virtual void onSlotEnd();
+
 	protected:
 		/**
 		 * Makes reservations on the current reservation table.

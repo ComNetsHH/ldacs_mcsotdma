@@ -37,7 +37,7 @@ void MCSOTDMA_Mac::passToUpper(L2Packet* packet) {
 void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	// Update time.
 	IMac::update(num_slots);
-	coutd << *this << "::update(" << num_slots << ")... ";
+	coutd << "t=" << getCurrentSlot() << " " << *this << "::update(" << num_slots << ")... ";
 	// Notify the ReservationManager.
 	assert(reservation_manager && "MCSOTDMA_MAC::update with unset ReserationManager.");
 	reservation_manager->update(num_slots);
@@ -188,4 +188,9 @@ void MCSOTDMA_Mac::onReceptionSlot(const FrequencyChannel* channel) {
 
 ReservationManager* MCSOTDMA_Mac::getReservationManager() {
     return this->reservation_manager;
+}
+
+void MCSOTDMA_Mac::onSlotEnd() {
+	for (auto item : link_managers)
+		item.second->onSlotEnd();
 }

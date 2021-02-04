@@ -84,6 +84,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Tests updating the traffic estimate over a number of slots.
 		 */
 		void testTrafficEstimateOverTimeslots() {
+//			coutd.setVerbose(true);
 			double expected_estimate = 0.0;
 			CPPUNIT_ASSERT_EQUAL(expected_estimate, link_manager->getCurrentTrafficEstimate());
 			unsigned int bits_to_send = 1024;
@@ -240,7 +241,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Have the LinkManager process it.
 			link_manager->receiveFromLower(packet);
 			// Ensure that the slots were marked.
-			for (size_t i = 0; i < timeout; i++) {
+			for (size_t i = 0; i < timeout - 1; i++) {
 				const Reservation& reservation = table->getReservation((i + 1) * offset);
 				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation.getTarget());
 				CPPUNIT_ASSERT_EQUAL(true, reservation.isRx());
@@ -711,6 +712,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
 			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
 
+//			coutd.setVerbose(true);
+
 			// Send request.
 			testReservationsAfterRequest();
 			// Copy request proposal (otherwise we have two sides trying to delete this packet -> memory error).
@@ -724,6 +727,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			while (env_rx.phy_layer->outgoing_packets.empty() && num_slots++ < max_num_slots) {
 				env_rx.mac_layer->update(1);
 				env_rx.mac_layer->execute();
+				env_rx.mac_layer->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 
@@ -738,8 +742,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer->tuneReceiver(selected_freq);
 			phy_layer->onReception(reply, selected_freq);
 
-//                coutd.setVerbose(true);
-
 			// Should've only sent the request so far.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy_layer->outgoing_packets.size());
 			// Increment time until the first data transmission.
@@ -747,6 +749,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->update(slots_until_tx);
 			env_rx.mac_layer->update(slots_until_tx);
 			mac->execute();
+			mac->onSlotEnd();
 			// Should have the first transmission "sent" now.
 			CPPUNIT_ASSERT_EQUAL(size_t(2), phy_layer->outgoing_packets.size());
 			// Let RX receive it.
@@ -764,6 +767,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				expected_offsets.push_back(t * link_manager->lme->tx_offset);
 			for (size_t t = 0; t < planning_horizon; t++) {
 				const Reservation& res_tx = table_tx->getReservation(t), &res_rx = table_rx->getReservation(t);
+				coutd << "t=" << t << ": " << res_tx << "|" << res_rx << std::endl;
 				if (res_tx.isTx()) {
 					actual_num_reservations++;
 					CPPUNIT_ASSERT_EQUAL(communication_partner_id, res_tx.getTarget());
@@ -809,6 +813,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (unsigned int t = 0; t < final_slot; t += link_manager->lme->tx_offset) {
 				mac->update(link_manager->lme->tx_offset);
 				mac->execute();
+				mac->onSlotEnd();
 				if (--current_timeout == 0) // timeout resets upon expiry
 					current_timeout = link_manager->lme->default_tx_timeout;
 				CPPUNIT_ASSERT_EQUAL(current_timeout, link_manager->lme->tx_timeout);
@@ -877,6 +882,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(1);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
@@ -891,6 +898,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(1);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
@@ -910,6 +919,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(link_manager->lme->tx_offset);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 				num_txs++;
 				// Timeout values should match.
 				unsigned int expected_timeout = link_manager->lme->default_tx_timeout - num_txs == 0 ? link_manager->lme->default_tx_timeout : link_manager->lme->default_tx_timeout - num_txs;
@@ -942,6 +953,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(1);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
@@ -956,6 +969,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(1);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
@@ -977,6 +992,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(link_manager->lme->tx_offset);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 				num_txs++;
 				// Timeout values should match.
 				unsigned int expected_timeout = link_manager->lme->default_tx_timeout - num_txs == 0 ? link_manager->lme->default_tx_timeout : link_manager->lme->default_tx_timeout - num_txs;
@@ -1009,6 +1026,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(1);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established,link_manager->link_establishment_status);
@@ -1022,6 +1041,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(1);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			// Current slot should've been used to TX the request.
@@ -1069,6 +1090,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->update(1);
 				mac->execute();
 				mac_rx->execute();
+				mac->onSlotEnd();
+				mac_rx->onSlotEnd();
 				selected_slot--;
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);

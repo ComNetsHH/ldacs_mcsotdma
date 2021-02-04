@@ -58,6 +58,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
          */
         ReservationManager* getReservationManager();
 
+        void onSlotEnd();
+
 	protected:
 		/**
 		 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.
