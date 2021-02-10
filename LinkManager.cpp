@@ -293,7 +293,7 @@ void LinkManager::setUnicastHeaderFields(L2HeaderUnicast*& header) const {
 }
 
 void LinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	throw std::runtime_error("Non-broadcast LinkManager got a beacon to process.");
+	throw std::runtime_error("LinkManager::processIncomingBeacon for P2P LinkManager.");
 }
 
 void LinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
@@ -421,8 +421,10 @@ LinkManager::~LinkManager() {
 
 void LinkManager::update(uint64_t num_slots) {
 	if (!traffic_estimate.hasBeenUpdated())
-		for (uint64_t t = 0; t < num_slots; t++)
+		for (uint64_t t = 0; t < num_slots; t++) {
 			traffic_estimate.put(0);
+			traffic_estimate.reset();
+		}
 	traffic_estimate.reset();
 	lme->update(num_slots);
 }
