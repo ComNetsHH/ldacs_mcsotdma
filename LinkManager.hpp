@@ -153,13 +153,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param header
 		 * @param payload
 		 */
-		void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
+		virtual void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
 
 		/**
 		 * Processes the base header of each incoming packet.
 		 * @param header
 		 */
 		virtual void processIncomingBase(L2HeaderBase*& header);
+
+		virtual void processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin);
+
+		virtual void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
 
 		/**
 		 * Encodes this user's reserved transmission slots.

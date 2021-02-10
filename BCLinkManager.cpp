@@ -45,9 +45,7 @@ L2Packet* BCLinkManager::prepareBeacon() {
 }
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
-	// Update the contention estimator.
-	coutd << "updated contention estimate -> ";
-	contention_estimator.reportBroadcast(origin);
+	// Do nothing in particular.
 }
 
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
@@ -189,7 +187,8 @@ void BCLinkManager::onReceptionSlot() {
 }
 
 void BCLinkManager::processIncomingBase(L2HeaderBase*& header) {
-	// Don't attempt to process the base header.
+	coutd << "updated contention estimate -> ";
+	contention_estimator.reportBroadcast(header->icao_src_id);
 }
 
 void BCLinkManager::onSlotEnd() {

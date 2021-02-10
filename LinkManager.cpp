@@ -103,8 +103,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
 				statistic_num_received_requests++;
-				lme->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header,
-				                        (const LinkManagementEntity::ProposalPayload*&) payload, packet->getOrigin());
+				processIncomingLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
 //				delete header;
 //				header = nullptr;
 //				delete payload;
@@ -113,7 +112,7 @@ void LinkManager::receiveFromLower(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				lme->processLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const LinkManagementEntity::ProposalPayload*&) payload);
+				processIncomingLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);
 				statistic_num_received_replies++;
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 //				delete header;
@@ -361,6 +360,14 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	// Mark future slots as RX slots, too.
 	markReservations(timeout - 1, 0, offset, length_next, header->icao_src_id, Reservation::RX);
 	coutd << " -> ";
+}
+
+void LinkManager::processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	lme->processLinkRequest(header, (const LinkManagementEntity::ProposalPayload*&) payload, origin);
+}
+
+void LinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	lme->processLinkReply(header, (const LinkManagementEntity::ProposalPayload*&) payload);
 }
 
 void LinkManager::assign(const FrequencyChannel* channel) {

@@ -426,7 +426,7 @@ void LinkManagementEntity::scheduleInitialReply(L2Packet* reply, int32_t slot_of
 		if ((*proposal->proposed_resources.begin()).second.empty())
 			throw std::invalid_argument("LinkManagementEntity::scheduleLinkReply for proposal without a time slot.");
 
-		// ... we send the reply on the selected channel.
+		// We send the reply on the selected channel.
 		const FrequencyChannel* channel = proposal->proposed_resources.begin()->first;
 		ReservationTable* table = owner->reservation_manager->getReservationTable(channel);
 
