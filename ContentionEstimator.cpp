@@ -29,7 +29,7 @@ void ContentionEstimator::update() {
 double ContentionEstimator::getContentionEstimate(const MacId& id) const {
 	auto it = contention_estimates.find(id);
 	if (it == contention_estimates.end())
-		throw std::out_of_range("ContentionEstimator::getContentionEstimate doesn't keep ID '" + std::to_string(id.getId()) + "'.");
+		return 0.0;
 	return it->second.get();
 }
 
