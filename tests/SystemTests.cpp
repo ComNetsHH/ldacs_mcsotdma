@@ -316,6 +316,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
 				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
 			}
 			// A scheduled request should've been deleted.
 			CPPUNIT_ASSERT_EQUAL((size_t) lm_me->lme->max_num_renewal_attempts - 1, lm_me->lme->scheduled_requests.size());
@@ -328,38 +330,44 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_establishment_status);
 			// And the next transmission burst should be marked as RX for us,
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, lm_me->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
-//			// and as TX for them
-//			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_you->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
-//			// And the one after that as TX.
-//			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_me->current_reservation_table->getReservation(2 * lm_me->lme->tx_offset).getAction());
+			// and as TX for them
+			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_you->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
+			// And the one after that as TX.
+			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_me->current_reservation_table->getReservation(2 * lm_me->lme->tx_offset).getAction());
 
-//			// Increment time until the reply is sent.
-//			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->lme->scheduled_replies.size());
-//			while (!lm_you->lme->scheduled_replies.empty()) {
-//				mac_layer_me->update(1);
-//				mac_layer_you->update(1);
-//				mac_layer_me->execute();
-//				mac_layer_you->execute();
-//			}
-//			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->lme->scheduled_replies.size());
-//			// Renewal should now be complete on our side.
-//			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_me->link_establishment_status);
-//			// The remaining slots should be marked as TX.
-//			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_me->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
+			// Increment time until the reply is sent.
+			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->lme->scheduled_replies.size());
+			while (!lm_you->lme->scheduled_replies.empty()) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->lme->scheduled_replies.size());
+			// Renewal should now be complete on our side.
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_me->link_establishment_status);
+			// The remaining slots should be marked as TX.
+			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, lm_me->current_reservation_table->getReservation(lm_me->lme->tx_offset).getAction());
 
-//			// Trigger the timeout, which should apply the transition.
-//			while (lm_me->lme->tx_timeout > 0) {
-//				mac_layer_me->update(1);
-//				mac_layer_you->update(1);
-//				mac_layer_me->execute();
-//				mac_layer_you->execute();
-//			}
-//
-//			// Both sides should have an established link now.
-//			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_me->link_establishment_status);
-//			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_you->link_establishment_status);
-//			// And agree on the frequency channel.
-//			CPPUNIT_ASSERT_EQUAL(*lm_me->current_channel, *lm_you->current_channel);
+			// Trigger the timeout, which should apply the transition.
+			size_t num_slots = 0, max_num_slots = 100;
+			while (lm_me->lme->link_renewal_pending && num_slots++ < num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+
+			// Both sides should have an established link now.
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete, lm_me->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete, lm_you->link_establishment_status);
+			// And agree on the frequency channel.
+			CPPUNIT_ASSERT_EQUAL(*lm_me->current_channel, *lm_you->current_channel);
 
 //			coutd.setVerbose(false);
 		}

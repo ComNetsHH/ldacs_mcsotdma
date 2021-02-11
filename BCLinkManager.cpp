@@ -151,7 +151,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		// Probability P(X=n) of n accesses.
 		double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
 		// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
-		unsigned int k = n == 0 ? 1 : ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+		unsigned int k = n == 0 ? 1 : std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 		expected_num_bc_accesses += p * k;
 	}
 	return std::ceil(expected_num_bc_accesses);
