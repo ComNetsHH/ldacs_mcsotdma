@@ -433,7 +433,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				if (t == 0)
 					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isRx());
 				else if (t <= num_cont_slots)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isRx());
+					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isRxCont());
 				else
 					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
 			}

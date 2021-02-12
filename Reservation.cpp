@@ -67,6 +67,10 @@ bool Reservation::isRx() const {
 	return action == RX;
 }
 
+bool Reservation::isRxCont() const {
+	return action == RX_CONT;
+}
+
 bool Reservation::isLocked() const {
 	return action == LOCKED;
 }

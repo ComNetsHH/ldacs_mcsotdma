@@ -288,7 +288,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					const Reservation &reservation_rx_next = table_you->getReservation(offset + t);
 					CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX_CONT, reservation_tx_next.getAction());
 					CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx_next.getTarget());
-					CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation_rx_next.getAction());
+					CPPUNIT_ASSERT_EQUAL(true, reservation_rx_next.isRx() || reservation_rx_next.isRxCont());
 					CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx_next.getTarget());
 				}
 			}
@@ -543,6 +543,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			// Now do the other tests.
+//			coutd.setVerbose(true);
 			testLinkRenewalChannelChange();
 			required_slots = lm_me->estimateCurrentNumSlots();
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
@@ -1165,7 +1166,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
             CPPUNIT_TEST(testLinkExpiry);
 			CPPUNIT_TEST(testLinkExpiryMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalChannelChange);
-//			CPPUNIT_TEST(testLinkRenewalChannelChangeMultiSlot);
+			CPPUNIT_TEST(testLinkRenewalChannelChangeMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalSameChannel);
 			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
 			CPPUNIT_TEST(testLinkExpiringAndLostReply);

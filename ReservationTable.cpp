@@ -77,6 +77,8 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		Reservation::Action action = reservation.getAction();
 		if (action == Reservation::TX)
 			action = Reservation::TX_CONT;
+		else if (action == Reservation::RX)
+			action = Reservation::RX_CONT;
 		Reservation next_reservation = Reservation(reservation.getTarget(), action, reservation.getNumRemainingSlots() - 1);
 		mark(slot_offset + 1, next_reservation);
 	}
@@ -98,8 +100,8 @@ bool ReservationTable::isLocked(int32_t slot_offset) const {
 bool ReservationTable::anyTxReservations(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::anyTxReservations for planning horizon smaller than queried offset!");
-	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isTx()
-	       || this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isTxCont();
+	const Reservation& res = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
+	return res.isTx() || res.isTxCont();
 }
 
 bool ReservationTable::anyTxReservations(int32_t start, uint32_t length) const {
@@ -117,7 +119,8 @@ bool ReservationTable::anyTxReservations(int32_t start, uint32_t length) const {
 bool ReservationTable::anyRxReservations(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::anyRxReservations for planning horizon smaller than queried offset!");
-	return this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isRx();
+	const Reservation& res = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
+	return res.isRx() || res.isRxCont();
 }
 
 bool ReservationTable::anyRxReservations(int32_t start, uint32_t length) const {

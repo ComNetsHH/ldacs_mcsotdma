@@ -25,6 +25,8 @@ class Reservation {
 			BUSY,
 			/** Reservation for me, and I should *listen* during this slot. */
 			RX,
+			/** Reservation for me, and I should *continue listening* during this slot. */
+			RX_CONT,
 			/** Reservation for me, and I should *start to transmit* during this slot. */
 			TX,
 			/** Reservation for me, and I should *continue transmitting* during this slot. */
@@ -56,7 +58,7 @@ class Reservation {
 		const MacId& getTarget() const;
 
 		/**
-		 * @return The current action associated with this cell.
+		 * @return The current action associated with this resource.
 		 */
 		const Action& getAction() const;
 
@@ -87,27 +89,32 @@ class Reservation {
 		bool isIdle() const;
 
 		/**
-		 * @return Whether this denotes a cell that is reserved by another user.
+		 * @return Whether this denotes a resource that is reserved by another user.
 		 */
 		bool isBusy() const;
 
 		/**
-		 * @return Whether this denotes a reserved transmission cell.
+		 * @return Whether this denotes a reserved transmission resource.
 		 */
 		bool isTx() const;
 
 		/**
-		 * @return Whether this denotes a continued transmission cell.
+		 * @return Whether this denotes a continued transmission resource.
 		 */
 		bool isTxCont() const;
 
 		/**
-		 * @return Whether this denotes a reception cell.
+		 * @return Whether this denotes a reception resource.
 		 */
 		bool isRx() const;
 
 		/**
-		 * @return Whether this cell is locked as it was used for making a proposal and shouldn't be considered for further reservations until the negotiation has concluded.
+		 * @return Whether this denotes a continued reception resource.
+		 */
+		bool isRxCont() const;
+
+		/**
+		 * @return Whether this resource is locked as it was used for making a proposal and shouldn't be considered for further reservations until the negotiation has concluded.
 		 */
 		bool isLocked() const;
 

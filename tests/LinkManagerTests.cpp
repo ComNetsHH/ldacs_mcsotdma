@@ -243,7 +243,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				for (unsigned int j = 1; j < length_next; j++) {
 					const Reservation& cont_reservation = table->getReservation((i + 1) * offset + j);
 					CPPUNIT_ASSERT_EQUAL(communication_partner_id, cont_reservation.getTarget());
-					CPPUNIT_ASSERT_EQUAL(true, cont_reservation.isRx());
+					CPPUNIT_ASSERT_EQUAL(true, cont_reservation.isRx() || cont_reservation.isRxCont());
 					CPPUNIT_ASSERT_EQUAL(length_next - 1 - j, cont_reservation.getNumRemainingSlots());
 				}
 
