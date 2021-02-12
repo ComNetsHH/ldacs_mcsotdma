@@ -140,6 +140,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void onSlotEnd();
 
+		bool isLinkRenewalPending() const;
+
 	protected:
 		std::vector<uint64_t> scheduleRequests(unsigned int timeout, unsigned int init_offset, unsigned int tx_offset, unsigned int num_attempts) const;
 

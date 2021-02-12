@@ -648,3 +648,7 @@ void LinkManagementEntity::onSlotEnd() {
 			onTimeoutExpiry();
 	}
 }
+
+bool LinkManagementEntity::isLinkRenewalPending() const {
+	return this->link_renewal_pending;
+}

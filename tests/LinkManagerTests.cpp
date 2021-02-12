@@ -175,13 +175,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testTransmissionSlotOnUnestablishedLink() {
-			bool exception_thrown = false;
-			try {
-				link_manager->onTransmissionBurst(1);
-			} catch (const std::exception& e) {
-				exception_thrown = true;
-			}
-			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
+			CPPUNIT_ASSERT(link_manager->onTransmissionBurst(1) == nullptr);
 		}
 
 		void testOnTransmissionSlot() {
@@ -847,7 +841,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				// ... make sure a new request has been sent
 				CPPUNIT_ASSERT_EQUAL(expected_num_sent_packets, phy_layer->outgoing_packets.size());
 				L2Packet* request = phy_layer->outgoing_packets.at(phy_layer->outgoing_packets.size() - 1);
-				CPPUNIT_ASSERT_EQUAL(size_t(2), request->getHeaders().size());
+				CPPUNIT_ASSERT(request->getHeaders().size() >= 2);
 				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request,request->getHeaders().at(1)->frame_type);
 				// Current slot should be used to transmit the request.
 				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager->current_reservation_table->getReservation(0).getAction());
@@ -1147,6 +1141,87 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(false);
 		}
 
+		/** Tests that an initial link request is not merged with application data. */
+		void testInitialRequestDoesntMergeData() {
+			rlc_layer->should_there_be_more_p2p_data = true;
+			mac->notifyOutgoing(512, communication_partner_id);
+			size_t num_slots = 0, max_num_slots = 100;
+			while (phy_layer->outgoing_packets.empty() && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(false, phy_layer->outgoing_packets.empty());
+			L2Packet* init_request = phy_layer->outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), init_request->getHeaders().size());
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, init_request->getHeaders().at(0)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, init_request->getHeaders().at(1)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, init_request->getHeaders().at(2)->frame_type);
+		}
+
+		/** Tests that a renewal request for an established link is merged with application data. */
+		void testRenewalRequestMergesData() {
+			// Establish link.
+			testReservationsAfterFirstDataTx();
+			rlc_layer->should_there_be_more_p2p_data = true;
+			mac->update(*std::min_element(link_manager->lme->scheduled_requests.begin(), link_manager->lme->scheduled_requests.end()) - mac->getCurrentSlot());
+			mac->execute();
+			mac->onSlotEnd();
+			L2Packet* request = phy_layer->outgoing_packets.at(phy_layer->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), request->getHeaders().size());
+			CPPUNIT_ASSERT(request->getBits() <= phy_layer->getCurrentDatarate());
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, request->getHeaders().at(0)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::unicast, request->getHeaders().at(2)->frame_type);
+		}
+
+		/** Tests that also a second renewal request for an established link is merged with application data. */
+		void testSecondRenewalRequestMergesData() {
+			// Establish link.
+			testReservationsAfterFirstDataTx();
+			rlc_layer->should_there_be_more_p2p_data = true;
+			// First request.
+			mac->update(*std::min_element(link_manager->lme->scheduled_requests.begin(), link_manager->lme->scheduled_requests.end()) - mac->getCurrentSlot());
+			mac->execute();
+			mac->onSlotEnd();
+			// Second request.
+			mac->update(*std::min_element(link_manager->lme->scheduled_requests.begin(), link_manager->lme->scheduled_requests.end()) - mac->getCurrentSlot());
+			mac->execute();
+			mac->onSlotEnd();
+			L2Packet* request = phy_layer->outgoing_packets.at(phy_layer->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), request->getHeaders().size());
+			CPPUNIT_ASSERT(request->getBits() <= phy_layer->getCurrentDatarate());
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, request->getHeaders().at(0)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, request->getHeaders().at(1)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::unicast, request->getHeaders().at(2)->frame_type);
+		}
+
+		/** Tests that link replies are never merged with application data. */
+		void testRepliesDontMergeData() {
+			TestEnvironment other_side = TestEnvironment(communication_partner_id, own_id);
+			other_side.phy_layer->connected_phy = phy_layer;
+			phy_layer->connected_phy = other_side.phy_layer;
+			mac->notifyOutgoing(512, communication_partner_id);
+			// Let communication commence for some time.
+			size_t num_slots = 0, max_num_slots = 100;
+			while (other_side.phy_layer->outgoing_packets.size() < 2 && num_slots++ < max_num_slots) {
+				mac->update(1);
+				other_side.mac_layer->update(1);
+				mac->execute();
+				other_side.mac_layer->execute();
+				mac->onSlotEnd();
+				other_side.mac_layer->onSlotEnd();
+			}
+			// Other side should've sent a couple of link replies by now.
+			CPPUNIT_ASSERT(other_side.phy_layer->outgoing_packets.size() >= 2);
+			L2Packet* initial_reply = other_side.phy_layer->outgoing_packets.at(0);
+			L2Packet* renewal_reply = other_side.phy_layer->outgoing_packets.at(1);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), initial_reply->getHeaders().size());
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_reply, initial_reply->getHeaders().at(1)->frame_type);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), renewal_reply->getHeaders().size());
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_reply, renewal_reply->getHeaders().at(1)->frame_type);
+		}
 
 	CPPUNIT_TEST_SUITE(LinkManagerTests);
 			CPPUNIT_TEST(testTrafficEstimate);
@@ -1176,6 +1251,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReceiverTimeout);
 			CPPUNIT_TEST(testReceiverTimeoutNoReceptions);
 			CPPUNIT_TEST(testLinkRenewalReply);
+			CPPUNIT_TEST(testInitialRequestDoesntMergeData);
+			CPPUNIT_TEST(testRenewalRequestMergesData);
+			CPPUNIT_TEST(testSecondRenewalRequestMergesData);
+			CPPUNIT_TEST(testRepliesDontMergeData);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

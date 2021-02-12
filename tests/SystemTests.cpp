@@ -28,6 +28,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ARQLayer* arq_layer_me, * arq_layer_you;
 		MACLayer* mac_layer_me, * mac_layer_you;
 		PHYLayer* phy_layer_me, * phy_layer_you;
+		size_t num_outgoing_bits;
 
 	public:
 		void setUp() override {
@@ -56,6 +57,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			phy_layer_me->connected_phy = phy_layer_you;
 			phy_layer_you->connected_phy = phy_layer_me;
+
+			num_outgoing_bits = 512;
 		}
 
 		void tearDown() override {
@@ -359,6 +362,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			// Link establishment should've worked.
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
@@ -373,12 +377,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
 			num_slots = 0;
 			while (lm_tx->lme->scheduled_requests.size() > lm_tx->lme->max_num_renewal_attempts - 1 && num_slots++ < max_num_slots) {
-				mac_layer_me->update(lm_tx->lme->tx_offset);
-				mac_layer_you->update(lm_tx->lme->tx_offset);
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
 				mac_layer_me->execute();
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			CPPUNIT_ASSERT_EQUAL(true, lm_tx->lme->link_renewal_pending);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_tx->link_establishment_status);
@@ -394,6 +399,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete, lm_tx->link_establishment_status);
@@ -415,6 +421,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_tx->link_establishment_status);
@@ -435,6 +442,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			} while (lm_tx->current_reservation_table->getReservation(0).isIdle());
 
 			// Make sure that all requests target correct slots.
@@ -485,17 +493,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::RX), lm_tx->current_reservation_table->getReservation(lm_tx->lme->tx_offset));
 			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_rx->current_reservation_table->getReservation(lm_tx->lme->tx_offset));
 			// Proceed until the reply has been sent.
-			mac_layer_me->update(lm_tx->lme->tx_offset);
-			mac_layer_you->update(lm_tx->lme->tx_offset);
-			mac_layer_me->execute();
-			mac_layer_you->execute();
-			mac_layer_me->onSlotEnd();
-			mac_layer_you->onSlotEnd();
+			for (size_t i = 0; i < lm_tx->lme->tx_offset; i++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
+			}
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete, lm_tx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_rx->link_establishment_status);
 			// Proceed until the link is renewed.
@@ -507,6 +519,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_tx->link_establishment_status);
@@ -518,6 +531,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_rx->lme->scheduled_requests.size());
 
 //			coutd.setVerbose(false);
+		}
+
+		void testLinkRenewalChannelChangeMultiSlot() {
+			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->updateTrafficEstimate(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkRenewalChannelChange();
+			required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 		}
 
 		void testLinkRenewalSameChannel() {
@@ -1131,21 +1159,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
-//			CPPUNIT_TEST(testBroadcast);
-//			CPPUNIT_TEST(testLinkEstablishment);
-//            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+			CPPUNIT_TEST(testBroadcast);
+			CPPUNIT_TEST(testLinkEstablishment);
+            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
             CPPUNIT_TEST(testLinkExpiry);
 			CPPUNIT_TEST(testLinkExpiryMultiSlot);
-//			CPPUNIT_TEST(testLinkRenewalChannelChange);
-//			CPPUNIT_TEST(testLinkRenewalSameChannel);
-//			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
-//			CPPUNIT_TEST(testLinkExpiringAndLostReply);
-//			CPPUNIT_TEST(testLinkRenewalFails);
-//			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
-//			CPPUNIT_TEST(testSimulatorScenario);
-//			CPPUNIT_TEST(testCommunicateInOtherDirection);
-//			CPPUNIT_TEST(testCommunicateReverseOrder);
-//			CPPUNIT_TEST(testEncapsulatedUnicast);
+			CPPUNIT_TEST(testLinkRenewalChannelChange);
+//			CPPUNIT_TEST(testLinkRenewalChannelChangeMultiSlot);
+			CPPUNIT_TEST(testLinkRenewalSameChannel);
+			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
+			CPPUNIT_TEST(testLinkExpiringAndLostReply);
+			CPPUNIT_TEST(testLinkRenewalFails);
+			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
+			CPPUNIT_TEST(testSimulatorScenario);
+			CPPUNIT_TEST(testCommunicateInOtherDirection);
+			CPPUNIT_TEST(testCommunicateReverseOrder);
+			CPPUNIT_TEST(testEncapsulatedUnicast);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

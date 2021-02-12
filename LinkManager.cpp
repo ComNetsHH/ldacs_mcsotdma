@@ -175,13 +175,11 @@ BeaconPayload* LinkManager::computeBeaconPayload(unsigned long max_bits) const {
 
 L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 	coutd << *this << "::onTransmissionBurst(" << num_slots << " slots) -> ";
-	L2Packet* segment;
+	L2Packet* segment = nullptr;
 	// Prioritize control messages.
-	bool sending_reply = false;
-	if (lme->hasControlMessage()) {
+	bool sending_reply = false, has_control_message = lme->hasControlMessage();
+	if (has_control_message) {
 		coutd << "fetching control message ";
-		if (num_slots > 1) // Control messages should be sent during single slots.
-			throw std::logic_error("LinkManager::onTransmissionBurst would send a control message, but num_slots>1.");
 		segment = lme->getControlMessage();
 		if (segment->getHeaders().size() == 2) {
 			const L2Header* header = segment->getHeaders().at(1);
@@ -197,17 +195,30 @@ L2Packet* LinkManager::onTransmissionBurst(unsigned int num_slots) {
 				throw std::logic_error("LinkManager::onTransmissionBurst for non-reply and non-request control message.");
 		} else
 			throw std::logic_error("LinkManager::onTransmissionBurst has a control message with too many or too few headers.");
-		// If there are none, a new data packet can be sent.
 	} else {
 		// Non-control messages can only be sent on established links.
 		if (link_establishment_status == Status::link_not_established)
-			throw std::runtime_error("LinkManager::onTransmissionBurst for link status: " + std::to_string(link_establishment_status));
+			return nullptr;
 		// Query PHY for the current datarate.
 		unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
 		unsigned long num_bits = datarate * num_slots; // bits
 		// Query ARQ for a new segment.
 		coutd << "requesting " << num_bits << " bits." << std::endl;
 		segment = mac->requestSegment(num_bits, getLinkId());
+	}
+
+	// In some cases, application data can be appended to a control message, such as
+	// (1) this is the link initiator AND the link is established
+	// (2) this is the link initiator AND the link is being renewed
+	// (3) this is the link initiator AND the link renewal has concluded
+	if (is_link_initiator && has_control_message && (link_establishment_status == link_established || (link_establishment_status == awaiting_reply && lme->isLinkRenewalPending()) || link_establishment_status == link_renewal_complete)) {
+		unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
+		unsigned long num_bits = datarate * num_slots - segment->getBits(); // bits
+		coutd << "requesting additional " << num_bits << " bits from upper layer to append to control message." << std::endl;
+		L2Packet* data_segment = mac->requestSegment(num_bits, getLinkId());
+		for (size_t i = 1; i < data_segment->getHeaders().size(); i++)
+			segment->addPayload(data_segment->getHeaders().at(i)->copy(), data_segment->getPayloads().at(i)->copy());
+		delete data_segment;
 	}
 
 	assert(segment->getHeaders().size() > 1 && "LinkManager::onTransmissionBurst received segment with <=1 headers.");
