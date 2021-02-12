@@ -327,7 +327,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
-		void testLinkIsExpiringMultiSlot() {
+		void testLinkExpiryMultiSlot() {
 			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
 			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
 			// Update traffic estimate s.t. multi-slot bursts should be used.
@@ -338,7 +338,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			// Now do the other tests.
 			testLinkExpiry();
-			// E
 		}
 
 		/**
@@ -1136,7 +1135,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			CPPUNIT_TEST(testLinkEstablishment);
 //            CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
             CPPUNIT_TEST(testLinkExpiry);
-//			CPPUNIT_TEST(testLinkIsExpiringMultiSlot);
+			CPPUNIT_TEST(testLinkExpiryMultiSlot);
 //			CPPUNIT_TEST(testLinkRenewalChannelChange);
 //			CPPUNIT_TEST(testLinkRenewalSameChannel);
 //			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
