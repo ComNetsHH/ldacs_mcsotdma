@@ -336,9 +336,8 @@ void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Pay
 
 void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int timeout = header->timeout;
-	unsigned int length_next = header->length_next;
 	unsigned int offset = header->offset;
-	coutd << "timeout=" << timeout << " length_next=" << length_next << " offset=" << offset << " -> ";
+	coutd << "timeout=" << timeout << " offset=" << offset << " -> ";
 	if (link_establishment_status == link_not_established && timeout == 0) {
 		coutd << "unestablished link and zero timeout, so not processing this further -> ";
 		return;
@@ -361,15 +360,10 @@ void LinkManager::processIncomingBase(L2HeaderBase*& header) {
 	} else
 		coutd << "(unchanged@" << lme->getTxOffset() << ")";
 	coutd << ", length_next:";
-	if (lme->getTxBurstSlots() != length_next) {
-		coutd << lme->getTxBurstSlots() << "->" << length_next << " ";
-		lme->setTxBurstSlots(length_next);
-	} else
-		coutd << "(unchanged@" << lme->getTxBurstSlots() << ") -> ";
 	coutd << "updating reservations: ";
 	// This is an incoming packet, so we must've been listening.
 	// Mark future slots as RX slots, too.
-	markReservations(timeout - 1, 0, offset, length_next, header->icao_src_id, Reservation::RX);
+	markReservations(timeout - 1, 0, offset, lme->getTxBurstSlots(), header->icao_src_id, Reservation::RX);
 	coutd << " -> ";
 }
 

@@ -149,6 +149,10 @@ class Reservation {
 				str = "TX_CONT";
 				break;
 			}
+			case Reservation::RX_CONT: {
+				str = "RX_CONT";
+				break;
+			}
 			case Reservation::LOCKED: {
 				str = "LOCKED";
 				break;

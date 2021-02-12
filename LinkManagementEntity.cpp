@@ -48,7 +48,7 @@ size_t LinkManagementEntity::clearPendingRequestReservations(const std::map<cons
 					coutd << "f=" << *proposed_channel << ",t=" << normalized_offset << ":" << *reservation;
 //					if (reservation->isIdle())
 //						throw std::runtime_error("LinkManagementEntity::clearPendingRequestReservations should clear a pending reservation, but the action was " + std::to_string(reservation->getAction()) + ".");
-					table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+					table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE, tx_burst_num_slots - 1));
 					coutd << "->idle ";
 					num_removed++;
 				}
@@ -187,6 +187,7 @@ void LinkManagementEntity::onTimeoutExpiry() {
 
 void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
                                               const ProposalPayload*& payload, const MacId& origin) {
+	setTxBurstSlots(header->length_next);
 	if (owner->link_establishment_status == LinkManager::link_not_established)
 		processInitialRequest(header, payload, origin);
 	else
@@ -256,8 +257,8 @@ void LinkManagementEntity::processRenewalRequest(const L2HeaderLinkEstablishment
 		const FrequencyChannel* selected_channel = reply_payload->proposed_resources.begin()->first;
 		unsigned int expected_data_tx_slot = reply_payload->proposed_resources[selected_channel].at(0) + tx_offset;
 		ReservationTable* selected_table = owner->reservation_manager->getReservationTable(selected_channel);
-		coutd << "marking RX slots of new link (" << *selected_channel << ", first offset " << expected_data_tx_slot << ") -> ";
-		std::vector<unsigned int> reservation_offsets = owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX));
+		coutd << "marking RX slots of new link (" << *selected_channel << ", first offset " << expected_data_tx_slot << ", burst_length " << tx_burst_num_slots << ") -> ";
+		std::vector<unsigned int> reservation_offsets = owner->markReservations(selected_table, default_tx_timeout, expected_data_tx_slot - tx_offset, tx_offset, Reservation(owner->link_id, Reservation::Action::RX, tx_burst_num_slots - 1));
 		// Remember the reservations we've just made, so that a later request could delete these again if necessary.
 		last_proposed_resources[selected_channel] = reservation_offsets;
 		last_proposal_absolute_time = owner->mac->getCurrentSlot() + tx_offset;
@@ -555,8 +556,8 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
 	request_header->offset = tx_offset;
 	request_header->timeout = tx_timeout;
 	// Remember this request's number of slots.
-	tx_burst_num_slots = owner->estimateCurrentNumSlots();
-	request_header->length_next = tx_burst_num_slots;
+	setTxBurstSlots(owner->estimateCurrentNumSlots());
+	request_header->length_next = getTxBurstSlots();
 	coutd << "populate link request: " << *request_header << " -> ";
 	// Compute a current proposal.
 	unsigned int min_offset;
