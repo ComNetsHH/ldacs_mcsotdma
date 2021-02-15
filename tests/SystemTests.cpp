@@ -812,18 +812,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			auto next_request = *std::min_element(lm_tx->lme->scheduled_requests.begin(), lm_tx->lme->scheduled_requests.end());
 			// Proceed to the burst *before* the request is sent.
 //			coutd.setVerbose(true);
 			CPPUNIT_ASSERT(next_request > mac_layer_me->getCurrentSlot() + lm_tx->lme->tx_offset);
 			while (next_request > mac_layer_me->getCurrentSlot() + lm_tx->lme->tx_offset) {
-				mac_layer_me->update(lm_tx->lme->tx_offset);
-				mac_layer_you->update(lm_tx->lme->tx_offset);
-				mac_layer_me->execute();
-				mac_layer_you->execute();
-				mac_layer_me->onSlotEnd();
-				mac_layer_you->onSlotEnd();
+				for (size_t t = 0; t < lm_tx->lme->tx_offset; t++) {
+					mac_layer_me->update(1);
+					mac_layer_you->update(1);
+					mac_layer_me->execute();
+					mac_layer_you->execute();
+					mac_layer_me->onSlotEnd();
+					mac_layer_you->onSlotEnd();
+					mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
+				}
 			}
 			// Make sure it hasn't been sent yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
@@ -831,22 +835,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer_me->connected_phy = nullptr;
 			phy_layer_you->connected_phy = nullptr;
 			// Proceed to the request slot.
-			mac_layer_me->update(lm_tx->lme->tx_offset);
-			mac_layer_you->update(lm_tx->lme->tx_offset);
-			mac_layer_me->execute();
-			mac_layer_you->execute();
-			mac_layer_me->onSlotEnd();
-			mac_layer_you->onSlotEnd();
-			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts - 1), lm_tx->lme->scheduled_requests.size());
-			// Proceed to the next request.
-			next_request = *std::min_element(lm_tx->lme->scheduled_requests.begin(), lm_tx->lme->scheduled_requests.end());
-			while (next_request > mac_layer_me->getCurrentSlot()) {
-				mac_layer_me->update(lm_tx->lme->tx_offset);
-				mac_layer_you->update(lm_tx->lme->tx_offset);
+			for (size_t t = 0; t < lm_tx->lme->tx_offset; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
 				mac_layer_me->execute();
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts - 1), lm_tx->lme->scheduled_requests.size());
+			// Proceed to the next request.
+			next_request = *std::min_element(lm_tx->lme->scheduled_requests.begin(), lm_tx->lme->scheduled_requests.end());
+			while (next_request > mac_layer_me->getCurrentSlot()) {
+				for (size_t t = 0; t < lm_tx->lme->tx_offset; t++) {
+					mac_layer_me->update(1);
+					mac_layer_you->update(1);
+					mac_layer_me->execute();
+					mac_layer_you->execute();
+					mac_layer_me->onSlotEnd();
+					mac_layer_you->onSlotEnd();
+					mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
+				}
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_tx->lme->scheduled_requests.size());
 			// Reconnect.
@@ -855,38 +865,62 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Last request should be received.
 			next_request = *std::min_element(lm_tx->lme->scheduled_requests.begin(), lm_tx->lme->scheduled_requests.end());
 			while (next_request > mac_layer_me->getCurrentSlot()) {
-				mac_layer_me->update(lm_tx->lme->tx_offset);
-				mac_layer_you->update(lm_tx->lme->tx_offset);
-				mac_layer_me->execute();
-				mac_layer_you->execute();
-				mac_layer_me->onSlotEnd();
-				mac_layer_you->onSlotEnd();
+				for (size_t t = 0; t < lm_tx->lme->tx_offset; t++) {
+					mac_layer_me->update(1);
+					mac_layer_you->update(1);
+					mac_layer_me->execute();
+					mac_layer_you->execute();
+					mac_layer_me->onSlotEnd();
+					mac_layer_you->onSlotEnd();
+					mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
+				}
 			}
 			// ALl requests are sent.
 			CPPUNIT_ASSERT_EQUAL(true, lm_tx->lme->scheduled_requests.empty());
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_tx->link_establishment_status);
 			// Proceed until reply is sent.
-			mac_layer_me->update(lm_tx->lme->tx_offset);
-			mac_layer_you->update(lm_tx->lme->tx_offset);
-			mac_layer_me->execute();
-			mac_layer_you->execute();
-			mac_layer_me->onSlotEnd();
-			mac_layer_you->onSlotEnd();
+			for (size_t t = 0; t < lm_tx->lme->tx_offset; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
+			}
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_tx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_rx->link_establishment_status);
 			// This was the last reserved slot, so the next one will apply the link renewal.
-			mac_layer_me->update(lm_tx->lme->tx_offset);
-			mac_layer_you->update(lm_tx->lme->tx_offset);
-			mac_layer_me->execute();
-			mac_layer_you->execute();
-			mac_layer_me->onSlotEnd();
-			mac_layer_you->onSlotEnd();
+			for (size_t t = 0; t < lm_tx->lme->tx_offset; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
+			}
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_tx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_rx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
 			CPPUNIT_ASSERT_EQUAL(*lm_tx->current_channel, *lm_rx->current_channel);
 			CPPUNIT_ASSERT_EQUAL(false, lm_tx->lme->link_renewal_pending);
 			CPPUNIT_ASSERT_EQUAL(false, lm_rx->lme->link_renewal_pending);
+		}
+
+		void testLinkExpiringAndLostRequestMultiSlot() {
+			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->updateTrafficEstimate(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkExpiringAndLostRequest();
+			required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 		}
 
 		/**
@@ -910,6 +944,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			auto next_request = *std::min_element(lm_tx->lme->scheduled_requests.begin(), lm_tx->lme->scheduled_requests.end());
 			// Proceed to the burst *before* the request is sent.
@@ -922,6 +957,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			// Make sure it hasn't been sent yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
@@ -934,6 +970,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer_you->execute();
 			mac_layer_me->onSlotEnd();
 			mac_layer_you->onSlotEnd();
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts - 1), lm_tx->lme->scheduled_requests.size());
 			// Proceed to the next request.
 			next_request = *std::min_element(lm_tx->lme->scheduled_requests.begin(), lm_tx->lme->scheduled_requests.end());
@@ -944,6 +981,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			// Proceed to reply, which is still lost.
 			mac_layer_me->update(lm_tx->lme->tx_offset);
@@ -952,6 +990,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer_you->execute();
 			mac_layer_me->onSlotEnd();
 			mac_layer_you->onSlotEnd();
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_tx->lme->scheduled_requests.size());
 			// Reconnect -> last reply should be received.
 			phy_layer_you->connected_phy = phy_layer_me;
@@ -963,6 +1002,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 
 			// ALl requests are sent.
@@ -975,6 +1015,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer_you->execute();
 			mac_layer_me->onSlotEnd();
 			mac_layer_you->onSlotEnd();
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_tx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_rx->link_establishment_status);
 			// This was the last reserved slot, so the next one will apply the link renewal.
@@ -984,6 +1025,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer_you->execute();
 			mac_layer_me->onSlotEnd();
 			mac_layer_you->onSlotEnd();
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_tx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_rx->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
@@ -998,6 +1040,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 
 			// Reservations made at TX and RX from earlier requests should've been cleared.
@@ -1009,14 +1052,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					coutd << "t=" << t << " f=" << *channel << ": " << res_tx << " | " << res_rx << std::endl;
 					if (*channel == *lm_tx->current_channel) {
 						if (!res_tx.isIdle()) {
-							num_res_tx++;
-							CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), res_rx);
-							CPPUNIT_ASSERT(t % lm_tx->lme->tx_offset == 0);
+							CPPUNIT_ASSERT(res_rx == Reservation(own_id, Reservation::RX) || res_rx == Reservation(own_id, Reservation::RX_CONT));
+							// Only count burst starts...
+							if (res_rx == Reservation(own_id, Reservation::RX)) {
+								CPPUNIT_ASSERT(t % lm_tx->lme->tx_offset == 0);
+								num_res_tx++;
+							}
 						}
 						if (!res_rx.isIdle()) {
-							num_res_rx++;
-							CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), res_tx);
-							CPPUNIT_ASSERT(t % lm_tx->lme->tx_offset == 0);
+							CPPUNIT_ASSERT(res_tx == Reservation(communication_partner_id, Reservation::TX) || res_tx == Reservation(communication_partner_id, Reservation::TX_CONT));
+							if (res_tx == Reservation(communication_partner_id, Reservation::TX)) {
+								CPPUNIT_ASSERT(t % lm_tx->lme->tx_offset == 0);
+								num_res_rx++;
+							}
 						}
 					} else {
 						if (!res_tx.isIdle())
@@ -1034,8 +1082,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), num_res_additional_rx);
 		}
 
+		void testLinkExpiringAndLostReplyMultiSlot() {
+			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->updateTrafficEstimate(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkExpiringAndLostReply();
+			required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+		}
+
 		/**
-		 * TODO
 		 * Link timeout threshold is reached.
 		 * Ensures that if no negotiation has happened prior to expiry, the link is reset to unestablished.
 		 */
@@ -1047,7 +1109,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			size_t num_slots = 0, max_num_slots = 100;
 			LinkManager* lm_tx = mac_layer_me->getLinkManager(communication_partner_id),
 					*lm_rx = mac_layer_you->getLinkManager(own_id);
-			mac_layer_me->notifyOutgoing(512, communication_partner_id);
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			while (lm_rx->link_establishment_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
@@ -1055,6 +1117,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 
@@ -1063,13 +1126,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer_you->connected_phy = nullptr;
 
 			num_slots = 0;
-			while (lm_tx->link_establishment_status != LinkManager::link_not_established) {
-				mac_layer_me->update(lm_tx->lme->tx_offset);
-				mac_layer_you->update(lm_tx->lme->tx_offset);
-				mac_layer_me->execute();
-				mac_layer_you->execute();
-				mac_layer_me->onSlotEnd();
-				mac_layer_you->onSlotEnd();
+			while (lm_rx->link_establishment_status != LinkManager::link_not_established && num_slots++ < max_num_slots) {
+					mac_layer_me->update(1);
+					mac_layer_you->update(1);
+					mac_layer_me->execute();
+					mac_layer_you->execute();
+					mac_layer_me->onSlotEnd();
+					mac_layer_you->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_tx->link_establishment_status);
@@ -1080,7 +1143,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(lm_rx->current_reservation_table == nullptr);
 
 			for (auto channel : mac_layer_me->reservation_manager->getP2PFreqChannels()) {
-				for (size_t t = 1; t < planning_horizon; t++) {
+				for (size_t t = lm_tx->lme->tx_burst_num_slots + 0; t < planning_horizon; t++) {
 					const Reservation& res_tx = mac_layer_me->getReservationManager()->getReservationTable(channel)->getReservation(t);
 					const Reservation& res_rx = mac_layer_you->getReservationManager()->getReservationTable(channel)->getReservation(t);
 					if (!res_tx.isIdle() || !res_rx.isIdle())
@@ -1089,6 +1152,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_rx);
 				}
 			}
+		}
+
+		/** TODO */
+		void testLinkRenewalFailsMultiSlot() {
+			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->updateTrafficEstimate(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkRenewalFails();
+			required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 		}
 
 		void testLinkRenewalAfterExpiry() {
@@ -1226,8 +1305,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkRenewalSameChannel);
 			CPPUNIT_TEST(testLinkRenewalSameChannelMultiSlot);
 			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
+			CPPUNIT_TEST(testLinkExpiringAndLostRequestMultiSlot);
 			CPPUNIT_TEST(testLinkExpiringAndLostReply);
+			CPPUNIT_TEST(testLinkExpiringAndLostReplyMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalFails);
+//			CPPUNIT_TEST(testLinkRenewalFailsMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 			CPPUNIT_TEST(testSimulatorScenario);
 			CPPUNIT_TEST(testCommunicateInOtherDirection);
