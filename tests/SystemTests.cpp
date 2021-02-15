@@ -682,7 +682,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
 				mac_layer_me->notifyOutgoing(num_outgoing_bits, communication_partner_id);
-			} while (lm_tx->current_reservation_table->getReservation(0).isIdle());
+			} while (lm_tx->current_reservation_table->getReservation(0).isIdle() || lm_tx->current_reservation_table->getReservation(0).isTxCont());
 
 			// Make sure that all requests target correct slots.
 			for (size_t t = 0; t <= lm_tx->lme->getExpiryOffset(); t++) {
@@ -715,9 +715,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 				coutd << std::endl;
 				// Matching reservations.
+				unsigned int burst_length = lm_tx->lme->tx_burst_num_slots;
 				if (t % lm_tx->lme->tx_offset == 0) {
-					CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), reservation_tx);
-					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), lm_rx->current_reservation_table->getReservation(t));
+					for (size_t i = 0; i < burst_length; i++) {
+						coutd << "i=" << i << ": " << lm_tx->current_reservation_table->getReservation(t+i) << std::endl;
+						if (i == 0) {
+							CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX), reservation_tx);
+							CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), reservation_rx);
+						} else {
+							CPPUNIT_ASSERT_EQUAL(Reservation(communication_partner_id, Reservation::TX_CONT), lm_tx->current_reservation_table->getReservation(t+i));
+							CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX_CONT), lm_rx->current_reservation_table->getReservation(t+i));
+						}
+					}
 				}
 			}
 
@@ -767,6 +776,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_rx->lme->scheduled_requests.size());
 //			coutd.setVerbose(false);
+		}
+
+		void testLinkRenewalSameChannelMultiSlot() {
+			LinkManager* lm_me = mac_layer_me->getLinkManager(communication_partner_id);
+			LinkManager* lm_you = mac_layer_you->getLinkManager(own_id);
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->updateTrafficEstimate(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkRenewalSameChannel();
 		}
 
 		/**
@@ -1202,6 +1224,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkRenewalChannelChange);
 			CPPUNIT_TEST(testLinkRenewalChannelChangeMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalSameChannel);
+			CPPUNIT_TEST(testLinkRenewalSameChannelMultiSlot);
 			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
 			CPPUNIT_TEST(testLinkExpiringAndLostReply);
 			CPPUNIT_TEST(testLinkRenewalFails);
