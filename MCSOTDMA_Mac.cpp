@@ -5,6 +5,7 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "BCLinkManager.hpp"
+#include "P2PLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
 
@@ -171,8 +172,15 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
 			link_manager = new BCLinkManager(internal_id, reservation_manager, this);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
-		} else
-			link_manager = new OldLinkManager(internal_id, reservation_manager, this);
+		} else {
+			if (use_new_link_manager)
+				link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
+			else
+				link_manager = new OldLinkManager(internal_id, reservation_manager, this);
+		}
+		link_manager->linkTxTable(reservation_manager->getTxTable());
+		for (ReservationTable* rx_table : reservation_manager->getRxTables())
+			link_manager->linkRxTable(rx_table);
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new OldLinkManager, but there already was one.");

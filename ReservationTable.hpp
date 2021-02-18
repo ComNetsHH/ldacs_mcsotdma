@@ -104,7 +104,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	    [[deprecated]]
 		bool lock(const std::vector<int32_t>& slot_offsets, bool lock_tx, bool lock_rx);
 
-		bool lock(unsigned int slot_offset, unsigned int burst_length, bool lock_tx, bool lock_rx);
+		void lock(unsigned int slot_offset);
 
 		/**
 		 * @param start_offset The minimum slot offset to start the search.
@@ -201,6 +201,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void linkReceiverReservationTable(ReservationTable* rx_table);
 
+		bool canLock(unsigned int slot_offset) const;
+
 	protected:
 		bool isValid(int32_t slot_offset) const;
 
@@ -248,9 +250,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int findEarliestIdleSlots(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const;
 
+		[[deprecated]]
 		bool canLock(const std::vector<int32_t>& slot_offsets) const;
-
-		bool canLock(unsigned int slot_offset, unsigned int burst_length) const;
 
 	protected:
 		/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */

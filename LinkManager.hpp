@@ -6,7 +6,12 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP
 
 #include <random>
+#include <MacId.hpp>
+#include <L2Packet.hpp>
 #include "coutdebug.hpp"
+#include "FrequencyChannel.hpp"
+#include "ReservationTable.hpp"
+#include "ReservationManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -88,23 +93,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		virtual void onSlotEnd() = 0;
 
-		void assign(const FrequencyChannel* channel) {
-			if (current_channel == nullptr && current_reservation_table == nullptr) {
-				this->current_channel = channel;
-				this->current_reservation_table = reservation_manager->getReservationTable(channel);
-				coutd << "assigned channel ";
-				if (channel == nullptr)
-					coutd << "NONE";
-				else
-					coutd << *channel;
-				coutd << " -> ";
-			} else
-				coutd << *this << "::assign, but channel or reservation table are already assigned; ignoring -> ";
-		}
+		void assign(const FrequencyChannel* channel);
 
 		MacId getLinkId() const {
 			return link_id;
 		}
+
+		void linkTxTable(ReservationTable *tx_table) {
+			tx_tables.push_back(tx_table);
+		}
+
+		void linkRxTable(ReservationTable *rx_table) {
+			rx_tables.push_back(rx_table);
+		}
+
+	protected:
+		/**
+		 * Locks given ReservationTable, as well as transmitter and receiver resources for the given candidate slots.
+		 * @param start_slots Starting slot offsets.
+		 * @param burst_length Number of first slots to lock the transmitter for.
+		 * @param burst_length_tx Number of trailing slots to lock the receiver for
+		 * @param table ReservationTable in which slots should be locked.
+		 */
+		void lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table);
 
 	protected:
 		MacId link_id;
@@ -112,6 +123,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ReservationManager *reservation_manager = nullptr;
 		const FrequencyChannel *current_channel = nullptr;
 		ReservationTable *current_reservation_table = nullptr;
+		std::vector<ReservationTable*> tx_tables;
+		std::vector<ReservationTable*> rx_tables;
 		/** Link establishment status. */
 		Status link_establishment_status;
 		std::random_device* random_device;

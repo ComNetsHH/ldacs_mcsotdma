@@ -18,6 +18,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class MCSOTDMA_Mac : public IMac {
 	public:
+		bool use_new_link_manager = false;
+
 		friend class MCSOTDMA_MacTests;
 
 		friend class MCSOTDMA_PhyTests;

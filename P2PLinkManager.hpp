@@ -12,6 +12,9 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	class P2PLinkManager : public LinkManager {
+
+		friend class P2PLinkManagerTests;
+
 	public:
 		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
 

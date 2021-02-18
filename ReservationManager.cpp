@@ -184,3 +184,11 @@ void ReservationManager::addReceiverReservationTable(ReservationTable*& rx_table
 std::vector<FrequencyChannel*>& ReservationManager::getP2PFreqChannels() {
 	return p2p_frequency_channels;
 }
+
+const std::vector<ReservationTable*>& ReservationManager::getRxTables() const {
+	return receiver_reservation_tables;
+}
+
+ReservationTable* ReservationManager::getTxTable() const {
+	return transmitter_table;
+}

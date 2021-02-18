@@ -64,10 +64,10 @@ class Reservation {
 
 		void setAction(Action action);
 
-		/**
-		 * @return Whether locking succeeded.
-		 */
-		bool lock();
+//		/**
+//		 * @return Whether locking succeeded.
+//		 */
+//		bool lock();
 
 		/**
 		 * @return Number of remaining slots this transmission burst continues for.

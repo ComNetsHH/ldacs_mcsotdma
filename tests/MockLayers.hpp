@@ -221,9 +221,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MACLayer* mac_layer;
 		PHYLayer* phy_layer;
 
-		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id) : own_id(own_id), communication_partner_id(communication_partner_id) {
+		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id, bool use_new_link_manager) : own_id(own_id), communication_partner_id(communication_partner_id) {
 			phy_layer = new PHYLayer(planning_horizon);
 			mac_layer = new MACLayer(own_id, planning_horizon);
+			mac_layer->use_new_link_manager = use_new_link_manager;
 			mac_layer->reservation_manager->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
 			for (ReservationTable*& table : phy_layer->getReceiverReservationTables())
 				mac_layer->reservation_manager->addReceiverReservationTable(table);
@@ -248,6 +249,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer->setUpperLayer(mac_layer);
 			mac_layer->setLowerLayer(phy_layer);
 		}
+
+		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id) : TestEnvironment(own_id, communication_partner_id, false) {}
 
 		virtual ~TestEnvironment() {
 			delete mac_layer;

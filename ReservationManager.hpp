@@ -114,6 +114,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void addReceiverReservationTable(ReservationTable*& rx_table);
 
+		const std::vector<ReservationTable*>& getRxTables() const;
+		ReservationTable* getTxTable() const;
+
 	protected:
 
 		/**

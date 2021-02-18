@@ -75,10 +75,10 @@ bool Reservation::isLocked() const {
 	return action == LOCKED;
 }
 
-bool Reservation::lock() {
-	if (!isIdle())
-		return false;
-	action = LOCKED;
-	return true;
-}
+//bool Reservation::lock() {
+//	if (!isIdle())
+//		return false;
+//	action = LOCKED;
+//	return true;
+//}
 

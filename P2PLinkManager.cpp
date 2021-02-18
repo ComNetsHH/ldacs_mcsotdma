@@ -2,6 +2,7 @@
 // Created by seba on 2/18/21.
 //
 
+#include <set>
 #include "P2PLinkManager.hpp"
 #include "coutdebug.hpp"
 
@@ -36,19 +37,25 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> P2PLinkManager::p2p
 		std::vector<unsigned int> candidate_slots = table->findCandidates(num_slots, min_offset, burst_length, burst_length_tx, is_init);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
-			coutd << slot << " ";
+			coutd << slot << ":" << slot + burst_length - 1 << " ";
 		coutd << " -> ";
 
-		// ... and lock them s.t. future proposals don't consider them.
-		for (unsigned int start_offset : candidate_slots) {
-			bool could_lock = table->lock(start_offset, burst_length_tx, true, false);
-			if (!could_lock)
-				throw std::runtime_error("P2PSlotSelection failed to lock TX resources.");
-			unsigned int burst_length_rx = burst_length - burst_length_tx;
-			could_lock = table->lock(start_offset + burst_length_tx, burst_length_rx, false, true);
-			if (!could_lock)
-				throw std::runtime_error("P2pSlotSelection failed to lock RX resources.");
+		// ... if this is used for an initial link request, then we need to reserve a receiver at each start slot.
+		if (is_init) {
+			for (unsigned int offset : candidate_slots) {
+				bool could_lock_receiver = false;
+				for (auto* rx_table : rx_tables)
+					if (rx_table->canLock(offset)) {
+						rx_table->lock(offset);
+						could_lock_receiver = true;
+						break;
+					}
+				if (!could_lock_receiver)
+					throw std::range_error("P2PLinkManager::p2pSlotSelection cannot reserve any receiver for first slot of burst.");
+			}
 		}
+		// ... and lock them s.t. future proposals don't consider them.
+		lock(candidate_slots, burst_length, burst_length_tx, table);
 		coutd << "locked -> ";
 
 		// Fill proposal.

@@ -11,6 +11,8 @@
 #include "../MCSOTDMA_Mac.hpp"
 #include "../OldLinkManager.hpp"
 #include "MockLayers.hpp"
+#include "../LinkManager.hpp"
+
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
