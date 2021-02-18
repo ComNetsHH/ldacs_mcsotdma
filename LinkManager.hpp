@@ -38,8 +38,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		};
 
 		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
-			  link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-			  random_device(new std::random_device), generator((*random_device)()){}
+		                                                                                                link_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
+		                                                                                                random_device(new std::random_device), generator((*random_device)()){}
 
 	    virtual ~LinkManager() {
 			delete random_device;
@@ -126,7 +126,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<ReservationTable*> tx_tables;
 		std::vector<ReservationTable*> rx_tables;
 		/** Link establishment status. */
-		Status link_establishment_status;
+		Status link_status;
 		std::random_device* random_device;
 		std::mt19937 generator;
 	};

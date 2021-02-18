@@ -17,7 +17,7 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
 		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
 	delete lme;
 	lme = new BCLinkManagementEntity(this);
-	link_establishment_status = link_established;
+	link_status = link_established;
 	// Broadcast reservations don't remain valid.
 	lme->setTxTimeout(0);
 	// Offset to next broadcast will be dynamically chosen.
@@ -40,8 +40,8 @@ L2Packet* BCLinkManager::prepareBeacon() {
 	max_bits -= (base_header->getBits() + beacon_header->getBits());
 	auto* beacon_payload = computeBeaconPayload(max_bits);
 	// Put it together.
-	beacon->addPayload(base_header, nullptr);
-	beacon->addPayload(beacon_header, beacon_payload);
+	beacon->addMessage(base_header, nullptr);
+	beacon->addMessage(beacon_header, beacon_payload);
 	return beacon;
 }
 

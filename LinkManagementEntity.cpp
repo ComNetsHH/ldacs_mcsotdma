@@ -62,8 +62,8 @@ size_t LinkManagementEntity::clearPendingRequestReservations(const std::map<cons
 
 void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload) {
 	// Make sure we're expecting a reply.
-	if (owner->link_establishment_status != owner->Status::awaiting_reply)
-		throw std::runtime_error("OldLinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
+	if (owner->link_status != owner->Status::awaiting_reply)
+		throw std::runtime_error("OldLinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_status) + "'.");
 	assert(payload->proposed_resources.size() == 1);
 
 	// Clear all scheduled requests, as one apparently made it through.
@@ -94,7 +94,7 @@ void LinkManagementEntity::processInitialReply(const L2HeaderLinkEstablishmentRe
 	// Schedule the absolute slots for sending requests.
 	scheduled_requests = scheduleRequests(tx_timeout, 0, tx_offset, max_num_renewal_attempts);
 	coutd << scheduled_requests.size() << " scheduled -> ";
-	owner->link_establishment_status = owner->Status::link_established;
+	owner->link_status = owner->Status::link_established;
 	owner->mac->notifyAboutNewLink(owner->link_id);
 	coutd << "link is now established -> ";
 	established_initial_link_this_slot = true;
@@ -121,19 +121,19 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 		coutd << "and marking TX reservations on " << *next_channel << ": ";
 	}
 	owner->markReservations(next_table, default_tx_timeout, initial_slot_inclusive, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
-	coutd << "link status onSlotStart: " << owner->link_establishment_status << "->" << owner->Status::link_renewal_complete;
-	owner->link_establishment_status = owner->Status::link_renewal_complete;
+	coutd << "link status onSlotStart: " << owner->link_status << "->" << owner->Status::link_renewal_complete;
+	owner->link_status = owner->Status::link_renewal_complete;
 }
 
 bool LinkManagementEntity::decrementTimeout() {
 	// Don't onSlotStart timeout if,
 	// (1) the link is not established right now
-	if (owner->link_establishment_status == OldLinkManager::link_not_established) {
+	if (owner->link_status == OldLinkManager::link_not_established) {
 		coutd << "link not established; not decrementing timeout -> ";
 		return tx_timeout == 0;
 	}
 	// (2) we are in the process of establishment.
-	if ((!link_renewal_pending && owner->link_establishment_status == OldLinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == OldLinkManager::awaiting_data_tx)) {
+	if ((!link_renewal_pending && owner->link_status == OldLinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_status == OldLinkManager::awaiting_data_tx)) {
 		coutd << "link being established; not decrementing timeout -> ";
 		return tx_timeout == 0;
 	}
@@ -161,7 +161,7 @@ bool LinkManagementEntity::decrementTimeout() {
 void LinkManagementEntity::onTimeoutExpiry() {
 	coutd << "timeout reached -> restoring timeout -> ";
 	tx_timeout = default_tx_timeout;
-	if (owner->link_establishment_status == OldLinkManager::link_renewal_complete) {
+	if (owner->link_status == OldLinkManager::link_renewal_complete) {
 		coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
 		owner->reassign(next_channel);
 		// Only schedule request slots if we're the initiator, i.e. have sent requests before.
@@ -170,12 +170,12 @@ void LinkManagementEntity::onTimeoutExpiry() {
 			scheduled_requests = scheduleRequests(tx_timeout, first_slot_of_next_link, tx_offset, max_num_renewal_attempts);
 			first_slot_of_next_link = 0;
 		}
-		coutd << "updating status: " << owner->link_establishment_status << "->" << OldLinkManager::link_established << " -> link renewal complete -> ";
-		owner->link_establishment_status = OldLinkManager::link_established;
+		coutd << "updating status: " << owner->link_status << "->" << OldLinkManager::link_established << " -> link renewal complete -> ";
+		owner->link_status = OldLinkManager::link_established;
 	} else {
-		coutd << "no pending renewal, updating status: " << owner->link_establishment_status << "->" << OldLinkManager::link_not_established << " -> cleared associated channel -> ";
+		coutd << "no pending renewal, updating status: " << owner->link_status << "->" << OldLinkManager::link_not_established << " -> cleared associated channel -> ";
 		owner->reassign(nullptr);
-		owner->link_establishment_status = OldLinkManager::link_not_established;
+		owner->link_status = OldLinkManager::link_not_established;
 		if (!last_proposed_resources.empty())
 			clearPendingRequestReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
 		coutd << " -> link reset -> ";
@@ -189,7 +189,7 @@ void LinkManagementEntity::onTimeoutExpiry() {
 void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
                                               const ProposalPayload*& payload, const MacId& origin) {
 	setTxBurstSlots(header->length_next);
-	if (owner->link_establishment_status == OldLinkManager::link_not_established)
+	if (owner->link_status == OldLinkManager::link_not_established)
 		processInitialRequest(header, payload, origin);
 	else
 		processRenewalRequest(header, payload, origin);
@@ -312,15 +312,15 @@ L2Packet* LinkManagementEntity::prepareRequest() const {
 	bool link_should_be_arq_protected = owner->mac->shouldLinkBeArqProtected(owner->link_id);
 	// Instantiate base header.
 	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
-	request->addPayload(base_header, nullptr);
+	request->addMessage(base_header, nullptr);
 	// If the link is not yet established, the request must be sent on the broadcast channel.
-	if (owner->link_establishment_status == OldLinkManager::link_not_established)
-		request->addPayload(new L2HeaderBroadcast(), nullptr);
+	if (owner->link_status == OldLinkManager::link_not_established)
+		request->addMessage(new L2HeaderBroadcast(), nullptr);
 	// Instantiate request header.
 	MacId dest_id = owner->link_id;
 	auto* request_header = new L2HeaderLinkEstablishmentRequest(dest_id, link_should_be_arq_protected, 0, 0, 0);
 	auto* body = new ProposalPayload(num_proposed_channels, num_proposed_slots);
-	request->addPayload(request_header, body);
+	request->addMessage(request_header, body);
 	request->addCallback(owner);
 	return request;
 }
@@ -329,30 +329,30 @@ L2Packet* LinkManagementEntity::prepareReply(const MacId& destination_id) const 
 	auto* reply = new L2Packet();
 	// Base header.
 	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
-	reply->addPayload(base_header, nullptr);
+	reply->addMessage(base_header, nullptr);
 	// Reply header.
 	auto* reply_header = new L2HeaderLinkEstablishmentReply();
 	reply_header->icao_dest_id = destination_id;
 	// Reply payload will be populated later.
 	auto* reply_payload = new ProposalPayload(1, 1);
-	reply->addPayload(reply_header, reply_payload);
+	reply->addMessage(reply_header, reply_payload);
 	return reply;
 }
 
 
 void LinkManagementEntity::establishLink() const {
 	coutd << "establishing new link... ";
-	if (owner->link_establishment_status == owner->link_not_established) {
+	if (owner->link_status == owner->link_not_established) {
 		// Prepare a link request and inject it into the RLC sublayer above.
 		L2Packet* request = prepareRequest();
 		coutd << "prepared link establishment request... ";
 		owner->mac->injectIntoUpper(request);
 		coutd << "injected into upper layer... ";
 		// We are now awaiting a reply.
-		owner->link_establishment_status = OldLinkManager::Status::awaiting_reply;
+		owner->link_status = OldLinkManager::Status::awaiting_reply;
 		coutd << "updated status to 'awaiting_reply'." << std::endl;
 	} else
-		throw std::runtime_error("OldLinkManager::establishLink for link status: " + std::to_string(owner->link_establishment_status));
+		throw std::runtime_error("OldLinkManager::establishLink for link status: " + std::to_string(owner->link_status));
 }
 
 L2Packet* LinkManagementEntity::getControlMessage() {

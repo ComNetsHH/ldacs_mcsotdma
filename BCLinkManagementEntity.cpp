@@ -19,7 +19,7 @@ void BCLinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentR
 	// Forward request to the corresponding OldLinkManager.
 	coutd << "forwarding link request to OldLinkManager(" << origin << ") -> ";
 	auto* request = new L2Packet();
-	request->addPayload(new L2HeaderBase(origin, 0, 0, 0), nullptr);
-	request->addPayload(new L2HeaderLinkEstablishmentRequest(*header), payload->copy());
+	request->addMessage(new L2HeaderBase(origin, 0, 0, 0), nullptr);
+	request->addMessage(new L2HeaderLinkEstablishmentRequest(*header), payload->copy());
 	owner->mac->getLinkManager(origin)->onPacketReception(request);
 }

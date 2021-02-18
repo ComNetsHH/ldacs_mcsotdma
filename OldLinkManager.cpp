@@ -25,21 +25,21 @@ void OldLinkManager::notifyOutgoing(unsigned long num_bits) {
 
 	// Check establishment status.
 	// If the link is established...
-	if (link_establishment_status == Status::link_established || link_establishment_status == link_renewal_complete) {
+	if (link_status == Status::link_established || link_status == link_renewal_complete) {
 		coutd << ": link already established";
 		// If the link is not yet established...
 	} else {
 		// ... and we've created the request and are just waiting for a reply ...
-		if (link_establishment_status == Status::awaiting_reply) {
+		if (link_status == Status::awaiting_reply) {
 			coutd << ": link is being established and currently awaiting reply. Doing nothing." << std::endl;
 			// ... then do nothing.
 			return;
 			// ... and link establishment has not yet been started ...
-		} else if (link_establishment_status == Status::link_not_established) {
+		} else if (link_status == Status::link_not_established) {
 			coutd << ": link is not established -> ";
 			lme->establishLink();
 		} else {
-			throw std::runtime_error("Unsupported OldLinkManager::notifyOutgoing with status: '" + std::to_string(link_establishment_status) + "'.");
+			throw std::runtime_error("Unsupported OldLinkManager::notifyOutgoing with status: '" + std::to_string(link_status) + "'.");
 		}
 	}
 }
@@ -180,11 +180,11 @@ L2Packet* OldLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 			const L2Header* header = segment->getHeaders().at(1);
 			if (header->frame_type == L2Header::FrameType::link_establishment_request) {
 				coutd << "[request]... ";
-				link_establishment_status = awaiting_reply;
+				link_status = awaiting_reply;
 				lme->onRequestTransmission();
 			} else if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
 				coutd << "[reply]... ";
-				link_establishment_status = (link_establishment_status == link_not_established ? awaiting_data_tx : link_renewal_complete);
+				link_status = (link_status == link_not_established ? awaiting_data_tx : link_renewal_complete);
 				sending_reply = true;
 			} else
 				throw std::logic_error("OldLinkManager::onTransmissionBurstStart for non-reply and non-request control message.");
@@ -192,7 +192,7 @@ L2Packet* OldLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 			throw std::logic_error("OldLinkManager::onTransmissionBurstStart has a control message with too many or too few headers.");
 	} else {
 		// Non-control messages can only be sent on established links.
-		if (link_establishment_status == Status::link_not_established)
+		if (link_status == Status::link_not_established)
 			return nullptr;
 		// Query PHY for the current datarate.
 		unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
@@ -206,13 +206,13 @@ L2Packet* OldLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 	// (1) this is the link initiator AND the link is established
 	// (2) this is the link initiator AND the link is being renewed
 	// (3) this is the link initiator AND the link renewal has concluded
-	if (is_link_initiator && has_control_message && (link_establishment_status == link_established || (link_establishment_status == awaiting_reply && lme->isLinkRenewalPending()) || link_establishment_status == link_renewal_complete)) {
+	if (is_link_initiator && has_control_message && (link_status == link_established || (link_status == awaiting_reply && lme->isLinkRenewalPending()) || link_status == link_renewal_complete)) {
 		unsigned long datarate = mac->getCurrentDatarate(); // bits/slot
 		unsigned long num_bits = datarate * burst_length - segment->getBits(); // bits
 		coutd << "requesting additional " << num_bits << " bits from upper layer to append to control message." << std::endl;
 		L2Packet* data_segment = mac->requestSegment(num_bits, getLinkId());
 		for (size_t i = 1; i < data_segment->getHeaders().size(); i++)
-			segment->addPayload(data_segment->getHeaders().at(i)->copy(), data_segment->getPayloads().at(i)->copy());
+			segment->addMessage(data_segment->getHeaders().at(i)->copy(), data_segment->getPayloads().at(i)->copy());
 		delete data_segment;
 	}
 
@@ -319,12 +319,12 @@ void OldLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 		// ... and if we are ...
 	} else {
 		// ... onSlotStart status if we've been expecting it.
-		if (link_establishment_status == awaiting_data_tx) {
+		if (link_status == awaiting_data_tx) {
 			coutd << "link is now established -> ";
-			link_establishment_status = link_established;
+			link_status = link_established;
 			mac->notifyAboutNewLink(link_id);
-		} else if (link_establishment_status != link_established && link_establishment_status != link_renewal_complete) {
-			throw std::runtime_error("OldLinkManager::processIncomingUnicast for some status other than 'link_established' or 'awaiting_data_tx' or 'link_renewal_complete': " + std::to_string(link_establishment_status));
+		} else if (link_status != link_established && link_status != link_renewal_complete) {
+			throw std::runtime_error("OldLinkManager::processIncomingUnicast for some status other than 'link_established' or 'awaiting_data_tx' or 'link_renewal_complete': " + std::to_string(link_status));
 		}
 	}
 }
@@ -333,11 +333,11 @@ void OldLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int timeout = header->timeout;
 	unsigned int offset = header->offset;
 	coutd << "timeout=" << timeout << " offset=" << offset << " -> ";
-	if (link_establishment_status == link_not_established && timeout == 0) {
+	if (link_status == link_not_established && timeout == 0) {
 		coutd << "unestablished link and zero timeout, so not processing this further -> ";
 		return;
 	}
-	if (link_establishment_status == awaiting_reply) {
+	if (link_status == awaiting_reply) {
 		coutd << "awaiting reply, so not processing this further -> ";
 		return;
 	}

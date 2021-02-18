@@ -77,7 +77,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// No injected link request yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc->control_message_injections.size());
 			mac->notifyOutgoing(1024, communication_partner_id);
-			CPPUNIT_ASSERT(((OldLinkManager*) mac->getLinkManager(communication_partner_id))->link_establishment_status == OldLinkManager::Status::awaiting_reply);
+			CPPUNIT_ASSERT(((OldLinkManager*) mac->getLinkManager(communication_partner_id))->link_status == OldLinkManager::Status::awaiting_reply);
 			// Now there should be one.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc->control_message_injections.size());
 		}
@@ -88,7 +88,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// No outgoing packets yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->outgoing_packets.size());
 			auto link_manager = (OldLinkManager*) mac->getLinkManager(communication_partner_id);
-			link_manager->link_establishment_status = OldLinkManager::link_established;
+			link_manager->link_status = OldLinkManager::link_established;
 			reservation_manager->p2p_reservation_tables.at(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
 			mac->update(1);
 			mac->execute();

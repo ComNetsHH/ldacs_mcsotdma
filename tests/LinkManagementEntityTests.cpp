@@ -96,7 +96,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testPrepareRequestEstablished() {
-			lme->owner->link_establishment_status = OldLinkManager::link_established;
+			lme->owner->link_status = OldLinkManager::link_established;
 			L2Packet* request = lme->prepareRequest();
 			CPPUNIT_ASSERT_EQUAL(communication_partner_id, request->getDestination());
 		}

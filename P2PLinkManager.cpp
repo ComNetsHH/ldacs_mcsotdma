@@ -86,7 +86,15 @@ void P2PLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
 }
 
 void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
+	coutd << *this << "::notifyOutgoing(" << num_bits << ") -> ";
+	// Update outgoing traffic estimate.
+	outgoing_traffic_estimate.put(num_bits);
 
+	if (link_status == link_not_established) {
+		coutd << "link not established, triggering link establishment -> ";
+		establishLink();
+	} else
+		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
 
 void P2PLinkManager::onSlotStart(uint64_t num_slots) {
@@ -95,4 +103,14 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 
 void P2PLinkManager::onSlotEnd() {
 
+}
+
+void P2PLinkManager::establishLink() {
+	auto *request = new L2Packet();
+	// Add base header.
+	request->addMessage(new L2HeaderBase(mac->getMacId(), 0, 0, 0), nullptr);
+	// Add broadcast header.
+	request->addMessage(new L2HeaderBroadcast(), nullptr);
+	// Add request header.
+	request->addMessage(new L2HeaderLinkEstablishmentRequest(link_id, mac->shouldLinkBeArqProtected(link_id), 0, 0, 0), nullptr);
 }

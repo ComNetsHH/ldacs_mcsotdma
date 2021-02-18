@@ -39,9 +39,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Now destine it to us.
 			auto* header = new L2HeaderBase(communication_partner_id, 0, 0, 0);
-			packet.addPayload(header, nullptr);
+			packet.addMessage(header, nullptr);
 			auto* header2 = new L2HeaderUnicast(own_id, false, 0, 0, 0);
-			packet.addPayload(header2, nullptr);
+			packet.addMessage(header2, nullptr);
 			phy->onReception(&packet, center_freq1);
 			// Should still be discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->statistic_num_received_packets);
