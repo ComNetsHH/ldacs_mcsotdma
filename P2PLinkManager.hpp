@@ -5,16 +5,33 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_P2PLINKMANAGER_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_P2PLINKMANAGER_HPP
 
+#include <stdint-gcc.h>
 #include "NewLinkManager.hpp"
 #include "MovingAverage.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-	class P2PLinkManager : public NewLinkManager {
+	class P2PLinkManager : public LinkManager {
 	public:
 		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
 
 		~P2PLinkManager() override;
+
+		void onPacketReception(L2Packet*& packet) override;
+
+		void onReceptionBurstStart(unsigned int burst_length) override;
+
+		void onReceptionBurst(unsigned int remaining_burst_length) override;
+
+		L2Packet* onTransmissionBurstStart(unsigned int burst_length) override;
+
+		void onTransmissionBurst(unsigned int remaining_burst_length) override;
+
+		void notifyOutgoing(unsigned long num_bits) override;
+
+		void onSlotStart(uint64_t num_slots) override;
+
+		void onSlotEnd() override;
 
 	protected:
 		/**

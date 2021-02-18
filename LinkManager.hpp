@@ -5,6 +5,7 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP
 
+#include <random>
 #include "coutdebug.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -32,9 +33,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		};
 
 		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
-			  link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */ {}
+			  link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
+			  random_device(new std::random_device), generator((*random_device)()){}
 
-	    virtual ~LinkManager() = default;
+	    virtual ~LinkManager() {
+			delete random_device;
+		}
 
 		/**
 		 * When a packet has been received, this lets the LinkManager process it.
@@ -110,6 +114,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ReservationTable *current_reservation_table = nullptr;
 		/** Link establishment status. */
 		Status link_establishment_status;
+		std::random_device* random_device;
+		std::mt19937 generator;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {

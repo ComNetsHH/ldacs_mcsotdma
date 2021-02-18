@@ -17,6 +17,7 @@
 #include "SystemTests.cpp"
 #include "LinkManagementEntityTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
+#include "P2PLinkManagerTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
@@ -34,6 +35,7 @@ int main() {
 	runner.addTest(SystemTests::suite());
 	runner.addTest(LinkManagementEntityTests::suite());
 	runner.addTest(MCSOTDMA_PhyTests::suite());
+	runner.addTest(P2PLinkManagerTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

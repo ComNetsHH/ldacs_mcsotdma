@@ -8,7 +8,7 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 P2PLinkManager::P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset)
-	: NewLinkManager(link_id, reservation_manager, mac), default_timeout(default_timeout), burst_offset(burst_offset), outgoing_traffic_estimate(burst_offset) {}
+	: LinkManager(link_id, reservation_manager, mac), default_timeout(default_timeout), burst_offset(burst_offset), outgoing_traffic_estimate(burst_offset) {}
 
 P2PLinkManager::~P2PLinkManager() {
 	delete current_link_state;
@@ -56,4 +56,36 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> P2PLinkManager::p2p
 			proposal_map[table->getLinkedChannel()].push_back(slot);
 	}
 	return proposal_map;
+}
+
+void P2PLinkManager::onPacketReception(L2Packet*& packet) {
+
+}
+
+void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
+
+}
+
+void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
+
+}
+
+L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+	return nullptr;
+}
+
+void P2PLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
+
+}
+
+void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
+
+}
+
+void P2PLinkManager::onSlotStart(uint64_t num_slots) {
+
+}
+
+void P2PLinkManager::onSlotEnd() {
+
 }
