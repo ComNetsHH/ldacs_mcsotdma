@@ -12,7 +12,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac,
                              unsigned int num_slots_contention_estimate)
-		: LinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
+		: OldLinkManager(link_id, reservation_manager, mac), contention_estimator(num_slots_contention_estimate) {
 	if (link_id != SYMBOLIC_LINK_ID_BROADCAST)
 		throw std::invalid_argument("BCLinkManager must have the broadcast ID.");
 	delete lme;
@@ -26,6 +26,7 @@ BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservati
 
 BCLinkManager::BCLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac)
 		: BCLinkManager(link_id, reservation_manager, mac, 5000 /* past 60s for 12ms slots */) {}
+
 
 L2Packet* BCLinkManager::prepareBeacon() {
 	auto* beacon = new L2Packet();
@@ -49,9 +50,9 @@ void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadc
 }
 
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	assert(payload && "LinkManager::processIncomingBeacon for nullptr BeaconPayload*");
+	assert(payload && "OldLinkManager::processIncomingBeacon for nullptr BeaconPayload*");
 	if (origin_id == SYMBOLIC_ID_UNSET)
-		throw std::invalid_argument("LinkManager::processIncomingBeacon for an unset ID.");
+		throw std::invalid_argument("OldLinkManager::processIncomingBeacon for an unset ID.");
 	// Update the neighbor position.
 	mac->updatePosition(origin_id, CPRPosition(header->position.latitude, header->position.longitude, header->position.altitude, header->is_cpr_odd), header->pos_quality);
 	// Update neighbor's report of how many hops they need to the ground station.
@@ -85,10 +86,10 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "already have a broadcast slot scheduled." << std::endl;
 }
 
-L2Packet* BCLinkManager::onTransmissionBurst(unsigned int num_slots) {
-	coutd << "BCLinkManager(" << link_id << ")::onTransmissionBurst -> ";
+L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int num_slots) {
+	coutd << "BCLinkManager(" << link_id << ")::onTransmissionBurstStart -> ";
 	if (num_slots != 1)
-		throw std::invalid_argument("BCLinkManager::onTransmissionBurst cannot be used for more or less than 1 slot.");
+		throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart cannot be used for more or less than 1 slot.");
 	L2Packet* packet;
 	bool is_beacon_slot = false; // TODO determine
 	if (!is_beacon_slot) {
@@ -123,7 +124,7 @@ unsigned int BCLinkManager::getNumActiveNeighbors() const {
 	return contention_estimator.getNumActiveNeighbors();
 }
 
-void BCLinkManager::update(uint64_t num_slots) {
+void BCLinkManager::onSlotStart(uint64_t num_slots) {
 	if (!traffic_estimate.hasBeenUpdated())
 		for (uint64_t t = 0; t < num_slots; t++)
 			traffic_estimate.put(0);
@@ -182,7 +183,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 	return (unsigned int) slot;
 }
 
-void BCLinkManager::onReceptionSlot() {
+void BCLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 	// Don't decrement timeout, i.e. don't call base function.
 }
 

@@ -54,9 +54,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testBlacklisting() {
-			CPPUNIT_ASSERT_EQUAL(false, channel->isBlacklisted());
+			CPPUNIT_ASSERT_EQUAL(false, channel->isBlocked());
 			channel->setBlacklisted(true);
-			CPPUNIT_ASSERT_EQUAL(true, channel->isBlacklisted());
+			CPPUNIT_ASSERT_EQUAL(true, channel->isBlocked());
 		}
 
 	CPPUNIT_TEST_SUITE(FrequencyChannelTests);

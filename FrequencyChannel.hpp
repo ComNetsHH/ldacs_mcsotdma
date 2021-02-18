@@ -25,7 +25,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool isBroadcastChannel() const;
 
-		bool isBlacklisted() const;
+		bool isBlocked() const;
 
 		void setBlacklisted(bool value);
 

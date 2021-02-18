@@ -13,16 +13,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class ReservationTableTests : public CppUnit::TestFixture {
 	private:
 		uint32_t planning_horizon;
-		ReservationTable* table;
+		ReservationTable *table, *table_rx_1, *table_rx_2, *table_tx;
 
 	public:
 		void setUp() override {
 			planning_horizon = 25;
 			table = new ReservationTable(planning_horizon);
+			table_rx_1 = new ReservationTable(planning_horizon);
+			table_rx_2 = new ReservationTable(planning_horizon);
+			table_tx = new ReservationTable(planning_horizon);
+			table->linkTransmitterReservationTable(table_tx);
+			table->linkReceiverReservationTable(table_rx_1);
+			table->linkReceiverReservationTable(table_rx_2);
 		}
 
 		void tearDown() override {
 			delete table;
+			delete table_rx_1;
+			delete table_rx_2;
+			delete table_tx;
 		}
 
 		void testConstructor() {
@@ -323,12 +332,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
 			unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
 			// At first, all slots are free.
-			std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false, false);
+			std::vector<unsigned int> candidate_slots = table->findCandidates(num_candidates, min_offset, range_length, range_length, false);
 			// So we should have no problem finding enough candidates.
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 			// And these should be consecutive slots starting at 0.
 			for (int32_t i = 0; i < num_candidates; i++)
-				CPPUNIT_ASSERT_EQUAL(candidate_slots.at(i), int32_t(min_offset + i));
+				CPPUNIT_ASSERT_EQUAL(candidate_slots.at(i), uint32_t(min_offset + i));
 		}
 
 		void testFindCandidateSlotsComplicated() {
@@ -342,17 +351,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			table->mark(19, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
 			table->mark(20, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
 			table->mark(25, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-			std::vector<int32_t> candidate_slots = table->findCandidateSlots(min_offset, num_candidates, range_length, false, false);
+			std::vector<unsigned int> candidate_slots = table->findCandidates(num_candidates, min_offset, range_length, range_length, false);
 			// We should only be able to find 4 candidates.
 			CPPUNIT_ASSERT_EQUAL(size_t(4), candidate_slots.size());
 			// And these should be the following starting slots:
-			CPPUNIT_ASSERT_EQUAL(int32_t(1), candidate_slots.at(0));
-			CPPUNIT_ASSERT_EQUAL(int32_t(7), candidate_slots.at(1));
-			CPPUNIT_ASSERT_EQUAL(int32_t(8), candidate_slots.at(2));
-			CPPUNIT_ASSERT_EQUAL(int32_t(14), candidate_slots.at(3));
+			CPPUNIT_ASSERT_EQUAL(uint32_t(1), candidate_slots.at(0));
+			CPPUNIT_ASSERT_EQUAL(uint32_t(7), candidate_slots.at(1));
+			CPPUNIT_ASSERT_EQUAL(uint32_t(8), candidate_slots.at(2));
+			CPPUNIT_ASSERT_EQUAL(uint32_t(14), candidate_slots.at(3));
 		}
 
 		void testFindCandidateSlotsRespectRX() {
+			table->receiver_reservation_tables.clear();
 			ReservationTable rx_table = ReservationTable(planning_horizon);
 			table->linkReceiverReservationTable(&rx_table);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
@@ -548,6 +558,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testAnyTxReservations() {
+			table->transmitter_reservation_table = nullptr;
 			MacId id = MacId(42);
 			int32_t offset = 5;
 			Reservation reservation = Reservation(id, Reservation::Action::TX);
@@ -601,70 +612,66 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testLinkedTXTable() {
-			ReservationTable tx_table = ReservationTable(planning_horizon);
-			table->linkTransmitterReservationTable(&tx_table);
+//			ReservationTable tx_table = ReservationTable(planning_horizon);
+//			table->linkTransmitterReservationTable(&tx_table);
 
 			table->mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX));
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX, tx_table.getReservation(0).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());
 
 			table->mark(1, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX_CONT));
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX, tx_table.getReservation(0).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table->getReservation(1).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, tx_table.getReservation(1).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table_tx->getReservation(1).getAction());
 
 			table->mark(2, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX));
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX, tx_table.getReservation(0).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table->getReservation(1).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, tx_table.getReservation(1).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table_tx->getReservation(1).getAction());
 			// RX in own table, but RX does *not* forward to a transmitter table.
 			CPPUNIT_ASSERT_EQUAL(Reservation::RX, table->getReservation(2).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, tx_table.getReservation(2).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, table_tx->getReservation(2).getAction());
 
 			// A 2nd TX reservation should throw an exception because we support only one transmitter.
 			ReservationTable second_table = ReservationTable(planning_horizon);
-			second_table.linkTransmitterReservationTable(&tx_table);
+			second_table.linkTransmitterReservationTable(table_tx);
 			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX)), std::invalid_argument);
 			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(MacId(1), Reservation::TX)), std::invalid_argument);
 
 			table->lock({3}, true, false);
 			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(3).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, tx_table.getReservation(3).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table_tx->getReservation(3).getAction());
 		}
 
 		void testLinkedRXTables() {
-			ReservationTable rx_table1 = ReservationTable(planning_horizon), rx_table2 = ReservationTable(planning_horizon);
-			table->linkReceiverReservationTable(&rx_table1);
-			table->linkReceiverReservationTable(&rx_table2);
-
 			// RX reservation should forward to *one* receiver table.
 			table->mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX));
 			CPPUNIT_ASSERT_EQUAL(Reservation::RX, table->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::RX, rx_table1.getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table2.getReservation(0).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::RX, table_rx_1->getReservation(0).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, table_rx_2->getReservation(0).getAction());
 
 			// TX reservations shouldn't.
 			table->mark(1, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX));
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(1).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table1.getReservation(1).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table2.getReservation(1).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, table_rx_1->getReservation(1).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, table_rx_2->getReservation(1).getAction());
 
 			// a 2nd RX reservation should forward to the *other* receiver table.
 			ReservationTable second_table = ReservationTable(planning_horizon);
-			second_table.linkReceiverReservationTable(&rx_table1);
-			second_table.linkReceiverReservationTable(&rx_table2);
+			second_table.linkReceiverReservationTable(table_rx_1);
+			second_table.linkReceiverReservationTable(table_rx_2);
 			second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX));
 			CPPUNIT_ASSERT_EQUAL(Reservation::RX, table->getReservation(0).getAction());
 			CPPUNIT_ASSERT_EQUAL(Reservation::RX, second_table.getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::RX, rx_table1.getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::RX, rx_table2.getReservation(0).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::RX, table_rx_1->getReservation(0).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::RX, table_rx_2->getReservation(0).getAction());
 
 			// a 3rd RX reservation should throw an exception because we only have two linked receiver tables and both are not idle
 			ReservationTable third_table = ReservationTable(planning_horizon);
-			third_table.linkReceiverReservationTable(&rx_table1);
-			third_table.linkReceiverReservationTable(&rx_table2);
+			third_table.linkReceiverReservationTable(table_rx_1);
+			third_table.linkReceiverReservationTable(table_rx_2);
 			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX)), std::invalid_argument);
 			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(MacId(1), Reservation::RX)), std::invalid_argument);
 
@@ -672,20 +679,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			bool locked = table->lock({2}, false, true);
 			CPPUNIT_ASSERT_EQUAL(true, locked);
 			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(2).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table1.getReservation(2).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, rx_table2.getReservation(2).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table_rx_1->getReservation(2).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, table_rx_2->getReservation(2).getAction());
 
 			locked = second_table.lock({2}, false, true);
 			CPPUNIT_ASSERT_EQUAL(true, locked);
 			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(2).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table1.getReservation(2).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table2.getReservation(2).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table_rx_1->getReservation(2).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table_rx_2->getReservation(2).getAction());
 
 			locked = third_table.lock({2}, false, true);
 			CPPUNIT_ASSERT_EQUAL(false, locked);
 			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(2).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table1.getReservation(2).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, rx_table2.getReservation(2).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table_rx_1->getReservation(2).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table_rx_2->getReservation(2).getAction());
 		}
 
 		void testDefaultReservation() {
@@ -694,6 +701,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, reservation.getTarget());
 				CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, reservation.getAction());
 			}
+		}
+
+		void testFindEarliestIdleSlots() {
+						unsigned int min_offset = 0, burst_length = 5, burst_length_tx = 3;
+			bool rx_idle_during_first_slot = false;
+			unsigned int start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), start_slot);
+
+			rx_idle_during_first_slot = true;
+			const Reservation res = Reservation(MacId(5), Reservation::BUSY);
+			table_rx_1->mark(0, res);
+			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), start_slot);
+
+			table_rx_2->mark(0, res);
+			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(1), start_slot);
+
+			table_tx->mark(1, res);
+			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(2), start_slot);
+
+			table_rx_1->mark(2 + burst_length_tx, res);
+			table_rx_2->mark(2 + burst_length_tx, res);
+			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(3), start_slot);
+
+			table_rx_1->mark(3 + burst_length_tx, res);
+			table_rx_2->mark(3 + burst_length_tx, res);
+			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(4), start_slot);
 		}
 
 	CPPUNIT_TEST_SUITE(ReservationTableTests);
@@ -725,6 +763,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkedTXTable);
 			CPPUNIT_TEST(testLinkedRXTables);
 			CPPUNIT_TEST(testDefaultReservation);
+			CPPUNIT_TEST(testFindEarliestIdleSlots);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

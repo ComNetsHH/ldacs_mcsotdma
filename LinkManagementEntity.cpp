@@ -6,10 +6,11 @@
 #include "LinkManagementEntity.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
+#include "OldLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-LinkManagementEntity::LinkManagementEntity(LinkManager* owner) : owner(owner) {}
+LinkManagementEntity::LinkManagementEntity(OldLinkManager* owner) : owner(owner) {}
 
 std::vector<uint64_t> LinkManagementEntity::scheduleRequests(unsigned int timeout, unsigned int init_offset,
                                                              unsigned int tx_offset, unsigned int num_attempts) const {
@@ -62,7 +63,7 @@ size_t LinkManagementEntity::clearPendingRequestReservations(const std::map<cons
 void LinkManagementEntity::processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload) {
 	// Make sure we're expecting a reply.
 	if (owner->link_establishment_status != owner->Status::awaiting_reply)
-		throw std::runtime_error("LinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
+		throw std::runtime_error("OldLinkManager for ID '" + std::to_string(owner->link_id.getId()) + "' received a link reply but its state is '" + std::to_string(owner->link_establishment_status) + "'.");
 	assert(payload->proposed_resources.size() == 1);
 
 	// Clear all scheduled requests, as one apparently made it through.
@@ -120,19 +121,19 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 		coutd << "and marking TX reservations on " << *next_channel << ": ";
 	}
 	owner->markReservations(next_table, default_tx_timeout, initial_slot_inclusive, tx_offset, Reservation(owner->link_id, Reservation::TX, tx_burst_num_slots - 1));
-	coutd << "link status update: " << owner->link_establishment_status << "->" << owner->Status::link_renewal_complete;
+	coutd << "link status onSlotStart: " << owner->link_establishment_status << "->" << owner->Status::link_renewal_complete;
 	owner->link_establishment_status = owner->Status::link_renewal_complete;
 }
 
 bool LinkManagementEntity::decrementTimeout() {
-	// Don't update timeout if,
+	// Don't onSlotStart timeout if,
 	// (1) the link is not established right now
-	if (owner->link_establishment_status == LinkManager::link_not_established) {
+	if (owner->link_establishment_status == OldLinkManager::link_not_established) {
 		coutd << "link not established; not decrementing timeout -> ";
 		return tx_timeout == 0;
 	}
 	// (2) we are in the process of establishment.
-	if ((!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == LinkManager::awaiting_data_tx)) {
+	if ((!link_renewal_pending && owner->link_establishment_status == OldLinkManager::awaiting_reply) || (!link_renewal_pending && owner->link_establishment_status == OldLinkManager::awaiting_data_tx)) {
 		coutd << "link being established; not decrementing timeout -> ";
 		return tx_timeout == 0;
 	}
@@ -160,7 +161,7 @@ bool LinkManagementEntity::decrementTimeout() {
 void LinkManagementEntity::onTimeoutExpiry() {
 	coutd << "timeout reached -> restoring timeout -> ";
 	tx_timeout = default_tx_timeout;
-	if (owner->link_establishment_status == LinkManager::link_renewal_complete) {
+	if (owner->link_establishment_status == OldLinkManager::link_renewal_complete) {
 		coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
 		owner->reassign(next_channel);
 		// Only schedule request slots if we're the initiator, i.e. have sent requests before.
@@ -169,12 +170,12 @@ void LinkManagementEntity::onTimeoutExpiry() {
 			scheduled_requests = scheduleRequests(tx_timeout, first_slot_of_next_link, tx_offset, max_num_renewal_attempts);
 			first_slot_of_next_link = 0;
 		}
-		coutd << "updating status: " << owner->link_establishment_status << "->" << LinkManager::link_established << " -> link renewal complete -> ";
-		owner->link_establishment_status = LinkManager::link_established;
+		coutd << "updating status: " << owner->link_establishment_status << "->" << OldLinkManager::link_established << " -> link renewal complete -> ";
+		owner->link_establishment_status = OldLinkManager::link_established;
 	} else {
-		coutd << "no pending renewal, updating status: " << owner->link_establishment_status << "->" << LinkManager::link_not_established << " -> cleared associated channel -> ";
+		coutd << "no pending renewal, updating status: " << owner->link_establishment_status << "->" << OldLinkManager::link_not_established << " -> cleared associated channel -> ";
 		owner->reassign(nullptr);
-		owner->link_establishment_status = LinkManager::link_not_established;
+		owner->link_establishment_status = OldLinkManager::link_not_established;
 		if (!last_proposed_resources.empty())
 			clearPendingRequestReservations(last_proposed_resources, last_proposal_absolute_time, owner->mac->getCurrentSlot());
 		coutd << " -> link reset -> ";
@@ -188,7 +189,7 @@ void LinkManagementEntity::onTimeoutExpiry() {
 void LinkManagementEntity::processLinkRequest(const L2HeaderLinkEstablishmentRequest*& header,
                                               const ProposalPayload*& payload, const MacId& origin) {
 	setTxBurstSlots(header->length_next);
-	if (owner->link_establishment_status == LinkManager::link_not_established)
+	if (owner->link_establishment_status == OldLinkManager::link_not_established)
 		processInitialRequest(header, payload, origin);
 	else
 		processRenewalRequest(header, payload, origin);
@@ -269,10 +270,10 @@ void LinkManagementEntity::processRenewalRequest(const L2HeaderLinkEstablishment
 std::vector<std::pair<const FrequencyChannel*, unsigned int>>
 LinkManagementEntity::findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header,
                                                     ProposalPayload*& payload, bool consider_transmitter, bool consider_receiver) const {
-	assert(payload && "LinkManager::findViableCandidatesInRequest for nullptr ProposalPayload*");
+	assert(payload && "OldLinkManager::findViableCandidatesInRequest for nullptr ProposalPayload*");
 	const MacId& dest_id = header->icao_dest_id;
 	if (payload->proposed_resources.empty())
-		throw std::invalid_argument("LinkManager::findViableCandidatesInRequest for an empty proposal.");
+		throw std::invalid_argument("OldLinkManager::findViableCandidatesInRequest for an empty proposal.");
 
 	// Go through all proposed channels...
 	std::vector<std::pair<const FrequencyChannel*, unsigned int>> viable_candidates;
@@ -313,7 +314,7 @@ L2Packet* LinkManagementEntity::prepareRequest() const {
 	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
 	request->addPayload(base_header, nullptr);
 	// If the link is not yet established, the request must be sent on the broadcast channel.
-	if (owner->link_establishment_status == LinkManager::link_not_established)
+	if (owner->link_establishment_status == OldLinkManager::link_not_established)
 		request->addPayload(new L2HeaderBroadcast(), nullptr);
 	// Instantiate request header.
 	MacId dest_id = owner->link_id;
@@ -348,10 +349,10 @@ void LinkManagementEntity::establishLink() const {
 		owner->mac->injectIntoUpper(request);
 		coutd << "injected into upper layer... ";
 		// We are now awaiting a reply.
-		owner->link_establishment_status = LinkManager::Status::awaiting_reply;
+		owner->link_establishment_status = OldLinkManager::Status::awaiting_reply;
 		coutd << "updated status to 'awaiting_reply'." << std::endl;
 	} else
-		throw std::runtime_error("LinkManager::establishLink for link status: " + std::to_string(owner->link_establishment_status));
+		throw std::runtime_error("OldLinkManager::establishLink for link status: " + std::to_string(owner->link_establishment_status));
 }
 
 L2Packet* LinkManagementEntity::getControlMessage() {
@@ -416,7 +417,7 @@ void LinkManagementEntity::scheduleInitialReply(L2Packet* reply, int32_t slot_of
 	coutd << "schedule initial reply -> ";
 	uint64_t absolute_slot = owner->mac->getCurrentSlot() + slot_offset;
 	if (scheduled_replies.find(absolute_slot) != scheduled_replies.end())
-		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
+		throw std::runtime_error("OldLinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
 	else {
 		// Sanity check.
 		if (reply->getPayloads().size() < 2)
@@ -435,7 +436,7 @@ void LinkManagementEntity::scheduleInitialReply(L2Packet* reply, int32_t slot_of
 		const Reservation& current_reservation = table->getReservation(slot_offset);
 		if (!current_reservation.isIdle() && current_reservation.getTarget() != owner->getLinkId()) {
 			coutd << std::endl << "Reservation in question: " << current_reservation << std::endl;
-			throw std::invalid_argument("LinkManager::scheduleLinkReply for an already reserved slot.");
+			throw std::invalid_argument("OldLinkManager::scheduleLinkReply for an already reserved slot.");
 		}
 
 		// Mark the slot as TX to transmit the reply...
@@ -455,7 +456,7 @@ void LinkManagementEntity::scheduleRenewalReply(L2Packet* reply) {
 	coutd << "schedule renewal reply -> ";
 	uint64_t absolute_slot = owner->mac->getCurrentSlot() + tx_offset;
 	if (scheduled_replies.find(absolute_slot) != scheduled_replies.end())
-		throw std::runtime_error("LinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
+		throw std::runtime_error("OldLinkManager::scheduleLinkReply wanted to schedule a link reply, but there's already one scheduled at slot " + std::to_string(absolute_slot) + ".");
 	else {
 		// Sanity check.
 		if (reply->getPayloads().size() < 2)
@@ -508,12 +509,12 @@ LinkManagementEntity::ProposalPayload* LinkManagementEntity::p2pSlotSelection(co
 	coutd << "p2pSlotSelection to reserve " << tx_burst_num_slots << " slots -> ";
 	for (size_t num_channels_considered = 0; num_channels_considered < num_channels; num_channels_considered++) {
 		if (table_priority_queue.empty()) // we could just stop here, but we're throwing an error to be aware when it happens
-			throw std::runtime_error("LinkManager::prepareRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_channels) + " and there are no more.");
+			throw std::runtime_error("OldLinkManager::prepareRequest has considered " + std::to_string(num_channels_considered) + " out of " + std::to_string(num_channels) + " and there are no more.");
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
 		// ... check if the channel is blacklisted ...
-		if (table->getLinkedChannel()->isBlacklisted()) {
+		if (table->getLinkedChannel()->isBlocked()) {
 			num_channels_considered--;
 			continue;
 		}
@@ -597,7 +598,7 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
 					// Even for multi-slot reservations, only the first slot should be marked, as the reply must fit within one slot.
 					table->mark(offset, Reservation(owner->link_id, Reservation::Action::RX, 0));
 				} catch (const std::exception& e) {
-					throw std::runtime_error("LinkManager::packetBeingSentCallback couldn't mark RX slots: " + std::string(e.what()));
+					throw std::runtime_error("OldLinkManager::packetBeingSentCallback couldn't mark RX slots: " + std::string(e.what()));
 				}
 			}
 		}
@@ -622,7 +623,7 @@ unsigned int LinkManagementEntity::getExpiryOffset() const {
 void LinkManagementEntity::update(uint64_t num_slots) {
 	if (first_slot_of_next_link > 0) {
 		if (num_slots > first_slot_of_next_link)
-			throw std::invalid_argument("LinkManagementEntity::update would decrease the first_slot_of_next_link past zero.");
+			throw std::invalid_argument("LinkManagementEntity::onSlotStart would decrease the first_slot_of_next_link past zero.");
 		else
 			first_slot_of_next_link -= num_slots;
 	}

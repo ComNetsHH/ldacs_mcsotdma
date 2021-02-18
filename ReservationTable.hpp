@@ -35,7 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/**
 		 * @param planning_horizon The number of time slots this reservation table will keep saved. It denotes the number of slots both into the future, as well as a history of as many slots. The number of slots saved is correspondingly planning_horizon*2.
-		 * @param default_reservation The default reservation for new time slots (e.g. when update() is called).
+		 * @param default_reservation The default reservation for new time slots (e.g. when onSlotStart() is called).
 		 */
 		ReservationTable(uint32_t planning_horizon, const Reservation& default_reservation);
 
@@ -81,7 +81,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param consider_receivers Whether receiver utilization should be taken into account, s.t. slots where no receiver is available are not included.
 		 * @return The start slots of each candidate. The size of the returned container should be checked to ensure that enough candidates were found.
 		 */
+		[[deprecated]]
 		std::vector<int32_t> findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length, bool consider_transmitter, bool consider_receivers) const;
+
+		/**
+		 * @param num_slots Target number of slot offsets per P2P channel that should be proposed.
+		 * @param min_offset Minimum slot offset for the first proposed slot.
+		 * @param burst_length Number of slots the burst must occupy.
+		 * @param burst_length_tx Number of first slots that should be used for transmission.
+		 * @param is_init Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
+		 * @return Start slot offsets.
+		 */
+		std::vector<unsigned int> findCandidates(unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init) const;
 
 		/**
 		 * Locks the given slot_offsets in this reservation table so that they are not considered for later link establishment proposals' candidate slot_offsets.
@@ -90,7 +101,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param lock_rx Whether to lock a hardware receiver, too.
 		 * @return Whether locking succeeded.
 		 */
+	    [[deprecated]]
 		bool lock(const std::vector<int32_t>& slot_offsets, bool lock_tx, bool lock_rx);
+
+		bool lock(unsigned int slot_offset, unsigned int burst_length, bool lock_tx, bool lock_rx);
 
 		/**
 		 * @param start_offset The minimum slot offset to start the search.
@@ -220,9 +234,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return Slot offset that marks the beginning of a completely idle slot range.
 		 * @throws runtime_error If no suitable slot range can be found.
 		 */
+		[[deprecated]]
 		int32_t findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter, bool consider_receivers) const;
 
+		/**
+		 * @param start_offset
+		 * @param burst_length
+		 * @param burst_length_tx
+		 * @param rx_idle_during_first_slot
+		 * @return Slot offset that marks the beginning of a burst of slots that are idle.
+		 * @throws range_error If no suitable slot range can be found.
+		 * @throws invalid_argument If the planning horizon is exceeded.
+		 */
+		unsigned int findEarliestIdleSlots(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const;
+
 		bool canLock(const std::vector<int32_t>& slot_offsets) const;
+
+		bool canLock(unsigned int slot_offset, unsigned int burst_length) const;
 
 	protected:
 		/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */

@@ -53,7 +53,7 @@ void TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::setBlacklisted(bool value) {
 	this->is_blacklisted = value;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isBlacklisted() const {
+bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isBlocked() const {
 	return this->is_blacklisted;
 }
 

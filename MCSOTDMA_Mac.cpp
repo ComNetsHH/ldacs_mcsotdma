@@ -37,23 +37,23 @@ void MCSOTDMA_Mac::passToUpper(L2Packet* packet) {
 void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	// Update time.
 	IMac::update(num_slots);
-	coutd << "t=" << getCurrentSlot() << " " << *this << "::update(" << num_slots << ")... ";
+	coutd << "t=" << getCurrentSlot() << " " << *this << "::onSlotStart(" << num_slots << ")... ";
 	// Notify the ReservationManager.
-	assert(reservation_manager && "MCSOTDMA_MAC::update with unset ReserationManager.");
+	assert(reservation_manager && "MCSOTDMA_MAC::onSlotStart with unset ReserationManager.");
 	reservation_manager->update(num_slots);
 	// Notify PHY.
-	assert(lower_layer && "IMac::update for unset lower layer.");
+	assert(lower_layer && "IMac::onSlotStart for unset lower layer.");
 	lower_layer->update(num_slots);
 	// Notify the broadcast channel manager.
 	try {
 		auto* bc_link_manager = (BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-		bc_link_manager->update(num_slots);
+		bc_link_manager->onSlotStart(num_slots);
 	} catch (const std::exception& e) {
-		throw std::runtime_error("MCOSTDMA_Mac::update couldn't update BCLinkManager: " + std::string(e.what()));
+		throw std::runtime_error("MCOSTDMA_Mac::onSlotStart couldn't onSlotStart BCLinkManager: " + std::string(e.what()));
 	}
 	// Notify all other LinkManagers.
 	for (auto item : link_managers)
-		item.second->update(num_slots);
+		item.second->onSlotStart(num_slots);
 	// Notify the PHY about the channels to which receivers are tuned to in this time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	size_t num_rx = 0;
@@ -63,7 +63,7 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 			try {
 				lower_layer->tuneReceiver(pair.second->getCenterFrequency());
 			} catch (const std::runtime_error& e) {
-				throw std::runtime_error("MCSOTDMA(" + std::to_string(id.getId()) + ")::update(" + std::to_string(num_slots) + ") couldn't tune receiver for " + std::to_string(num_rx) + " RX reservations.");
+				throw std::runtime_error("MCSOTDMA(" + std::to_string(id.getId()) + ")::onSlotStart(" + std::to_string(num_slots) + ") couldn't tune receiver for " + std::to_string(num_rx) + " RX reservations.");
 			}
 		}
 	}
@@ -106,8 +106,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				if (num_rxs > num_receivers)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				// Tune the receiver.
-				LinkManager* link_manager = getLinkManager(reservation.getTarget());
-				link_manager->onReceptionSlot();
+				LinkManager *link_manager = getLinkManager(reservation.getTarget());
+				link_manager->onReceptionBurstStart(reservation.getNumRemainingSlots());
 				onReceptionSlot(channel);
 				break;
 			}
@@ -116,12 +116,12 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				num_txs++;
 				if (num_txs > num_transmitters)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
-				// Find the corresponding LinkManager.
+				// Find the corresponding OldLinkManager.
 				const MacId& id = reservation.getTarget();
 				LinkManager* link_manager = getLinkManager(id);
 				// Tell it about the transmission slot.
 				unsigned int num_tx_slots = reservation.getNumRemainingSlots() + 1;
-				L2Packet* outgoing_packet = link_manager->onTransmissionBurst(num_tx_slots);
+				L2Packet* outgoing_packet = link_manager->onTransmissionBurstStart(num_tx_slots);
 				outgoing_packet->notifyCallbacks();
 				passToLower(outgoing_packet, channel->getCenterFrequency());
 				break;
@@ -136,16 +136,16 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
 	const MacId& dest_id = packet->getDestination();
-	coutd << *this << "::receiveFromLower(from=" << packet->getOrigin() << ", to=" << dest_id << ", f=" << center_frequency << "kHz)... ";
+	coutd << *this << "::onPacketReception(from=" << packet->getOrigin() << ", to=" << dest_id << ", f=" << center_frequency << "kHz)... ";
 	if (dest_id == SYMBOLIC_ID_UNSET)
-		throw std::invalid_argument("MCSOTDMA_Mac::receiveFromLower for unset dest_id.");
+		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");
 	statistic_num_packets_received++;
 	// Forward broadcasts to the BCLinkManager...
 	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
-		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->receiveFromLower(packet);
-	// Forward packet intended for us to the corresponding LinkManager that manages the packet's sender
+		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
+	// Forward packet intended for us to the corresponding OldLinkManager that manages the packet's sender
 	else if (dest_id == id)
-		getLinkManager(packet->getOrigin())->receiveFromLower(packet);
+		getLinkManager(packet->getOrigin())->onPacketReception(packet);
 	else
 		coutd << "packet not intended for us; discarding." << std::endl;
 }
@@ -164,7 +164,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	// ... if there already is one ...
 	if (it != link_managers.end()) {
 		link_manager = (*it).second;
-//		coutd << "found existing LinkManager(" << internal_id << ") ";
+//		coutd << "found existing OldLinkManager(" << internal_id << ") ";
 		// ... if there's none ...
 	} else {
 		// Auto-assign broadcast channel
@@ -172,11 +172,11 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new BCLinkManager(internal_id, reservation_manager, this);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else
-			link_manager = new LinkManager(internal_id, reservation_manager, this);
+			link_manager = new OldLinkManager(internal_id, reservation_manager, this);
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
-			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
-//		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "LinkManager") << "(" << internal_id << ") ";
+			throw std::runtime_error("Attempted to insert new OldLinkManager, but there already was one.");
+//		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "OldLinkManager") << "(" << internal_id << ") ";
 
 	}
 	return link_manager;

@@ -194,6 +194,43 @@ int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, 
 	throw std::range_error("No idle slot range of specified length found.");
 }
 
+unsigned int ReservationTable::findEarliestIdleSlots(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const {
+	if (!isValid(start_offset, burst_length))
+		throw std::invalid_argument("Invalid slot range!");
+	if (transmitter_reservation_table == nullptr)
+		throw std::runtime_error("ReservationTable::findEarliestIdleSlots for unset transmitter table.");
+	if (receiver_reservation_tables.empty())
+		throw std::runtime_error("ReservationTable::findEarliestIdleSlots for unset receiver tables.");
+
+	for (unsigned int t = start_offset; t < planning_horizon; t++) {
+		// Check if local table is idle...
+		if (isIdle(t, burst_length)) {
+			// ... check if the transmitter is idle for the first burst_length_tx slots...
+			bool transmitter_idle = transmitter_reservation_table->isIdle(t, burst_length_tx);
+			// ... check if a receiver is idle for the trailing burst_length_rx slots...
+			unsigned int burst_length_rx = burst_length - burst_length_tx;
+			bool receiver_idle;
+			if (burst_length_rx == 0)
+				receiver_idle = true;
+			else {
+				unsigned int t_rx = t + burst_length_tx;
+				receiver_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [t_rx, burst_length_rx](ReservationTable* table) {
+					return table->isIdle(t_rx, burst_length_rx);
+				});
+			}
+			// ... if a receiver must also be available during the first slot...
+			if (rx_idle_during_first_slot)
+				receiver_idle = receiver_idle && std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [t](ReservationTable* table) {
+					return table->isIdle(t);
+				});
+
+			if (transmitter_idle && receiver_idle)
+				return t;
+		}
+	}
+	throw std::range_error("No idle slot range could be found.");
+}
+
 //int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter) const {
 //	if (consider_transmitter && !transmitter_reservation_table)
 //		throw std::runtime_error("ReservationTable::findEarliestIdleRange that should consider the transmitter with an unset transmitter_reservation_table.");
@@ -280,6 +317,26 @@ std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offse
 	return start_slots;
 }
 
+std::vector<unsigned int> ReservationTable::findCandidates(unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init) const {
+	std::vector<unsigned int> start_slots;
+	unsigned int last_offset = min_offset;
+	for (size_t i = 0; i < num_slots; i++) {
+		// Try to find another slot range.
+		try {
+			int32_t start_slot = findEarliestIdleSlots(last_offset, burst_length, burst_length_tx, is_init);
+			start_slots.push_back(start_slot);
+			last_offset = start_slot + 1; // Next attempt, look later than current one.
+		} catch (const std::range_error& e) {
+			// This is thrown if no idle range can be found.
+			break; // Stop if no more ranges can be found.
+		} catch (const std::invalid_argument& e) {
+			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
+			break; // Stop if no more ranges can be found.
+		} // all other exceptions should still end execution
+	}
+	return start_slots;
+}
+
 bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_tx, bool lock_rx) {
 	// Ensure that you *can* lock all tables that should be locked *before* actually doing so.
 	if (!canLock(slot_offsets))
@@ -323,8 +380,58 @@ bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_
 	return true;
 }
 
+bool ReservationTable::lock(unsigned int slot_offset, unsigned int burst_length, bool lock_tx, bool lock_rx) {
+	// Ensure that you *can* lock all tables that should be locked *before* actually doing so.
+	if (!canLock(slot_offset, burst_length))
+		return false;
+	if (lock_tx) {
+		if (transmitter_reservation_table == nullptr)
+			throw std::runtime_error("ReservationTable::lock with lock_tx=true and unset transmitter reservation table.");
+		if (!transmitter_reservation_table->canLock(slot_offset, burst_length))
+			return false;
+	}
+	if (lock_rx) {
+		if (receiver_reservation_tables.empty())
+			throw std::runtime_error("ReservationTable::lock with lock_rx=true and unset receiver reservation table.");
+		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset, burst_length](ReservationTable* table) {
+			return table->canLock(slot_offset, burst_length);
+		})) {
+			return false;
+		}
+	}
+	// Then apply locking.
+	for (unsigned int t = slot_offset; t < slot_offset + burst_length; t++)
+		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).lock())
+			throw std::runtime_error("ReservationTable::lock didn't succeed."); // canLock must've been broken, so throw an error
+
+	if (lock_tx)
+		if (!transmitter_reservation_table->lock(slot_offset, burst_length, false, false))
+			throw std::runtime_error("ReservationTable::lock didn't succeed for transmitter table."); // canLock must've been broken, so throw an error
+	if (lock_rx) {
+		bool success = false;
+		for (auto* rx_table : receiver_reservation_tables) {
+			if (rx_table->canLock(slot_offset, burst_length)) {
+				if (!rx_table->lock(slot_offset, burst_length, false, false))
+					throw std::runtime_error("ReservationTable::lock didn't succeed for receiver table."); // canLock must've been broken, so throw an error
+				// Lock just *one* receiver table, i.e. the first one where you can.
+				success = true;
+				break;
+			}
+		}
+		return success;
+	}
+	return true;
+}
+
 bool ReservationTable::canLock(const std::vector<int32_t>& slot_offsets) const {
 	for (int32_t t : slot_offsets)
+		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).isIdle())
+			return false;
+	return true;
+}
+
+bool ReservationTable::canLock(unsigned int slot_offset, unsigned int burst_length) const {
+	for (unsigned int t = slot_offset; t < slot_offset + burst_length; t++)
 		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).isIdle())
 			return false;
 	return true;

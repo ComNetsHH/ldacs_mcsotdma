@@ -18,7 +18,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class SystemTests;
 
 	public:
-		explicit BCLinkManagementEntity(LinkManager* owner);
+		explicit BCLinkManagementEntity(OldLinkManager* owner);
 
 		void processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload) override;
 

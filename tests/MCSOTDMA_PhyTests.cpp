@@ -53,7 +53,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy->tuneReceiver(center_freq1);
 			CPPUNIT_ASSERT_EQUAL(false, phy->rx_frequencies.empty());
 
-			// std::runtime_error because the LinkManager will complain that it's not expecting packets.
+			// std::runtime_error because the OldLinkManager will complain that it's not expecting packets.
 			CPPUNIT_ASSERT_THROW(phy->onReception(&packet, center_freq1), std::runtime_error);
 			// Should *not* have been discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->statistic_num_received_packets);

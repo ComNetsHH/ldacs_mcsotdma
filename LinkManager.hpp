@@ -1,43 +1,21 @@
 //
-// Created by Sebastian Lindner on 10.11.20.
+// Created by seba on 2/18/21.
 //
 
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP
 
-#include "MacId.hpp"
-#include <L2Packet.hpp>
-#include "ReservationManager.hpp"
-#include "BeaconPayload.hpp"
-#include "MovingAverage.hpp"
-#include <random>
+#include "coutdebug.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	class MCSOTDMA_Mac;
 
-	// Implemented in its own files for better readability and testing.
-	class LinkManagementEntity;
-
-	/**
-	 * A LinkManager is responsible for a single communication link.
-	 * It is notified by a QueueManager of new packets, and utilizes a ReservationManager to make slot reservations.
-	 */
-	class LinkManager : public L2PacketSentCallback {
-
-		friend class LinkManagementEntity;
-
-		friend class BCLinkManagementEntity;
-
-		friend class LinkManagerTests;
-
-		friend class BCLinkManagerTests;
+	/** LinkManager interface. */
+	class LinkManager {
 
 		friend class MCSOTDMA_MacTests;
-
 		friend class SystemTests;
-
-		friend class LinkManagementEntityTests;
 
 	public:
 		enum Status {
@@ -53,196 +31,85 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_renewal_complete
 		};
 
-		LinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac);
+		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
+			  link_establishment_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */ {}
 
-		virtual ~LinkManager();
-
-		/**
-		 * @return The link ID that is managed.
-		 */
-		const MacId& getLinkId() const;
+	    virtual ~LinkManager() = default;
 
 		/**
-		 * When a new packet for this link comes in from the upper layers, this notifies the LinkManager.
-		 * Applies P2P slot selection.
+		 * When a packet has been received, this lets the LinkManager process it.
+		 * @param packet The received packet.
 		 */
-		virtual void notifyOutgoing(unsigned long num_bits);
+		virtual void onPacketReception(L2Packet *&packet) = 0;
 
 		/**
-		 * @param num_slots Number of consecutive slots that may be used for this transmission.
-		 * @return A data packet that should now be sent.
+		 * Called when a reception burst starts.
+		 * @param burst_length Number of slots that'll be received for.
 		 */
-		virtual L2Packet* onTransmissionBurst(unsigned int num_slots);
-
-		virtual void onReceptionSlot();
+		virtual void onReceptionBurstStart(unsigned int burst_length) = 0;
 
 		/**
-		 * When a packet on this link comes in from the PHY, this notifies the LinkManager.
+		 * Called each slot during a reception burst, *except* for the first slot, where onReceptionBurstStart() is called instead.
+		 * @param remaining_burst_length Remaining number of slots that'll be received for.
 		 */
-		void receiveFromLower(L2Packet*& packet);
+		virtual void onReceptionBurst(unsigned int remaining_burst_length) = 0;
 
 		/**
-		 * @return The current, computed traffic estimate from a moving average over some window of past values.
+		 * Called when a transmission burst starts.
+		 * @param burst_length Number of slots that'll be transmitted for.
+		 * @return A packet that should be transmitted during this burst.
 		 */
-		double getCurrentTrafficEstimate() const;
+		virtual L2Packet* onTransmissionBurstStart(unsigned int burst_length) = 0;
 
 		/**
-		 * @param start_slot The minimum slot offset to start the search.
-		 * @param reservation
-		 * @return The slot offset until the earliest reservation that corresponds to the one provided.
-		 * @throws std::runtime_error If no reservation of this kind is found.
+		 * Called each slot during a transmission burst, *except* for the first slot, where onTransmissionBurstStart() is called instead.
+		 * @param remaining_burst_length Remaining number of slots that'll be transmitted for.
 		 */
-		int32_t getEarliestReservationSlotOffset(int32_t start_slot, const Reservation& reservation) const;
+		virtual void onTransmissionBurst(unsigned int remaining_burst_length) = 0;
 
 		/**
-		 * From L2PacketSentCallback interface: when a packet leaves the layer, the LinkManager may be notified.
-		 * This is used to set header fields, and to compute link request proposals.
-		 * @param packet
+		 * Called when upper layers notify the MAC of outgoing data for this link.
+		 * @param num_bits
 		 */
-		void packetBeingSentCallback(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
+		virtual void notifyOutgoing(unsigned long num_bits) = 0;
 
 		/**
-		 * Assign both FrequencyChannel and corresponding ReservationTable.
-		 * @param channel
+		 * Called on slot start.
+		 * @param num_slots Number of slots that have passed.
 		 */
-		void assign(const FrequencyChannel* channel);
+		virtual void onSlotStart(uint64_t num_slots) = 0;
 
-		virtual void update(uint64_t num_slots);
+		/**
+		 * Called on slot end.
+		 */
+		virtual void onSlotEnd() = 0;
 
-		virtual void onSlotEnd();
+		void assign(const FrequencyChannel* channel) {
+			if (current_channel == nullptr && current_reservation_table == nullptr) {
+				this->current_channel = channel;
+				this->current_reservation_table = reservation_manager->getReservationTable(channel);
+				coutd << "assigned channel ";
+				if (channel == nullptr)
+					coutd << "NONE";
+				else
+					coutd << *channel;
+				coutd << " -> ";
+			} else
+				coutd << *this << "::assign, but channel or reservation table are already assigned; ignoring -> ";
+		}
+
+		MacId getLinkId() const {
+			return link_id;
+		}
 
 	protected:
-		/**
-		 * Makes reservations on the current reservation table.
-		 * @param timeout Number of repetitions.
-		 * @param init_offset Excluding initial offset: first slot used will be init_offset+offset.
-		 * @param offset Increment offset each repetition.
-		 * @param length Number of slots.
-		 * @param action
-		 */
-		void markReservations(unsigned int timeout, unsigned int init_offset, unsigned int offset, unsigned int length, const MacId& target_id, Reservation::Action action);
-
-		/**
-		 * Makes reservations on the given reservation table.
-		 * @param table
-		 * @param timeout Number of repetitions.
-		 * @param init_offset Excluding initial offset: first slot used will be init_offset+offset.
-		 * @param offset Increment offset each repetition.
-		 * @param reservation
-		 * @return The offsets where reservations were made.
-		 */
-		std::vector<unsigned int> markReservations(ReservationTable* table, unsigned int timeout, unsigned int init_offset, unsigned int offset, const Reservation& reservation);
-
-		/**
-		 * When a beacon packet comes in from the PHY, this processes it.
-		 * @oaram origin_id
-		 * @param header
-		 * @param payload
-		 */
-		virtual void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
-
-		/**
-		 * When a broadcast packet comes in from the PHY, this processes it.
-		 * @param origin
-		 * @param header
-		 */
-		virtual void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header);
-
-		/**
-		 * When a unicast packet comes in from the PHY, this processes it.
-		 * @param header
-		 * @param payload
-		 */
-		virtual void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
-
-		/**
-		 * Processes the base header of each incoming packet.
-		 * @param header
-		 */
-		virtual void processIncomingBase(L2HeaderBase*& header);
-
-		virtual void processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin);
-
-		virtual void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
-
-		/**
-		 * Encodes this user's reserved transmission slots.
-		 * @param max_bits Maximum number of bits this payload should encompass.
-		 * @return
-		 */
-		BeaconPayload* computeBeaconPayload(unsigned long max_bits) const;
-
-		/**
-		 * Checks validity and delegates to set{Base,Beacon,Broadcast,Unicast,Request}HeaderFields.
-		 * @param header The header whose fields shall be set.
-		 */
-		void setHeaderFields(L2Header* header);
-
-		void setBaseHeaderFields(L2HeaderBase*& header);
-
-		virtual void setBeaconHeaderFields(L2HeaderBeacon*& header) const;
-
-		virtual void setBroadcastHeaderFields(L2HeaderBroadcast*& header) const;
-
-		void setUnicastHeaderFields(L2HeaderUnicast*& header) const;
-
-		/**
-		 * @return Based on the current traffic estimate and the current data rate, calculate the number of slots that should be reserved for this link.
-		 */
-		unsigned int estimateCurrentNumSlots() const;
-
-		void updateTrafficEstimate(unsigned long num_bits);
-
-		/**
-		 * @param start
-		 * @param end
-		 * @return Uniformly drawn random integer from [start, end] (exclusive).
-		 */
-		size_t getRandomInt(size_t start, size_t end);
-
-		/**
-		 * Reassign both FrequencyChannel and corresponding ReservationTable.
-		 * @param channel
-		 */
-		void reassign(const FrequencyChannel* channel);
-
-	protected:
-		/** The communication partner's ID, whose link is managed. */
-		const MacId link_id;
-		/** Points to the reservation manager. */
-		ReservationManager* reservation_manager;
-		/** Points to the MAC sublayer. */
-		MCSOTDMA_Mac* mac;
+		MacId link_id;
+		MCSOTDMA_Mac *mac;
+		ReservationManager *reservation_manager = nullptr;
+		const FrequencyChannel *current_channel = nullptr;
+		ReservationTable *current_reservation_table = nullptr;
 		/** Link establishment status. */
 		Status link_establishment_status;
-		/** A link is assigned on one particular frequency channel. It may be nullptr unless the link_establishment status is `link_established`. */
-		const FrequencyChannel* current_channel = nullptr;
-		/** A link is assigned on one particular frequency channel's reservation table. It may be nullptr unless the link_establishment status is `link_established`. */
-		ReservationTable* current_reservation_table = nullptr;
-		/** Current traffic estimate of this link. */
-		MovingAverage traffic_estimate;
-		/** Whether this instance is the initiator of a link, i.e. sends the requests. */
-		bool is_link_initiator = false;
-		/** Takes care of link management. It resides in its own class to modularize the code. */
-		LinkManagementEntity* lme = nullptr;
-		size_t statistic_num_received_packets = 0,
-			statistic_num_received_data_packets = 0,
-			statistic_num_received_requests = 0,
-			statistic_num_received_replies = 0,
-			statistic_num_received_beacons = 0,
-			statistic_num_received_broadcasts = 0,
-			statistic_num_received_unicasts = 0,
-			statistic_num_sent_packets = 0,
-			statistic_num_sent_data_packets = 0,
-			statistic_num_sent_requests = 0,
-			statistic_num_sent_replies = 0,
-			statistic_num_sent_beacons = 0,
-			statistic_num_sent_broadcasts = 0,
-			statistic_num_sent_unicasts = 0;
-
-		std::random_device* random_device;
-		std::mt19937 generator;
-
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {
@@ -277,6 +144,5 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		return stream << str;
 	}
 }
-
 
 #endif //TUHH_INTAIRNET_MC_SOTDMA_LINKMANAGER_HPP

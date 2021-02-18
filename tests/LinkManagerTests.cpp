@@ -4,14 +4,15 @@
 
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
-#include "../LinkManager.hpp"
-#include "../BCLinkManager.hpp"
 #include "MockLayers.hpp"
+#include "../OldLinkManager.hpp"
+#include "../LinkManagementEntity.hpp"
+#include "../BCLinkManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	/**
-	 * The LinkManager is the core component of the IntAirNet' LDACS MAC.
+	 * The OldLinkManager is the core component of the IntAirNet' LDACS MAC.
 	 * These tests aim at one side of the communication link, e.g. the preparation of a request and testing its contents.
 	 * Tests that involve both TX *and* RX are put into SystemTests instead.
 	 */
@@ -19,7 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	private:
 		TestEnvironment* env;
 
-		LinkManager* link_manager;
+		OldLinkManager* link_manager;
 		ReservationManager* reservation_manager;
 		MacId own_id;
 		MacId communication_partner_id;
@@ -48,7 +49,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer = env->phy_layer;
 			mac = env->mac_layer;
 			reservation_manager = mac->reservation_manager;
-			link_manager = mac->getLinkManager(communication_partner_id);
+			link_manager = (OldLinkManager*) mac->getLinkManager(communication_partner_id);
 			arq_layer = env->arq_layer;
 			net_layer = env->net_layer;
 			rlc_layer = env->rlc_layer;
@@ -108,9 +109,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// It must a be a P2P link.
 			CPPUNIT_ASSERT(own_id != SYMBOLIC_LINK_ID_BROADCAST && own_id != SYMBOLIC_LINK_ID_BEACON);
 			// Initially the link should not be established.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_not_established, link_manager->link_establishment_status);
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer->control_message_injections.size());
-			// Now inform the LinkManager of new data for this link.
+			// Now inform the OldLinkManager of new data for this link.
 			link_manager->notifyOutgoing(num_bits_going_out);
 			// The RLC should've received a link request.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->control_message_injections.size());
@@ -119,8 +120,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(0)->frame_type);
 			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(1)->frame_type);
 			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getHeaders().at(2)->frame_type);
-			// And the LinkManager status should've updated.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
+			// And the OldLinkManager status should've updated.
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
 		}
 
 		void testComputeProposal() {
@@ -162,9 +163,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testNewLinkRequest() {
-			CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::link_not_established);
+			CPPUNIT_ASSERT(link_manager->link_establishment_status == OldLinkManager::link_not_established);
 			link_manager->lme->establishLink();
-			CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::awaiting_reply);
+			CPPUNIT_ASSERT(link_manager->link_establishment_status == OldLinkManager::awaiting_reply);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->control_message_injections.size());
 			L2Packet* request = rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0);
 			CPPUNIT_ASSERT(rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getRequestIndex() > -1);
@@ -175,14 +176,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testTransmissionSlotOnUnestablishedLink() {
-			CPPUNIT_ASSERT(link_manager->onTransmissionBurst(1) == nullptr);
+			CPPUNIT_ASSERT(link_manager->onTransmissionBurstStart(1) == nullptr);
 		}
 
 		void testOnTransmissionSlot() {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
 			// Transmission slots should only occur for established links.
-			link_manager->link_establishment_status = LinkManager::link_established;
-			L2Packet* packet = link_manager->onTransmissionBurst(1);
+			link_manager->link_establishment_status = OldLinkManager::link_established;
+			L2Packet* packet = link_manager->onTransmissionBurstStart(1);
 			CPPUNIT_ASSERT(packet != nullptr);
 			delete packet;
 		}
@@ -198,7 +199,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testSetBeaconHeader() {
 			L2HeaderBeacon header = L2HeaderBeacon();
-			LinkManager broadcast_link_manager = LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac);
+			OldLinkManager broadcast_link_manager = OldLinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac);
 			// Shouldn't try to set a beacon header with a P2P link manager.
 			bool exception_thrown = false;
 			try {
@@ -211,7 +212,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testSetUnicastHeader() {
 			L2HeaderUnicast header = L2HeaderUnicast(L2Header::FrameType::unicast);
-			link_manager->link_establishment_status = LinkManager::link_established;
+			link_manager->link_establishment_status = OldLinkManager::link_established;
 			link_manager->setHeaderFields(&header);
 			CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.icao_dest_id);
 		}
@@ -232,8 +233,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int offset = 5, length_next = 2, timeout = 3;
 			auto* base_header = new L2HeaderBase(communication_partner_id, offset, length_next, timeout);
 			packet->addPayload(base_header, nullptr);
-			// Have the LinkManager process it.
-			link_manager->receiveFromLower(packet);
+			// Have the OldLinkManager process it.
+			link_manager->onPacketReception(packet);
 			// Ensure that the slots were marked.
 			for (size_t i = 0; i < timeout - 1; i++) {
 				const Reservation& reservation = table->getReservation((i + 1) * offset);
@@ -258,7 +259,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			other_mac.reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 			other_mac.reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
 			other_mac.reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-			LinkManager other_link_manager = LinkManager(own_id, other_mac.reservation_manager, &other_mac);
+			OldLinkManager other_link_manager = OldLinkManager(own_id, other_mac.reservation_manager, &other_mac);
 //				coutd.setVerbose(true);
 			L2Packet* request = other_link_manager.lme->prepareRequest();
 			request->getPayloads().at(1) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations, false, true);
@@ -292,7 +293,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
 			// So set it to established and try again.
-			link_manager->link_establishment_status = LinkManager::link_established;
+			link_manager->link_establishment_status = OldLinkManager::link_established;
 			link_manager->processIncomingUnicast(header_for_us, payload_for_us);
 			// ... then they should just remain for processing on the upper layers.
 			CPPUNIT_ASSERT(header_for_us != nullptr);
@@ -316,7 +317,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BROADCAST, request->getDestination());
 			CPPUNIT_ASSERT_EQUAL(own_id, request->getOrigin());
 			delete request;
-			link_manager->link_establishment_status = LinkManager::link_established;
+			link_manager->link_establishment_status = OldLinkManager::link_established;
 			request = link_manager->lme->prepareRequest();
 			CPPUNIT_ASSERT_EQUAL(communication_partner_id, request->getDestination());
 			CPPUNIT_ASSERT_EQUAL(own_id, request->getOrigin());
@@ -331,11 +332,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testReplyToRequest() {
 			// Assign as BC link manager.
-			LinkManager* bc_manager = mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_manager = (OldLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			// Prepare a link establishment request.
 			TestEnvironment env2 = TestEnvironment(communication_partner_id, own_id);
 			MACLayer& other_mac = *env2.mac_layer;
-			LinkManager& other_link_manager = *other_mac.getLinkManager(own_id);
+			auto &other_link_manager = (OldLinkManager&) *other_mac.getLinkManager(own_id);
 			L2Packet* request = other_link_manager.lme->prepareRequest();
 			CPPUNIT_ASSERT(request->getRequestIndex() > -1);
 			request->getPayloads().at(request->getRequestIndex()) = other_link_manager.lme->p2pSlotSelection(link_manager->lme->getTxBurstSlots(), link_manager->lme->num_proposed_channels, link_manager->lme->num_proposed_slots, link_manager->lme->min_offset_new_reservations, false, true);
@@ -345,7 +346,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->receiveFromLower(request, bc_frequency);
 //			coutd.setVerbose(false);
 			// Fetch the now-instantiated P2P manager.
-			LinkManager* p2p_manager = mac->getLinkManager(communication_partner_id);
+			auto *p2p_manager = (OldLinkManager*) mac->getLinkManager(communication_partner_id);
 			// And increment time until it has sent the reply.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
 			size_t num_slots = 0, num_slots_max = 100;
@@ -359,7 +360,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(own_id, reply->getOrigin());
 			CPPUNIT_ASSERT_EQUAL(communication_partner_id, reply->getDestination());
 			// Link establishment status should've been updated.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, p2p_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::awaiting_data_tx, p2p_manager->link_establishment_status);
 //			coutd.setVerbose(false);
 		}
 
@@ -397,7 +398,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// No need to schedule additional broadcast slots after sending the request.
 			rlc_layer->should_there_be_more_p2p_data = false;
-			// Injections into RLC should trigger notifications down to the corresponding LinkManager.
+			// Injections into RLC should trigger notifications down to the corresponding OldLinkManager.
 			arq_layer->should_forward = true;
 			auto* bc_link_manager = (BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			CPPUNIT_ASSERT_EQUAL(false, bc_link_manager->broadcast_slot_scheduled);
@@ -408,7 +409,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Request should've been injected.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer->control_message_injections.size());
 			CPPUNIT_ASSERT(rlc_layer->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getRequestIndex() > -1);
-			// Broadcast LinkManager should've been notified.
+			// Broadcast OldLinkManager should've been notified.
 			CPPUNIT_ASSERT_EQUAL(true, bc_link_manager->broadcast_slot_scheduled);
 
 			// Increment time until the reply has been sent.
@@ -485,7 +486,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Configure a receiver side.
 			TestEnvironment env2 = TestEnvironment(communication_partner_id, own_id);
-			LinkManager* link_manager_rx = env2.mac_layer->getLinkManager(own_id);
+			auto *link_manager_rx = (OldLinkManager*) env2.mac_layer->getLinkManager(own_id);
 			ReservationManager* reservation_manager_rx = env2.mac_layer->reservation_manager;
 
 //                coutd.setVerbose(true);
@@ -493,7 +494,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Receive the request.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
 			L2Packet* copy = request->copy();
-			link_manager_rx->receiveFromLower(request);
+			link_manager_rx->onPacketReception(request);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
 
 			std::vector<uint64_t> frequencies;
@@ -546,8 +547,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// and one TX slot.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
 			// The link should still be unestablished - it updates to awaiting_data_tx only when the reply is actually sent.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager_rx->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_not_established, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::awaiting_reply, link_manager->link_establishment_status);
 			delete copy;
 //                coutd.setVerbose(false);
 		}
@@ -562,12 +563,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Configure a receiver side.
 			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
-			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+			auto *link_manager_rx = (OldLinkManager*) env_rx.mac_layer->getLinkManager(own_id);
 			ReservationManager* reservation_manager_rx = env_rx.mac_layer->reservation_manager;
 
 			// Receive the request, compute the reply.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager_rx->lme->scheduled_replies.size());
-			link_manager_rx->receiveFromLower(request);
+			link_manager_rx->onPacketReception(request);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager_rx->lme->scheduled_replies.size());
 
 //            coutd.setVerbose(true);
@@ -689,14 +690,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 
 			// The link should now be established.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager->link_establishment_status);
 
 //            coutd.setVerbose(false);
 		}
 
 		void testReservationsAfterFirstDataTx() {
 			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
-			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+			auto link_manager_rx = (OldLinkManager*) env_rx.mac_layer->getLinkManager(own_id);
 
 //			coutd.setVerbose(true);
 
@@ -707,7 +708,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			L2Packet* request = link_manager->lme->prepareRequest();
 			((LinkManagementEntity::ProposalPayload*) request->getPayloads().at(request->getRequestIndex()))->proposed_resources = ((LinkManagementEntity::ProposalPayload*) request_sent->getPayloads().at(request_sent->getRequestIndex()))->proposed_resources;
 			// Receive the request.
-			link_manager_rx->receiveFromLower(request);
+			link_manager_rx->onPacketReception(request);
 			// Increment time until the reply has been sent.
 			size_t num_slots = 0, max_num_slots = 20;
 			while (env_rx.phy_layer->outgoing_packets.empty() && num_slots++ < max_num_slots) {
@@ -740,11 +741,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(2), phy_layer->outgoing_packets.size());
 			// Let RX receive it.
 			auto* data_packet = phy_layer->outgoing_packets.at(1)->copy();
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
-			link_manager_rx->receiveFromLower(data_packet);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
+			link_manager_rx->onPacketReception(data_packet);
 
 			// It should now have an established link.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager_rx->link_establishment_status);
 			// Both sides should have matching (TX, RX)-pairs of reservations.
 			ReservationTable* table_tx = link_manager->current_reservation_table, * table_rx = link_manager_rx->current_reservation_table;
 			size_t expected_num_reservations = link_manager->lme->default_tx_timeout, actual_num_reservations = 0;
@@ -787,7 +788,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			testReservationsAfterFirstDataTx();
 			// No renewal attempts are made if there's no more data.
 			rlc_layer->should_there_be_more_p2p_data = false;
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager->link_establishment_status);
 			CPPUNIT_ASSERT(link_manager->lme->default_tx_timeout > 0);
 			unsigned int current_timeout = link_manager->lme->default_tx_timeout - 1;
 			CPPUNIT_ASSERT_EQUAL(current_timeout, link_manager->lme->tx_timeout);
@@ -805,7 +806,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(current_timeout, link_manager->lme->tx_timeout);
 			}
 			// Should now be "not established" again.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_not_established, link_manager->link_establishment_status);
 //			coutd.setVerbose(false);
 		}
 
@@ -849,21 +850,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		/**
-		 * Tests that both sides of a communication link update their timeout values synchronously until link expiry.
+		 * Tests that both sides of a communication link onSlotStart their timeout values synchronously until link expiry.
 		 */
 		void testReceiverTimeout() {
 //			coutd.setVerbose(true);
 			rlc_layer->should_there_be_more_broadcast_data = false;
 			rlc_layer->should_there_be_more_p2p_data = false;
 			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
-			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+			auto *link_manager_rx = (OldLinkManager*) env_rx.mac_layer->getLinkManager(own_id);
 			env_rx.phy_layer->connected_phy = phy_layer;
 			phy_layer->connected_phy = env_rx.phy_layer;
 			auto* mac_rx = env_rx.mac_layer;
 
 			mac->notifyOutgoing(512, communication_partner_id);
 			size_t num_slots = 0, max_num_slots = 100;
-			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+			while (link_manager->link_establishment_status != OldLinkManager::link_established && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac_rx->update(1);
 				mac->execute();
@@ -872,14 +873,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
 			// No timeout changes yet since the link has just been established on one side.
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager_rx->lme->tx_timeout);
 
 			num_slots = 0;
-			while (link_manager_rx->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+			while (link_manager_rx->link_establishment_status != OldLinkManager::link_established && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac_rx->update(1);
 				mac->execute();
@@ -888,8 +889,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager_rx->link_establishment_status);
 			// First data transmission occurred - both sides should've updated their timeout.
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager_rx->lme->tx_timeout);
@@ -900,7 +901,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			num_slots = 0;
 			unsigned int num_txs = 1;
 			// Now increment time until expiry.
-			while (link_manager->link_establishment_status != LinkManager::link_not_established && num_slots++ < max_num_slots) {
+			while (link_manager->link_establishment_status != OldLinkManager::link_not_established && num_slots++ < max_num_slots) {
 				mac->update(link_manager->lme->tx_offset);
 				mac_rx->update(link_manager->lme->tx_offset);
 				mac->execute();
@@ -914,27 +915,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(expected_timeout, link_manager_rx->lme->tx_timeout);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::link_not_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::link_not_established, link_manager_rx->link_establishment_status);
 //			coutd.setVerbose(false);
 		}
 
 		/**
-		 * Tests that both sides of a communication link update their timeout values synchronously until link expiry even when transmissions are not received.
+		 * Tests that both sides of a communication link onSlotStart their timeout values synchronously until link expiry even when transmissions are not received.
 		 */
 		void testReceiverTimeoutNoReceptions() {
 //			coutd.setVerbose(true);
 			rlc_layer->should_there_be_more_broadcast_data = false;
 			rlc_layer->should_there_be_more_p2p_data = false;
 			TestEnvironment env_rx = TestEnvironment(communication_partner_id, own_id);
-			LinkManager* link_manager_rx = env_rx.mac_layer->getLinkManager(own_id);
+			auto *link_manager_rx = (OldLinkManager*) env_rx.mac_layer->getLinkManager(own_id);
 			env_rx.phy_layer->connected_phy = phy_layer;
 			phy_layer->connected_phy = env_rx.phy_layer;
 			auto* mac_rx = env_rx.mac_layer;
 
 			mac->notifyOutgoing(512, communication_partner_id);
 			size_t num_slots = 0, max_num_slots = 100;
-			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+			while (link_manager->link_establishment_status != OldLinkManager::link_established && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac_rx->update(1);
 				mac->execute();
@@ -943,14 +944,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::awaiting_data_tx, link_manager_rx->link_establishment_status);
 			// No timeout changes yet since the link has just been established on one side.
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout, link_manager_rx->lme->tx_timeout);
 
 			num_slots = 0;
-			while (link_manager_rx->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+			while (link_manager_rx->link_establishment_status != OldLinkManager::link_established && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac_rx->update(1);
 				mac->execute();
@@ -959,8 +960,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager_rx->link_establishment_status);
 			// First data transmission occurred - both sides should've updated their timeout.
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager->lme->tx_timeout);
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->default_tx_timeout - 1, link_manager_rx->lme->tx_timeout);
@@ -973,7 +974,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			num_slots = 0;
 			unsigned int num_txs = 1;
 			// Now increment time until expiry.
-			while (link_manager->link_establishment_status != LinkManager::link_not_established && num_slots++ < max_num_slots) {
+			while (link_manager->link_establishment_status != OldLinkManager::link_not_established && num_slots++ < max_num_slots) {
 				mac->update(link_manager->lme->tx_offset);
 				mac_rx->update(link_manager->lme->tx_offset);
 				mac->execute();
@@ -987,8 +988,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(expected_timeout, link_manager_rx->lme->tx_timeout);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager->link_establishment_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, link_manager_rx->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::link_not_established, link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::link_not_established, link_manager_rx->link_establishment_status);
 //			coutd.setVerbose(false);
 		}
 
@@ -1007,7 +1008,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			// Increment time until link is established.
 			size_t num_slots = 0, max_num_slots = 1000;
-			while (link_manager->link_establishment_status != LinkManager::link_established && num_slots++ < max_num_slots) {
+			while (link_manager->link_establishment_status != OldLinkManager::link_established && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac_rx->update(1);
 				mac->execute();
@@ -1016,7 +1017,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_rx->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established,link_manager->link_establishment_status);
+			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, link_manager->link_establishment_status);
 
 			// Increment time until link request has been sent.
 			size_t num_scheduled_requests = link_manager->lme->max_num_renewal_attempts;
@@ -1036,7 +1037,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// And next burst the reply should be RX'd.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager->current_reservation_table->getReservation(link_manager->lme->tx_offset).getAction());
 			// For the other side, the current slot should RX the request.
-			LinkManager* link_manager_rx = mac_rx->getLinkManager(own_id);
+			auto *link_manager_rx = (OldLinkManager*) mac_rx->getLinkManager(own_id);
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager_rx->current_reservation_table->getReservation(0).getAction());
 			// And the next burst be used to TX the reply.
 			CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager_rx->current_reservation_table->getReservation(link_manager->lme->tx_offset).getAction());
@@ -1085,7 +1086,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// New status depends on whether a channel change is applied,
 			// if it is, the new status is `link_renewal_complete`
 			// if it isn't, it moves to 'link_established' directly.
-			CPPUNIT_ASSERT(link_manager->link_establishment_status == LinkManager::link_established || link_manager->link_establishment_status == LinkManager::link_renewal_complete);
+			CPPUNIT_ASSERT(link_manager->link_establishment_status == OldLinkManager::link_established || link_manager->link_establishment_status == OldLinkManager::link_renewal_complete);
 
 			// Next channels should match.
 			CPPUNIT_ASSERT_EQUAL(*link_manager->lme->next_channel, *link_manager_rx->lme->next_channel);

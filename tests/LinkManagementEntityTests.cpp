@@ -5,19 +5,20 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../LinkManagementEntity.hpp"
+#include "../OldLinkManager.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	/**
-	 * The LinkManagementEntity is a module of the LinkManager.
+	 * The LinkManagementEntity is a module of the OldLinkManager.
 	 * As such, it cannot be easily tested on its own. Most tests are put into LinkManagerTests or even SystemTests.
 	 */
 	class LinkManagementEntityTests : public CppUnit::TestFixture {
 	private:
 		TestEnvironment* env;
 
-		LinkManager* link_manager;
+		OldLinkManager* link_manager;
 		ReservationManager* reservation_manager;
 		MacId own_id;
 		MacId communication_partner_id;
@@ -43,7 +44,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			mac = env->mac_layer;
 			reservation_manager = mac->reservation_manager;
-			link_manager = mac->getLinkManager(communication_partner_id);
+			link_manager = (OldLinkManager*) mac->getLinkManager(communication_partner_id);
 			link_manager->assign(reservation_manager->getFreqChannelByCenterFreq(center_frequency1));
 
 			lme = link_manager->lme;
@@ -95,7 +96,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testPrepareRequestEstablished() {
-			lme->owner->link_establishment_status = LinkManager::link_established;
+			lme->owner->link_establishment_status = OldLinkManager::link_established;
 			L2Packet* request = lme->prepareRequest();
 			CPPUNIT_ASSERT_EQUAL(communication_partner_id, request->getDestination());
 		}

@@ -12,10 +12,10 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-	class LinkManager;
+	class OldLinkManager;
 
 	/**
-	 * LinkManager module that handles the P2P link management, such as processing requests and replies.
+	 * OldLinkManager module that handles the P2P link management, such as processing requests and replies.
 	 */
 	class LinkManagementEntity {
 
@@ -66,7 +66,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		};
 
 
-		explicit LinkManagementEntity(LinkManager* owner);
+		explicit LinkManagementEntity(OldLinkManager* owner);
 
 		/**
 		 * @return Whether a link management control message should be sent.
@@ -76,14 +76,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		L2Packet* getControlMessage();
 
 		/**
-		 * When a LinkManager receives a link reply, it should forward it to this function.
+		 * When a OldLinkManager receives a link reply, it should forward it to this function.
 		 * @param header
 		 * @param payload
 		 */
 		virtual void processLinkReply(const L2HeaderLinkEstablishmentReply*& header, const ProposalPayload*& payload);
 
 		/**
-		 * When a LinkManager receoves a link request, it should forward it to this function.
+		 * When a OldLinkManager receoves a link request, it should forward it to this function.
 		 * @param header
 		 * @param payload
 		 */
@@ -233,8 +233,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 		/** Number of link renewal attempts that should be scheduled when a new link is established.. */
 		unsigned int max_num_renewal_attempts = 3;
-		/** A LinkManagementEntity is a module of a LinkManager. */
-		LinkManager* owner = nullptr;
+		/** A LinkManagementEntity is a module of a OldLinkManager. */
+		OldLinkManager* owner = nullptr;
 		/** The absolute points in time when requests should be sent. */
 		std::vector<uint64_t> scheduled_requests;
 		/** Link replies *must* be sent on specific slots. This container holds these bindings. */

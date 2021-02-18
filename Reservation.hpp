@@ -9,7 +9,7 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-	class LinkManager;
+	class OldLinkManager;
 
 	/**
 	 * A Reservation can be associated to time slots and is used to denote target(s) of a communication link.

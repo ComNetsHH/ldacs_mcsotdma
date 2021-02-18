@@ -5,7 +5,7 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_BCLINKMANAGER_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_BCLINKMANAGER_HPP
 
-#include "LinkManager.hpp"
+#include "OldLinkManager.hpp"
 #include "ContentionEstimator.hpp"
 #include "LinkManagementEntity.hpp"
 
@@ -16,7 +16,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	/**
 	 * The Broadcast Channel (BC) Link Manager.
 	 */
-	class BCLinkManager : public LinkManager {
+	class BCLinkManager : public OldLinkManager {
 
 		friend class LinkManagerTests;
 
@@ -50,9 +50,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param num_slots
 		 * @return A packet to send.
 		 */
-		L2Packet* onTransmissionBurst(unsigned int num_slots) override;
+		L2Packet* onTransmissionBurstStart(unsigned int num_slots) override;
 
-		void onReceptionSlot() override;
+		void onReceptionBurstStart(unsigned int burst_length) override;
 
 		/**
 		 * @return Number of neighbors that have been active on the broadcast channel according to their contention estimate.
@@ -64,7 +64,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * It is required to keep correct contention estimates of neighbor broadcast activity.
 		 * @param num_slots
 		 */
-		void update(uint64_t num_slots) override;
+		void onSlotStart(uint64_t num_slots) override;
 
 		void onSlotEnd() override;
 

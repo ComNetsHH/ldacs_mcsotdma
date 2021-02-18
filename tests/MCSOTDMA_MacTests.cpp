@@ -9,6 +9,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../MCSOTDMA_Mac.hpp"
+#include "../OldLinkManager.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -64,7 +65,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MacId id = MacId(42);
 			mac->notifyOutgoing(1024, id);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), mac->link_managers.size());
-			LinkManager* link_manager = mac->link_managers.at(id);
+			auto *link_manager = (OldLinkManager*) mac->link_managers.at(id);
 			CPPUNIT_ASSERT(link_manager);
 			CPPUNIT_ASSERT(id == link_manager->getLinkId());
 //				coutd.setVerbose(false);
@@ -74,7 +75,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// No injected link request yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc->control_message_injections.size());
 			mac->notifyOutgoing(1024, communication_partner_id);
-			CPPUNIT_ASSERT(mac->getLinkManager(communication_partner_id)->link_establishment_status == LinkManager::Status::awaiting_reply);
+			CPPUNIT_ASSERT(((OldLinkManager*) mac->getLinkManager(communication_partner_id))->link_establishment_status == OldLinkManager::Status::awaiting_reply);
 			// Now there should be one.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc->control_message_injections.size());
 		}
@@ -84,8 +85,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //				coutd.setVerbose(true);
 			// No outgoing packets yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->outgoing_packets.size());
-			LinkManager* link_manager = mac->getLinkManager(communication_partner_id);
-			link_manager->link_establishment_status = LinkManager::link_established;
+			auto link_manager = (OldLinkManager*) mac->getLinkManager(communication_partner_id);
+			link_manager->link_establishment_status = OldLinkManager::link_established;
 			reservation_manager->p2p_reservation_tables.at(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
 			mac->update(1);
 			mac->execute();
