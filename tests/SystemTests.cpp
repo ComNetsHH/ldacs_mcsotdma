@@ -5,7 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "MockLayers.hpp"
-#include "../BCLinkManager.hpp"
+#include "../OldBCLinkManager.hpp"
 #include "../LinkManagementEntity.hpp"
 #include "../BCLinkManagementEntity.hpp"
 
@@ -78,7 +78,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 			// While it is scheduled, increment time.
 			size_t num_slots = 0, max_slots = 10;
-			while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
+			while (((OldBCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -106,7 +106,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto *lm_you = (OldLinkManager*) mac_layer_you->getLinkManager(own_id);
 			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
 			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
-			while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
+			while (((OldBCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
 				mac_layer_me->execute();
@@ -119,8 +119,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_not_established, lm_you->link_status);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_requests);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), ((BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->statistic_num_received_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), ((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->statistic_num_sent_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), ((OldBCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), ((OldBCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->statistic_num_sent_packets);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->lme->default_tx_timeout, lm_me->lme->tx_timeout);
 			// Increment time until status is 'link_established'.
@@ -203,7 +203,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			// New data for communication partner.
 			mac_layer_me->notifyOutgoing(expected_num_slots * bits_per_slot, communication_partner_id);
-			while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
+			while (((OldBCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
 				mac_layer_me->execute();

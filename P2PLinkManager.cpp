@@ -112,5 +112,10 @@ void P2PLinkManager::establishLink() {
 	// Add broadcast header.
 	request->addMessage(new L2HeaderBroadcast(), nullptr);
 	// Add request header.
-	request->addMessage(new L2HeaderLinkEstablishmentRequest(link_id, mac->shouldLinkBeArqProtected(link_id), 0, 0, 0), nullptr);
+	request->addMessage(new L2HeaderLinkRequest(link_id), nullptr);
+	request->addCallback(this);
+}
+
+void P2PLinkManager::packetBeingSentCallback(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) {
+
 }

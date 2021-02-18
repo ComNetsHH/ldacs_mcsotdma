@@ -11,7 +11,7 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-	class P2PLinkManager : public LinkManager {
+	class P2PLinkManager : public LinkManager, public L2PacketSentCallback {
 
 		friend class P2PLinkManagerTests;
 
@@ -35,6 +35,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void onSlotStart(uint64_t num_slots) override;
 
 		void onSlotEnd() override;
+
+		void packetBeingSentCallback(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
 
 	protected:
 		/**

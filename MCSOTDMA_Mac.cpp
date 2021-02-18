@@ -4,7 +4,7 @@
 
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
-#include "BCLinkManager.hpp"
+#include "OldBCLinkManager.hpp"
 #include "P2PLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
@@ -47,7 +47,7 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	lower_layer->update(num_slots);
 	// Notify the broadcast channel manager.
 	try {
-		auto* bc_link_manager = (BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+		auto* bc_link_manager = (OldBCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 		bc_link_manager->onSlotStart(num_slots);
 	} catch (const std::exception& e) {
 		throw std::runtime_error("MCOSTDMA_Mac::onSlotStart couldn't onSlotStart BCLinkManager: " + std::string(e.what()));
@@ -170,7 +170,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	} else {
 		// Auto-assign broadcast channel
 		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
-			link_manager = new BCLinkManager(internal_id, reservation_manager, this);
+			link_manager = new OldBCLinkManager(internal_id, reservation_manager, this);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
 			if (use_new_link_manager)

@@ -7,7 +7,7 @@
 #include "MockLayers.hpp"
 #include "../OldLinkManager.hpp"
 #include "../LinkManagementEntity.hpp"
-#include "../BCLinkManager.hpp"
+#include "../OldBCLinkManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -400,7 +400,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer->should_there_be_more_p2p_data = false;
 			// Injections into RLC should trigger notifications down to the corresponding OldLinkManager.
 			arq_layer->should_forward = true;
-			auto* bc_link_manager = (BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto* bc_link_manager = (OldBCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			CPPUNIT_ASSERT_EQUAL(false, bc_link_manager->broadcast_slot_scheduled);
 
 			// Trigger link establishment.

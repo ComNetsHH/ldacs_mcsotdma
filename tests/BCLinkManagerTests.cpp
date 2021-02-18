@@ -9,14 +9,14 @@
 #include "../Reservation.hpp"
 #include "../ReservationTable.hpp"
 #include "../ReservationManager.hpp"
-#include "../BCLinkManager.hpp"
+#include "../OldBCLinkManager.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	class BCLinkManagerTests : public CppUnit::TestFixture {
 	private:
-		BCLinkManager* link_manager;
+		OldBCLinkManager* link_manager;
 		ReservationManager* reservation_manager;
 		MacId own_id = MacId(42);
 		MacId communication_partner_id = MacId(43);
@@ -39,7 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 			reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
 			reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
-			link_manager = new BCLinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac);
+			link_manager = new OldBCLinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac);
 			arq_layer = new ARQLayer();
 			mac->setUpperLayer(arq_layer);
 			arq_layer->setLowerLayer(mac);
@@ -124,7 +124,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer->should_there_be_more_p2p_data = false;
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy_layer->outgoing_packets.size());
 			size_t num_slots = 0, max_slots = 10;
-			while (((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
+			while (((OldBCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->broadcast_slot_scheduled && num_slots++ < max_slots) {
 				mac->update(1);
 				mac->execute();
 			}
