@@ -46,7 +46,7 @@ ReservationTable* MCSOTDMA_Phy::getTransmitterReservationTable() {
 	return this->transmitter_reservation_table;
 }
 
-std::vector<ReservationTable*> MCSOTDMA_Phy::getReceiverReservationTables() {
+std::vector<ReservationTable*>& MCSOTDMA_Phy::getReceiverReservationTables() {
 	return this->receiver_reservation_tables;
 }
 

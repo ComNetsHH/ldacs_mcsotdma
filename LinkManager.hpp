@@ -16,6 +16,7 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	class MCSOTDMA_Mac;
+	class BeaconPayload;
 
 	/** LinkManager interface. */
 	class LinkManager {
@@ -37,6 +38,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_renewal_complete
 		};
 
+		class LinkRequestPayload : public L2Packet::Payload {
+		public:
+			class Callback {
+			public:
+				virtual void linkRequestAboutToBeSent(LinkRequestPayload* payload) = 0;
+			};
+
+			LinkRequestPayload() = default;
+
+			/** Copy constructor. */
+			LinkRequestPayload(const LinkRequestPayload& other) : proposed_resources(other.proposed_resources) {}
+			Payload* copy() const override {
+				return new LinkRequestPayload(*this);
+			}
+
+			unsigned int getBits() const override {
+				unsigned int num_bits = 0;
+				for (const auto& item : proposed_resources) {
+					num_bits += 8; // +1B per frequency channel
+					num_bits += 8 * item.second.size(); // +1B per slot
+				}
+				return num_bits;
+			}
+
+			/** <channel, <start slots>>-map of proposed resources. */
+			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
+			Callback *callback = nullptr;
+			bool initial_request = false;
+		};
+
 		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
 		                                                                                                link_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
 		                                                                                                random_device(new std::random_device), generator((*random_device)()){}
@@ -49,7 +80,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * When a packet has been received, this lets the LinkManager process it.
 		 * @param packet The received packet.
 		 */
-		virtual void onPacketReception(L2Packet *&packet) = 0;
+		virtual void onPacketReception(L2Packet *&packet);
 
 		/**
 		 * Called when a reception burst starts.
@@ -117,6 +148,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table);
 
+		unsigned long getRandomInt(size_t start, size_t end);
+
+		virtual void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
+		virtual void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header);
+		virtual void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
+		virtual void processIncomingBase(L2HeaderBase*& header);
+		virtual void processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		virtual void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
+
 	protected:
 		MacId link_id;
 		MCSOTDMA_Mac *mac;
@@ -129,6 +169,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Status link_status;
 		std::random_device* random_device;
 		std::mt19937 generator;
+
+		unsigned long long statistic_num_received_packets, statistic_num_received_beacons, statistic_num_received_broadcasts, statistic_num_received_unicasts, statistic_num_received_requests, statistic_num_received_replies;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {

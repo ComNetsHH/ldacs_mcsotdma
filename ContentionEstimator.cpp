@@ -9,6 +9,13 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 ContentionEstimator::ContentionEstimator(size_t horizon) : horizon(horizon) {}
 
+ContentionEstimator::ContentionEstimator() : horizon(100) {}
+
+ContentionEstimator::ContentionEstimator(const ContentionEstimator& other) : ContentionEstimator(other.horizon) {
+	contention_estimates = other.contention_estimates;
+	received_broadcast_on_this_slot = other.received_broadcast_on_this_slot;
+}
+
 void ContentionEstimator::reportBroadcast(const MacId& id) {
 	received_broadcast_on_this_slot[id] = true;
 	contention_estimates.emplace(id, MovingAverage(this->horizon));

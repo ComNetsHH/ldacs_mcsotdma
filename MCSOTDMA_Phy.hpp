@@ -26,7 +26,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		ReservationTable* getTransmitterReservationTable();
 
-		std::vector<ReservationTable*> getReceiverReservationTables();
+		std::vector<ReservationTable*>& getReceiverReservationTables();
 
 		void onReception(L2Packet* packet, uint64_t center_frequency) override;
 

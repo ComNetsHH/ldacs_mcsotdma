@@ -8,6 +8,7 @@
 #include "../OldBCLinkManager.hpp"
 #include "../LinkManagementEntity.hpp"
 #include "../BCLinkManagementEntity.hpp"
+#include "../LinkManager.hpp"
 
 
 namespace TUHH_INTAIRNET_MCSOTDMA {

@@ -211,8 +211,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	class TestEnvironment {
 	public:
-		MacId own_id;
-		MacId communication_partner_id;
+		MacId id, partner_id;
 		uint32_t planning_horizon = 512;
 		uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
 		NetworkLayer* net_layer;
@@ -221,16 +220,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MACLayer* mac_layer;
 		PHYLayer* phy_layer;
 
-		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id, bool use_new_link_manager) : own_id(own_id), communication_partner_id(communication_partner_id) {
+		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id, bool use_new_link_manager) : id(own_id), partner_id(communication_partner_id) {
 			phy_layer = new PHYLayer(planning_horizon);
 			mac_layer = new MACLayer(own_id, planning_horizon);
 			mac_layer->use_new_link_manager = use_new_link_manager;
 			mac_layer->reservation_manager->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
 			for (ReservationTable*& table : phy_layer->getReceiverReservationTables())
 				mac_layer->reservation_manager->addReceiverReservationTable(table);
-//            // Mark broadcast RX slots. TODO remove this once BC has been properly implemented
-//			for (size_t i = 0; i < planning_horizon; i++)
-//				phy_layer->getReceiverReservationTables().at(1)->mark(i, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
+
 			mac_layer->reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
 			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
 			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);

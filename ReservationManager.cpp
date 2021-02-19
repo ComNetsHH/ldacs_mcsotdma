@@ -12,15 +12,14 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 ReservationManager::ReservationManager(uint32_t planning_horizon) : planning_horizon(planning_horizon), p2p_frequency_channels(), p2p_reservation_tables() {}
 
 void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_frequency, uint64_t bandwidth) {
-//    ReservationTable* table = is_p2p ? new ReservationTable(this->planning_horizon) : new ReservationTable(this->planning_horizon, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 	auto* table = new ReservationTable(planning_horizon);
 	auto* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
 	table->linkFrequencyChannel(channel);
 	if (transmitter_table != nullptr)
 		table->linkTransmitterReservationTable(this->transmitter_table);
+	for (ReservationTable* rx_table : receiver_reservation_tables)
+		table->linkReceiverReservationTable(rx_table);
 	if (is_p2p) {
-		for (ReservationTable* rx_table : receiver_reservation_tables)
-			table->linkReceiverReservationTable(rx_table);
 		p2p_frequency_channels.push_back(channel);
 		p2p_reservation_tables.push_back(table);
 		p2p_channel_map[*channel] = p2p_frequency_channels.size() - 1;

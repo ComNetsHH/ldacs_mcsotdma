@@ -3,7 +3,9 @@
 //
 
 #include <set>
+#include <cassert>
 #include "LinkManager.hpp"
+#include "MCSOTDMA_Mac.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -71,4 +73,128 @@ void LinkManager::lock(const std::vector<unsigned int>& start_slots, unsigned in
 				break;
 			}
 	}
+}
+
+unsigned long LinkManager::getRandomInt(size_t start, size_t end) {
+	if (start == end)
+		return start;
+	std::uniform_int_distribution<> distribution(start, end - 1);
+	return distribution(generator);
+}
+
+void LinkManager::onPacketReception(L2Packet*& packet) {
+	coutd << *this << "::onPacketReception... ";
+	coutd << "a packet from '" << packet->getOrigin() << "' ";
+	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
+		coutd << "to '" << packet->getDestination() << "";
+		if (packet->getDestination() == mac->getMacId())
+			coutd << " (us)' -> ";
+		else
+			coutd << "' -> ";
+	}
+	statistic_num_received_packets++;
+	assert(!packet->getHeaders().empty() && "OldLinkManager::onPacketReception(empty packet)");
+	assert(packet->getHeaders().size() == packet->getPayloads().size());
+	// Go through all header and payload pairs...
+	bool contains_data = false;
+	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
+		auto*& header = (L2Header*&) packet->getHeaders().at(i);
+		auto*& payload = (L2Packet::Payload*&) packet->getPayloads().at(i);
+		switch (header->frame_type) {
+			case L2Header::base: {
+				coutd << "processing base header -> ";
+				auto*& base_header = (L2HeaderBase*&) header;
+				processIncomingBase(base_header);
+				break;
+			}
+			case L2Header::beacon: {
+				coutd << "processing beacon -> ";
+				processIncomingBeacon(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
+				// Delete and set to nullptr s.t. upper layers can easily ignore them.
+//				delete header;
+//				header = nullptr;
+//				delete payload;
+//				payload = nullptr;
+				coutd << std::endl;
+				statistic_num_received_beacons++;
+				break;
+			}
+			case L2Header::broadcast: {
+				coutd << "processing broadcast -> ";
+				processIncomingBroadcast(packet->getOrigin(), (L2HeaderBroadcast*&) header);
+				statistic_num_received_broadcasts++;
+				contains_data = true;
+				break;
+			}
+			case L2Header::unicast: {
+				coutd << "processing unicast -> ";
+				processIncomingUnicast((L2HeaderUnicast*&) header, payload);
+				statistic_num_received_unicasts++;
+				contains_data = true;
+				break;
+			}
+			case L2Header::link_establishment_request: {
+				coutd << "processing link establishment request -> ";
+				statistic_num_received_requests++;
+				processIncomingLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
+//				delete header;
+//				header = nullptr;
+//				delete payload;
+//				payload = nullptr;
+				break;
+			}
+			case L2Header::link_establishment_reply: {
+				coutd << "processing link establishment reply -> ";
+				processIncomingLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);
+				statistic_num_received_replies++;
+				// Delete and set to nullptr s.t. upper layers can easily ignore them.
+//				delete header;
+//				header = nullptr;
+//				delete payload;
+//				payload = nullptr;
+				break;
+			}
+			default: {
+				throw std::invalid_argument("OldLinkManager::onPacketReception for an unexpected header type.");
+			}
+		}
+	}
+	// After processing, the packet is passed to the upper layer.
+	if (contains_data) {
+		coutd << "passing to upper layer." << std::endl;
+		mac->passToUpper(packet);
+	} else {
+		coutd << "deleting control packet." << std::endl;
+		delete packet;
+	}
+}
+
+void LinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+	coutd << *this << "::processIncomingBeacon" << std::endl;
+	throw std::runtime_error("not implemented");
+}
+
+void LinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
+	coutd << *this << "::processIncomingBroadcast" << std::endl;
+	throw std::runtime_error("not implemented");
+}
+
+void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+	coutd << *this << "::processIncomingUnicast" << std::endl;
+	throw std::runtime_error("not implemented");
+}
+
+void LinkManager::processIncomingBase(L2HeaderBase*& header) {
+	coutd << *this << "::processIncomingBase" << std::endl;
+	throw std::runtime_error("not implemented");
+}
+
+void LinkManager::processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	coutd << *this << "::processIncomingLinkRequest" << std::endl;
+	throw std::runtime_error("not implemented");
+}
+
+void LinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	coutd << *this << "::processIncomingLinkReply" << std::endl;
+	throw std::runtime_error("not implemented");
 }

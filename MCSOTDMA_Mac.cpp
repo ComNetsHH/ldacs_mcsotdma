@@ -6,6 +6,7 @@
 #include "coutdebug.hpp"
 #include "OldBCLinkManager.hpp"
 #include "P2PLinkManager.hpp"
+#include "BCLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
 
@@ -46,12 +47,7 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	assert(lower_layer && "IMac::onSlotStart for unset lower layer.");
 	lower_layer->update(num_slots);
 	// Notify the broadcast channel manager.
-	try {
-		auto* bc_link_manager = (OldBCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-		bc_link_manager->onSlotStart(num_slots);
-	} catch (const std::exception& e) {
-		throw std::runtime_error("MCOSTDMA_Mac::onSlotStart couldn't onSlotStart BCLinkManager: " + std::string(e.what()));
-	}
+	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotStart(num_slots);
 	// Notify all other LinkManagers.
 	for (auto item : link_managers)
 		item.second->onSlotStart(num_slots);
@@ -165,12 +161,14 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	// ... if there already is one ...
 	if (it != link_managers.end()) {
 		link_manager = (*it).second;
-//		coutd << "found existing OldLinkManager(" << internal_id << ") ";
 		// ... if there's none ...
 	} else {
 		// Auto-assign broadcast channel
 		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
-			link_manager = new OldBCLinkManager(internal_id, reservation_manager, this);
+			if (use_new_link_manager)
+				link_manager = new BCLinkManager(reservation_manager, this, 1);
+			else
+				link_manager = new OldBCLinkManager(internal_id, reservation_manager, this);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
 			if (use_new_link_manager)
@@ -199,6 +197,7 @@ ReservationManager* MCSOTDMA_Mac::getReservationManager() {
 }
 
 void MCSOTDMA_Mac::onSlotEnd() {
+	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotEnd();
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
 }

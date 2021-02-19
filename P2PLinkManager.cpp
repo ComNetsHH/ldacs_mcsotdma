@@ -5,6 +5,7 @@
 #include <set>
 #include "P2PLinkManager.hpp"
 #include "coutdebug.hpp"
+#include "BCLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -65,10 +66,6 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> P2PLinkManager::p2p
 	return proposal_map;
 }
 
-void P2PLinkManager::onPacketReception(L2Packet*& packet) {
-
-}
-
 void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 
 }
@@ -106,16 +103,29 @@ void P2PLinkManager::onSlotEnd() {
 }
 
 void P2PLinkManager::establishLink() {
-	auto *request = new L2Packet();
-	// Add base header.
-	request->addMessage(new L2HeaderBase(mac->getMacId(), 0, 0, 0), nullptr);
-	// Add broadcast header.
-	request->addMessage(new L2HeaderBroadcast(), nullptr);
-	// Add request header.
-	request->addMessage(new L2HeaderLinkRequest(link_id), nullptr);
-	request->addCallback(this);
+	auto *header = new L2HeaderLinkRequest(link_id);
+	auto *payload = new LinkRequestPayload();
+	// Set this as the callback s.t. the payload can be populated just-in-time.
+	payload->callback = this;
+	payload->initial_request = true;
+	((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);
 }
 
-void P2PLinkManager::packetBeingSentCallback(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) {
+void P2PLinkManager::linkRequestAboutToBeSent(LinkManager::LinkRequestPayload* payload) {
+	coutd << "populating link request -> ";
+	unsigned int min_offset;
+	if (payload->initial_request)
+		min_offset = 2;
+	else
+		throw std::runtime_error("not implemented");
 
+	auto traffic_estimate = (unsigned int) this->outgoing_traffic_estimate.get(); // in bits.
+	unsigned int datarate = mac->getCurrentDatarate(); // in bits/slot.
+	unsigned int burst_length = std::max(uint32_t(1), traffic_estimate / datarate); // in slots.
+
+	unsigned int burst_length_tx = burst_length;
+
+	coutd << "min_offset=" << min_offset << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << " -> ";
+	payload->proposed_resources = p2pSlotSelection(num_p2p_channels_to_propose, num_slots_per_p2p_channel_to_propose, min_offset, burst_length, burst_length, payload->initial_request);
+	coutd << "request populated -> ";
 }

@@ -11,7 +11,7 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-	class P2PLinkManager : public LinkManager, public L2PacketSentCallback {
+class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback {
 
 		friend class P2PLinkManagerTests;
 
@@ -19,8 +19,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
 
 		~P2PLinkManager() override;
-
-		void onPacketReception(L2Packet*& packet) override;
 
 		void onReceptionBurstStart(unsigned int burst_length) override;
 
@@ -36,7 +34,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void onSlotEnd() override;
 
-		void packetBeingSentCallback(TUHH_INTAIRNET_MCSOTDMA::L2Packet* packet) override;
+		void linkRequestAboutToBeSent(LinkRequestPayload* payload) override;
 
 	protected:
 		/**
@@ -59,6 +57,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int default_timeout;
 		/** The number of slots in-between bursts, i.e. the P2P frame length. */
 		const unsigned int burst_offset;
+		/** The number of P2P channels that should be proposed using link request. */
+		const unsigned int num_p2p_channels_to_propose = 2;
+		/** The number of time slots per P2P channel that should be proposed using link request. */
+		const unsigned int num_slots_per_p2p_channel_to_propose = 3;
+
 		/** An estimate of this link's outgoing traffic estimate. */
 		MovingAverage outgoing_traffic_estimate;
 		/** Whether the local user has initiated this link, i.e. sends the link requests. */

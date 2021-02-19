@@ -14,7 +14,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	/** Keeps a moving average of the number of utilized slots per neighbor for some time frame. */
 	class ContentionEstimator {
 	public:
+		ContentionEstimator();
 		explicit ContentionEstimator(size_t horizon);
+		ContentionEstimator(const ContentionEstimator& other);
 
 		/**
 		 * Report the reception of a broadcast during the current slot for the given 'id'.
@@ -53,7 +55,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 		std::map<MacId, MovingAverage> contention_estimates;
 		std::map<MacId, bool> received_broadcast_on_this_slot;
-		const size_t horizon;
+		size_t horizon;
 	};
 }
 
