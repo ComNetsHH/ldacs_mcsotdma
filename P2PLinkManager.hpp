@@ -117,8 +117,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 * @param burst_length_tx
 		 * @param dest_id
 		 * @param table
+		 * @param link_initiator Whether the first slots should be TX or RX.
 		 */
-		void scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable *table);
+		void scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable *table, bool link_initiator);
 
 	protected:
 		/** The default number of frames a newly established P2P link remains valid for. */

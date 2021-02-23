@@ -152,6 +152,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testReplyToRequest() {
+//			coutd.setVerbose(true);
 			// Prepare request from another user.
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
 			auto link_request_msg = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->prepareInitialRequest();
@@ -217,7 +218,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testScheduleBurst() {
 			link_manager->assign(reservation_manager->getP2PFreqChannels().at(0));
 			unsigned int burst_start = 5, burst_length = 5, burst_length_tx = 3;
-			link_manager->scheduleBurst(burst_start, burst_length, burst_length_tx, partner_id, link_manager->current_reservation_table);
+			link_manager->scheduleBurst(burst_start, burst_length, burst_length_tx, partner_id, link_manager->current_reservation_table, true);
 			size_t num_tx = 0, num_rx = 0;
 			for (size_t t = 0; t < burst_length_tx; t++) {
 				if (t == 0)
