@@ -31,7 +31,7 @@ OldBCLinkManager::OldBCLinkManager(const MacId& link_id, ReservationManager* res
 L2Packet* OldBCLinkManager::prepareBeacon() {
 	auto* beacon = new L2Packet();
 	// Base header.
-	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0);
+	auto* base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0, 0);
 	// Beacon header.
 	CPRPosition pos = mac->getPosition(mac->getMacId());
 	auto* beacon_header = new L2HeaderBeacon(pos, pos.odd, mac->getNumHopsToGS(), mac->getPositionQuality(mac->getMacId()));
@@ -189,7 +189,7 @@ void OldBCLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 
 void OldBCLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	coutd << "updated contention estimate -> ";
-	contention_estimator.reportBroadcast(header->icao_src_id);
+	contention_estimator.reportBroadcast(header->src_id);
 }
 
 void OldBCLinkManager::onSlotEnd() {

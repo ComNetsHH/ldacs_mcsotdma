@@ -204,6 +204,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
 			auto &reply_reservation = link_manager->current_link_state->scheduled_link_replies.at(0);
+			// Reply should encode a single slot.
+			CPPUNIT_ASSERT_EQUAL(size_t(1), reply_reservation.getPayload()->proposed_resources.begin()->second.size());
+			// Some time in the future.
+			CPPUNIT_ASSERT(reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) > 0);
+
 			// Now increment time.
 			CPPUNIT_ASSERT(reply_reservation.getRemainingOffset() > 0);
 			size_t num_slots = 0, max_num_slots = reply_reservation.getRemainingOffset();
@@ -211,6 +216,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				env->mac_layer->update(1);
 			CPPUNIT_ASSERT_EQUAL(num_slots, max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), reply_reservation.getRemainingOffset());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), reply_reservation.getPayload()->proposed_resources.begin()->second.size());
+			// The slot offset should've also been decreased.
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), reply_reservation.getPayload()->proposed_resources.begin()->second.at(0));
 			// Incrementing once more should throw an exception, as the control message would've been missed.
 			CPPUNIT_ASSERT_THROW(env->mac_layer->update(1), std::invalid_argument);
 		}

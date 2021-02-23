@@ -26,7 +26,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 		throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart for burst_length!=1.");
 
 	auto *packet = new L2Packet();
-	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 0);
+	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);
 	packet->addMessage(base_header, nullptr);
 	packet->addMessage(new L2HeaderBroadcast(), nullptr);
 	unsigned long capacity = mac->getCurrentDatarate();
@@ -55,7 +55,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 		scheduleBroadcastSlot();
 		coutd << next_broadcast_slot << " slots -> ";
 		// Put it into the header.
-		base_header->offset = next_broadcast_slot;
+		base_header->burst_offset = next_broadcast_slot;
 	} else {
 		next_broadcast_scheduled = false;
 		coutd << "no more broadcast data, not scheduling a next slot -> ";

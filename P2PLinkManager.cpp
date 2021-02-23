@@ -76,6 +76,26 @@ void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+	if (link_status == link_not_established)
+		throw std::runtime_error("P2PLinkManager::onTransmissionBurst for unestablished link.");
+
+	auto *packet = new L2Packet();
+	// Add base header.
+	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0, 0);
+	packet->addMessage(base_header, nullptr);
+	if (current_link_state != nullptr) {
+		// Set base header fields.
+		base_header->timeout = current_link_state->timeout;
+		base_header->burst_length = current_link_state->burst_length;
+		base_header->burst_length_tx = current_link_state->burst_length_tx;
+		base_header->burst_offset = burst_offset;
+
+		if (!current_link_state->scheduled_link_replies.empty()) {
+			for (const auto &reply_reservation : current_link_state->scheduled_link_replies) {
+
+			}
+		}
+	}
 	return nullptr;
 }
 

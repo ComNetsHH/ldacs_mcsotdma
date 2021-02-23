@@ -191,9 +191,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testSetBaseHeader() {
 			L2HeaderBase header = L2HeaderBase();
 			link_manager->setHeaderFields(&header);
-			CPPUNIT_ASSERT_EQUAL(own_id, header.icao_src_id);
-			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_offset, header.offset);
-			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_burst_num_slots, header.length_next);
+			CPPUNIT_ASSERT_EQUAL(own_id, header.src_id);
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_offset, header.burst_offset);
+			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_burst_num_slots, header.burst_length);
 			CPPUNIT_ASSERT_EQUAL(link_manager->lme->tx_timeout, header.timeout);
 		}
 
@@ -231,7 +231,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Prepare incoming packet.
 			auto* packet = new L2Packet();
 			unsigned int offset = 5, length_next = 2, timeout = 3;
-			auto* base_header = new L2HeaderBase(communication_partner_id, offset, length_next, timeout);
+			auto* base_header = new L2HeaderBase(communication_partner_id, offset, length_next, length_next, timeout);
 			packet->addMessage(base_header, nullptr);
 			// Have the OldLinkManager process it.
 			link_manager->onPacketReception(packet);

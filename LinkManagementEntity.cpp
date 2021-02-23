@@ -311,7 +311,7 @@ L2Packet* LinkManagementEntity::prepareRequest() const {
 	// Query ARQ sublayer whether this link should be ARQ protected.
 	bool link_should_be_arq_protected = owner->mac->shouldLinkBeArqProtected(owner->link_id);
 	// Instantiate base header.
-	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
+	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0, 0);
 	request->addMessage(base_header, nullptr);
 	// If the link is not yet established, the request must be sent on the broadcast channel.
 	if (owner->link_status == OldLinkManager::link_not_established)
@@ -328,7 +328,7 @@ L2Packet* LinkManagementEntity::prepareRequest() const {
 L2Packet* LinkManagementEntity::prepareReply(const MacId& destination_id) const {
 	auto* reply = new L2Packet();
 	// Base header.
-	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0);
+	auto* base_header = new L2HeaderBase(owner->mac->getMacId(), 0, 0, 0, 0);
 	reply->addMessage(base_header, nullptr);
 	// Reply header.
 	auto* reply_header = new L2HeaderLinkEstablishmentReply();

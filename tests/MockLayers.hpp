@@ -165,7 +165,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				} else {
 					coutd << "returning new unicast -> ";
 					segment = new L2Packet();
-					auto* base_header = new L2HeaderBase(own_id, 0, 0, 0);
+					auto* base_header = new L2HeaderBase(own_id, 0, 0, 0, 0);
 					auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0), 0);
 					segment->addMessage(base_header, new RLCPayload(0));
 					segment->addMessage(unicast_header, new RLCPayload(num_bits - base_header->getBits() - unicast_header->getBits()));

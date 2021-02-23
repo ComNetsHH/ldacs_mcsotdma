@@ -270,13 +270,13 @@ void OldLinkManager::setHeaderFields(L2Header* header) {
 }
 
 void OldLinkManager::setBaseHeaderFields(L2HeaderBase*& header) {
-	header->icao_src_id = mac->getMacId();
+	header->src_id = mac->getMacId();
 	coutd << " icao_src_id=" << mac->getMacId();
-	header->offset = lme->getTxOffset();
+	header->burst_offset = lme->getTxOffset();
 	coutd << " offset=" << lme->getTxOffset();
 	if (lme->getTxBurstSlots() == 0)
 		throw std::runtime_error("OldLinkManager::setBaseHeaderFields attempted to set next_length to zero.");
-	header->length_next = lme->getTxBurstSlots();
+	header->burst_length = lme->getTxBurstSlots();
 	coutd << " length_next=" << lme->getTxBurstSlots();
 	header->timeout = lme->getTxTimeout();
 	coutd << " timeout=" << lme->getTxTimeout();
@@ -331,7 +331,7 @@ void OldLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 
 void OldLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	unsigned int timeout = header->timeout;
-	unsigned int offset = header->offset;
+	unsigned int offset = header->burst_offset;
 	coutd << "timeout=" << timeout << " offset=" << offset << " -> ";
 	if (link_status == link_not_established && timeout == 0) {
 		coutd << "unestablished link and zero timeout, so not processing this further -> ";
@@ -358,7 +358,7 @@ void OldLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	coutd << "updating reservations: ";
 	// This is an incoming packet, so we must've been listening.
 	// Mark future slots as RX slots, too.
-	markReservations(timeout - 1, 0, offset, lme->getTxBurstSlots(), header->icao_src_id, Reservation::RX);
+	markReservations(timeout - 1, 0, offset, lme->getTxBurstSlots(), header->src_id, Reservation::RX);
 	coutd << " -> ";
 }
 

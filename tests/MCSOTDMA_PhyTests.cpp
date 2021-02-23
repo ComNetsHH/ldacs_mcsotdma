@@ -38,7 +38,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->statistic_num_packets_received);
 
 			// Now destine it to us.
-			auto* header = new L2HeaderBase(communication_partner_id, 0, 0, 0);
+			auto* header = new L2HeaderBase(communication_partner_id, 0, 0, 0, 0);
 			packet.addMessage(header, nullptr);
 			auto* header2 = new L2HeaderUnicast(own_id, false, 0, 0, 0);
 			packet.addMessage(header2, nullptr);
