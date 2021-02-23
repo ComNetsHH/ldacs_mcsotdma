@@ -102,8 +102,46 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(link_manager->burst_offset, link_request_msg.first->burst_offset);
 			const auto &proposal = link_request_msg.second->proposed_resources;
 			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_p2p_channels_to_propose), proposal.size());
-			for (const auto& slots : proposal)
+			for (const auto &slots : proposal)
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_slots_per_p2p_channel_to_propose), slots.second.size());
+		}
+
+		void testProcessInitialRequestAllLocked() {
+			auto link_request_msg = link_manager->prepareInitialRequest();
+			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
+//			coutd.setVerbose(true);
+			P2PLinkManager::LinkState *state = link_manager->processInitialRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
+			// Since the same user that created the request is now processing it, all resources must be locked, so none can be found viable.
+			CPPUNIT_ASSERT(state->channel == nullptr);
+			delete state;
+//			coutd.setVerbose(false);
+		}
+
+		void testProcessInitialRequest() {
+			auto link_request_msg = link_manager->prepareInitialRequest();
+			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
+//			coutd.setVerbose(true);
+			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
+			P2PLinkManager::LinkState *state = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processInitialRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
+
+			CPPUNIT_ASSERT_EQUAL(state->timeout, link_request_msg.first->timeout);
+			CPPUNIT_ASSERT_EQUAL(state->burst_length_tx, link_request_msg.first->burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(state->burst_length, link_request_msg.first->burst_length);
+			// Processor is never the link initiator.
+			CPPUNIT_ASSERT_EQUAL(false, state->initiated_link);
+			const FrequencyChannel *channel = state->channel;
+			unsigned int slot_offset = state->slot_offset;
+			CPPUNIT_ASSERT(channel != nullptr);
+			CPPUNIT_ASSERT(slot_offset > 0);
+			// The chosen resource should be one of the proposed ones.
+			CPPUNIT_ASSERT_EQUAL(true, std::any_of(link_request_msg.second->proposed_resources.begin(), link_request_msg.second->proposed_resources.end(), [channel, slot_offset](const auto &pair){
+				return *channel == *pair.first && std::any_of(pair.second.begin(), pair.second.end(), [slot_offset](unsigned int proposed_slot) {
+					return slot_offset == proposed_slot;
+				});
+			}));
+
+			delete state;
+//			coutd.setVerbose(false);
 		}
 
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
@@ -111,6 +149,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testRenewalP2PSlotSelection);
 		CPPUNIT_TEST(testMultiChannelP2PSlotSelection);
 		CPPUNIT_TEST(testPrepareInitialLinkRequest);
+		CPPUNIT_TEST(testProcessInitialRequestAllLocked);
+		CPPUNIT_TEST(testProcessInitialRequest);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

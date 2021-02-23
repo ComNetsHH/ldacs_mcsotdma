@@ -137,3 +137,60 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 
 	coutd << "request populated -> ";
 }
+
+P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+	coutd << *this << "::processInitialRequest -> ";
+	// Parse header fields.
+	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
+	// Since this user is processing the request, they have not initiated the link.
+	state->initiated_link = false;
+
+	// Parse proposed resources.
+	const auto &proposal = payload->proposed_resources;
+	std::vector<const FrequencyChannel*> viable_resource_channel;
+	std::vector<unsigned int> viable_resource_slot;
+	// For each resource...
+	for (const auto &resource : proposal) {
+		const FrequencyChannel *channel = resource.first;
+		const std::vector<unsigned int> &slots = resource.second;
+		// ... get the channel's ReservationTable
+		const ReservationTable *table = reservation_manager->getReservationTable(channel);
+		// ... and check all proposed slot ranges, saving viable ones.
+		coutd << "checking ";
+		for (unsigned int slot : slots) {
+			coutd << slot << "@" << *channel << " ";
+			if (isViable(table, slot, header->burst_length, header->burst_length_tx)) {
+				viable_resource_channel.push_back(channel);
+				viable_resource_slot.push_back(slot);
+				coutd << "(viable) ";
+			} else
+				coutd << "(busy) ";
+		}
+	}
+	// Draw one resource from the viable ones randomly.
+	if (!viable_resource_channel.empty()) {
+		auto random_index = getRandomInt(0, viable_resource_channel.size());
+		state->channel = viable_resource_channel.at(random_index);
+		state->slot_offset = viable_resource_slot.at(random_index);
+		coutd << "-> randomly chose " << *state->channel << "@" << state->slot_offset << " -> ";
+	} else {
+		state->channel = nullptr;
+		state->slot_offset = 0;
+		coutd << "-> no viable resources -> ";
+	}
+
+	return state;
+}
+
+bool P2PLinkManager::isViable(const ReservationTable* table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx) const {
+	// Entire slot range must be idle.
+	bool viable = table->isIdle(burst_start, burst_length);
+	// A receiver must be idle during the first slots.
+	if (viable)
+		viable = mac->isAnyReceiverIdle(burst_start, burst_length_tx);
+	// And a transmitter during the latter slots.
+	if (viable) {
+		unsigned int burst_length_rx = burst_length - burst_length_tx;
+		viable = mac->isTransmitterIdle(burst_start + burst_length_tx, burst_length_rx);
+	}
+}

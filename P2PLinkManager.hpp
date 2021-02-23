@@ -37,6 +37,22 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 
 	protected:
+
+		class LinkState {
+		public:
+			LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx) : timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx) {}
+			/** Timeout counter until link expiry. */
+			unsigned int timeout;
+			/** Total number of slots reserved for this link. */
+			unsigned int burst_length;
+			/** Number of slots reserved for transmission of the link initiator. If burst_length_tx=burst_length, then this is a unidirectional link. */
+			unsigned int burst_length_tx;
+			/** Whether the local user has initiated this link, i.e. sends the link requests. */
+			bool initiated_link = false;
+			const FrequencyChannel *channel = nullptr;
+			unsigned int slot_offset;
+		};
+
 		/**
 		 * Computes a map of proposed P2P channels and corresponding slot offsets.
 		 * @param num_channels Target number of P2P channels that should be proposed.
@@ -52,6 +68,17 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		/** Triggers link establishment. */
 		std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareInitialRequest();
 
+		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+
+		/**
+		 * @param table
+		 * @param burst_start
+		 * @param burst_length
+		 * @param burst_length_tx
+		 * @return Whether the entire range is idle && a receiver is idle during the first burst_length_tx slots && a transmitter is idle during the remaining slots.
+		 */
+		bool isViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx) const;
+
 	protected:
 		/** The default number of frames a newly established P2P link remains valid for. */
 		const unsigned int default_timeout;
@@ -64,20 +91,6 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		/** An estimate of this link's outgoing traffic estimate. */
 		MovingAverage outgoing_traffic_estimate;
-		/** Whether the local user has initiated this link, i.e. sends the link requests. */
-		bool initiated_link = false;
-
-		class LinkState {
-		public:
-			LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx) : timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx) {}
-
-			/** Timeout counter until link expiry. */
-			unsigned int timeout;
-			/** Total number of slots reserved for this link. */
-			unsigned int burst_length;
-			/** Number of slots reserved for transmission of the link initiator. If burst_length_tx=burst_length, then this is a unidirectional link. */
-			unsigned int burst_length_tx;
-		};
 
 		/** The current link's state. */
 		LinkState *current_link_state = nullptr;
