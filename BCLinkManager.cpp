@@ -33,14 +33,16 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 	// Put a priority on link requests.
 	while (!link_requests.empty()) {
 		// Fetch next link request.
-		const auto &pair = link_requests.at(0);
+		auto &pair = link_requests.at(0);
 		// Compute payload.
-		pair.second->callback->linkRequestAboutToBeSent(pair.second);
+		if (pair.second->callback == nullptr)
+			throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
+		pair.second->callback->populateLinkRequest(pair.first, pair.second);
 		// Add to the packet if it fits.
 		if (packet->getBits() + pair.first->getBits() + pair.second->getBits() <= capacity) {
 			packet->addMessage(pair.first, pair.second);
 			link_requests.erase(link_requests.begin());
-			coutd << "added link request to '" << pair.first->dest_id << "' -> ";
+			coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
 		} else
 			break; // Stop if it doesn't fit anymore.
 	}

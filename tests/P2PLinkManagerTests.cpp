@@ -92,10 +92,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(false);
 		}
 
+		/** Tests that the link request header fields and proposal payload are set correctly. */
+		void testPrepareInitialLinkRequest() {
+			auto link_request_msg = link_manager->prepareInitialRequest();
+			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
+			CPPUNIT_ASSERT_EQUAL(link_manager->default_timeout, link_request_msg.first->timeout);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_request_msg.first->burst_length);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_request_msg.first->burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(link_manager->burst_offset, link_request_msg.first->burst_offset);
+			const auto &proposal = link_request_msg.second->proposed_resources;
+			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_p2p_channels_to_propose), proposal.size());
+			for (const auto& slots : proposal)
+				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_slots_per_p2p_channel_to_propose), slots.second.size());
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testRenewalP2PSlotSelection);
 		CPPUNIT_TEST(testMultiChannelP2PSlotSelection);
+		CPPUNIT_TEST(testPrepareInitialLinkRequest);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

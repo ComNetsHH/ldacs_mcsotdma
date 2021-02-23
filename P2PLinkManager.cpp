@@ -89,7 +89,8 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 
 	if (link_status == link_not_established) {
 		coutd << "link not established, triggering link establishment -> ";
-		establishLink();
+		auto link_request_msg = prepareInitialRequest();
+		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);
 	} else
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
@@ -102,16 +103,16 @@ void P2PLinkManager::onSlotEnd() {
 
 }
 
-void P2PLinkManager::establishLink() {
+std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareInitialRequest() {
 	auto *header = new L2HeaderLinkRequest(link_id);
 	auto *payload = new LinkRequestPayload();
 	// Set this as the callback s.t. the payload can be populated just-in-time.
 	payload->callback = this;
 	payload->initial_request = true;
-	((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);
+	return {header, payload};
 }
 
-void P2PLinkManager::linkRequestAboutToBeSent(LinkManager::LinkRequestPayload* payload) {
+void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkRequestPayload*& payload) {
 	coutd << "populating link request -> ";
 	unsigned int min_offset;
 	if (payload->initial_request)
@@ -126,6 +127,13 @@ void P2PLinkManager::linkRequestAboutToBeSent(LinkManager::LinkRequestPayload* p
 	unsigned int burst_length_tx = burst_length;
 
 	coutd << "min_offset=" << min_offset << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << " -> ";
+	// Populate payload.
 	payload->proposed_resources = p2pSlotSelection(num_p2p_channels_to_propose, num_slots_per_p2p_channel_to_propose, min_offset, burst_length, burst_length, payload->initial_request);
+	// Populate header.
+	header->timeout = default_timeout;
+	header->burst_length = burst_length;
+	header->burst_length_tx = burst_length_tx;
+	header->burst_offset = burst_offset;
+
 	coutd << "request populated -> ";
 }

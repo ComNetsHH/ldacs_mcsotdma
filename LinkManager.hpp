@@ -42,7 +42,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			class Callback {
 			public:
-				virtual void linkRequestAboutToBeSent(LinkRequestPayload* payload) = 0;
+				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) = 0;
 			};
 
 			LinkRequestPayload() = default;

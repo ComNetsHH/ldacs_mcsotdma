@@ -34,7 +34,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		void onSlotEnd() override;
 
-		void linkRequestAboutToBeSent(LinkRequestPayload* payload) override;
+		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 
 	protected:
 		/**
@@ -50,7 +50,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		std::map<const FrequencyChannel*, std::vector<unsigned int>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init);
 
 		/** Triggers link establishment. */
-		void establishLink();
+		std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareInitialRequest();
 
 	protected:
 		/** The default number of frames a newly established P2P link remains valid for. */

@@ -352,7 +352,7 @@ void LinkManagementEntity::establishLink() const {
 		owner->link_status = OldLinkManager::Status::awaiting_reply;
 		coutd << "updated status to 'awaiting_reply'." << std::endl;
 	} else
-		throw std::runtime_error("OldLinkManager::establishLink for link status: " + std::to_string(owner->link_status));
+		throw std::runtime_error("OldLinkManager::prepareInitialRequest for link status: " + std::to_string(owner->link_status));
 }
 
 L2Packet* LinkManagementEntity::getControlMessage() {
