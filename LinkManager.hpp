@@ -154,7 +154,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		virtual void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header);
 		virtual void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
 		virtual void processIncomingBase(L2HeaderBase*& header);
-		virtual void processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		virtual void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
 		virtual void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
 
 	protected:

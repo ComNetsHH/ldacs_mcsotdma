@@ -98,7 +98,7 @@ void OldLinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
 				statistic_num_received_requests++;
-				processIncomingLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
+				processIncomingLinkRequest((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
 //				delete header;
 //				header = nullptr;
 //				delete payload;
@@ -362,8 +362,8 @@ void OldLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	coutd << " -> ";
 }
 
-void OldLinkManager::processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin) {
-	lme->processLinkRequest(header, (const LinkManagementEntity::ProposalPayload*&) payload, origin);
+void OldLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	lme->processLinkRequest((const L2HeaderLinkEstablishmentRequest*&) header, (const LinkManagementEntity::ProposalPayload*&) payload, origin);
 }
 
 void OldLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {

@@ -58,7 +58,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that a P2PLinkManager forwards a link request to the BCLinkManager, which schedules a slot and transmits it. */
 		void testSendLinkRequestOnBC() {
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			mac->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_num_slots = 100;
 			while (link_manager->next_broadcast_scheduled && num_slots++ < max_num_slots) {

@@ -38,6 +38,33 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 	protected:
 
+		/** Allows the scheduling of control messages at specific slots. */
+		class ControlMessageReservation {
+		public:
+			ControlMessageReservation(unsigned int slot_offset, L2Header *header, LinkRequestPayload *payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
+
+			void update(unsigned int num_slots) {
+				if (remaining_offset < num_slots)
+					throw std::invalid_argument("ControlMessageReservation::update would decrement the remaining slots past zero - did we miss the corresponding slot?!");
+				remaining_offset -= num_slots;
+			}
+
+			L2Header* getHeader() {
+				return header;
+			}
+			LinkRequestPayload* getPayload() {
+				return payload;
+			}
+			unsigned int getRemainingOffset() const {
+				return remaining_offset;
+			}
+
+		protected:
+			unsigned int remaining_offset;
+			L2Header *header;
+			LinkRequestPayload *payload;
+		};
+
 		class LinkState {
 		public:
 			LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx) : timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx) {}
@@ -51,6 +78,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			bool initiated_link = false;
 			const FrequencyChannel *channel = nullptr;
 			unsigned int slot_offset;
+			std::vector<ControlMessageReservation> scheduled_link_replies;
+			std::vector<ControlMessageReservation> scheduled_link_requests;
 		};
 
 		/**
@@ -65,8 +94,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		std::map<const FrequencyChannel*, std::vector<unsigned int>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init);
 
-		/** Triggers link establishment. */
 		std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareInitialRequest();
+		std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
+
+		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 
 		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
 

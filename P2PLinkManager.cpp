@@ -91,12 +91,24 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "link not established, triggering link establishment -> ";
 		auto link_request_msg = prepareInitialRequest();
 		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);
+		link_status = awaiting_reply;
 	} else
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
 
 void P2PLinkManager::onSlotStart(uint64_t num_slots) {
-
+	if (current_link_state != nullptr) {
+		for (auto& reservation : current_link_state->scheduled_link_requests)
+			reservation.update(num_slots);
+		for (auto& reservation : current_link_state->scheduled_link_replies)
+			reservation.update(num_slots);
+	}
+	if (next_link_state != nullptr) {
+		for (auto& reservation : next_link_state->scheduled_link_requests)
+			reservation.update(num_slots);
+		for (auto& reservation : next_link_state->scheduled_link_replies)
+			reservation.update(num_slots);
+	}
 }
 
 void P2PLinkManager::onSlotEnd() {
@@ -193,4 +205,46 @@ bool P2PLinkManager::isViable(const ReservationTable* table, unsigned int burst_
 		unsigned int burst_length_rx = burst_length - burst_length_tx;
 		viable = mac->isTransmitterIdle(burst_start + burst_length_tx, burst_length_rx);
 	}
+	return viable;
+}
+
+void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	coutd << *this << "::processIncomingLinkRequest -> ";
+	// If currently the link is unestablished, then this request must be an initial request.
+	if (link_status == link_not_established) {
+		LinkState *state = processInitialRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
+		// If no viable resources were found, ...
+		if (state->channel == nullptr) {
+			// do nothing.
+			delete state;
+			coutd << "no viables resources; aborting." << std::endl;
+		// If one was picked, then ...
+		} else {
+			// remember the choice,
+			current_link_state = state;
+			current_channel = current_link_state->channel;
+			current_reservation_table = reservation_manager->getReservationTable(current_channel);
+			// schedule a link reply,
+			auto link_reply_message = prepareInitialReply(origin, current_link_state->channel, current_link_state->slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx);
+			current_link_state->scheduled_link_replies.emplace_back(state->slot_offset, link_reply_message.first, link_reply_message.second);
+			// and update the status.
+			link_status = awaiting_data_tx;
+		}
+	// If the link is in any other status, this must be a renewal request.
+	} else {
+		throw std::runtime_error("Renewal request handling not yet implemented.");
+	}
+}
+
+std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {
+	// The reply header just mirrors the request header values.
+	auto *header = new L2HeaderLinkReply(dest_id);
+	header->timeout = default_timeout;
+	header->burst_offset = burst_offset;
+	header->burst_length = burst_length;
+	header->burst_length_tx = burst_length_tx;
+	// The reply payload encodes the single, chosen resource.
+	auto *payload = new LinkRequestPayload();
+	payload->proposed_resources[channel].push_back(slot_offset);
+	return {header, payload};
 }

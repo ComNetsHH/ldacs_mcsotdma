@@ -139,7 +139,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		virtual void processIncomingBase(L2HeaderBase*& header);
 
-		virtual void processIncomingLinkRequest(const L2HeaderLinkEstablishmentRequest*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 
 		virtual void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
 

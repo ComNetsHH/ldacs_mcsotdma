@@ -144,6 +144,53 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(false);
 		}
 
+		void testTriggerLinkEstablishment() {
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_status);
+			link_manager->notifyOutgoing(512);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_status);
+		}
+
+		void testReplyToRequest() {
+			// Prepare request from another user.
+			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
+			auto link_request_msg = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->prepareInitialRequest();
+			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
+
+			// Right now, the link should be unestablished.
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_status);
+			CPPUNIT_ASSERT(link_manager->current_link_state == nullptr);
+			CPPUNIT_ASSERT(link_manager->current_channel == nullptr);
+			CPPUNIT_ASSERT(link_manager->current_reservation_table == nullptr);
+
+			// Now process the request.
+			link_manager->processIncomingLinkRequest((const L2Header*&) link_request_msg.first, (const L2Packet::Payload*&) link_request_msg.second, partner_id);
+			// Now, the link should be being established.
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager->link_status);
+			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
+			CPPUNIT_ASSERT(link_manager->current_channel != nullptr);
+			CPPUNIT_ASSERT(link_manager->current_reservation_table != nullptr);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager->current_link_state->scheduled_link_requests.size());
+		}
+
+		/** Tests that scheduled link replies' offsets are decremented each slot. */
+		void testDecrementControlMessageOffsets() {
+			// Schedule a reply.
+			testReplyToRequest();
+			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
+			auto &reply_reservation = link_manager->current_link_state->scheduled_link_replies.at(0);
+			// Now increment time.
+			CPPUNIT_ASSERT(reply_reservation.getRemainingOffset() > 0);
+			size_t num_slots = 0, max_num_slots = reply_reservation.getRemainingOffset();
+			while (reply_reservation.getRemainingOffset() > 0 && num_slots++ < max_num_slots)
+				env->mac_layer->update(1);
+			CPPUNIT_ASSERT_EQUAL(num_slots, max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), reply_reservation.getRemainingOffset());
+			// Incrementing once more should throw an exception, as the control message would've been missed.
+			CPPUNIT_ASSERT_THROW(env->mac_layer->update(1), std::invalid_argument);
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testRenewalP2PSlotSelection);
@@ -151,6 +198,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testPrepareInitialLinkRequest);
 		CPPUNIT_TEST(testProcessInitialRequestAllLocked);
 		CPPUNIT_TEST(testProcessInitialRequest);
+		CPPUNIT_TEST(testTriggerLinkEstablishment);
+		CPPUNIT_TEST(testReplyToRequest);
+		CPPUNIT_TEST(testDecrementControlMessageOffsets);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
