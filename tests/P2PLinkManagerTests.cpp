@@ -247,6 +247,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(burst_length - burst_length_tx), num_rx);
 		}
 
+		void testSendScheduledReply() {
+			// Schedule a reply.
+			testReplyToRequest();
+			coutd.setVerbose(true);
+			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
+			auto &reply_reservation = link_manager->current_link_state->scheduled_link_replies.at(0);
+
+			// Now increment time.
+			CPPUNIT_ASSERT(reply_reservation.getRemainingOffset() > 0);
+			size_t num_slots = 0, max_num_slots = reply_reservation.getRemainingOffset();
+			while (reply_reservation.getRemainingOffset() > 0 && num_slots++ < max_num_slots) {
+				env->mac_layer->update(1);
+				env->mac_layer->execute();
+				env->mac_layer->onSlotEnd();
+			}
+
+			// Now the scheduled reply should've been sent.
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->current_link_state->scheduled_link_replies.empty());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testRenewalP2PSlotSelection);
@@ -258,6 +280,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testReplyToRequest);
 		CPPUNIT_TEST(testDecrementControlMessageOffsets);
 		CPPUNIT_TEST(testScheduleBurst);
+		CPPUNIT_TEST(testSendScheduledReply);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

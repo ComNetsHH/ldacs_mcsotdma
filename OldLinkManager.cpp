@@ -293,7 +293,7 @@ void OldLinkManager::setBroadcastHeaderFields(L2HeaderBroadcast*& header) const 
 
 void OldLinkManager::setUnicastHeaderFields(L2HeaderUnicast*& header) const {
 	coutd << " icao_dest_id=" << link_id;
-	header->icao_dest_id = link_id;
+	header->dest_id = link_id;
 	coutd << " ";
 }
 
@@ -307,7 +307,7 @@ void OldLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroad
 
 void OldLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
 	// Make sure we're the recipient.
-	const MacId& recipient_id = header->icao_dest_id;
+	const MacId& recipient_id = header->dest_id;
 	// If we're not...
 	if (recipient_id != mac->getMacId()) {
 		coutd << "unicast not intended for us -> deleting it";

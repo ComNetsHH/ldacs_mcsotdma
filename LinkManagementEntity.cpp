@@ -271,7 +271,7 @@ std::vector<std::pair<const FrequencyChannel*, unsigned int>>
 LinkManagementEntity::findViableCandidatesInRequest(L2HeaderLinkEstablishmentRequest*& header,
                                                     ProposalPayload*& payload, bool consider_transmitter, bool consider_receiver) const {
 	assert(payload && "OldLinkManager::findViableCandidatesInRequest for nullptr ProposalPayload*");
-	const MacId& dest_id = header->icao_dest_id;
+	const MacId& dest_id = header->dest_id;
 	if (payload->proposed_resources.empty())
 		throw std::invalid_argument("OldLinkManager::findViableCandidatesInRequest for an empty proposal.");
 
@@ -332,7 +332,7 @@ L2Packet* LinkManagementEntity::prepareReply(const MacId& destination_id) const 
 	reply->addMessage(base_header, nullptr);
 	// Reply header.
 	auto* reply_header = new L2HeaderLinkEstablishmentReply();
-	reply_header->icao_dest_id = destination_id;
+	reply_header->dest_id = destination_id;
 	// Reply payload will be populated later.
 	auto* reply_payload = new ProposalPayload(1, 1);
 	reply->addMessage(reply_header, reply_payload);
@@ -553,7 +553,7 @@ void LinkManagementEntity::populateRequest(L2Packet*& request) {
 		throw std::invalid_argument("LinkManagementEntity::populateRequest for non-request packet.");
 	auto* request_header = (L2HeaderLinkEstablishmentRequest*) request->getHeaders().at(request_index);
 	// Set the destination ID (may be broadcast until now).
-	request_header->icao_dest_id = owner->link_id;
+	request_header->dest_id = owner->link_id;
 	request_header->offset = tx_offset;
 	request_header->timeout = tx_timeout;
 	// Remember this request's number of slots.

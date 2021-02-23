@@ -214,13 +214,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			L2HeaderUnicast header = L2HeaderUnicast(L2Header::FrameType::unicast);
 			link_manager->link_status = OldLinkManager::link_established;
 			link_manager->setHeaderFields(&header);
-			CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.icao_dest_id);
+			CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.dest_id);
 		}
 
 		void testSetRequestHeader() {
 			L2HeaderLinkEstablishmentRequest header = L2HeaderLinkEstablishmentRequest();
 			link_manager->setHeaderFields(&header);
-			CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.icao_dest_id);
+			CPPUNIT_ASSERT_EQUAL(communication_partner_id, header.dest_id);
 		}
 
 		void testProcessIncomingBase() {
@@ -302,7 +302,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// When we receive a packet *not* intended for us...
 			L2Packet* unicast_packet_not_intended_for_us = rlc_layer->requestSegment(phy_layer->getCurrentDatarate(), own_id);
 			auto* header_not_for_us = ((L2HeaderUnicast*) unicast_packet_not_intended_for_us->getHeaders().at(1));
-			header_not_for_us->icao_dest_id = communication_partner_id;
+			header_not_for_us->dest_id = communication_partner_id;
 			L2Packet::Payload* payload_not_for_us = unicast_packet_not_intended_for_us->getPayloads().at(1);
 			CPPUNIT_ASSERT(unicast_packet_not_intended_for_us->getHeaders().at(1) != nullptr);
 			CPPUNIT_ASSERT(payload_not_for_us != nullptr);

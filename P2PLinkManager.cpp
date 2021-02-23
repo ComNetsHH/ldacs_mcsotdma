@@ -76,10 +76,13 @@ void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+	coutd << *this << "::onTransmissionBurstStart(" << burst_length << " slots) -> ";
 	if (link_status == link_not_established)
 		throw std::runtime_error("P2PLinkManager::onTransmissionBurst for unestablished link.");
 
 	auto *packet = new L2Packet();
+	size_t capacity = mac->getCurrentDatarate() * burst_length;
+	coutd << "filling packet with a capacity of " << capacity << " bits -> ";
 	// Add base header.
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0, 0);
 	packet->addMessage(base_header, nullptr);
@@ -90,13 +93,55 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 		base_header->burst_length_tx = current_link_state->burst_length_tx;
 		base_header->burst_offset = burst_offset;
 
+		// Put a priority on control messages:
+		// 1) link replies
 		if (!current_link_state->scheduled_link_replies.empty()) {
-			for (const auto &reply_reservation : current_link_state->scheduled_link_replies) {
-
+			for (auto it = current_link_state->scheduled_link_replies.begin(); it != current_link_state->scheduled_link_replies.end(); it++) {
+				auto &reply_reservation = *it;
+				// ... if due now, ...
+				if (reply_reservation.getRemainingOffset() == 0) {
+					size_t num_bits = reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits();
+					if (packet->getBits() + num_bits <= capacity) {
+						// put it into the packet,
+						packet->addMessage(reply_reservation.getHeader(), reply_reservation.getPayload());
+						// and remove from scheduled replies.
+						current_link_state->scheduled_link_replies.erase(it);
+						it--;
+						coutd << "added scheduled link reply -> ";
+					} else // Link replies must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
+						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link reply into packet because it wouldn't fit. This should never happen?!");
+				}
+			}
+		}
+		// 2) link requests
+		if (!current_link_state->scheduled_link_requests.empty()) {
+			for (auto it = current_link_state->scheduled_link_requests.begin(); it != current_link_state->scheduled_link_requests.end(); it++) {
+				auto &request_reservation = *it;
+				// ... if due now, ...
+				if (request_reservation.getRemainingOffset() == 0) {
+					size_t num_bits = request_reservation.getHeader()->getBits() + request_reservation.getPayload()->getBits();
+					if (packet->getBits() + num_bits <= capacity) {
+						// put it into the packet,
+						packet->addMessage(request_reservation.getHeader(), request_reservation.getPayload());
+						// and remove from scheduled replies.
+						current_link_state->scheduled_link_requests.erase(it);
+						it--;
+						coutd << "added scheduled link request -> ";
+					} else // Link requests must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
+						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link request into packet because it wouldn't fit. This should never happen?!");
+				}
 			}
 		}
 	}
-	return nullptr;
+	// Fill whatever capacity remains with upper-layer data.
+	unsigned int remaining_bits = capacity - packet->getBits();
+	coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
+	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
+	for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
+		if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
+			packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
+	delete upper_layer_data;
+	return packet;
 }
 
 void P2PLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
