@@ -110,6 +110,16 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		bool isViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx) const;
 
+		/**
+		 * Helper function that schedules a communication burst with TX, TX_CONT, RX, RX_CONT reservations.
+		 * @param burst_start_offset
+		 * @param burst_length
+		 * @param burst_length_tx
+		 * @param dest_id
+		 * @param table
+		 */
+		void scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable *table);
+
 	protected:
 		/** The default number of frames a newly established P2P link remains valid for. */
 		const unsigned int default_timeout;

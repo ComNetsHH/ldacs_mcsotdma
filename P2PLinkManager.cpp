@@ -3,6 +3,7 @@
 //
 
 #include <set>
+#include <cassert>
 #include "P2PLinkManager.hpp"
 #include "coutdebug.hpp"
 #include "BCLinkManager.hpp"
@@ -227,6 +228,14 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 			// schedule a link reply,
 			auto link_reply_message = prepareInitialReply(origin, current_link_state->channel, current_link_state->slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx);
 			current_link_state->scheduled_link_replies.emplace_back(state->slot_offset, link_reply_message.first, link_reply_message.second);
+			// mark the slot as TX,
+			current_reservation_table->mark(state->slot_offset, Reservation(origin, Reservation::TX));
+			// and anticipate first data exchange one burst later,
+			for (unsigned int t = 0; t < current_link_state->burst_length; t++) {
+				// RX for the first, TX for the later slots.
+				Reservation::Action action = t <= current_link_state->burst_length_tx ? Reservation::Action::RX : Reservation::Action::TX;
+				current_reservation_table->mark(burst_offset + state->slot_offset + t, Reservation(origin, action));
+			}
 			// and update the status.
 			link_status = awaiting_data_tx;
 		}
@@ -247,4 +256,17 @@ std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::
 	auto *payload = new LinkRequestPayload();
 	payload->proposed_resources[channel].push_back(slot_offset);
 	return {header, payload};
+}
+
+void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable* table) {
+	assert(table != nullptr);
+	for (unsigned int t = 0; t < burst_length_tx; t++) {
+		Reservation::Action action = t==0 ? Reservation::Action::TX : Reservation::Action::TX_CONT;
+		table->mark(burst_start_offset + t, Reservation(dest_id, action));
+	}
+	unsigned int burst_length_rx = burst_length - burst_length_tx;
+	for (unsigned int t = 0; t < burst_length_rx; t++) {
+		Reservation::Action action = t==0 ? Reservation::Action::RX : Reservation::Action::RX_CONT;
+		table->mark(burst_start_offset + burst_length_tx + t, Reservation(dest_id, action));
+	}
 }

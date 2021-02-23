@@ -10,7 +10,7 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class P2PLinkManagerTests : public CppUnit::TestFixture {
 	private:
-		uint32_t planning_horizon = 1024;
+		uint32_t planning_horizon;
 		P2PLinkManager *link_manager;
 		MacId own_id, partner_id;
 		TestEnvironment *env;
@@ -23,6 +23,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env = new TestEnvironment(own_id, partner_id, true);
 			link_manager = (P2PLinkManager*) env->mac_layer->getLinkManager(partner_id);
 			reservation_manager = env->mac_layer->getReservationManager();
+			planning_horizon = env->planning_horizon;
 		}
 
 		void tearDown() override {
@@ -171,6 +172,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_manager->current_reservation_table != nullptr);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager->current_link_state->scheduled_link_requests.size());
+			// Within one P2P frame there should just be the transmission of the reply scheduled.
+			size_t num_tx = 0;
+			for (size_t t = 0; t < link_manager->burst_offset; t++) {
+				const Reservation &res = link_manager->current_reservation_table->getReservation(t);
+				if (res.isTx()) {
+					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), res);
+					num_tx++;
+				} else
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res);
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx);
+			// And the first data exchange should be expected one burst later.
+			size_t num_rx = 0;
+			for (size_t t = link_manager->burst_offset; t < planning_horizon; t++) {
+				const Reservation &res = link_manager->current_reservation_table->getReservation(t);
+				if (res.isRx()) {
+					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), res);
+					num_rx++;
+				} else
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res);
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx);
 		}
 
 		/** Tests that scheduled link replies' offsets are decremented each slot. */
@@ -191,6 +214,30 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_THROW(env->mac_layer->update(1), std::invalid_argument);
 		}
 
+		void testScheduleBurst() {
+			link_manager->assign(reservation_manager->getP2PFreqChannels().at(0));
+			unsigned int burst_start = 5, burst_length = 5, burst_length_tx = 3;
+			link_manager->scheduleBurst(burst_start, burst_length, burst_length_tx, partner_id, link_manager->current_reservation_table);
+			size_t num_tx = 0, num_rx = 0;
+			for (size_t t = 0; t < burst_length_tx; t++) {
+				if (t == 0)
+					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), link_manager->current_reservation_table->getReservation(burst_start + t));
+				else
+					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX_CONT), link_manager->current_reservation_table->getReservation(burst_start + t));
+				num_tx++;
+			}
+			for (size_t t = 0; t < burst_length - burst_length_tx; t++) {
+				if (t == 0)
+					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), link_manager->current_reservation_table->getReservation(burst_start + burst_length_tx + t));
+				else
+					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX_CONT), link_manager->current_reservation_table->getReservation(burst_start + burst_length_tx + t));
+				num_rx++;
+			}
+
+			CPPUNIT_ASSERT_EQUAL(size_t(burst_length_tx), num_tx);
+			CPPUNIT_ASSERT_EQUAL(size_t(burst_length - burst_length_tx), num_rx);
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testRenewalP2PSlotSelection);
@@ -201,6 +248,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testTriggerLinkEstablishment);
 		CPPUNIT_TEST(testReplyToRequest);
 		CPPUNIT_TEST(testDecrementControlMessageOffsets);
+		CPPUNIT_TEST(testScheduleBurst);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
