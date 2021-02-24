@@ -143,19 +143,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 //			// Reservation timeout should be 1 less now.
 //			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
-//			CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());
-//			CPPUNIT_ASSERT_EQUAL(size_t(2), lm_you->statistic_num_received_packets);
-//			// Ensure reservations now match: one side has TX, other side has RX.
-//			for (size_t offset = lm_me->burst_offset; offset < lm_me->current_link_state->timeout * lm_me->burst_offset; offset += lm_me->burst_offset) {
-//				const Reservation& reservation_tx = table_me->getReservation(offset);
-//				const Reservation& reservation_rx = table_you->getReservation(offset);
-//				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
-//				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
-//				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
-//				CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isRx());
-//				CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx.getTarget());
-//			}
-////			coutd.setVerbose(false);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
+			// Ensure reservations now match: one side has TX, other side has RX.
+			for (size_t offset = lm_me->burst_offset; offset < lm_me->current_link_state->timeout * lm_me->burst_offset; offset += lm_me->burst_offset) {
+				const Reservation& reservation_tx = table_me->getReservation(offset);
+				const Reservation& reservation_rx = table_you->getReservation(offset);
+				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
+				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
+				CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isRx());
+				CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx.getTarget());
+			}
+			coutd.setVerbose(false);
 		}
 
 

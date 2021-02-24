@@ -299,7 +299,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 			coutd << "scheduled link reply at offset " << state->next_burst_start << " -> ";
 			// and anticipate first data exchange one burst later,
 			coutd << "scheduling slots for first transmission burst: ";
-			scheduleBurst(burst_offset + current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx, origin, current_reservation_table, current_link_state->initiated_link);
+			scheduleBurst(burst_offset + current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx, origin, current_reservation_table, current_link_state->is_link_initiator);
 			// and update status.
 			link_status = awaiting_data_tx;
 		}
@@ -314,7 +314,7 @@ P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderL
 	// Parse header fields.
 	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
 	// Since this user is processing the request, they have not initiated the link.
-	state->initiated_link = false;
+	state->is_link_initiator = false;
 	state->initial_setup = true;
 
 	// Parse proposed resources.
@@ -470,9 +470,16 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 		return;
 	} else {
 		if (link_status == awaiting_data_tx) {
+			// Link is now established.
 			link_status = link_established;
 			coutd << "this transmission establishes the link, setting status to '" << link_status << "' -> informing upper layers -> ";
+			// Inform upper sublayers.
 			mac->notifyAboutNewLink(link_id);
+			// Mark reservations.
+			coutd << "reserving bursts: ";
+			assert(current_link_state != nullptr);
+			for (unsigned int burst = 1; burst < current_link_state->timeout; burst++)
+				scheduleBurst(burst*burst_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
 		}
 	}
 }

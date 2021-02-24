@@ -89,7 +89,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Number of slots reserved for transmission of the link initiator. If burst_length_tx=burst_length, then this is a unidirectional link. */
 			unsigned int burst_length_tx;
 			/** Whether the local user has initiated this link, i.e. sends the link requests. */
-			bool initiated_link = false;
+			bool is_link_initiator = false;
 			/** Whether this state results from an initial link establishment as opposed to a renewed one. */
 			bool initial_setup = false;
 			const FrequencyChannel *channel = nullptr;
