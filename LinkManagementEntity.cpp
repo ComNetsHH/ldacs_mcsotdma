@@ -126,7 +126,7 @@ void LinkManagementEntity::processRenewalReply(const L2HeaderLinkEstablishmentRe
 }
 
 bool LinkManagementEntity::decrementTimeout() {
-	// Don't onSlotStart timeout if,
+	// Don't decrement timeout if,
 	// (1) the link is not established right now
 	if (owner->link_status == OldLinkManager::link_not_established) {
 		coutd << "link not established; not decrementing timeout -> ";

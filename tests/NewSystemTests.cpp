@@ -95,6 +95,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), ((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->statistic_num_sent_packets);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout, lm_you->current_link_state->timeout);
 
 			// Increment time until status is 'link_established'.
 			num_slots = 0;
@@ -114,6 +115,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_status);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout, lm_you->current_link_state->timeout);
 			// Make sure that all corresponding slots are marked as TX on our side,
 			ReservationTable* table_me = lm_me->current_reservation_table;
 			ReservationTable* table_you = lm_you->current_reservation_table;
@@ -142,7 +144,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 //			// Reservation timeout should be 1 less now.
-//			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout - 1, lm_you->current_link_state->timeout);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
 			// Ensure reservations now match: one side has TX, other side has RX.

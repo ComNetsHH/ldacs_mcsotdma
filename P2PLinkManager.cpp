@@ -68,7 +68,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> P2PLinkManager::p2p
 }
 
 void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
-
+	burst_start_during_this_slot = true;
 }
 
 void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
@@ -76,6 +76,7 @@ void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+	burst_start_during_this_slot = true;
 	coutd << *this << "::onTransmissionBurstStart(" << burst_length << " slots) -> ";
 	if (link_status == link_not_established)
 		throw std::runtime_error("P2PLinkManager::onTransmissionBurst for unestablished link.");
@@ -166,6 +167,10 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void P2PLinkManager::onSlotStart(uint64_t num_slots) {
+	burst_start_during_this_slot = false;
+	updated_timeout_this_slot = false;
+	established_initial_link_this_slot = false;
+
 	if (current_link_state != nullptr) {
 		for (auto &reservation : current_link_state->scheduled_link_requests)
 			reservation.update(num_slots);
@@ -201,7 +206,11 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void P2PLinkManager::onSlotEnd() {
-
+	if (burst_start_during_this_slot) {
+		coutd << *mac << "::" << *this << "::onSlotEnd -> ";
+		decrementTimeout();
+		coutd << std::endl;
+	}
 }
 
 std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareRequestMessage(bool initial_request) {
@@ -367,8 +376,6 @@ void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentRep
 		processInitialReply((const L2HeaderLinkReply*&) header, (const LinkManager::LinkRequestPayload*&) payload);
 	} else
 		throw std::runtime_error("not implemented");
-
-	coutd << "done." << std::endl;
 }
 
 void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload) {
@@ -407,6 +414,7 @@ void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const
 	// Link is now established.
 	coutd << "setting link status to '";
 	link_status = link_established;
+	established_initial_link_this_slot = true;
 	coutd << link_status << "' -> ";
 }
 
@@ -486,4 +494,37 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 
 void P2PLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	// Nothing to do.
+}
+
+bool P2PLinkManager::decrementTimeout() {
+	// Don't decrement timeout if,
+	// (1) the link is not established right now
+	if (link_status == LinkManager::link_not_established || current_link_state == nullptr) {
+		coutd << "link not established; not decrementing timeout -> ";
+		return false;
+	}
+	// (2) we are in the process of initial establishment.
+	if (current_link_state->initial_setup && (link_status == LinkManager::awaiting_reply || link_status == LinkManager::awaiting_data_tx)) {
+		coutd << "link being established; not decrementing timeout -> ";
+		return false;
+	}
+	// (3) it has already been updated this slot.
+	if (updated_timeout_this_slot) {
+		coutd << "already decremented timeout this slot; not decrementing timeout -> ";
+		return current_link_state->timeout == 0;
+	}
+	// (4) the link was just now established.
+	if (established_initial_link_this_slot) {
+		coutd << "link was established in this slot; not decrementing timeout -> ";
+		return current_link_state->timeout == 0;
+	}
+
+	updated_timeout_this_slot = true;
+
+	if (current_link_state->timeout == 0)
+		throw std::runtime_error("P2PLinkManager::decrementTimeout attempted to decrement timeout past zero.");
+	coutd << "timeout " << current_link_state->timeout << "->";
+	current_link_state->timeout--;
+	coutd << current_link_state->timeout << " -> ";
+	return current_link_state->timeout == 0;
 }

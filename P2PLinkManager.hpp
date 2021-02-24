@@ -151,10 +151,15 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		std::vector<unsigned int> scheduleRenewalRequestSlots(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
 
-	void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
-	void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
-	void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
-	void processIncomingBase(L2HeaderBase*& header) override;
+		void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
+		void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
+		void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
+		void processIncomingBase(L2HeaderBase*& header) override;
+
+		/**
+		 * @return Whether the timeout has expired.
+		 */
+		bool decrementTimeout();
 
 protected:
 		/** The default number of frames a newly established P2P link remains valid for. */
@@ -175,6 +180,11 @@ protected:
 		LinkState *current_link_state = nullptr;
 		/** The next link's state, which may be applied upon link renewal. */
 		LinkState *next_link_state = nullptr;
+
+		/** Whether the current slot was the initial slot of a burst. */
+		bool burst_start_during_this_slot = false;
+		bool updated_timeout_this_slot = false;
+		bool established_initial_link_this_slot = false;
 	};
 
 }
