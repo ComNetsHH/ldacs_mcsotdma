@@ -63,10 +63,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				}
 			}
 
-			L2Header* getHeader() {
+			L2Header*& getHeader() {
 				return header;
 			}
-			LinkRequestPayload* getPayload() {
+			LinkRequestPayload*& getPayload() {
 				return payload;
 			}
 			unsigned int getRemainingOffset() const {
@@ -118,6 +118,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
 		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+		LinkState* processRenewalRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
 
 		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
 		void processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
@@ -176,6 +177,8 @@ protected:
 
 		/** An estimate of this link's outgoing traffic estimate. */
 		MovingAverage outgoing_traffic_estimate;
+		/** The communication partner's report of the number of slots they desire for transmission. */
+		unsigned int reported_desired_tx_slots = 0;
 
 		/** The current link's state. */
 		LinkState *current_link_state = nullptr;

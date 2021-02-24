@@ -197,10 +197,48 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		void testRenewalRequest() {
+			// Establish link and send first burst.
+			testLinkEstablishment();
+			// Renewal attempts *are* made if there's more data.
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+
+			// 1st request + 1 data packet should've been sent so far.
+			size_t expected_num_sent_packets = 2;
+			CPPUNIT_ASSERT_EQUAL(expected_num_sent_packets, phy_layer_me->outgoing_packets.size());
+
+//			coutd.setVerbose(true);
+			auto *link_manager = (P2PLinkManager*) mac_layer_me->getLinkManager(communication_partner_id);
+			size_t num_slots = 0, max_slots = link_manager->current_link_state->scheduled_link_requests.size() + 5;
+			// Increment time to each request slot...
+			while (num_slots++ < max_slots && !link_manager->current_link_state->scheduled_link_requests.empty()) {
+				unsigned int request_slot = 10000;
+				for (const auto &item : link_manager->current_link_state->scheduled_link_requests)
+					if (item.getRemainingOffset() < request_slot)
+						request_slot = item.getRemainingOffset();
+				mac_layer_me->update(request_slot);
+				mac_layer_me->execute();
+				mac_layer_me->onSlotEnd();
+				expected_num_sent_packets++;
+				// ... make sure a new request has been sent
+				CPPUNIT_ASSERT_EQUAL(expected_num_sent_packets, phy_layer_me->outgoing_packets.size());
+				L2Packet* request = phy_layer_me->outgoing_packets.at(phy_layer_me->outgoing_packets.size() - 1);
+				CPPUNIT_ASSERT(request->getHeaders().size() >= 2);
+				CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request,request->getHeaders().at(1)->frame_type);
+				// Current slot should be used to transmit the request.
+				CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, link_manager->current_reservation_table->getReservation(0).getAction());
+				// And next burst to receive the reply.
+				CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, link_manager->current_reservation_table->getReservation(link_manager->burst_offset).getAction());
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->current_link_state->scheduled_link_requests.empty());
+		}
+
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkExpiry);
+			CPPUNIT_TEST(testRenewalRequest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

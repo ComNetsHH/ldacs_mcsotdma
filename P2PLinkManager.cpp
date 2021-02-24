@@ -125,6 +125,8 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 					bool renewal_required = mac->isThereMoreData(link_id);
 					// ... if a renewal is required ...
 					if (renewal_required) {
+						// ... compute payload ...
+						request_reservation.getPayload()->callback->populateLinkRequest((L2HeaderLinkRequest*&) request_reservation.getHeader(), request_reservation.getPayload());
 						// ... and if it fits ...
 						if (packet->getBits() + num_bits <= capacity) {
 							// ... put it into the packet,
@@ -236,13 +238,12 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	if (initial_setup)
 		min_offset = 2;
 	else
-		throw std::runtime_error("not implemented");
+		min_offset = current_link_state->timeout*burst_offset + current_link_state->burst_length + 1; // Right after link expiry.
 
 	auto traffic_estimate = (unsigned int) this->outgoing_traffic_estimate.get(); // in bits.
 	unsigned int datarate = mac->getCurrentDatarate(); // in bits/slot.
-	unsigned int burst_length = std::max(uint32_t(1), traffic_estimate / datarate); // in slots.
-
-	unsigned int burst_length_tx = burst_length;
+	unsigned int burst_length_tx = std::max(uint32_t(1), traffic_estimate / datarate); // in slots.
+	unsigned int burst_length = burst_length_tx + reported_desired_tx_slots;
 
 	coutd << "min_offset=" << min_offset << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << " -> ";
 	// Populate payload.
@@ -269,7 +270,16 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 			}
 		}
 	} else {
-		throw std::runtime_error("not implemented");
+		delete next_link_state;
+		next_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
+		next_link_state->initial_setup = false;
+		// We need to schedule one RX slot at the next burst to be able to receive a reply there.
+		assert(current_reservation_table->getReservation(burst_offset) == Reservation(link_id, Reservation::TX));
+		current_reservation_table->mark(burst_offset, Reservation(link_id, Reservation::RX));
+		if (current_link_state->burst_length_tx > 1) {
+			assert(current_reservation_table->getReservation(burst_offset + 1) == Reservation(link_id, Reservation::TX_CONT));
+			current_reservation_table->mark(burst_offset, Reservation(link_id, Reservation::TX));
+		}
 	}
 
 	coutd << "request populated -> ";
@@ -321,7 +331,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 		}
 	// If the link is in any other status, this must be a renewal request.
 	} else {
-		throw std::runtime_error("Renewal request handling not yet implemented.");
+		LinkState *state = processRenewalRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
 	}
 }
 
@@ -368,6 +378,10 @@ P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderL
 	}
 
 	return state;
+}
+
+P2PLinkManager::LinkState* P2PLinkManager::processRenewalRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+	throw std::runtime_error("Renewal request handling not yet implemented.");
 }
 
 void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
