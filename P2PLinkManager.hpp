@@ -42,6 +42,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		class ControlMessageReservation {
 		public:
 			ControlMessageReservation(unsigned int slot_offset, L2Header *header, LinkRequestPayload *payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
+			virtual ~ControlMessageReservation() = default;
 
 			void update(unsigned int num_slots) {
 				// Update counter until this control message is due.
@@ -110,15 +111,14 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		std::map<const FrequencyChannel*, std::vector<unsigned int>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init);
 
-		std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareInitialRequest();
+		std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage(bool initial_request);
 		std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
 
-	void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
-
-	void processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
+		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+		void processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
 
 		/**
 		 * @param table
@@ -140,6 +140,15 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		void scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable *table, bool link_initiator);
 
+		/**
+		 * @param timeout
+		 * @param init_offset First transmission burst offset.
+		 * @param burst_offset
+		 * @param num_attempts
+		 * @return Slot offsets where link renewal requests should be sent.
+		 */
+		std::vector<unsigned int> scheduleRenewalRequestSlots(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
+
 	protected:
 		/** The default number of frames a newly established P2P link remains valid for. */
 		const unsigned int default_timeout;
@@ -149,6 +158,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		const unsigned int num_p2p_channels_to_propose = 2;
 		/** The number of time slots per P2P channel that should be proposed using link request. */
 		const unsigned int num_slots_per_p2p_channel_to_propose = 3;
+		/** The number of renewal attempts that should be made. */
+		const unsigned int num_renewal_attempst = 3;
 
 		/** An estimate of this link's outgoing traffic estimate. */
 		MovingAverage outgoing_traffic_estimate;

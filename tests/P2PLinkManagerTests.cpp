@@ -95,7 +95,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that the link request header fields and proposal payload are set correctly. */
 		void testPrepareInitialLinkRequest() {
-			auto link_request_msg = link_manager->prepareInitialRequest();
+			auto link_request_msg = link_manager->prepareRequestMessage(true);
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 			CPPUNIT_ASSERT_EQUAL(link_manager->default_timeout, link_request_msg.first->timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_request_msg.first->burst_length);
@@ -114,7 +114,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testProcessInitialRequestAllLocked() {
-			auto link_request_msg = link_manager->prepareInitialRequest();
+			auto link_request_msg = link_manager->prepareRequestMessage(true);
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
 			P2PLinkManager::LinkState *state = link_manager->processInitialRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
@@ -125,7 +125,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testProcessInitialRequest() {
-			auto link_request_msg = link_manager->prepareInitialRequest();
+			auto link_request_msg = link_manager->prepareRequestMessage(true);
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
@@ -191,7 +191,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			// Prepare request from another user.
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
-			auto link_request_msg = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->prepareInitialRequest();
+			auto link_request_msg = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->prepareRequestMessage(true);
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 
 			// Right now, the link should be unestablished.
@@ -310,7 +310,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Prepare request.
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
 			link_manager->notifyOutgoing(512);
-			auto link_request_msg = link_manager->prepareInitialRequest();
+			auto link_request_msg = link_manager->prepareRequestMessage(true);
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 			// Receive request.
 			((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processIncomingLinkRequest((const L2Header*&) link_request_msg.first, (const L2Packet::Payload*&) link_request_msg.second, own_id);

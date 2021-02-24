@@ -155,7 +155,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 
 	if (link_status == link_not_established) {
 		coutd << "link not established, triggering link establishment -> ";
-		auto link_request_msg = prepareInitialRequest();
+		auto link_request_msg = prepareRequestMessage(true);
 		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);
 		link_status = awaiting_reply;
 	} else
@@ -201,12 +201,12 @@ void P2PLinkManager::onSlotEnd() {
 
 }
 
-std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareInitialRequest() {
+std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareRequestMessage(bool initial_request) {
 	auto *header = new L2HeaderLinkRequest(link_id);
 	auto *payload = new LinkRequestPayload();
 	// Set this as the callback s.t. the payload can be populated just-in-time.
 	payload->callback = this;
-	payload->initial_request = true;
+	payload->initial_request = initial_request;
 	return {header, payload};
 }
 
@@ -359,6 +359,8 @@ void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentRep
 		processInitialReply((const L2HeaderLinkReply*&) header, (const LinkManager::LinkRequestPayload*&) payload);
 	} else
 		throw std::runtime_error("not implemented");
+
+	coutd << "done." << std::endl;
 }
 
 void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload) {
@@ -392,9 +394,16 @@ void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const
 	}
 	current_link_state->scheduled_rx_slots.clear();
 	// Schedule link renewal request slots.
-	// TODO
+	coutd << "scheduling link renewal request slots: ";
+	std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, burst_offset, burst_offset, num_renewal_attempst);
+	for (unsigned int renewal_request_slot : link_renewal_request_slots) {
+		auto request_msg = prepareRequestMessage(false);
+		current_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, request_msg.first, request_msg.second);
+	}
 	// Link is now established.
+	coutd << "setting link status to '";
 	link_status = link_established;
+	coutd << link_status << "' -> ";
 }
 
 std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {
@@ -421,4 +430,18 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::RX : Reservation::Action::TX) : (link_initiator ? Reservation::Action::RX_CONT : Reservation::Action::TX_CONT);
 		table->mark(burst_start_offset + burst_length_tx + t, Reservation(dest_id, action));
 	}
+}
+
+std::vector<unsigned int> P2PLinkManager::scheduleRenewalRequestSlots(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const {
+	std::vector<unsigned int> slots;
+	// For each transmission burst from last to first according to this reservation...
+	for (long i = 0, offset = init_offset + (timeout - 1) * burst_offset; slots.size() < num_attempts && offset >= init_offset; offset -= burst_offset, i++) {
+		// ... add every second burst
+		if (i % 2 == 1) {
+			slots.push_back(offset);
+			coutd << "@" << offset << " ";
+		}
+	}
+	coutd << "-> ";
+	return slots;
 }
