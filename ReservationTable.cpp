@@ -199,8 +199,6 @@ unsigned int ReservationTable::findEarliestIdleSlots(unsigned int start_offset, 
 		throw std::invalid_argument("Invalid slot range!");
 	if (transmitter_reservation_table == nullptr)
 		throw std::runtime_error("ReservationTable::findEarliestIdleSlots for unset transmitter table.");
-	if (receiver_reservation_tables.empty())
-		throw std::runtime_error("ReservationTable::findEarliestIdleSlots for unset receiver tables.");
 
 	for (unsigned int t = start_offset; t < planning_horizon; t++) {
 		// Check if local table is idle...
@@ -214,15 +212,22 @@ unsigned int ReservationTable::findEarliestIdleSlots(unsigned int start_offset, 
 				receiver_idle = true;
 			else {
 				unsigned int t_rx = t + burst_length_tx;
-				receiver_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [t_rx, burst_length_rx](ReservationTable* table) {
-					return table->isIdle(t_rx, burst_length_rx);
-				});
+				if (receiver_reservation_tables.empty())
+					receiver_idle = true;
+				else
+					receiver_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [t_rx, burst_length_rx](ReservationTable* table) {
+						return table->isIdle(t_rx, burst_length_rx);
+					});
 			}
 			// ... if a receiver must also be available during the first slot...
-			if (rx_idle_during_first_slot)
-				receiver_idle = receiver_idle && std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [t](ReservationTable* table) {
-					return table->isIdle(t);
-				});
+			if (rx_idle_during_first_slot) {
+				if (receiver_reservation_tables.empty())
+					receiver_idle = true;
+				else
+					receiver_idle = receiver_idle && std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [t](ReservationTable* table) {
+						return table->isIdle(t);
+					});
+			}
 
 			if (transmitter_idle && receiver_idle)
 				return t;

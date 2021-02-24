@@ -175,10 +175,11 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 				link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
 			else
 				link_manager = new OldLinkManager(internal_id, reservation_manager, this);
+			// Receiver tables are only set for P2PLinkManagers.
+			for (ReservationTable* rx_table : reservation_manager->getRxTables())
+				link_manager->linkRxTable(rx_table);
 		}
 		link_manager->linkTxTable(reservation_manager->getTxTable());
-		for (ReservationTable* rx_table : reservation_manager->getRxTables())
-			link_manager->linkRxTable(rx_table);
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new OldLinkManager, but there already was one.");

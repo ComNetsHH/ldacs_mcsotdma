@@ -114,32 +114,33 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_status);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
-//			// Make sure that all corresponding slots are marked as TX on our side,
-//			ReservationTable* table_me = lm_me->current_reservation_table;
-//			ReservationTable* table_you = lm_you->current_reservation_table;
-//			for (size_t offset = lm_me->burst_offset; offset < lm_me->current_link_state->timeout * lm_me->burst_offset; offset += lm_me->burst_offset) {
-//				const Reservation& reservation_tx = table_me->getReservation(offset);
-//				const Reservation& reservation_rx = table_you->getReservation(offset);
-//				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
-//				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
-//				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
-//				// and one RX where the first data transmission is expected is marked on their side.
-//				if (offset == lm_me->burst_offset)
-//					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
-//				else
-//					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isIdle());
-//			}
-//			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
-//			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
-//			// Jump in time to the next transmission.
-//			mac_layer_me->update(lm_you->burst_offset);
-//			mac_layer_you->update(lm_you->burst_offset);
-//			mac_layer_me->execute();
-//			mac_layer_you->execute();
-//			mac_layer_me->onSlotEnd();
-//			mac_layer_you->onSlotEnd();
-//			// *Their* status should now show an established link.
-//			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_status);
+			// Make sure that all corresponding slots are marked as TX on our side,
+			ReservationTable* table_me = lm_me->current_reservation_table;
+			ReservationTable* table_you = lm_you->current_reservation_table;
+			for (size_t offset = lm_me->burst_offset; offset < lm_me->current_link_state->timeout * lm_me->burst_offset; offset += lm_me->burst_offset) {
+				const Reservation& reservation_tx = table_me->getReservation(offset);
+				const Reservation& reservation_rx = table_you->getReservation(offset);
+				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
+				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
+				CPPUNIT_ASSERT_EQUAL(communication_partner_id, reservation_tx.getTarget());
+				// and one RX where the first data transmission is expected is marked on their side.
+				if (offset == lm_me->burst_offset)
+					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
+				else
+					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isIdle());
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets); // just the request which had been forwarded by the BCLinkManager
+			// Jump in time to the next transmission.
+			mac_layer_me->update(lm_you->burst_offset);
+			mac_layer_you->update(lm_you->burst_offset);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			// *Their* status should now show an established link.
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 //			// Reservation timeout should be 1 less now.
 //			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
 //			CPPUNIT_ASSERT_EQUAL(size_t(2), rlc_layer_you->receptions.size());

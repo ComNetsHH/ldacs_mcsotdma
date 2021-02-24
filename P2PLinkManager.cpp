@@ -471,7 +471,7 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 	} else {
 		if (link_status == awaiting_data_tx) {
 			link_status = link_established;
-			coutd << "this is the expected data transmission, setting link to '" << link_status << "' -> informing upper layers -> ";
+			coutd << "this transmission establishes the link, setting status to '" << link_status << "' -> informing upper layers -> ";
 			mac->notifyAboutNewLink(link_id);
 		}
 	}

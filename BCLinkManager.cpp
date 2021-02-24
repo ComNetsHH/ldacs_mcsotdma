@@ -88,7 +88,11 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 		contention_estimator.update();
 	if (current_reservation_table->getReservation(0).isIdle()) {
 		coutd << "marking BC reception" << std::endl;
-		current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
+		try {
+			current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
+		} catch (const std::exception& e) {
+			throw std::runtime_error("BCLinkManager::onSlotStart(" + std::to_string(num_slots) + ") error trying to mark BC reception slot: " + e.what());
+		}
 	}
 }
 

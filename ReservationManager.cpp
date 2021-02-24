@@ -17,13 +17,13 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	table->linkFrequencyChannel(channel);
 	if (transmitter_table != nullptr)
 		table->linkTransmitterReservationTable(this->transmitter_table);
-	for (ReservationTable* rx_table : receiver_reservation_tables)
-		table->linkReceiverReservationTable(rx_table);
 	if (is_p2p) {
 		p2p_frequency_channels.push_back(channel);
 		p2p_reservation_tables.push_back(table);
 		p2p_channel_map[*channel] = p2p_frequency_channels.size() - 1;
 		p2p_table_map[table] = p2p_reservation_tables.size() - 1;
+		for (ReservationTable* rx_table : receiver_reservation_tables)
+			table->linkReceiverReservationTable(rx_table);
 	} else {
 		if (broadcast_frequency_channel == nullptr && broadcast_reservation_table == nullptr) {
 			broadcast_frequency_channel = channel;

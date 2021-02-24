@@ -29,15 +29,16 @@ int main() {
 //	runner.addTest(ReservationTableTests::suite());
 //	runner.addTest(ReservationManagerTests::suite());
 //	runner.addTest(FrequencyChannelTests::suite());
-//	runner.addTest(LinkManagerTests::suite());
-	runner.addTest(P2PLinkManagerTests::suite());
+//	runner.addTest(P2PLinkManagerTests::suite());
 	runner.addTest(NewSystemTests::suite());
-//	runner.addTest(BCLinkManagerTests::suite());
 //	runner.addTest(MCSOTDMA_MacTests::suite());
 //	runner.addTest(ContentionEstimatorTests::suite());
-//	runner.addTest(SystemTests::suite());
-//	runner.addTest(LinkManagementEntityTests::suite());
 //	runner.addTest(MCSOTDMA_PhyTests::suite());
+
+	//	runner.addTest(BCLinkManagerTests::suite());
+	//	runner.addTest(SystemTests::suite());
+	//	runner.addTest(LinkManagerTests::suite());
+	//	runner.addTest(LinkManagementEntityTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;
