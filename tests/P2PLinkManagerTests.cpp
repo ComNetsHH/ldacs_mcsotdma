@@ -155,6 +155,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, link_manager->link_status);
 			link_manager->notifyOutgoing(512);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, link_manager->link_status);
+			// Increment time until the link request has been sent.
+			size_t num_slots = 0, max_num_slots = 100;
+			while (link_manager->current_link_state == nullptr && num_slots++ < max_num_slots) {
+				env->mac_layer->update(1);
+				env->mac_layer->execute();
+				env->mac_layer->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
+			// Now the proposal has been populated, and so the burst starts slots should've been reserved for RX to be able to receive the reply.
+			unsigned int closest_burst_start = 10000;
+			for (const auto &pair : link_manager->current_link_state->scheduled_rx_slots) {
+				const ReservationTable *table = reservation_manager->getReservationTable(pair.first);
+				CPPUNIT_ASSERT(pair.second > 0);
+				if (pair.second < closest_burst_start)
+					closest_burst_start = pair.second;
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), table->getReservation(pair.second));
+			}
+			// And updating should also update these offsets.
+			for (unsigned int t = 0; t < closest_burst_start; t++)
+				env->mac_layer->update(1);
+			unsigned int closest_burst_start2 = 10000;
+			for (const auto &pair : link_manager->current_link_state->scheduled_rx_slots) {
+				const ReservationTable *table = reservation_manager->getReservationTable(pair.first);
+				CPPUNIT_ASSERT(pair.second >= 0);
+				if (pair.second < closest_burst_start2)
+					closest_burst_start2 = pair.second;
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), table->getReservation(pair.second));
+			}
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), closest_burst_start2);
 		}
 
 		void testReplyToRequest() {
@@ -275,6 +305,65 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
 		}
 
+		void testProcessInitialLinkReply() {
+			coutd.setVerbose(true);
+			// Prepare request.
+			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
+			link_manager->notifyOutgoing(512);
+			auto link_request_msg = link_manager->prepareInitialRequest();
+			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
+			// Receive request.
+			((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processIncomingLinkRequest((const L2Header*&) link_request_msg.first, (const L2Packet::Payload*&) link_request_msg.second, own_id);
+			// Send the reply.
+			size_t num_slots = 0, max_num_slots = 100;
+			while (!((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->current_link_state->scheduled_link_replies.empty() && num_slots++ < max_num_slots) {
+				rx_env.mac_layer->update(1);
+				rx_env.mac_layer->execute();
+				rx_env.mac_layer->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(true, ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->current_link_state->scheduled_link_replies.empty());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), rx_env.phy_layer->outgoing_packets.size());
+			L2Packet *link_reply = rx_env.phy_layer->outgoing_packets.at(0);
+			int reply_index = link_reply->getReplyIndex();
+			CPPUNIT_ASSERT(reply_index > -1);
+			// Locally some RX reservations should exist, everything else should be idle.
+			size_t num_rx_res = 0;
+			for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const ReservationTable *table = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < planning_horizon; t++) {
+					if (table->getReservation(t).isRx())
+						num_rx_res++;
+					else
+						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));
+				}
+			}
+			CPPUNIT_ASSERT(num_rx_res > 0);
+			// Process the link reply.
+			link_manager->processIncomingLinkReply((const L2HeaderLinkEstablishmentReply*&) link_reply->getHeaders().at(reply_index), (const L2Packet::Payload*&) link_reply->getPayloads().at(reply_index));
+			// Transmission bursts should've been saved now.
+			const ReservationTable *table = link_manager->current_reservation_table;
+			for (unsigned int burst = 1; burst < link_manager->default_timeout; burst++) {
+				unsigned int burst_start_offset = burst*link_manager->burst_offset;
+				for (size_t t = 0; t < link_manager->current_link_state->burst_length; t++) {
+					if (t == 0)
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), table->getReservation(burst_start_offset + t));
+					else
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX_CONT), table->getReservation(burst_start_offset + t));
+				}
+			}
+			// Nothing but these transmission reservations should exist, i.e. RX reservations should've been cleared.
+			for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const ReservationTable *other_table = reservation_manager->getReservationTable(channel);
+				if (other_table == table) {
+					for (size_t t = 0; t < planning_horizon; t++)
+						CPPUNIT_ASSERT(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE) == other_table->getReservation(t) || Reservation(partner_id, Reservation::TX) == other_table->getReservation(t));
+				} else
+					for (size_t t = 0; t < planning_horizon; t++)
+						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), other_table->getReservation(t));
+			}
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testRenewalP2PSlotSelection);
@@ -287,6 +376,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDecrementControlMessageOffsets);
 		CPPUNIT_TEST(testScheduleBurst);
 		CPPUNIT_TEST(testSendScheduledReply);
+		CPPUNIT_TEST(testProcessInitialLinkReply);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

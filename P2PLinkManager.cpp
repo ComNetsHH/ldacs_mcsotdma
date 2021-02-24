@@ -42,7 +42,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> P2PLinkManager::p2p
 			coutd << slot << ":" << slot + burst_length - 1 << " ";
 		coutd << " -> ";
 
-		// ... if this is used for an initial link request, then we need to reserve a receiver at each start slot.
+		// ... if this is used for an initial link request, then we need to reserve a receiver at each start slot and mark them as RX.
 		if (is_init) {
 			for (unsigned int offset : candidate_slots) {
 				bool could_lock_receiver = false;
@@ -164,16 +164,36 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 
 void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 	if (current_link_state != nullptr) {
-		for (auto& reservation : current_link_state->scheduled_link_requests)
+		for (auto &reservation : current_link_state->scheduled_link_requests)
 			reservation.update(num_slots);
-		for (auto& reservation : current_link_state->scheduled_link_replies)
+		for (auto &reservation : current_link_state->scheduled_link_replies)
 			reservation.update(num_slots);
+		// Update RX reservations to listen for replies.
+		for (auto it = current_link_state->scheduled_rx_slots.begin(); it != current_link_state->scheduled_rx_slots.end(); it++) {
+			// If it has passed, remove it from the remembered ones.
+			if (it->second < num_slots) {
+				current_link_state->scheduled_rx_slots.erase(it);
+				it--;
+			} else {
+				it->second -= num_slots;
+			}
+		}
 	}
 	if (next_link_state != nullptr) {
-		for (auto& reservation : next_link_state->scheduled_link_requests)
+		for (auto &reservation : next_link_state->scheduled_link_requests)
 			reservation.update(num_slots);
-		for (auto& reservation : next_link_state->scheduled_link_replies)
+		for (auto &reservation : next_link_state->scheduled_link_replies)
 			reservation.update(num_slots);
+		// Update RX reservations to listen for replies.
+		for (auto it = next_link_state->scheduled_rx_slots.begin(); it != next_link_state->scheduled_rx_slots.end(); it++) {
+			// If it has passed, remove it from the remembered ones.
+			if (it->second < num_slots) {
+				next_link_state->scheduled_rx_slots.erase(it);
+				it--;
+			} else {
+				it->second -= num_slots;
+			}
+		}
 	}
 }
 
@@ -218,56 +238,22 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 		delete current_link_state;
 		current_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
 		current_link_state->initial_setup = true;
+		// We need to schedule RX slots at each candidate to be able to receive a reply there.
+		for (const auto &pair : payload->proposed_resources) {
+			const FrequencyChannel *channel = pair.first;
+			const std::vector<unsigned int> &burst_start_offsets = pair.second;
+			ReservationTable *table = reservation_manager->getReservationTable(channel);
+			for (unsigned int offset : burst_start_offsets) {
+				table->mark(offset, Reservation(link_id, Reservation::RX));
+				// Remember them.
+				current_link_state->scheduled_rx_slots.emplace_back(channel, offset);
+			}
+		}
 	} else {
 		throw std::runtime_error("not implemented");
 	}
 
 	coutd << "request populated -> ";
-}
-
-P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
-	coutd << *this << "::processInitialRequest -> ";
-	// Parse header fields.
-	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
-	// Since this user is processing the request, they have not initiated the link.
-	state->initiated_link = false;
-	state->initial_setup = true;
-
-	// Parse proposed resources.
-	const auto &proposal = payload->proposed_resources;
-	std::vector<const FrequencyChannel*> viable_resource_channel;
-	std::vector<unsigned int> viable_resource_slot;
-	// For each resource...
-	for (const auto &resource : proposal) {
-		const FrequencyChannel *channel = resource.first;
-		const std::vector<unsigned int> &slots = resource.second;
-		// ... get the channel's ReservationTable
-		const ReservationTable *table = reservation_manager->getReservationTable(channel);
-		// ... and check all proposed slot ranges, saving viable ones.
-		coutd << "checking ";
-		for (unsigned int slot : slots) {
-			coutd << slot << "@" << *channel << " ";
-			if (isViable(table, slot, header->burst_length, header->burst_length_tx)) {
-				viable_resource_channel.push_back(channel);
-				viable_resource_slot.push_back(slot);
-				coutd << "(viable) ";
-			} else
-				coutd << "(busy) ";
-		}
-	}
-	// Draw one resource from the viable ones randomly.
-	if (!viable_resource_channel.empty()) {
-		auto random_index = getRandomInt(0, viable_resource_channel.size());
-		state->channel = viable_resource_channel.at(random_index);
-		state->slot_offset = viable_resource_slot.at(random_index);
-		coutd << "-> randomly chose " << *state->channel << "@" << state->slot_offset << " -> ";
-	} else {
-		state->channel = nullptr;
-		state->slot_offset = 0;
-		coutd << "-> no viable resources -> ";
-	}
-
-	return state;
 }
 
 bool P2PLinkManager::isViable(const ReservationTable* table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx) const {
@@ -316,13 +302,99 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	}
 }
 
-void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
-	coutd << *this << "::processIncomingLinkReply -> ";
-	// If currently
+P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+	coutd << " initial request -> ";
+	// Parse header fields.
+	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
+	// Since this user is processing the request, they have not initiated the link.
+	state->initiated_link = false;
+	state->initial_setup = true;
+
+	// Parse proposed resources.
+	const auto &proposal = payload->proposed_resources;
+	std::vector<const FrequencyChannel*> viable_resource_channel;
+	std::vector<unsigned int> viable_resource_slot;
+	// For each resource...
+	for (const auto &resource : proposal) {
+		const FrequencyChannel *channel = resource.first;
+		const std::vector<unsigned int> &slots = resource.second;
+		// ... get the channel's ReservationTable
+		const ReservationTable *table = reservation_manager->getReservationTable(channel);
+		// ... and check all proposed slot ranges, saving viable ones.
+		coutd << "checking ";
+		for (unsigned int slot : slots) {
+			coutd << slot << "@" << *channel << " ";
+			if (isViable(table, slot, header->burst_length, header->burst_length_tx)) {
+				viable_resource_channel.push_back(channel);
+				viable_resource_slot.push_back(slot);
+				coutd << "(viable) ";
+			} else
+				coutd << "(busy) ";
+		}
+	}
+	// Draw one resource from the viable ones randomly.
+	if (!viable_resource_channel.empty()) {
+		auto random_index = getRandomInt(0, viable_resource_channel.size());
+		state->channel = viable_resource_channel.at(random_index);
+		state->slot_offset = viable_resource_slot.at(random_index);
+		coutd << "-> randomly chose " << *state->channel << "@" << state->slot_offset << " -> ";
+	} else {
+		state->channel = nullptr;
+		state->slot_offset = 0;
+		coutd << "-> no viable resources -> ";
+	}
+
+	return state;
 }
 
-P2PLinkManager::LinkState* P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload) {
-	return nullptr;
+void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	coutd << *this << "::processIncomingLinkReply -> ";
+	if (link_status != awaiting_reply) {
+		coutd << "not awaiting reply; discarding -> ";
+		return;
+	}
+	assert(current_link_state != nullptr && "P2PLinkManager::processIncomingLinkReply for unset current state.");
+
+	if (current_link_state->initial_setup) {
+		processInitialReply((const L2HeaderLinkReply*&) header, (const LinkManager::LinkRequestPayload*&) payload);
+	} else
+		throw std::runtime_error("not implemented");
+}
+
+void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload) {
+	coutd << "initial reply -> ";
+	// Reset timeout.
+	current_link_state->timeout = default_timeout;
+	// Parse resource.
+	if (payload->proposed_resources.size() != 1)
+		throw std::invalid_argument("P2PLinkManager::processInitialReply for payload with " + std::to_string(payload->proposed_resources.size()) + " resources.");
+	const auto &resource = *payload->proposed_resources.begin();
+	const auto *channel = resource.first;
+	const auto &slots = resource.second;
+	if (slots.size() != 1)
+		throw std::invalid_argument("P2PLinkManager::processInitialReply for " + std::to_string(slots.size()) + " slots.");
+	unsigned int slot_offset = slots.at(0);
+	coutd << "received on " << *channel << "@" << slot_offset << " -> ";
+	// Assign channel.
+	assign(channel);
+	// Make reservations.
+	coutd << "scheduling transmission bursts: ";
+	for (unsigned int burst = 1; burst < default_timeout + 1; burst++) { // Start with next P2P frame
+		unsigned int burst_start_offset = burst * burst_offset + slot_offset;
+		coutd << burst_start_offset << ":" << burst_start_offset + current_link_state->burst_length << " ";
+		scheduleBurst(burst_start_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, true);
+	}
+	coutd << "-> ";
+	// Clear RX reservations made to receive this reply.
+	for (auto &pair : current_link_state->scheduled_rx_slots) {
+		ReservationTable *table = reservation_manager->getReservationTable(pair.first);
+		table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+	}
+	current_link_state->scheduled_rx_slots.clear();
+	// Schedule link renewal request slots.
+	// TODO
+	// Link is now established.
+	link_status = link_established;
 }
 
 std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {

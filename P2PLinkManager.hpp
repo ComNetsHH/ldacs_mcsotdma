@@ -90,8 +90,12 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			bool initial_setup = false;
 			const FrequencyChannel *channel = nullptr;
 			unsigned int slot_offset;
+			/** Link replies may be scheduled on specific slots. */
 			std::vector<ControlMessageReservation> scheduled_link_replies;
+			/** Link requests may be scheduled on specific slots. */
 			std::vector<ControlMessageReservation> scheduled_link_requests;
+			/** Initial link establishment makes these RX reservations to listen for replies. */
+			std::vector<std::pair<const FrequencyChannel*, unsigned int>> scheduled_rx_slots;
 		};
 
 		/**
@@ -114,7 +118,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 	void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
 
-	LinkState* processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
+	void processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
 
 		/**
 		 * @param table
