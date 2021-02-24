@@ -4,6 +4,7 @@
 
 #include "BCLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
+#include "P2PLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -43,6 +44,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 			packet->addMessage(pair.first, pair.second);
 			link_requests.erase(link_requests.begin());
 			coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
+			statistic_num_sent_requests++;
 		} else
 			break; // Stop if it doesn't fit anymore.
 	}
@@ -60,6 +62,8 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 		next_broadcast_scheduled = false;
 		coutd << "no more broadcast data, not scheduling a next slot -> ";
 	}
+
+	statistic_num_sent_packets++;
 
 	return packet;
 }
@@ -143,4 +147,37 @@ void BCLinkManager::scheduleBroadcastSlot() {
 	next_broadcast_slot = broadcastSlotSelection();
 	next_broadcast_scheduled = true;
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+}
+
+void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+	LinkManager::processIncomingBeacon(origin_id, header, payload);
+}
+
+void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
+	// TODO set next broadcast slot in reservation table
+}
+
+void BCLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+	// TODO compare to local ID, discard or forward resp.
+	LinkManager::processIncomingUnicast(header, payload);
+}
+
+void BCLinkManager::processIncomingBase(L2HeaderBase*& header) {
+	MacId sender = header->src_id;
+	contention_estimator.reportBroadcast(sender);
+	coutd << "updated contention -> ";
+}
+
+void BCLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
+	if (dest_id == mac->getMacId()) {
+		coutd << "forwarding link request to P2PLinkManager -> ";
+		statistic_num_received_requests++;
+		((P2PLinkManager*) mac->getLinkManager(origin))->processIncomingLinkRequest(header, payload, origin);
+	} else
+		coutd << "discarding link request that is not destined to us -> ";
+}
+
+void BCLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	throw std::invalid_argument("BCLinkManager::processIncomingLinkReply called, but link replies shouldn't be received on the BC.");
 }

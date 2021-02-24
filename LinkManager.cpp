@@ -122,20 +122,17 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::broadcast: {
 				coutd << "processing broadcast -> ";
 				processIncomingBroadcast(packet->getOrigin(), (L2HeaderBroadcast*&) header);
-				statistic_num_received_broadcasts++;
 				contains_data = true;
 				break;
 			}
 			case L2Header::unicast: {
 				coutd << "processing unicast -> ";
 				processIncomingUnicast((L2HeaderUnicast*&) header, payload);
-				statistic_num_received_unicasts++;
 				contains_data = true;
 				break;
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
-				statistic_num_received_requests++;
 				processIncomingLinkRequest((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
 //				delete header;
 //				header = nullptr;
@@ -160,6 +157,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 		}
 	}
 	// After processing, the packet is passed to the upper layer.
+	coutd << "processing done -> ";
 	if (contains_data) {
 		coutd << "passing to upper layer." << std::endl;
 		mac->passToUpper(packet);
@@ -196,5 +194,5 @@ void LinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Pa
 
 void LinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
 	coutd << *this << "::processIncomingLinkReply" << std::endl;
-	throw std::runtime_error("not implemented");
+	throw std::invalid_argument("Link replies ");
 }

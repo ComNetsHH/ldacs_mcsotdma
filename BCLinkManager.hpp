@@ -12,6 +12,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BCLinkManager : public LinkManager {
 
 		friend class BCLinkManagerTests;
+		friend class NewSystemTests;
 
 	public:
 		/**
@@ -56,9 +57,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void scheduleBroadcastSlot();
 
+		void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
+
+		void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
+
+		void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
+
+		void processIncomingBase(L2HeaderBase*& header) override;
+
+		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+
+		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+
 	protected:
 		/** Minimum number of slots that should be kept idle when a beacon slot is selected. */
-		const unsigned int min_beacon_gap;
+		const unsigned int min_beacon_gap = 1;
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;
 		/** For each neighbor, a moving average over past slots is kept, so that the contention by the neighbors is estimated. */

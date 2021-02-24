@@ -15,6 +15,7 @@
 #include "MCSOTDMA_MacTests.cpp"
 #include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
+#include "NewSystemTests.cpp"
 #include "LinkManagementEntityTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
 #include "P2PLinkManagerTests.cpp"
@@ -30,6 +31,7 @@ int main() {
 //	runner.addTest(FrequencyChannelTests::suite());
 //	runner.addTest(LinkManagerTests::suite());
 	runner.addTest(P2PLinkManagerTests::suite());
+	runner.addTest(NewSystemTests::suite());
 //	runner.addTest(BCLinkManagerTests::suite());
 //	runner.addTest(MCSOTDMA_MacTests::suite());
 //	runner.addTest(ContentionEstimatorTests::suite());

@@ -137,7 +137,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Processor is never the link initiator.
 			CPPUNIT_ASSERT_EQUAL(false, state->initiated_link);
 			const FrequencyChannel *channel = state->channel;
-			unsigned int slot_offset = state->slot_offset;
+			unsigned int slot_offset = state->next_burst_start;
 			CPPUNIT_ASSERT(channel != nullptr);
 			CPPUNIT_ASSERT(slot_offset > 0);
 			// The chosen resource should be one of the proposed ones.

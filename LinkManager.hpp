@@ -23,6 +23,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
+		friend class NewSystemTests;
 
 	public:
 		enum Status {
@@ -138,6 +139,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rx_tables.push_back(rx_table);
 		}
 
+		virtual void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
+
 	protected:
 		/**
 		 * Locks given ReservationTable, as well as transmitter and receiver resources for the given candidate slots.
@@ -154,7 +157,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		virtual void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header);
 		virtual void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
 		virtual void processIncomingBase(L2HeaderBase*& header);
-		virtual void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
 		virtual void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
 
 	protected:
@@ -170,7 +172,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::random_device* random_device;
 		std::mt19937 generator;
 
-		unsigned long long statistic_num_received_packets, statistic_num_received_beacons, statistic_num_received_broadcasts, statistic_num_received_unicasts, statistic_num_received_requests, statistic_num_received_replies;
+		unsigned long statistic_num_received_packets = 0,
+			statistic_num_received_beacons = 0,
+			statistic_num_received_requests = 0,
+			statistic_num_received_replies = 0,
+			statistic_num_sent_packets = 0,
+			statistic_num_sent_beacons = 0,
+			statistic_num_sent_requests = 0,
+			statistic_num_sent_replies = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {

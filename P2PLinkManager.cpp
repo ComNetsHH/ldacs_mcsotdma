@@ -108,6 +108,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 						current_link_state->scheduled_link_replies.erase(it);
 						it--;
 						coutd << "added scheduled link reply -> ";
+						statistic_num_sent_replies++;
 					} else // Link replies must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
 						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link reply into packet because it wouldn't fit. This should never happen?!");
 				}
@@ -127,6 +128,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 						current_link_state->scheduled_link_requests.erase(it);
 						it--;
 						coutd << "added scheduled link request -> ";
+						statistic_num_sent_requests++;
 					} else // Link requests must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
 						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link request into packet because it wouldn't fit. This should never happen?!");
 				}
@@ -137,6 +139,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 	unsigned int remaining_bits = capacity - packet->getBits();
 	coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
 	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
+	statistic_num_sent_packets++;
 	for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
 		if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
 			packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
@@ -272,8 +275,10 @@ bool P2PLinkManager::isViable(const ReservationTable* table, unsigned int burst_
 
 void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
 	coutd << *this << "::processIncomingLinkRequest -> ";
+	statistic_num_received_requests++;
 	// If currently the link is unestablished, then this request must be an initial request.
 	if (link_status == link_not_established) {
+		// Pick a random resource from those proposed.
 		LinkState *state = processInitialRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
 		// If no viable resources were found, ...
 		if (state->channel == nullptr) {
@@ -287,13 +292,15 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 			current_channel = current_link_state->channel;
 			current_reservation_table = reservation_manager->getReservationTable(current_channel);
 			// schedule a link reply,
-			auto link_reply_message = prepareInitialReply(origin, current_link_state->channel, current_link_state->slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx);
-			current_link_state->scheduled_link_replies.emplace_back(state->slot_offset, link_reply_message.first, link_reply_message.second);
+			auto link_reply_message = prepareInitialReply(origin, current_link_state->channel, current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx);
+			current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, link_reply_message.first, link_reply_message.second);
 			// mark the slot as TX,
-			current_reservation_table->mark(state->slot_offset, Reservation(origin, Reservation::TX));
+			current_reservation_table->mark(state->next_burst_start, Reservation(origin, Reservation::TX));
+			coutd << "scheduled link reply at offset " << state->next_burst_start << " -> ";
 			// and anticipate first data exchange one burst later,
-			scheduleBurst(burst_offset + current_link_state->slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx, origin, current_reservation_table, current_link_state->initiated_link);
-			// and update the status.
+			coutd << "scheduling slots for first transmission burst: ";
+			scheduleBurst(burst_offset + current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx, origin, current_reservation_table, current_link_state->initiated_link);
+			// and update status.
 			link_status = awaiting_data_tx;
 		}
 	// If the link is in any other status, this must be a renewal request.
@@ -303,7 +310,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 }
 
 P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
-	coutd << " initial request -> ";
+	coutd << "initial request -> ";
 	// Parse header fields.
 	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
 	// Since this user is processing the request, they have not initiated the link.
@@ -336,11 +343,11 @@ P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderL
 	if (!viable_resource_channel.empty()) {
 		auto random_index = getRandomInt(0, viable_resource_channel.size());
 		state->channel = viable_resource_channel.at(random_index);
-		state->slot_offset = viable_resource_slot.at(random_index);
-		coutd << "-> randomly chose " << *state->channel << "@" << state->slot_offset << " -> ";
+		state->next_burst_start = viable_resource_slot.at(random_index);
+		coutd << "-> randomly chose " << *state->channel << "@" << state->next_burst_start << " -> ";
 	} else {
 		state->channel = nullptr;
-		state->slot_offset = 0;
+		state->next_burst_start = 0;
 		coutd << "-> no viable resources -> ";
 	}
 
@@ -349,6 +356,7 @@ P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderL
 
 void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
 	coutd << *this << "::processIncomingLinkReply -> ";
+	statistic_num_received_replies++;
 	if (link_status != awaiting_reply) {
 		coutd << "not awaiting reply; discarding -> ";
 		return;
@@ -381,12 +389,8 @@ void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const
 	assign(channel);
 	// Make reservations.
 	coutd << "scheduling transmission bursts: ";
-	for (unsigned int burst = 1; burst < default_timeout + 1; burst++) { // Start with next P2P frame
-		unsigned int burst_start_offset = burst * burst_offset + slot_offset;
-		coutd << burst_start_offset << ":" << burst_start_offset + current_link_state->burst_length << " ";
-		scheduleBurst(burst_start_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, true);
-	}
-	coutd << "-> ";
+	for (unsigned int burst = 1; burst < default_timeout + 1; burst++)  // Start with next P2P frame
+		scheduleBurst(burst * burst_offset + slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, true);
 	// Clear RX reservations made to receive this reply.
 	for (auto &pair : current_link_state->scheduled_rx_slots) {
 		ReservationTable *table = reservation_manager->getReservationTable(pair.first);
@@ -423,13 +427,18 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 	assert(table != nullptr);
 	for (unsigned int t = 0; t < burst_length_tx; t++) {
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::TX : Reservation::Action::RX) : (link_initiator ? Reservation::Action::TX_CONT : Reservation::Action::RX_CONT);
-		table->mark(burst_start_offset + t, Reservation(dest_id, action));
+		Reservation res = Reservation(dest_id, action);
+		table->mark(burst_start_offset + t, res);
+		coutd << "t=" << burst_start_offset + t << ":" << res << " ";
 	}
 	unsigned int burst_length_rx = burst_length - burst_length_tx;
 	for (unsigned int t = 0; t < burst_length_rx; t++) {
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::RX : Reservation::Action::TX) : (link_initiator ? Reservation::Action::RX_CONT : Reservation::Action::TX_CONT);
-		table->mark(burst_start_offset + burst_length_tx + t, Reservation(dest_id, action));
+		Reservation res = Reservation(dest_id, action);
+		table->mark(burst_start_offset + burst_length_tx + t, res);
+		coutd << "t=" << burst_start_offset + burst_length_tx + t << ":" << res << " ";
 	}
+	coutd << "-> ";
 }
 
 std::vector<unsigned int> P2PLinkManager::scheduleRenewalRequestSlots(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const {
@@ -444,4 +453,30 @@ std::vector<unsigned int> P2PLinkManager::scheduleRenewalRequestSlots(unsigned i
 	}
 	coutd << "-> ";
 	return slots;
+}
+
+void P2PLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+	throw std::invalid_argument("P2PLinkManager::processIncomingBeacon called but beacons should not be received on P2P channels.");
+}
+
+void P2PLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
+	throw std::invalid_argument("P2PLinkManager::processIncomingBroadcast called but broadcasts should not be received on P2P channels.");
+}
+
+void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+	MacId dest_id = header->dest_id;
+	if (dest_id != mac->getMacId()) {
+		coutd << "discarding unicast message not intended for us -> ";
+		return;
+	} else {
+		if (link_status == awaiting_data_tx) {
+			link_status = link_established;
+			coutd << "this is the expected data transmission, setting link to '" << link_status << "' -> informing upper layers -> ";
+			mac->notifyAboutNewLink(link_id);
+		}
+	}
+}
+
+void P2PLinkManager::processIncomingBase(L2HeaderBase*& header) {
+	// Nothing to do.
 }

@@ -14,6 +14,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback {
 
 		friend class P2PLinkManagerTests;
+		friend class NewSystemTests;
 
 	public:
 		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
@@ -35,6 +36,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		void onSlotEnd() override;
 
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
+
+		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 
 	protected:
 
@@ -90,7 +93,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Whether this state results from an initial link establishment as opposed to a renewed one. */
 			bool initial_setup = false;
 			const FrequencyChannel *channel = nullptr;
-			unsigned int slot_offset;
+			unsigned int next_burst_start;
 			/** Link replies may be scheduled on specific slots. */
 			std::vector<ControlMessageReservation> scheduled_link_replies;
 			/** Link requests may be scheduled on specific slots. */
@@ -114,7 +117,6 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage(bool initial_request);
 		std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
-		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
 
 		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
@@ -149,7 +151,12 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		std::vector<unsigned int> scheduleRenewalRequestSlots(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
 
-	protected:
+	void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
+	void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
+	void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
+	void processIncomingBase(L2HeaderBase*& header) override;
+
+protected:
 		/** The default number of frames a newly established P2P link remains valid for. */
 		const unsigned int default_timeout;
 		/** The number of slots in-between bursts, i.e. the P2P frame length. */
