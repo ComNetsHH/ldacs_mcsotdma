@@ -122,16 +122,22 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 				// ... if due now, ...
 				if (request_reservation.getRemainingOffset() == 0) {
 					size_t num_bits = request_reservation.getHeader()->getBits() + request_reservation.getPayload()->getBits();
-					if (packet->getBits() + num_bits <= capacity) {
-						// put it into the packet,
-						packet->addMessage(request_reservation.getHeader(), request_reservation.getPayload());
-						// and remove from scheduled replies.
-						current_link_state->scheduled_link_requests.erase(it);
-						it--;
-						coutd << "added scheduled link request -> ";
-						statistic_num_sent_requests++;
-					} else // Link requests must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
-						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link request into packet because it wouldn't fit. This should never happen?!");
+					bool renewal_required = mac->isThereMoreData(link_id);
+					// ... if a renewal is required ...
+					if (renewal_required) {
+						// ... and if it fits ...
+						if (packet->getBits() + num_bits <= capacity) {
+							// ... put it into the packet,
+							packet->addMessage(request_reservation.getHeader(), request_reservation.getPayload());
+							coutd << "added scheduled link request -> ";
+							statistic_num_sent_requests++;
+						} else // Link requests must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
+							throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link request into packet because it wouldn't fit. This should never happen?!");
+					} else
+						coutd << "removing link request (no more data to send) -> ";
+					// Remove from scheduled replies.
+					current_link_state->scheduled_link_requests.erase(it);
+					it--;
 				}
 			}
 		}
@@ -208,7 +214,8 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 void P2PLinkManager::onSlotEnd() {
 	if (burst_start_during_this_slot) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> ";
-		decrementTimeout();
+		if (decrementTimeout())
+			onTimeoutExpiry();
 		coutd << std::endl;
 	}
 }
@@ -527,4 +534,36 @@ bool P2PLinkManager::decrementTimeout() {
 	current_link_state->timeout--;
 	coutd << current_link_state->timeout << " -> ";
 	return current_link_state->timeout == 0;
+}
+
+void P2PLinkManager::onTimeoutExpiry() {
+	coutd << "timeout reached -> ";
+	if (link_status == LinkManager::link_renewal_complete) {
+		throw std::runtime_error("link renewal not yet implemented");
+//		coutd << "applying renewal: " << *owner->current_channel << "->" << *next_channel;
+//		owner->reassign(next_channel);
+//		// Only schedule request slots if we're the initiator, i.e. have sent requests before.
+//		if (owner->is_link_initiator) {
+//			coutd << "scheduling renewal requests at ";
+//			scheduled_requests = scheduleRequests(tx_timeout, first_slot_of_next_link, tx_offset, max_num_renewal_attempts);
+//			first_slot_of_next_link = 0;
+//		}
+//		coutd << "updating status: " << owner->link_status << "->" << OldLinkManager::link_established << " -> link renewal complete -> ";
+//		owner->link_status = OldLinkManager::link_established;
+	} else {
+		coutd << "no pending renewal, updating status: " << link_status << "->" << LinkManager::link_not_established << " -> cleared associated channel -> ";
+		current_channel = nullptr;
+		current_reservation_table = nullptr;
+		link_status = LinkManager::link_not_established;
+		coutd << "clearing pending RX reservations: ";
+		for (auto &pair : current_link_state->scheduled_rx_slots) {
+			ReservationTable *table = reservation_manager->getReservationTable(pair.first);
+			table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+			coutd << pair.second << "@" << *pair.first << " ";
+		}
+		delete current_link_state;
+		current_link_state = nullptr;
+		assert(next_link_state == nullptr);
+		coutd << "-> link reset -> ";
+	}
 }

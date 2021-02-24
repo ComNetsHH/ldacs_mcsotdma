@@ -66,7 +66,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testLinkEstablishment() {
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			// Single message.
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			// New data for communication partner.
@@ -158,12 +158,49 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isRx());
 				CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx.getTarget());
 			}
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
+		}
+
+		/**
+		 * Tests that a link expires when the timeout is reached.
+		 */
+		void testLinkExpiry() {
+			// Establish link and send first burst.
+			testLinkEstablishment();
+			// Don't try to renew the link.
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			auto *lm_me = (P2PLinkManager*) mac_layer_me->getLinkManager(communication_partner_id);
+			auto *lm_you = (P2PLinkManager*) mac_layer_you->getLinkManager(own_id);
+			unsigned int expected_tx_timeout = lm_me->default_timeout - 1;
+			CPPUNIT_ASSERT(lm_me->current_link_state != nullptr);
+			CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->current_link_state->timeout);
+			// Now increment time until the link expires.
+			size_t num_slots = 0, max_num_slots = lm_me->default_timeout * lm_me->burst_offset + lm_me->burst_offset;
+			while (lm_me->link_status != LinkManager::link_not_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_you->link_status);
+			for (const auto& channel : mac_layer_me->getReservationManager()->getP2PFreqChannels()) {
+				const ReservationTable *table_me = mac_layer_me->getReservationManager()->getReservationTable(channel),
+						*table_you = mac_layer_you->getReservationManager()->getReservationTable(channel);
+				for (size_t t = 1; t < planning_horizon; t++) {
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_me->getReservation(t));
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_you->getReservation(t));
+				}
+			}
 		}
 
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
+			CPPUNIT_TEST(testLinkExpiry);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

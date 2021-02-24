@@ -160,6 +160,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 * @return Whether the timeout has expired.
 		 */
 		bool decrementTimeout();
+		void onTimeoutExpiry();
 
 protected:
 		/** The default number of frames a newly established P2P link remains valid for. */
