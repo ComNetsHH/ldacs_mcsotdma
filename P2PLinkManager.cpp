@@ -274,12 +274,11 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 		next_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
 		next_link_state->initial_setup = false;
 		// We need to schedule one RX slot at the next burst to be able to receive a reply there.
-		assert(current_reservation_table->getReservation(burst_offset) == Reservation(link_id, Reservation::TX));
-		current_reservation_table->mark(burst_offset, Reservation(link_id, Reservation::RX));
-		if (current_link_state->burst_length_tx > 1) {
-			assert(current_reservation_table->getReservation(burst_offset + 1) == Reservation(link_id, Reservation::TX_CONT));
-			current_reservation_table->mark(burst_offset, Reservation(link_id, Reservation::TX));
-		}
+		int slot_offset_for_last_slot_in_next_burst = burst_offset + current_link_state->burst_length - 1;
+		const Reservation last_res_in_next_burst = current_reservation_table->getReservation(slot_offset_for_last_slot_in_next_burst);
+		assert(last_res_in_next_burst.getTarget() == link_id);
+		if (last_res_in_next_burst.isTx() || last_res_in_next_burst.isTxCont()) // possibly it already is RX, then do nothing.
+			current_reservation_table->mark(slot_offset_for_last_slot_in_next_burst, Reservation(link_id, Reservation::RX));
 	}
 
 	coutd << "request populated -> ";
