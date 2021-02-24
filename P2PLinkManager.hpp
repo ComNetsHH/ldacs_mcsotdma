@@ -119,6 +119,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
 		LinkState* processRenewalRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+		std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
 
 		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
 		void processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);

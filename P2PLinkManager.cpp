@@ -334,6 +334,35 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	}
 }
 
+std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx) {
+	std::vector<const FrequencyChannel*> viable_resource_channel;
+	std::vector<unsigned int> viable_resource_slot;
+	// For each resource...
+	for (const auto &resource : resources) {
+		const FrequencyChannel *channel = resource.first;
+		const std::vector<unsigned int> &slots = resource.second;
+		// ... get the channel's ReservationTable
+		const ReservationTable *table = reservation_manager->getReservationTable(channel);
+		// ... and check all proposed slot ranges, saving viable ones.
+		coutd << "checking ";
+		for (unsigned int slot : slots) {
+			coutd << slot << "@" << *channel << " ";
+			if (isViable(table, slot, burst_length, burst_length_tx)) {
+				viable_resource_channel.push_back(channel);
+				viable_resource_slot.push_back(slot);
+				coutd << "(viable) ";
+			} else
+				coutd << "(busy) ";
+		}
+	}
+	if (viable_resource_channel.empty())
+		return {nullptr, 0};
+	else {
+		auto random_index = getRandomInt(0, viable_resource_channel.size());
+		return {viable_resource_channel.at(random_index), viable_resource_slot.at(random_index)};
+	}
+}
+
 P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
 	coutd << "initial request -> ";
 	// Parse header fields.
@@ -343,32 +372,13 @@ P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderL
 	state->initial_setup = true;
 
 	// Parse proposed resources.
-	const auto &proposal = payload->proposed_resources;
-	std::vector<const FrequencyChannel*> viable_resource_channel;
-	std::vector<unsigned int> viable_resource_slot;
-	// For each resource...
-	for (const auto &resource : proposal) {
-		const FrequencyChannel *channel = resource.first;
-		const std::vector<unsigned int> &slots = resource.second;
-		// ... get the channel's ReservationTable
-		const ReservationTable *table = reservation_manager->getReservationTable(channel);
-		// ... and check all proposed slot ranges, saving viable ones.
-		coutd << "checking ";
-		for (unsigned int slot : slots) {
-			coutd << slot << "@" << *channel << " ";
-			if (isViable(table, slot, header->burst_length, header->burst_length_tx)) {
-				viable_resource_channel.push_back(channel);
-				viable_resource_slot.push_back(slot);
-				coutd << "(viable) ";
-			} else
-				coutd << "(busy) ";
-		}
-	}
-	// Draw one resource from the viable ones randomly.
-	if (!viable_resource_channel.empty()) {
-		auto random_index = getRandomInt(0, viable_resource_channel.size());
-		state->channel = viable_resource_channel.at(random_index);
-		state->next_burst_start = viable_resource_slot.at(random_index);
+	auto chosen_resource = chooseRandomResource(payload->proposed_resources, header->burst_length, header->burst_length_tx);
+
+	// If a resource was successfully chosen...
+	if (chosen_resource.first != nullptr) {
+		// ... save it.
+		state->channel = chosen_resource.first;
+		state->next_burst_start = chosen_resource.second;
 		coutd << "-> randomly chose " << *state->channel << "@" << state->next_burst_start << " -> ";
 	} else {
 		state->channel = nullptr;
@@ -380,7 +390,12 @@ P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderL
 }
 
 P2PLinkManager::LinkState* P2PLinkManager::processRenewalRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
-	throw std::runtime_error("Renewal request handling not yet implemented.");
+	// Parse header fields.
+	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
+	// Since this user is processing the request, they have not initiated the link.
+	state->is_link_initiator = false;
+	state->initial_setup = false;
+	throw std::runtime_error("not implemented");
 }
 
 void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
