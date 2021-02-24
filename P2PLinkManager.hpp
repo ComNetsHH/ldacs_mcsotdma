@@ -86,6 +86,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			unsigned int burst_length_tx;
 			/** Whether the local user has initiated this link, i.e. sends the link requests. */
 			bool initiated_link = false;
+			/** Whether this state results from an initial link establishment as opposed to a renewed one. */
+			bool initial_setup = false;
 			const FrequencyChannel *channel = nullptr;
 			unsigned int slot_offset;
 			std::vector<ControlMessageReservation> scheduled_link_replies;
@@ -108,8 +110,11 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
-
 		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+
+	void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+
+	LinkState* processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
 
 		/**
 		 * @param table

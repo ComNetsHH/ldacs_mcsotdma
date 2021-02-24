@@ -193,7 +193,8 @@ std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager
 void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkRequestPayload*& payload) {
 	coutd << "populating link request -> ";
 	unsigned int min_offset;
-	if (payload->initial_request)
+	bool initial_setup = payload->initial_request;
+	if (initial_setup)
 		min_offset = 2;
 	else
 		throw std::runtime_error("not implemented");
@@ -206,12 +207,20 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 
 	coutd << "min_offset=" << min_offset << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << " -> ";
 	// Populate payload.
-	payload->proposed_resources = p2pSlotSelection(num_p2p_channels_to_propose, num_slots_per_p2p_channel_to_propose, min_offset, burst_length, burst_length, payload->initial_request);
+	payload->proposed_resources = p2pSlotSelection(num_p2p_channels_to_propose, num_slots_per_p2p_channel_to_propose, min_offset, burst_length, burst_length, initial_setup);
 	// Populate header.
 	header->timeout = default_timeout;
 	header->burst_length = burst_length;
 	header->burst_length_tx = burst_length_tx;
 	header->burst_offset = burst_offset;
+	// Save state.
+	if (initial_setup) {
+		delete current_link_state;
+		current_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
+		current_link_state->initial_setup = true;
+	} else {
+		throw std::runtime_error("not implemented");
+	}
 
 	coutd << "request populated -> ";
 }
@@ -222,6 +231,7 @@ P2PLinkManager::LinkState* P2PLinkManager::processInitialRequest(const L2HeaderL
 	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
 	// Since this user is processing the request, they have not initiated the link.
 	state->initiated_link = false;
+	state->initial_setup = true;
 
 	// Parse proposed resources.
 	const auto &proposal = payload->proposed_resources;
@@ -304,6 +314,15 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	} else {
 		throw std::runtime_error("Renewal request handling not yet implemented.");
 	}
+}
+
+void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	coutd << *this << "::processIncomingLinkReply -> ";
+	// If currently
+}
+
+P2PLinkManager::LinkState* P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload) {
+	return nullptr;
 }
 
 std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {

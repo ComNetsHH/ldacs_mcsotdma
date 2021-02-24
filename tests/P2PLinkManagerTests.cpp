@@ -101,6 +101,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_request_msg.first->burst_length);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_request_msg.first->burst_length_tx);
 			CPPUNIT_ASSERT_EQUAL(link_manager->burst_offset, link_request_msg.first->burst_offset);
+			// Same values should've been saved in the state.
+			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
+			CPPUNIT_ASSERT_EQUAL(link_manager->default_timeout, link_manager->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_manager->current_link_state->burst_length);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_manager->current_link_state->burst_length_tx);
+			// Proposed resources should be present.
 			const auto &proposal = link_request_msg.second->proposed_resources;
 			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_p2p_channels_to_propose), proposal.size());
 			for (const auto &slots : proposal)
@@ -250,7 +256,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testSendScheduledReply() {
 			// Schedule a reply.
 			testReplyToRequest();
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
 			auto &reply_reservation = link_manager->current_link_state->scheduled_link_replies.at(0);
