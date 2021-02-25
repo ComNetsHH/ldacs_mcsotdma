@@ -286,6 +286,7 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	if (initial_setup) {
 		delete current_link_state;
 		current_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
+		current_link_state->is_link_initiator = true;
 		current_link_state->initial_setup = true;
 		// We need to schedule RX slots at each candidate to be able to receive a reply there.
 		for (const auto &pair : payload->proposed_resources) {
@@ -493,7 +494,7 @@ void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const
 	current_link_state->scheduled_rx_slots.clear();
 	// Schedule link renewal request slots.
 	coutd << "scheduling link renewal request slots: ";
-	std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, burst_offset, burst_offset, num_renewal_attempst);
+	std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, burst_offset, burst_offset, num_renewal_attempts);
 	for (unsigned int renewal_request_slot : link_renewal_request_slots) {
 		auto request_msg = prepareRequestMessage(false);
 		current_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, request_msg.first, request_msg.second);
@@ -658,7 +659,7 @@ void P2PLinkManager::onTimeoutExpiry() {
 		if (current_link_state->is_link_initiator) {
 			next_link_state->is_link_initiator = true;
 			coutd << "scheduling link renewal request slots: ";
-			std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, burst_offset, burst_offset, num_renewal_attempst);
+			std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, burst_offset, burst_offset, num_renewal_attempts);
 			for (unsigned int renewal_request_slot : link_renewal_request_slots) {
 				auto request_msg = prepareRequestMessage(false);
 				next_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, request_msg.first, request_msg.second);

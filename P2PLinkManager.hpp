@@ -183,7 +183,7 @@ protected:
 		/** The number of time slots per P2P channel that should be proposed using link request. */
 		const unsigned int num_slots_per_p2p_channel_to_propose = 3;
 		/** The number of renewal attempts that should be made. */
-		const unsigned int num_renewal_attempst = 3;
+		const unsigned int num_renewal_attempts = 3;
 
 		/** An estimate of this link's outgoing traffic estimate. */
 		MovingAverage outgoing_traffic_estimate;
