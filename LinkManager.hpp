@@ -125,7 +125,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		virtual void onSlotEnd() = 0;
 
-		void assign(const FrequencyChannel* channel);
+		virtual void assign(const FrequencyChannel* channel);
 
 		MacId getLinkId() const {
 			return link_id;

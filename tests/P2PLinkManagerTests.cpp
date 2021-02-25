@@ -306,7 +306,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testProcessInitialLinkReply() {
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			// Prepare request.
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
 			link_manager->notifyOutgoing(512);

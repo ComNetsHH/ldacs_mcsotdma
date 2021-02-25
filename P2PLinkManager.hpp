@@ -39,7 +39,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 
-	protected:
+	void assign(const FrequencyChannel* channel) override;
+
+protected:
 
 		/** Allows the scheduling of control messages at specific slots. */
 		class ControlMessageReservation {
@@ -92,6 +94,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			bool is_link_initiator = false;
 			/** Whether this state results from an initial link establishment as opposed to a renewed one. */
 			bool initial_setup = false;
+			/** Whether a link renewal is due. */
+			bool renewal_due = false;
 			const FrequencyChannel *channel = nullptr;
 			unsigned int next_burst_start;
 			/** Link replies may be scheduled on specific slots. */
@@ -100,6 +104,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			std::vector<ControlMessageReservation> scheduled_link_requests;
 			/** Initial link establishment makes these RX reservations to listen for replies. */
 			std::vector<std::pair<const FrequencyChannel*, unsigned int>> scheduled_rx_slots;
+			/** The last-proposed resources for link renewal are saved s.t. locked resources can be freed when an agreement is found. */
+			LinkRequestPayload* last_proposed_renewal_resources = nullptr;
+			unsigned int last_proposal_sent = 0;
 		};
 
 		/**
@@ -122,6 +129,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
 		void processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
+		void processRenewalReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
 
 		/**
 		 * @param table
@@ -162,6 +170,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		bool decrementTimeout();
 		void onTimeoutExpiry();
+
+		void clearLockedResources(LinkRequestPayload*& proposal, unsigned int num_slot_since_proposal);
 
 protected:
 		/** The default number of frames a newly established P2P link remains valid for. */
