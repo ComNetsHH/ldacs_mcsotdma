@@ -611,6 +611,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->default_timeout), num_non_idle);
+
+			// TODO check ohter channels
 		}
 
 
