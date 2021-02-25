@@ -597,7 +597,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_you->link_status);
 
-			// TODO check reservations
+			ReservationTable *tbl_tx = lm_me->current_reservation_table, *tbl_rx = lm_you->current_reservation_table;
+			size_t num_non_idle = 0;
+			for (unsigned int t = 0; t < planning_horizon; t++) {
+				const Reservation &res_tx = tbl_tx->getReservation(t);
+				const Reservation &res_rx = tbl_rx->getReservation(t);
+				if (res_tx == Reservation(partner_id, Reservation::TX)) {
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), res_rx);
+					num_non_idle++;
+				} else {
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_tx);
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_rx);
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->default_timeout), num_non_idle);
 		}
 
 
