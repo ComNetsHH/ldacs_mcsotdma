@@ -313,6 +313,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(false, lm_you->current_link_state->renewal_due);
 		}
 
+		void testLinkExpiringAndLostRequestMultiSlot() {
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->outgoing_traffic_estimate.put(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkExpiringAndLostRequest();
+			required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+		}
+
 		/** Tests that reservations at both communication partners match at all times until link expiry. */
 		void testReservationsUntilExpiry() {
 			// Single message.
@@ -424,6 +437,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkExpiry);
 			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
+			CPPUNIT_TEST(testLinkExpiringAndLostRequestMultiSlot);
 			CPPUNIT_TEST(testReservationsUntilExpiry);
 			CPPUNIT_TEST(testRenewalRequest);
 			CPPUNIT_TEST(testLinkRenewal);

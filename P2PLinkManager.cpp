@@ -269,9 +269,7 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	else
 		min_offset = current_link_state->timeout*burst_offset + current_link_state->burst_length + 1; // Right after link expiry.
 
-	auto traffic_estimate = (unsigned int) this->outgoing_traffic_estimate.get(); // in bits.
-	unsigned int datarate = mac->getCurrentDatarate(); // in bits/slot.
-	unsigned int burst_length_tx = std::max(uint32_t(1), traffic_estimate / datarate); // in slots.
+	unsigned int burst_length_tx = estimateCurrentNumSlots(); // in slots.
 	unsigned int burst_length = burst_length_tx + reported_desired_tx_slots;
 
 	coutd << "min_offset=" << min_offset << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << " -> ";
@@ -709,4 +707,10 @@ void P2PLinkManager::assign(const FrequencyChannel* channel) {
 	if (current_channel == nullptr && current_link_state != nullptr)
 		current_link_state->channel = channel;
 	LinkManager::assign(channel);
+}
+
+unsigned int P2PLinkManager::estimateCurrentNumSlots() const {
+	unsigned int traffic_estimate = (unsigned int) outgoing_traffic_estimate.get(); // in bits.
+	unsigned int datarate = mac->getCurrentDatarate(); // in bits/slot.
+	return std::max(uint32_t(1), traffic_estimate / datarate); // in slots.
 }
