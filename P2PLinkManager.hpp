@@ -84,7 +84,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			class LinkState {
 			public:
 				LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx) : timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx) {}
-				/** Timeout counter until link expiry. */
+				/** Number of bursts that remain. It is decremented at the end of a burst, s.t. usually it means that the current timeout value *includes* the current burst.. */
 				unsigned int timeout;
 				/** Total number of slots reserved for this link. */
 				unsigned int burst_length;
@@ -174,6 +174,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			void clearLockedResources(LinkRequestPayload*& proposal, unsigned int num_slot_since_proposal);
 
 			unsigned int estimateCurrentNumSlots() const;
+			unsigned int getExpiryOffset() const;
 
 	protected:
 			/** The default number of frames a newly established P2P link remains valid for. */
