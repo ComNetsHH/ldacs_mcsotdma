@@ -34,6 +34,9 @@ uint32_t ReservationTable::getPlanningHorizon() const {
 Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& reservation) {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::mark planning_horizon=" + std::to_string(planning_horizon) + " smaller than queried slot_offset=" + std::to_string(slot_offset) + "!");
+	// If the exact same reservation already exists, just return it and be done with it.
+	if (getReservation(slot_offset) == reservation)
+		return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
 	// Ensure that linked tables have capacity.
 	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
 		if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))

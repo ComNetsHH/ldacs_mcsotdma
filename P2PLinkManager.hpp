@@ -115,10 +115,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		std::map<const FrequencyChannel*, std::vector<unsigned int>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init);
 
 		std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage(bool initial_request);
-		std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareInitialReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
+		std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
-		LinkState* processInitialRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
-		LinkState* processRenewalRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+		LinkState* processRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
 		std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
 
 		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;

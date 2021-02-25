@@ -29,7 +29,7 @@ int main() {
 //	runner.addTest(ReservationTableTests::suite());
 //	runner.addTest(ReservationManagerTests::suite());
 //	runner.addTest(FrequencyChannelTests::suite());
-	runner.addTest(P2PLinkManagerTests::suite());
+//	runner.addTest(P2PLinkManagerTests::suite());
 	runner.addTest(NewSystemTests::suite());
 //	runner.addTest(MCSOTDMA_MacTests::suite());
 //	runner.addTest(ContentionEstimatorTests::suite());

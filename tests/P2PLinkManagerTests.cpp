@@ -117,7 +117,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto link_request_msg = link_manager->prepareRequestMessage(true);
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
-			P2PLinkManager::LinkState *state = link_manager->processInitialRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
+			P2PLinkManager::LinkState *state = link_manager->processRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
 			// Since the same user that created the request is now processing it, all resources must be locked, so none can be found viable.
 			CPPUNIT_ASSERT(state->channel == nullptr);
 			delete state;
@@ -129,7 +129,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
-			P2PLinkManager::LinkState *state = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processInitialRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
+			P2PLinkManager::LinkState *state = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
 
 			CPPUNIT_ASSERT_EQUAL(state->timeout, link_request_msg.first->timeout);
 			CPPUNIT_ASSERT_EQUAL(state->burst_length_tx, link_request_msg.first->burst_length_tx);
