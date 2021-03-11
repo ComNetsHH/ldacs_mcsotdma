@@ -222,9 +222,9 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 			}
 		}
 		if (current_link_state->last_proposed_renewal_resources != nullptr)
-			current_link_state->last_proposal_sent++;
+			current_link_state->last_proposal_sent += num_slots;
 		if (current_link_state->next_burst_start > 0)
-			current_link_state->next_burst_start--;
+			current_link_state->next_burst_start -= num_slots % burst_offset;
 
 	}
 	if (next_link_state != nullptr) {
@@ -243,12 +243,10 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 			}
 		}
 		if (next_link_state->last_proposed_renewal_resources != nullptr)
-			next_link_state->last_proposal_sent++;
-		if (next_link_state->next_burst_start > 0) {
-			coutd << *this << "::onSlotStart next_burst " << next_link_state->next_burst_start << "->";
-			next_link_state->next_burst_start--;
-			coutd << next_link_state->next_burst_start << " -> ";
-		}
+			next_link_state->last_proposal_sent += num_slots;
+		if (next_link_state->next_burst_start > 0)
+			next_link_state->next_burst_start -= num_slots % burst_offset;
+
 	}
 }
 
@@ -383,6 +381,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	// If the link is of any other status, this must be a renewal request.
 	} else {
 		coutd << "renewal request -> ";
+		current_link_state->renewal_due = true;
 		LinkState *state = processRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
 		state->initial_setup = false;
 		// If no viable resources were found, ...
@@ -712,7 +711,7 @@ void P2PLinkManager::onTimeoutExpiry() {
 			next_link_state->is_link_initiator = true;
 			// schedules renewal request slots...
 			coutd << "scheduling link renewal request slots: ";
-			std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, burst_offset, burst_offset, num_renewal_attempts);
+			std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, next_link_state->next_burst_start, burst_offset, num_renewal_attempts);
 			for (unsigned int renewal_request_slot : link_renewal_request_slots) {
 				auto request_msg = prepareRequestMessage(false);
 				next_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, request_msg.first, request_msg.second);
@@ -753,7 +752,10 @@ void P2PLinkManager::clearLockedResources(LinkManager::LinkRequestPayload*& prop
 			if (slot < num_slot_since_proposal)
 				continue; // Skip those that have already passed.
 			unsigned int normalized_offset = slot - num_slot_since_proposal;
-			assert(table->getReservation(normalized_offset).isLocked());
+			if (!table->getReservation(normalized_offset).isLocked()) {
+				std::cout << "Conflcit: t=" << normalized_offset << " " << table->getReservation(normalized_offset) << std::endl;
+				assert(table->getReservation(normalized_offset).isLocked());
+			}
 			table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 			coutd << *channel << "@" << normalized_offset << " ";
 		}
