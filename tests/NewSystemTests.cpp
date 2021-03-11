@@ -742,6 +742,31 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer_me->notifyOutgoing(1024, partner_id);
 		}
 
+		/** Before introducing the onSlotEnd() function, success depended on the order of the execute() calls (which is of course terrible),
+		 * so this test ensures that the order in which user actions are executed doesn't matter.
+		 */
+		void testCommunicateInOtherDirection() {
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// Do link establishment.
+			size_t num_slots = 0, max_num_slots = 100;
+			auto *lm_tx = (P2PLinkManager*) mac_layer_me->getLinkManager(partner_id),
+					*lm_rx = (P2PLinkManager*) mac_layer_you->getLinkManager(own_id);
+			// Other guy tries to communicate with us.
+			mac_layer_you->notifyOutgoing(512, own_id);
+			while (lm_tx->link_status != P2PLinkManager::Status::link_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_rx->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_tx->link_status);
+		}
+
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -755,6 +780,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkRenewalFails);
 			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 			CPPUNIT_TEST(testSimulatorScenario);
+			CPPUNIT_TEST(testCommunicateInOtherDirection);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
