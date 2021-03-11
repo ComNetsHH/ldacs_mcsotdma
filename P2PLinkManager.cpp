@@ -603,14 +603,14 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 	assert(table != nullptr);
 	for (unsigned int t = 0; t < burst_length_tx; t++) {
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::TX : Reservation::Action::RX) : (link_initiator ? Reservation::Action::TX_CONT : Reservation::Action::RX_CONT);
-		Reservation res = Reservation(dest_id, action);
+		Reservation res = Reservation(dest_id, action, burst_length > 0 ? burst_length - 1 : 0);
 		table->mark(burst_start_offset + t, res);
 		coutd << "t=" << burst_start_offset + t << ":" << res << " ";
 	}
 	unsigned int burst_length_rx = burst_length - burst_length_tx;
 	for (unsigned int t = 0; t < burst_length_rx; t++) {
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::RX : Reservation::Action::TX) : (link_initiator ? Reservation::Action::RX_CONT : Reservation::Action::TX_CONT);
-		Reservation res = Reservation(dest_id, action);
+		Reservation res = Reservation(dest_id, action, burst_length > 0 ? burst_length - 1 : 0);
 		table->mark(burst_start_offset + burst_length_tx + t, res);
 		coutd << "t=" << burst_start_offset + burst_length_tx + t << ":" << res << " ";
 	}
