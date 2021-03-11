@@ -734,9 +734,12 @@ void P2PLinkManager::onTimeoutExpiry() {
 			table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 			coutd << pair.second << "@" << *pair.first << " ";
 		}
+		if (current_link_state->last_proposed_renewal_resources != nullptr)
+			clearLockedResources(current_link_state->last_proposed_renewal_resources, current_link_state->last_proposal_sent);
 		delete current_link_state;
 		current_link_state = nullptr;
-		assert(next_link_state == nullptr);
+		delete next_link_state;
+		next_link_state = nullptr;
 		coutd << "-> link reset -> ";
 	}
 }

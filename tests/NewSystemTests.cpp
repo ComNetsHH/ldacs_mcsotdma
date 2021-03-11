@@ -615,6 +615,72 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// TODO check ohter channels
 		}
 
+		/**
+		 * Link timeout threshold is reached.
+		 * Ensures that if no negotiation has happened prior to expiry, the link is reset to unestablished.
+		 */
+		void testLinkRenewalFails() {
+//			coutd.setVerbose(true);
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// Do link establishment.
+			size_t num_slots = 0, max_num_slots = 100;
+			auto *lm_tx = (P2PLinkManager*) mac_layer_me->getLinkManager(partner_id),
+					*lm_rx = (P2PLinkManager*) mac_layer_you->getLinkManager(own_id);
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			while (lm_rx->link_status != P2PLinkManager::Status::link_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_established, lm_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_established, lm_rx->link_status);
+			CPPUNIT_ASSERT_EQUAL(lm_tx->default_timeout - 1, lm_tx->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_rx->default_timeout - 1, lm_rx->current_link_state->timeout);
+
+			// From now on, drop all packets.
+			phy_layer_me->connected_phy = nullptr;
+			phy_layer_you->connected_phy = nullptr;
+
+			num_slots = 0;
+			max_num_slots = lm_tx->current_link_state->timeout * lm_tx->burst_offset + lm_tx->burst_offset;
+			while (lm_rx->link_status != P2PLinkManager::link_not_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_not_established, lm_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_not_established, lm_rx->link_status);
+			CPPUNIT_ASSERT(lm_tx->current_channel == nullptr);
+			CPPUNIT_ASSERT(lm_tx->current_reservation_table == nullptr);
+			CPPUNIT_ASSERT(lm_rx->current_channel == nullptr);
+			CPPUNIT_ASSERT(lm_rx->current_reservation_table == nullptr);
+
+			for (auto channel : mac_layer_me->reservation_manager->getP2PFreqChannels()) {
+				for (size_t t = lm_tx->burst_offset; t < planning_horizon; t++) {
+					const Reservation& res_tx = mac_layer_me->getReservationManager()->getReservationTable(channel)->getReservation(t);
+					const Reservation& res_rx = mac_layer_you->getReservationManager()->getReservationTable(channel)->getReservation(t);
+					if (!res_tx.isIdle() || !res_rx.isIdle()) {
+						bool was_verbose = coutd.isVerbose();
+						coutd.setVerbose(true);
+						coutd << "f=" << *channel << " t=" << t << ": " << res_tx << "|" << res_rx << std::endl;
+						coutd.setVerbose(was_verbose);
+					}
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_tx);
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_rx);
+				}
+			}
+		}
+
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -625,6 +691,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReservationsUntilExpiry);
 			CPPUNIT_TEST(testRenewalRequest);
 			CPPUNIT_TEST(testLinkRenewal);
+			CPPUNIT_TEST(testLinkRenewalFails);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

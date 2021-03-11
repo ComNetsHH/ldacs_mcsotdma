@@ -53,11 +53,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MACLayer : public MCSOTDMA_Mac {
 
 		friend class LinkManagerTests;
-
 		friend class BCLinkManagerTests;
-
 		friend class SystemTests;
-
+		friend class NewSystemTests;
 		friend class TestEnvironment;
 
 	public:
