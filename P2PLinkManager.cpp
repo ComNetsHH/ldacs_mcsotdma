@@ -256,7 +256,8 @@ void P2PLinkManager::onSlotEnd() {
 		if (decrementTimeout())
 			onTimeoutExpiry();
 		coutd << std::endl;
-	}
+	} else
+		coutd << *mac << "::" << *this << "::onSlotEnd NOT UPDATING";
 	if (current_link_state != nullptr) {
 		if (current_link_state->next_burst_start == 0)
 			current_link_state->next_burst_start = burst_offset;
@@ -553,15 +554,17 @@ void P2PLinkManager::processRenewalReply(const L2HeaderLinkReply*& header, const
 	// Remember choice.
 	assert(next_link_state != nullptr);
 	// if an earlier link had been agreed upon, free its resources
-	coutd << "clearing earlier-made slot reservations: ";
-	ReservationTable *table = reservation_manager->getReservationTable(channel);
-	for (unsigned int burst = 0; burst < default_timeout; burst++) {
-		for (unsigned t = 0; t < next_link_state->burst_length; t++) {
-			unsigned int offset = next_link_state->next_burst_start + burst*burst_offset + t;
-			const Reservation &res = table->getReservation(offset);
-			if (res.getTarget() == link_id) {
-				coutd << "t=" << offset << ":" << res << " ";
-				table->mark(offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+	ReservationTable* table = reservation_manager->getReservationTable(channel);
+	if (link_status == link_renewal_complete) {
+		coutd << "clearing earlier-made slot reservations: ";
+		for (unsigned int burst = 0; burst < default_timeout; burst++) {
+			for (unsigned t = 0; t < next_link_state->burst_length; t++) {
+				unsigned int offset = next_link_state->next_burst_start + burst * burst_offset + t;
+				const Reservation& res = table->getReservation(offset);
+				if (res.getTarget() == link_id) {
+					coutd << "t=" << offset << ":" << res << " ";
+					table->mark(offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+				}
 			}
 		}
 	}

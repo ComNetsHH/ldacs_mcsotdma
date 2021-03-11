@@ -183,7 +183,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** The number of slots in-between bursts, i.e. the P2P frame length. */
 			const unsigned int burst_offset;
 			/** The number of P2P channels that should be proposed using link request. */
-			const unsigned int num_p2p_channels_to_propose = 2;
+			unsigned int num_p2p_channels_to_propose = 2;
 			/** The number of time slots per P2P channel that should be proposed using link request. */
 			const unsigned int num_slots_per_p2p_channel_to_propose = 3;
 			/** The number of renewal attempts that should be made. */
