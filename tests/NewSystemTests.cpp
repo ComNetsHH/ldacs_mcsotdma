@@ -681,6 +681,30 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		void testLinkRenewalAfterExpiry() {
+			testLinkRenewalFails();
+			// Reconnect.
+			phy_layer_me->connected_phy = phy_layer_you;
+			phy_layer_you->connected_phy = phy_layer_me;
+			// Now try link establishment again.
+//			coutd.setVerbose(true);
+			size_t num_slots = 0, max_num_slots = 100;
+			auto *lm_tx = (P2PLinkManager*) mac_layer_me->getLinkManager(partner_id),
+					*lm_rx = (P2PLinkManager*) mac_layer_you->getLinkManager(own_id);
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			while (lm_rx->link_status != P2PLinkManager::Status::link_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_established, lm_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_established, lm_rx->link_status);
+		}
+
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -692,6 +716,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testRenewalRequest);
 			CPPUNIT_TEST(testLinkRenewal);
 			CPPUNIT_TEST(testLinkRenewalFails);
+			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
