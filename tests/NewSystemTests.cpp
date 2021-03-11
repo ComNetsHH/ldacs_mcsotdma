@@ -609,6 +609,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), num_res_additional_rx);
 		}
 
+		void testLinkExpiringAndLostReplyMultiSlot() {
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->outgoing_traffic_estimate.put(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkExpiringAndLostReply();
+			required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+		}
+
 		/** Tests that reservations at both communication partners match at all times until link expiry. */
 		void testReservationsUntilExpiry() {
 			// Single message.
@@ -1188,6 +1201,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(false);
 		}
 
+		void testLinkRenewalSameChannelMultiSlot() {
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->outgoing_traffic_estimate.put(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkRenewalSameChannel();
+		}
+
 		/**
 		 * Link timeout threshold is reached.
 		 * Ensures that if no negotiation has happened prior to expiry, the link is reset to unestablished.
@@ -1244,6 +1268,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_rx);
 				}
 			}
+		}
+
+		void testLinkRenewalFailsMultiSlot() {
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->outgoing_traffic_estimate.put(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			// Now do the other tests.
+			testLinkRenewalFails();
+			required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 		}
 
 		void testLinkRenewalAfterExpiry() {
@@ -1364,13 +1401,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
 			CPPUNIT_TEST(testLinkExpiringAndLostRequestMultiSlot);
 			CPPUNIT_TEST(testLinkExpiringAndLostReply);
+//			CPPUNIT_TEST(testLinkExpiringAndLostReplyMultiSlot); // !TODO
 			CPPUNIT_TEST(testReservationsUntilExpiry);
 			CPPUNIT_TEST(testRenewalRequest);
 			CPPUNIT_TEST(testLinkRenewal);
 			CPPUNIT_TEST(testLinkRenewalChannelChange);
 //			CPPUNIT_TEST(testLinkRenewalChannelChangeMultiSlot); // !TODO
 			CPPUNIT_TEST(testLinkRenewalSameChannel);
+//			CPPUNIT_TEST(testLinkRenewalSameChannelMultiSlot); // !TODO
 			CPPUNIT_TEST(testLinkRenewalFails);
+//			CPPUNIT_TEST(testLinkRenewalFailsMultiSlot); // !TODO
 			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 			CPPUNIT_TEST(testSimulatorScenario);
 			CPPUNIT_TEST(testCommunicateInOtherDirection);
