@@ -744,6 +744,9 @@ void P2PLinkManager::onTimeoutExpiry() {
 		delete next_link_state;
 		next_link_state = nullptr;
 		coutd << "-> link reset -> ";
+		// Check if there's more data,
+		if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
+			notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 	}
 }
 

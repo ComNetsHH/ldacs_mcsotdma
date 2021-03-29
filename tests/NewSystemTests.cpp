@@ -281,6 +281,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			testLinkEstablishment();
 			// Don't try to renew the link.
 			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
 			unsigned int expected_tx_timeout = lm_me->default_timeout - 1;
 			CPPUNIT_ASSERT(lm_me->current_link_state != nullptr);
 			CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->current_link_state->timeout);
@@ -626,6 +627,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testReservationsUntilExpiry() {
 			// Single message.
 			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
 			// New data for communication partner.
 			mac_layer_me->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_slots = 1000;
@@ -1214,11 +1216,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/**
 		 * Link timeout threshold is reached.
-		 * Ensures that if no negotiation has happened prior to expiry, the link is reset to unestablished.
+		 * Ensures that if no negotiation has happened prior to expiry, the link is reset and attempted to be reestablished.
 		 */
 		void testLinkRenewalFails() {
 //			coutd.setVerbose(true);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// Do link establishment.
 			size_t num_slots = 0, max_num_slots = 100;
@@ -1253,7 +1256,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_not_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::awaiting_reply, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_not_established, lm_you->link_status);
 			CPPUNIT_ASSERT(lm_me->current_channel == nullptr);
 			CPPUNIT_ASSERT(lm_me->current_reservation_table == nullptr);
