@@ -779,5 +779,8 @@ unsigned int P2PLinkManager::estimateCurrentNumSlots() const {
 }
 
 unsigned int P2PLinkManager::getExpiryOffset() const {
-	return (current_link_state->timeout - 1)*burst_offset + current_link_state->burst_length;
+	if (current_link_state == nullptr)
+		return 0;
+	else
+		return (current_link_state->timeout - 1)*burst_offset + current_link_state->burst_length;
 }

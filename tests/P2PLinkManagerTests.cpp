@@ -364,6 +364,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		void testLinkRequestSize() {
+			testProcessInitialLinkReply();
+			auto request_msg = link_manager->prepareRequestMessage(false);
+			P2PLinkManager::ControlMessageReservation msg = P2PLinkManager::ControlMessageReservation(0, request_msg.first, request_msg.second);
+			L2HeaderLinkRequest request = L2HeaderLinkRequest();
+			CPPUNIT_ASSERT_EQUAL(request.getBits(), msg.getHeader()->getBits());
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), msg.getPayload()->getBits());
+			msg.getPayload()->callback->populateLinkRequest((L2HeaderLinkRequest*&) msg.getHeader(), msg.getPayload());
+			CPPUNIT_ASSERT(msg.getPayload()->getBits() > 0);
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testRenewalP2PSlotSelection);
@@ -377,6 +388,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testScheduleBurst);
 		CPPUNIT_TEST(testSendScheduledReply);
 		CPPUNIT_TEST(testProcessInitialLinkReply);
+		CPPUNIT_TEST(testLinkRequestSize);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
