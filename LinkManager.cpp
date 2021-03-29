@@ -23,7 +23,7 @@ void LinkManager::assign(const FrequencyChannel* channel) {
 		coutd << *this << "::assign, but channel or reservation table are already assigned; ignoring -> ";
 }
 
-void LinkManager::lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table) {
+std::vector<unsigned int> LinkManager::lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table) {
 	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
 	// For every burst start slot...
@@ -73,6 +73,7 @@ void LinkManager::lock(const std::vector<unsigned int>& start_slots, unsigned in
 				break;
 			}
 	}
+	return std::vector<unsigned int>(unique_offsets_local.begin(), unique_offsets_local.end());
 }
 
 unsigned long LinkManager::getRandomInt(size_t start, size_t end) {

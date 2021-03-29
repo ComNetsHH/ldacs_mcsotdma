@@ -49,7 +49,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkRequestPayload() = default;
 
 			/** Copy constructor. */
-			LinkRequestPayload(const LinkRequestPayload& other) : proposed_resources(other.proposed_resources) {}
+			LinkRequestPayload(const LinkRequestPayload& other) : proposed_resources(other.proposed_resources), locked_resources(other.locked_resources) {}
 			Payload* copy() const override {
 				return new LinkRequestPayload(*this);
 			}
@@ -65,6 +65,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			/** <channel, <start slots>>-map of proposed resources. */
 			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
+			std::map<const FrequencyChannel*, std::vector<unsigned int>> locked_resources;
 			Callback *callback = nullptr;
 			bool initial_request = false;
 		};
@@ -148,8 +149,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param burst_length Number of first slots to lock the transmitter for.
 		 * @param burst_length_tx Number of trailing slots to lock the receiver for
 		 * @param table ReservationTable in which slots should be locked.
+		 * @return Slot offsets that were locked.
 		 */
-		void lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table);
+		std::vector<unsigned int> lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table);
 
 		unsigned long getRandomInt(size_t start, size_t end);
 

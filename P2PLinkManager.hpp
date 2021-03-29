@@ -118,9 +118,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param burst_length Number of slots the burst must occupy.
 			 * @param burst_length_tx Number of first slots that should be used for transmission.
 			 * @param is_init Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
-			 * @return
+			 * @return <Proposal map, locked map>
 			 */
-			std::map<const FrequencyChannel*, std::vector<unsigned int>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init);
+			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map<const FrequencyChannel*, std::vector<unsigned int>>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init);
 
 			std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage(bool initial_request);
 			std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;

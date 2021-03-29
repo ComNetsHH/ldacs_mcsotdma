@@ -33,7 +33,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testP2PSlotSelectionHelper(bool is_init) {
 			//			coutd.setVerbose(true);
 			unsigned int num_channels = 1, num_slots = 3, min_offset = 2, burst_length = 5, burst_length_tx = 3;
-			auto map = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx, is_init);
+			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx, is_init);
+			auto map = pair.first;
 			CPPUNIT_ASSERT_EQUAL(size_t(num_channels), map.size());
 			std::vector<unsigned int> expected_slots = {2, 3, 4, 5, 6, 7, 8},
 					expected_slots_tx = {2, 3, 4, 5, 6},
@@ -74,7 +75,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testMultiChannelP2PSlotSelection() {
 //			coutd.setVerbose(true);
 			unsigned int num_channels = 3, num_slots = 3, min_offset = 2, burst_length = 5, burst_length_tx = 3;
-			auto map = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx, false);
+			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx, false);
+			auto map = pair.first;
 			// As many entries as channels.
 			CPPUNIT_ASSERT_EQUAL(size_t(num_channels), map.size());
 			for (auto item : map) {

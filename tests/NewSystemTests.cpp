@@ -560,6 +560,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(false, lm_me->current_link_state->renewal_due);
 			CPPUNIT_ASSERT_EQUAL(false, lm_you->current_link_state->renewal_due);
 
+			coutd << "LINK RENEWAL COMPLETE" << std::endl;
+
 			while (lm_me->current_reservation_table->getReservation(0).isIdle()) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
@@ -610,7 +612,146 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), num_res_additional_rx);
 		}
 
+		/** Tests bug I couldn't fix without its own test: resources locked after sending one lost renewal request weren't properly free'd when another had to be sent. */
+		void testLockedResourcesFreedOnSecondReplyArrival() {
+			// Multi-slot reservations.
+			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			lm_me->outgoing_traffic_estimate.put(num_outgoing_bits);
+			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// Do link establishment.
+			size_t num_slots = 0, max_num_slots = 100;
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
+			// Disconnect.
+			phy_layer_me->connected_phy = nullptr;
+			// Send and lose first renewal reply.
+			size_t earliest_request_offset = 10000;
+			for (const auto &msg : lm_me->current_link_state->scheduled_link_requests) {
+				if (msg.getRemainingOffset() < earliest_request_offset)
+					earliest_request_offset = msg.getRemainingOffset();
+			}
+			CPPUNIT_ASSERT(earliest_request_offset < 10000);
+			// Proceed to one slot before request is sent.
+			for (size_t t = 0; t < earliest_request_offset - 1; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			}
+			// Turn on output.
+//			coutd.setVerbose(true);
+			// Send request, which is lost.
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->num_renewal_attempts - 1), lm_me->current_link_state->scheduled_link_requests.size());
+			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->renewal_due);
+			// There should be some resources locked from sending the renewal request.
+			size_t num_locked = 0;
+			coutd << "Locked: " << std::endl;
+			for (const auto *channel : mac_layer_me->reservation_manager->getP2PFreqChannels()) {
+				for (size_t t = 0; t < planning_horizon; t++) {
+					if (mac_layer_me->reservation_manager->getReservationTable(channel)->getReservation(t).isLocked()) {
+						coutd << "f=" << *channel << ",t=" << t << " ";
+						num_locked++;
+					}
+				}
+				coutd << std::endl;
+			}
+			coutd << std::endl;
+			CPPUNIT_ASSERT(num_locked > 0);
+			// Reconnect.
+			phy_layer_me->connected_phy = phy_layer_you;
+			coutd.setVerbose(false);
+			earliest_request_offset = 10000;
+			for (const auto &msg : lm_me->current_link_state->scheduled_link_requests) {
+				if (msg.getRemainingOffset() < earliest_request_offset)
+					earliest_request_offset = msg.getRemainingOffset();
+			}
+			CPPUNIT_ASSERT(earliest_request_offset < 10000);
+			// Proceed to one slot before request is sent.
+			for (size_t t = 0; t < earliest_request_offset - 1; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			}
+			// Turn on output.
+//			coutd.setVerbose(true);
+			coutd << std::endl << "--- SECOND REQUEST ---" << std::endl << std::endl;
+			// Send request, which is received.
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->num_renewal_attempts - 2), lm_me->current_link_state->scheduled_link_requests.size());
+			size_t num_locked_now = 0;
+			coutd << "Locked now: " << std::endl;
+			for (const auto *channel : mac_layer_me->reservation_manager->getP2PFreqChannels()) {
+				for (size_t t = 0; t < planning_horizon; t++) {
+					if (mac_layer_me->reservation_manager->getReservationTable(channel)->getReservation(t).isLocked()) {
+						coutd << "f=" << *channel << ",t=" << t << " ";
+						num_locked_now++;
+					}
+				}
+				coutd << std::endl;
+			}
+			coutd << std::endl;
+			CPPUNIT_ASSERT_EQUAL(num_locked, num_locked_now);
+			coutd.setVerbose(false);
+			// Proceed up to link renewal.
+			num_slots = 0;
+			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
+			// No locked resources should exist.
+			for (const auto *channel : mac_layer_me->reservation_manager->getP2PFreqChannels()) {
+				for (size_t t = 0; t < planning_horizon; t++) {
+					CPPUNIT_ASSERT_EQUAL(false, mac_layer_me->reservation_manager->getReservationTable(channel)->getReservation(t).isLocked());
+				}
+			}
+//			coutd.setVerbose(false);
+		}
+
 		void testLinkExpiringAndLostReplyMultiSlot() {
+//			coutd.setVerbose(true);
 			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
 			unsigned int expected_num_slots = 3;
 			num_outgoing_bits = expected_num_slots * bits_per_slot;
@@ -621,6 +762,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			testLinkExpiringAndLostReply();
 			required_slots = lm_me->estimateCurrentNumSlots();
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
+			coutd.setVerbose(false);
 		}
 
 		/** Tests that reservations at both communication partners match at all times until link expiry. */
@@ -1411,7 +1553,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
 			CPPUNIT_TEST(testLinkExpiringAndLostRequestMultiSlot);
 			CPPUNIT_TEST(testLinkExpiringAndLostReply);
-//			CPPUNIT_TEST(testLinkExpiringAndLostReplyMultiSlot); // !TODO
+			CPPUNIT_TEST(testLockedResourcesFreedOnSecondReplyArrival);
+			CPPUNIT_TEST(testLinkExpiringAndLostReplyMultiSlot);
 			CPPUNIT_TEST(testReservationsUntilExpiry);
 			CPPUNIT_TEST(testRenewalRequest);
 			CPPUNIT_TEST(testLinkRenewal);
