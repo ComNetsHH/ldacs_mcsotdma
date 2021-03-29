@@ -529,7 +529,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (const auto &item : lm_me->current_link_state->scheduled_link_requests)
 				if (item.getRemainingOffset() < earliest_request_offset)
 					earliest_request_offset = item.getRemainingOffset();
-			while (earliest_request_offset > 0) {
+			CPPUNIT_ASSERT(earliest_request_offset < 10000);
+			while (earliest_request_offset > 1) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -539,12 +540,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
 				earliest_request_offset--;
 			}
+//			coutd.setVerbose(true);
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
+//			coutd.setVerbose(false);
 
 			// ALl requests are sent.
 			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->scheduled_link_requests.empty());
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->current_link_state->scheduled_link_replies.size());
 			// Proceed until reply is sent.
-			for (size_t t = 0; t < lm_me->burst_offset; t++) {
+			while (!lm_you->current_link_state->scheduled_link_replies.empty()) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -1553,8 +1565,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkExpiringAndLostRequest);
 			CPPUNIT_TEST(testLinkExpiringAndLostRequestMultiSlot);
 			CPPUNIT_TEST(testLinkExpiringAndLostReply);
-			CPPUNIT_TEST(testLockedResourcesFreedOnSecondReplyArrival);
 			CPPUNIT_TEST(testLinkExpiringAndLostReplyMultiSlot);
+			CPPUNIT_TEST(testLockedResourcesFreedOnSecondReplyArrival);
 			CPPUNIT_TEST(testReservationsUntilExpiry);
 			CPPUNIT_TEST(testRenewalRequest);
 			CPPUNIT_TEST(testLinkRenewal);
@@ -1563,7 +1575,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkRenewalSameChannel);
 //			CPPUNIT_TEST(testLinkRenewalSameChannelMultiSlot); // !TODO
 			CPPUNIT_TEST(testLinkRenewalFails);
-//			CPPUNIT_TEST(testLinkRenewalFailsMultiSlot); // !TODO
+			CPPUNIT_TEST(testLinkRenewalFailsMultiSlot); // !TODO
 			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 			CPPUNIT_TEST(testSimulatorScenario);
 			CPPUNIT_TEST(testCommunicateInOtherDirection);
