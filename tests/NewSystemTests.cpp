@@ -1392,6 +1392,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_tx->link_status);
 		}
 
+		void testPacketSize() {
+			testLinkEstablishment();
+			CPPUNIT_ASSERT_EQUAL(size_t(2), phy_layer_me->outgoing_packets.size());
+			L2Packet *packet = phy_layer_me->outgoing_packets.at(1);
+			CPPUNIT_ASSERT_EQUAL(phy_layer_me->getCurrentDatarate(), (unsigned long) packet->getBits());
+		}
+
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -1415,6 +1422,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testSimulatorScenario);
 			CPPUNIT_TEST(testCommunicateInOtherDirection);
 			CPPUNIT_TEST(testCommunicateReverseOrder);
+			CPPUNIT_TEST(testPacketSize);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

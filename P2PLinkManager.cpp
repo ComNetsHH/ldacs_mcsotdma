@@ -87,6 +87,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 	// Add base header.
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0, 0);
 	packet->addMessage(base_header, nullptr);
+	coutd << "added " << base_header->getBits() << "-bit base header -> ";
 	if (current_link_state != nullptr) {
 		// Set base header fields.
 		base_header->timeout = current_link_state->timeout;
@@ -108,7 +109,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 						// and remove from scheduled replies.
 						current_link_state->scheduled_link_replies.erase(it);
 						it--;
-						coutd << "added scheduled link reply to renew on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
+						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to renew on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
 						if (next_link_state != nullptr)
 							coutd << "my belief is " << next_link_state->next_burst_start << " -> ";
 						statistic_num_sent_replies++;
@@ -159,7 +160,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 		}
 	}
 	// Fill whatever capacity remains with upper-layer data.
-	unsigned int remaining_bits = capacity - packet->getBits();
+	unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
 	coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
 	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
 	statistic_num_sent_packets++;
