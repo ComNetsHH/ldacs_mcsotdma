@@ -697,7 +697,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_locked > 0);
 			// Reconnect.
 			phy_layer_me->connected_phy = phy_layer_you;
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
 			earliest_request_offset = 10000;
 			for (const auto &msg : lm_me->current_link_state->scheduled_link_requests) {
 				if (msg.getRemainingOffset() < earliest_request_offset)
@@ -739,7 +739,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			coutd << std::endl;
 			CPPUNIT_ASSERT_EQUAL(num_locked, num_locked_now);
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
 			// Proceed up to link renewal.
 			num_slots = 0;
 			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
@@ -774,7 +774,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			testLinkExpiringAndLostReply();
 			required_slots = lm_me->estimateCurrentNumSlots();
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
-			coutd.setVerbose(false);
+//			coutd.setVerbose(false);
 		}
 
 		/** Tests that reservations at both communication partners match at all times until link expiry. */
@@ -1047,10 +1047,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), lm_me->current_reservation_table->getReservation(lm_me->burst_offset));
-			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_you->current_reservation_table->getReservation(lm_me->burst_offset));
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), lm_me->current_reservation_table->getReservation(lm_me->burst_offset + lm_me->current_link_state->burst_length - 1));
+			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_you->current_reservation_table->getReservation(lm_me->burst_offset + lm_me->current_link_state->burst_length - 1));
 			// Proceed until the reply has been sent.
-			for (size_t i = 0; i < lm_me->burst_offset; i++) {
+			for (size_t i = 0; i < lm_me->burst_offset + lm_me->current_link_state->burst_length - 1; i++) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -1321,10 +1321,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), lm_me->current_reservation_table->getReservation(lm_me->burst_offset));
-			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_you->current_reservation_table->getReservation(lm_me->burst_offset));
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), lm_me->current_reservation_table->getReservation(lm_me->burst_offset + lm_me->current_link_state->burst_length - 1));
+			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_you->current_reservation_table->getReservation(lm_me->burst_offset + lm_me->current_link_state->burst_length - 1));
 			// Proceed until the reply has been sent.
-			for (auto t = 0; t < lm_me->burst_offset; t++) {
+			for (auto t = 0; t < lm_me->burst_offset + lm_me->current_link_state->burst_length - 1; t++) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -1571,11 +1571,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testRenewalRequest);
 			CPPUNIT_TEST(testLinkRenewal);
 			CPPUNIT_TEST(testLinkRenewalChannelChange);
-//			CPPUNIT_TEST(testLinkRenewalChannelChangeMultiSlot); // !TODO
+			CPPUNIT_TEST(testLinkRenewalChannelChangeMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalSameChannel);
-//			CPPUNIT_TEST(testLinkRenewalSameChannelMultiSlot); // !TODO
+			CPPUNIT_TEST(testLinkRenewalSameChannelMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalFails);
-			CPPUNIT_TEST(testLinkRenewalFailsMultiSlot); // !TODO
+			CPPUNIT_TEST(testLinkRenewalFailsMultiSlot);
 			CPPUNIT_TEST(testLinkRenewalAfterExpiry);
 			CPPUNIT_TEST(testSimulatorScenario);
 			CPPUNIT_TEST(testCommunicateInOtherDirection);

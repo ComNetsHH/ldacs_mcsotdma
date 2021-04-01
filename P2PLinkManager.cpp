@@ -329,8 +329,11 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 		int slot_offset_for_last_slot_in_next_burst = burst_offset + current_link_state->burst_length - 1;
 		const Reservation last_res_in_next_burst = current_reservation_table->getReservation(slot_offset_for_last_slot_in_next_burst);
 		assert(last_res_in_next_burst.getTarget() == link_id);
-		if (last_res_in_next_burst.isTx() || last_res_in_next_burst.isTxCont()) // possibly it already is RX, then do nothing.
+		if (last_res_in_next_burst.isTx() || last_res_in_next_burst.isTxCont()) { // possibly it already is RX, then do nothing.
+			const Reservation& overwrite_res = current_reservation_table->getReservation(slot_offset_for_last_slot_in_next_burst);
+			coutd << "using the t=" << slot_offset_for_last_slot_in_next_burst << ":" <<  overwrite_res << " for a RX slot -> ";
 			current_reservation_table->mark(slot_offset_for_last_slot_in_next_burst, Reservation(link_id, Reservation::RX));
+		}
 	}
 
 	coutd << "request populated -> ";
