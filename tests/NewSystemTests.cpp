@@ -413,7 +413,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->scheduled_link_requests.empty());
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
 			// Proceed until reply is sent.
-			for (size_t t = 0; t < lm_me->burst_offset; t++) {
+			for (size_t t = 0; t < lm_me->burst_offset * 2; t++) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -552,10 +552,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// ALl requests are sent.
 			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->scheduled_link_requests.empty());
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->current_link_state->scheduled_link_replies.size());
 			// Proceed until reply is sent.
-			while (!lm_you->current_link_state->scheduled_link_replies.empty()) {
+			num_slots = 0;
+			while (lm_me->current_link_state->renewal_due && num_slots++ < max_num_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -564,6 +565,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
 			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->num_renewal_attempts), lm_me->current_link_state->scheduled_link_requests.size());
@@ -866,7 +868,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			testRenewalRequest();
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, lm_me->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_renewal_complete_local, lm_you->link_status);
 			size_t num_slots = 0, max_slots = 10000;
 			while (lm_me->link_status != LinkManager::link_established && num_slots++ < max_slots) {
 				mac_layer_me->update(1);
@@ -942,7 +944,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->renewal_due);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::awaiting_reply, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(true, lm_you->current_link_state->renewal_due);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 
 			// Proceed until the reply has been received.
 			num_slots = 0;
@@ -957,7 +959,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_renewal_complete, lm_me->link_status);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 			// Channel change (comes from proposing two channels by default, out of three, and the most idle ones are used <-> won't reuse the current channel).
 			CPPUNIT_ASSERT(*lm_me->next_link_state->channel != *lm_me->current_channel);
 			// They should agree on the new channel.
@@ -1060,7 +1062,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
 			}
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_renewal_complete, lm_me->link_status);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 			// Proceed until the link is renewed.
 			num_slots = 0;
 			while ((lm_me->link_status != P2PLinkManager::link_established) && num_slots++ < max_num_slots) {
@@ -1175,7 +1177,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->renewal_due);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::awaiting_reply, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(true, lm_you->current_link_state->renewal_due);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 			CPPUNIT_ASSERT_EQUAL(lm_me->current_link_state->timeout, lm_you->current_link_state->timeout);
 
 			// Proceed until the reply has been received.
@@ -1199,7 +1201,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(lm_me->current_link_state->timeout, lm_you->current_link_state->timeout);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_renewal_complete, lm_me->link_status);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 			// No channel change.
 			CPPUNIT_ASSERT(*lm_me->next_link_state->channel == *lm_me->current_channel);
 			// They should agree on the new channel.
@@ -1334,7 +1336,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->notifyOutgoing(num_outgoing_bits, partner_id);
 			}
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::link_renewal_complete, lm_me->link_status);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 			// Proceed until the link is renewed.
 			num_slots = 0;
 			while ((lm_me->link_status != P2PLinkManager::link_established) && num_slots++ < max_num_slots) {
@@ -1621,6 +1623,51 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(lm_me->current_link_state->timeout, lm_you->current_link_state->timeout);
 		}
 
+		/** Tests that if a renewal request is processed, but the reply doesn't make it, there's not one partner that renews the link while another does not. */
+		void testUnSyncedRenewal() {
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
+			// New data for communication partner.
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			size_t num_slots = 0, max_slots = 100;
+
+			// Establish link.
+			while (lm_me->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			// Send request.
+			num_slots = 0;
+			while (lm_me->current_link_state->scheduled_link_requests.size() > lm_me->num_renewal_attempts - 1 && num_slots++ < max_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+
+			phy_layer_you->connected_phy = nullptr;
+			// Proceed until expiry.
+			size_t expiry_slot = lm_me->getExpiryOffset() + lm_me->burst_offset - 1;
+//			coutd.setVerbose(true);
+			for (size_t t = 0; t < expiry_slot; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, lm_you->link_status);
+		}
+
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -1647,6 +1694,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testCommunicateReverseOrder);
 			CPPUNIT_TEST(testPacketSize);
 			CPPUNIT_TEST(testReportedTxSlotDesire);
+			CPPUNIT_TEST(testUnSyncedRenewal);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

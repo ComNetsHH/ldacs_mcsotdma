@@ -35,6 +35,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			awaiting_reply,
 			/** Link establishment reply has been prepared and we're waiting for the first message. */
 			awaiting_data_tx,
+			/** Link renewal has been completed locally after having received a renewal request, but the reply may not have arrived at the destination yet. */
+			link_renewal_complete_local,
 			/** Link renewal has been completed. After expiry, the new reservations take action. */
 			link_renewal_complete
 		};
@@ -209,6 +211,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			case LinkManager::awaiting_data_tx: {
 				str = "awaiting_data_tx";
+				break;
+			}
+			case LinkManager::link_renewal_complete_local: {
+				str = "link_renewal_complete_local";
 				break;
 			}
 

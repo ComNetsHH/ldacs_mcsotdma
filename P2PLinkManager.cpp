@@ -103,6 +103,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 		base_header->burst_length = current_link_state->burst_length;
 		base_header->burst_length_tx = estimateCurrentNumSlots();
 		base_header->burst_offset = burst_offset;
+		base_header->link_renewal_negotiated = link_status == link_renewal_complete;
 
 		// Put a priority on control messages:
 		// 1) link replies
@@ -451,8 +452,8 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 			for (unsigned int t = 0; t < default_timeout; t++)
 				scheduleBurst(next_link_state->next_burst_start + t*burst_offset, next_link_state->burst_length, next_link_state->burst_length_tx, link_id, table, false);
 			// and update status.
-			coutd << "changing status " << link_status << "->" << link_renewal_complete << " -> ";
-			link_status = link_renewal_complete;
+			coutd << "changing status " << link_status << "->" << link_renewal_complete_local << " -> ";
+			link_status = link_renewal_complete_local;
 		}
 	}
 }
@@ -636,8 +637,8 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 
 std::vector<unsigned int> P2PLinkManager::scheduleRenewalRequestSlots(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const {
 	std::vector<unsigned int> slots;
-	// For each transmission burst from last to first according to this reservation...
-	for (long i = 0, offset = init_offset + (timeout - 1) * burst_offset; slots.size() < num_attempts && offset >= init_offset; offset -= burst_offset, i++) {
+	// For each transmission burst from second last to first according to this reservation...
+	for (long i = 0, offset = init_offset + (timeout - 2) * burst_offset; slots.size() < num_attempts && offset >= init_offset; offset -= burst_offset, i++) {
 		// ... add every second burst
 		if (i % 2 == 1) {
 			slots.push_back(offset);
@@ -680,6 +681,10 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 void P2PLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	// The communication partner informs about its *current wish* for their own burst length.
 	reported_desired_tx_slots = header->burst_length_tx;
+	if (header->link_renewal_negotiated && link_status == link_renewal_complete_local) {
+		coutd << "link renewal confirmed by communication partner, changing status " << link_status << "->" << LinkManager::Status::link_renewal_complete << " -> ";
+		link_status = link_renewal_complete;
+	}
 }
 
 bool P2PLinkManager::decrementTimeout() {
