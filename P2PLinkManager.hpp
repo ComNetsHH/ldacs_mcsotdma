@@ -88,9 +88,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				/** Number of bursts that remain. It is decremented at the end of a burst, s.t. usually it means that the current timeout value *includes* the current burst.. */
 				unsigned int timeout;
 				/** Total number of slots reserved for this link. */
-				unsigned int burst_length;
+				const unsigned int burst_length;
 				/** Number of slots reserved for transmission of the link initiator. If burst_length_tx=burst_length, then this is a unidirectional link. */
-				unsigned int burst_length_tx;
+				const unsigned int burst_length_tx;
 				/** Whether the local user has initiated this link, i.e. sends the link requests. */
 				bool is_link_initiator = false;
 				/** Whether this state results from an initial link establishment as opposed to a renewed one. */
@@ -199,6 +199,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** The next link's state, which may be applied upon link renewal. */
 			LinkState *next_link_state = nullptr;
 
+			size_t num_slots_since_last_burst_start = 0;
 			/** Whether the current slot was the initial slot of a burst. */
 			bool burst_start_during_this_slot = false;
 			bool updated_timeout_this_slot = false;

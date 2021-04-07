@@ -71,7 +71,10 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map
 }
 
 void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
-	burst_start_during_this_slot = true;
+	if (current_link_state != nullptr && num_slots_since_last_burst_start >= current_link_state->burst_length) {
+		burst_start_during_this_slot = true;
+		num_slots_since_last_burst_start = 0;
+	}
 }
 
 void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
@@ -79,7 +82,10 @@ void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
-	burst_start_during_this_slot = true;
+	if (current_link_state != nullptr && num_slots_since_last_burst_start >= current_link_state->burst_length) {
+		burst_start_during_this_slot = true;
+		num_slots_since_last_burst_start = 0;
+	}
 	coutd << *this << "::onTransmissionBurstStart(" << burst_length << " slots) -> ";
 	if (link_status == link_not_established)
 		throw std::runtime_error("P2PLinkManager::onTransmissionBurst for unestablished link.");
@@ -95,7 +101,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 		// Set base header fields.
 		base_header->timeout = current_link_state->timeout;
 		base_header->burst_length = current_link_state->burst_length;
-		base_header->burst_length_tx = current_link_state->burst_length_tx;
+		base_header->burst_length_tx = estimateCurrentNumSlots();
 		base_header->burst_offset = burst_offset;
 
 		// Put a priority on control messages:
@@ -112,7 +118,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 						// and remove from scheduled replies.
 						current_link_state->scheduled_link_replies.erase(it);
 						it--;
-						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to renew on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
+						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to renew/init on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
 						if (next_link_state != nullptr)
 							coutd << "my belief is " << next_link_state->next_burst_start << " -> ";
 						statistic_num_sent_replies++;
@@ -197,6 +203,7 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 	burst_start_during_this_slot = false;
 	updated_timeout_this_slot = false;
 	established_initial_link_this_slot = false;
+	num_slots_since_last_burst_start += num_slots;
 
 	// TODO properly test this (not sure if incrementing time by this many slots works as intended right now)
 	if (num_slots > burst_offset) {
@@ -260,8 +267,7 @@ void P2PLinkManager::onSlotEnd() {
 		if (decrementTimeout())
 			onTimeoutExpiry();
 		coutd << std::endl;
-	} else
-		coutd << *mac << "::" << *this << "::onSlotEnd NOT UPDATING";
+	}
 	if (current_link_state != nullptr) {
 		if (current_link_state->next_burst_start == 0)
 			current_link_state->next_burst_start = burst_offset;
@@ -290,8 +296,8 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	else
 		min_offset = getExpiryOffset() + 1; // Right after link expiry.
 
-	unsigned int burst_length_tx = estimateCurrentNumSlots(); // in slots.
-	unsigned int burst_length = burst_length_tx + reported_desired_tx_slots;
+	unsigned int burst_length_tx = std::max(uint32_t(1), estimateCurrentNumSlots()); // in slots.
+	unsigned int burst_length = burst_length_tx + reported_desired_tx_slots; // own transmission slots + those the communication partner desires
 
 	coutd << "min_offset=" << min_offset << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << " -> ";
 	// Populate payload.
@@ -374,7 +380,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 			current_link_state = state;
 			current_channel = current_link_state->channel;
 			current_reservation_table = reservation_manager->getReservationTable(current_channel);
-			coutd << "randomly chose " << *current_channel << "@" << current_link_state->next_burst_start << " -> ";
+			coutd << "randomly chose " << current_link_state->next_burst_start << "@" << *current_channel << " -> ";
 			// schedule a link reply,
 			auto link_reply_message = prepareReply(origin, current_link_state->channel, current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx);
 			current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, link_reply_message.first, link_reply_message.second);
@@ -614,14 +620,14 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 	assert(table != nullptr);
 	for (unsigned int t = 0; t < burst_length_tx; t++) {
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::TX : Reservation::Action::RX) : (link_initiator ? Reservation::Action::TX_CONT : Reservation::Action::RX_CONT);
-		Reservation res = Reservation(dest_id, action, burst_length > 0 ? burst_length - 1 : 0);
+		Reservation res = Reservation(dest_id, action, burst_length_tx > 0 ? burst_length_tx - 1 : 0);
 		table->mark(burst_start_offset + t, res);
 		coutd << "t=" << burst_start_offset + t << ":" << res << " ";
 	}
 	unsigned int burst_length_rx = burst_length - burst_length_tx;
 	for (unsigned int t = 0; t < burst_length_rx; t++) {
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::RX : Reservation::Action::TX) : (link_initiator ? Reservation::Action::RX_CONT : Reservation::Action::TX_CONT);
-		Reservation res = Reservation(dest_id, action, burst_length > 0 ? burst_length - 1 : 0);
+		Reservation res = Reservation(dest_id, action, burst_length_rx > 0 ? burst_length_rx - 1 : 0);
 		table->mark(burst_start_offset + burst_length_tx + t, res);
 		coutd << "t=" << burst_start_offset + burst_length_tx + t << ":" << res << " ";
 	}
@@ -672,7 +678,8 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 }
 
 void P2PLinkManager::processIncomingBase(L2HeaderBase*& header) {
-	// Nothing to do.
+	// The communication partner informs about its *current wish* for their own burst length.
+	reported_desired_tx_slots = header->burst_length_tx;
 }
 
 bool P2PLinkManager::decrementTimeout() {
@@ -785,9 +792,11 @@ void P2PLinkManager::assign(const FrequencyChannel* channel) {
 }
 
 unsigned int P2PLinkManager::estimateCurrentNumSlots() const {
+	if (!mac->isThereMoreData(link_id))
+		return 0;
 	unsigned int traffic_estimate = (unsigned int) outgoing_traffic_estimate.get(); // in bits.
 	unsigned int datarate = mac->getCurrentDatarate(); // in bits/slot.
-	return std::max(uint32_t(1), traffic_estimate / datarate); // in slots.
+	return std::max(uint32_t(0), traffic_estimate / datarate); // in slots.
 }
 
 unsigned int P2PLinkManager::getExpiryOffset() const {

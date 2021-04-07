@@ -171,8 +171,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void testLinkEstablishmentMultiSlotBurst() {
 //            coutd.setVerbose(true);
-			// Single message.
-			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_me->should_there_be_more_p2p_data = true;
 			// Update traffic estimate s.t. multi-slot bursts should be used.
 			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
 			unsigned int expected_num_slots = 3;
@@ -1050,7 +1049,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), lm_me->current_reservation_table->getReservation(lm_me->burst_offset + lm_me->current_link_state->burst_length - 1));
 			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_you->current_reservation_table->getReservation(lm_me->burst_offset + lm_me->current_link_state->burst_length - 1));
 			// Proceed until the reply has been sent.
-			for (size_t i = 0; i < lm_me->burst_offset + lm_me->current_link_state->burst_length - 1; i++) {
+			size_t n = lm_me->burst_offset + lm_me->current_link_state->burst_length - 1;
+			for (size_t i = 0; i < n; i++) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -1089,12 +1089,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int expected_num_slots = 3;
 			num_outgoing_bits = expected_num_slots * bits_per_slot;
 			lm_me->outgoing_traffic_estimate.put(num_outgoing_bits);
-			unsigned int required_slots = lm_me->estimateCurrentNumSlots();
+			unsigned int required_slots = std::max(uint32_t(1), lm_me->estimateCurrentNumSlots());
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			// Now do the other tests.
 //			coutd.setVerbose(true);
 			testLinkRenewalChannelChange();
-			required_slots = lm_me->estimateCurrentNumSlots();
+			required_slots = std::max(uint32_t(1), lm_me->estimateCurrentNumSlots());
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			size_t num_tx_me = 0, num_tx_cont_me = 0, num_rx_you = 0, num_rx_cont_you = 0;
 			for (const auto& channel : mac_layer_me->reservation_manager->getP2PFreqChannels()) {
@@ -1118,10 +1118,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_you);
 				}
 			}
-			CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx_me);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_you);
-			CPPUNIT_ASSERT_EQUAL(size_t(expected_num_slots - 1), num_tx_cont_me);
-			CPPUNIT_ASSERT_EQUAL(size_t(expected_num_slots - 1), num_rx_cont_you);
+			CPPUNIT_ASSERT(num_tx_me > 0);
+			CPPUNIT_ASSERT_EQUAL(num_tx_me, num_rx_you);
+			CPPUNIT_ASSERT(num_tx_cont_me > 0);
+			CPPUNIT_ASSERT_EQUAL(num_tx_cont_me, num_rx_cont_you);
 		}
 
 		void testLinkRenewalSameChannel() {
@@ -1556,6 +1556,71 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(phy_layer_me->getCurrentDatarate(), (unsigned long) packet->getBits());
 		}
 
+		void testReportedTxSlotDesire() {
+			// Should schedule 1 TX slot each.
+			lm_me->reported_desired_tx_slots = 1;
+			// Single message.
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			// New data for communication partner.
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			size_t num_slots = 0, max_slots = 100;
+			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_me->current_link_state->timeout, lm_you->current_link_state->timeout);
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			for (size_t t = 0; t < lm_me->burst_offset - 2; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+
+			// Now we're at the first proper burst with both sides transmitting.
+			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_me->current_link_state->timeout, lm_you->current_link_state->timeout);
+//			coutd.setVerbose(true);
+			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_reservation_table->getReservation(1).isTx());
+			CPPUNIT_ASSERT_EQUAL(true, lm_you->current_reservation_table->getReservation(1).isRx());
+			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_reservation_table->getReservation(2).isRx());
+			CPPUNIT_ASSERT_EQUAL(true, lm_you->current_reservation_table->getReservation(2).isTx());
+			// Execute first slot with *me* transmitting.
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 2, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_me->current_link_state->timeout, lm_you->current_link_state->timeout);
+			// Execute second slot with *you* transmitting.
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			// Which *shouldn't* have decremented the timeout again.
+			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 2, lm_me->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(lm_me->current_link_state->timeout, lm_you->current_link_state->timeout);
+		}
+
 
 	CPPUNIT_TEST_SUITE(NewSystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -1581,6 +1646,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testCommunicateInOtherDirection);
 			CPPUNIT_TEST(testCommunicateReverseOrder);
 			CPPUNIT_TEST(testPacketSize);
+			CPPUNIT_TEST(testReportedTxSlotDesire);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
