@@ -185,3 +185,10 @@ void BCLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2
 void BCLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
 	throw std::invalid_argument("BCLinkManager::processIncomingLinkReply called, but link replies shouldn't be received on the BC.");
 }
+
+BCLinkManager::~BCLinkManager() {
+	for (auto pair : link_requests) {
+		delete pair.first;
+		delete pair.second;
+	}
+}

@@ -46,7 +46,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Allows the scheduling of control messages at specific slots. */
 			class ControlMessageReservation {
 			public:
-				ControlMessageReservation(unsigned int slot_offset, L2Header *header, LinkRequestPayload *payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
+//				ControlMessageReservation(unsigned int slot_offset, L2Header *header, LinkRequestPayload *payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
+				ControlMessageReservation(unsigned int slot_offset, L2Header *&header, LinkRequestPayload *&payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
 				virtual ~ControlMessageReservation() = default;
 
 				void update(unsigned int num_slots) {
@@ -74,6 +75,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				unsigned int getRemainingOffset() const {
 					return remaining_offset;
 				}
+				void delete_mem() {
+					delete header;
+					delete payload;
+				}
 
 			protected:
 				unsigned int remaining_offset;
@@ -84,6 +89,25 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			class LinkState {
 			public:
 				LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx) : timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx), next_burst_start(0) {}
+				virtual ~LinkState() {
+					delete last_proposed_renewal_resources;
+					for (auto msg : scheduled_link_requests)
+						msg.delete_mem();
+					for (auto msg : scheduled_link_replies)
+						msg.delete_mem();
+				}
+
+				void clearRequests() {
+					for (auto msg : scheduled_link_requests)
+						msg.delete_mem();
+					scheduled_link_requests.clear();
+				}
+
+				void clearReplies() {
+					for (auto msg : scheduled_link_replies)
+						msg.delete_mem();
+					scheduled_link_replies.clear();
+				}
 
 				/** Number of bursts that remain. It is decremented at the end of a burst, s.t. usually it means that the current timeout value *includes* the current burst.. */
 				unsigned int timeout;

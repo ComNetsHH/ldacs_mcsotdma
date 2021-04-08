@@ -21,6 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param min_beacon_gap Minimum number of slots that should be kept idle when a beacon slot is selected.
 		 */
 		BCLinkManager(ReservationManager *reservation_manager, MCSOTDMA_Mac *mac, unsigned int min_beacon_gap);
+		virtual ~BCLinkManager();
 
 		void onReceptionBurstStart(unsigned int burst_length) override;
 

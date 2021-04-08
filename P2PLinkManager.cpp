@@ -144,6 +144,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 							coutd << "clear locked resources: ";
 							clearLockedResources(current_link_state->last_proposed_renewal_resources, current_link_state->last_proposal_sent);
 							delete current_link_state->last_proposed_renewal_resources;
+							current_link_state->last_proposed_renewal_resources = nullptr;
 							coutd << "-> ";
 						}
 						// ... compute payload ...
@@ -160,8 +161,10 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 							link_status = awaiting_reply;
 						} else // Link requests must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
 							throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link request into packet because it wouldn't fit. This should never happen?!");
-					} else
+					} else {
 						coutd << "removing link request (no more data to send) -> ";
+						request_reservation.delete_mem();
+					}
 					// Remove from scheduled replies.
 					current_link_state->scheduled_link_requests.erase(it);
 					it--;
@@ -384,7 +387,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 			coutd << "randomly chose " << current_link_state->next_burst_start << "@" << *current_channel << " -> ";
 			// schedule a link reply,
 			auto link_reply_message = prepareReply(origin, current_link_state->channel, current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx);
-			current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, link_reply_message.first, link_reply_message.second);
+			current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
 			// mark the slot as TX,
 			current_reservation_table->mark(state->next_burst_start, Reservation(origin, Reservation::TX));
 			coutd << "scheduled link reply at offset " << state->next_burst_start << " -> ";
@@ -398,6 +401,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	// If the link is of any other status, this must be a renewal request.
 	} else {
 		coutd << "renewal request -> ";
+		assert(current_link_state != nullptr);
 		current_link_state->renewal_due = true;
 		LinkState *state = processRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
 		state->initial_setup = false;
@@ -437,14 +441,14 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 				coutd << "scheduling link reply at last slot of next burst (hijacking the t=" << last_slot_next_burst << ":" << current_reservation_table->getReservation(last_slot_next_burst) << " slot for a TX slot) -> ";
 				assert(current_reservation_table->getReservation(last_slot_next_burst).isRx() || current_reservation_table->getReservation(last_slot_next_burst).isRxCont());
 				current_reservation_table->mark(last_slot_next_burst, Reservation(link_id, Reservation::TX));
-				current_link_state->scheduled_link_replies.emplace_back(last_slot_next_burst, link_reply_message.first, link_reply_message.second);
+				current_link_state->scheduled_link_replies.emplace_back(last_slot_next_burst, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
 			// if there *are* slots scheduled for this user's transmission, ...
 			} else {
 				// ... then schedule the reply there
 				coutd << "scheduling link reply for next burst -> ";
 				int tx_slot_next_burst = burst_offset + current_link_state->burst_length_tx;
 				assert(current_reservation_table->getReservation(tx_slot_next_burst).isTx());
-				current_link_state->scheduled_link_replies.emplace_back(tx_slot_next_burst, link_reply_message.first, link_reply_message.second);
+				current_link_state->scheduled_link_replies.emplace_back(tx_slot_next_burst, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
 			}
 			// Mark slots of the new link.
 			ReservationTable *table = reservation_manager->getReservationTable(next_link_state->channel);
@@ -547,7 +551,7 @@ void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const
 	std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, burst_offset, burst_offset, num_renewal_attempts);
 	for (unsigned int renewal_request_slot : link_renewal_request_slots) {
 		auto request_msg = prepareRequestMessage(false);
-		current_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, request_msg.first, request_msg.second);
+		current_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, (L2Header*&) request_msg.first, (LinkRequestPayload*&) request_msg.second);
 	}
 	// Link is now established.
 	coutd << "setting link status to '";
@@ -589,11 +593,12 @@ void P2PLinkManager::processRenewalReply(const L2HeaderLinkReply*& header, const
 	next_link_state->next_burst_start = slot_offset;
 	// Clear pending requests.
 	coutd << "clear " << current_link_state->scheduled_link_requests.size() << " pending renewal requests -> ";
-	current_link_state->scheduled_link_requests.clear();
+	current_link_state->clearRequests();
 	// Clear locked resources.
 	coutd << "unlock resources: ";
 	clearLockedResources(current_link_state->last_proposed_renewal_resources, current_link_state->last_proposal_sent);
 	delete current_link_state->last_proposed_renewal_resources;
+	current_link_state->last_proposed_renewal_resources = nullptr;
 	current_link_state->last_proposal_sent = 0;
 	// Mark slot reservations of the new link.
 	coutd << "-> mark new slot reservations: ";
@@ -738,7 +743,7 @@ void P2PLinkManager::onTimeoutExpiry() {
 			std::vector<unsigned int> link_renewal_request_slots = scheduleRenewalRequestSlots(default_timeout, next_link_state->next_burst_start, burst_offset, num_renewal_attempts);
 			for (unsigned int renewal_request_slot : link_renewal_request_slots) {
 				auto request_msg = prepareRequestMessage(false);
-				next_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, request_msg.first, request_msg.second);
+				next_link_state->scheduled_link_requests.emplace_back(renewal_request_slot, (L2Header*&) request_msg.first, (LinkRequestPayload*&) request_msg.second);
 			}
 		}
 		delete current_link_state;
