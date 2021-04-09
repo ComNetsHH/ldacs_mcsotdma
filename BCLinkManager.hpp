@@ -27,7 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void onReceptionBurst(unsigned int remaining_burst_length) override;
 
-		L2Packet* onTransmissionBurstStart(unsigned int burst_length) override;
+		L2Packet* onTransmissionBurstStart(unsigned int remaining_burst_length) override;
 
 		void onTransmissionBurst(unsigned int remaining_burst_length) override;
 

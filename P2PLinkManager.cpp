@@ -75,23 +75,34 @@ void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 		burst_start_during_this_slot = true;
 		num_slots_since_last_burst_start = 0;
 	}
+	if (burst_length == 0 && current_link_state != nullptr && num_slots_since_last_burst_end >= current_link_state->burst_length) {
+		burst_end_during_this_slot = true;
+		num_slots_since_last_burst_end = 0;
+	}
 }
 
 void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
-
+	if (remaining_burst_length == 0)
+		burst_end_during_this_slot = true;
 }
 
-L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
 	if (current_link_state != nullptr && num_slots_since_last_burst_start >= current_link_state->burst_length) {
 		burst_start_during_this_slot = true;
 		num_slots_since_last_burst_start = 0;
 	}
-	coutd << *this << "::onTransmissionBurstStart(" << burst_length << " slots) -> ";
+	if (remaining_burst_length == 0 && current_link_state != nullptr && num_slots_since_last_burst_end >= current_link_state->burst_length) {
+		burst_end_during_this_slot = true;
+		num_slots_since_last_burst_end = 0;
+	}
+	const unsigned int total_burst_length = remaining_burst_length + 1;
+
+	coutd << *this << "::onTransmissionBurstStart(" << total_burst_length << " slots) -> ";
 	if (link_status == link_not_established)
 		throw std::runtime_error("P2PLinkManager::onTransmissionBurst for unestablished link.");
 
 	auto *packet = new L2Packet();
-	size_t capacity = mac->getCurrentDatarate() * burst_length;
+	size_t capacity = mac->getCurrentDatarate() * total_burst_length;
 	coutd << "filling packet with a capacity of " << capacity << " bits -> ";
 	// Add base header.
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 0, 0, 0);
@@ -185,7 +196,8 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 }
 
 void P2PLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
-
+	if (remaining_burst_length == 0)
+		burst_end_during_this_slot = true;
 }
 
 void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
@@ -205,9 +217,11 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *this << "::onSlotStart(" << num_slots << ") -> ";
 	burst_start_during_this_slot = false;
+	burst_end_during_this_slot = false;
 	updated_timeout_this_slot = false;
 	established_initial_link_this_slot = false;
 	num_slots_since_last_burst_start += num_slots;
+	num_slots_since_last_burst_end += num_slots;
 
 	// TODO properly test this (not sure if incrementing time by this many slots works as intended right now)
 	if (num_slots > burst_offset) {
@@ -266,7 +280,7 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void P2PLinkManager::onSlotEnd() {
-	if (burst_start_during_this_slot) {
+	if (burst_end_during_this_slot) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> ";
 		if (decrementTimeout())
 			onTimeoutExpiry();
@@ -752,7 +766,7 @@ void P2PLinkManager::onTimeoutExpiry() {
 		coutd << "updating status: " << link_status << "->" << LinkManager::link_established << " -> link renewal complete." << std::endl;
 		link_status = link_established;
 	} else {
-		coutd << "no pending renewal, updating status: " << link_status << "->" << LinkManager::link_not_established << " -> cleared associated channel -> ";
+		coutd << "no pending renewal, updating status: " << link_status << "->" << LinkManager::link_not_established << " -> cleared associated channel at " << *current_channel << " -> ";
 		current_channel = nullptr;
 		current_reservation_table = nullptr;
 		link_status = LinkManager::link_not_established;
