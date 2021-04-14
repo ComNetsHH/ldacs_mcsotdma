@@ -21,10 +21,10 @@ void BCLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 
 }
 
-L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
 	coutd << *this << "::onTransmissionBurstStart -> ";
-	if (burst_length != 1)
-		throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart for burst_length!=1.");
+	if (remaining_burst_length != 0)
+		throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart for burst_length!=0.");
 
 	auto *packet = new L2Packet();
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);

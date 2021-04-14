@@ -25,7 +25,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		void onReceptionBurst(unsigned int remaining_burst_length) override;
 
-		L2Packet* onTransmissionBurstStart(unsigned int burst_length) override;
+		L2Packet* onTransmissionBurstStart(unsigned int remaining_burst_length) override;
 
 		void onTransmissionBurst(unsigned int remaining_burst_length) override;
 
@@ -199,6 +199,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			void clearLockedResources(LinkRequestPayload*& proposal, unsigned int num_slot_since_proposal);
 
 			unsigned int estimateCurrentNumSlots() const;
+			/**
+			 * @return Number of slots until timeout reaches value of 1 (just before expiry).
+			 */
 			unsigned int getExpiryOffset() const;
 
 	protected:
@@ -223,9 +226,12 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** The next link's state, which may be applied upon link renewal. */
 			LinkState *next_link_state = nullptr;
 
-			size_t num_slots_since_last_burst_start = 0;
-			/** Whether the current slot was the initial slot of a burst. */
+			size_t num_slots_since_last_burst_start = 0,
+				   num_slots_since_last_burst_end = 0;
+			/** Whether the current slot is the initial slot of a burst. */
 			bool burst_start_during_this_slot = false;
+			/** Whether the current slot is the end slot of a burst. */
+			bool burst_end_during_this_slot = false;
 			bool updated_timeout_this_slot = false;
 			bool established_initial_link_this_slot = false;
 		};

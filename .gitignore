@@ -5,3 +5,5 @@ cmake-build-debug/
 *.xopp~
 glue-lib
 glue-lib-headers
+docs/non_working_output.txt
+
