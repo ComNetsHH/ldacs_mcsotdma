@@ -26,7 +26,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testEstimator() {
 			for (size_t i = 0; i < 2 * horizon; i++) {
 				if (i < horizon)
-					estimator->reportBroadcast(id);
+					estimator->reportNonBeaconBroadcast(id);
 				estimator->update();
 				if (i < horizon) // Broadcasts reported every slot.
 					CPPUNIT_ASSERT_EQUAL(1.0, estimator->getContentionEstimate(id));
@@ -43,13 +43,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			MacId other_id = MacId(id.getId() + 1);
 			CPPUNIT_ASSERT_EQUAL(uint(0), estimator->getNumActiveNeighbors());
 			for (size_t i = 0; i < horizon / 2; i++) {
-				estimator->reportBroadcast(id);
-				estimator->reportBroadcast(other_id);
+				estimator->reportNonBeaconBroadcast(id);
+				estimator->reportNonBeaconBroadcast(other_id);
 				estimator->update();
 			}
 			CPPUNIT_ASSERT_EQUAL(uint(2), estimator->getNumActiveNeighbors());
 			for (size_t i = 0; i < horizon; i++) {
-				estimator->reportBroadcast(id);
+				estimator->reportNonBeaconBroadcast(id);
 				estimator->update();
 			}
 			CPPUNIT_ASSERT_EQUAL(uint(1), estimator->getNumActiveNeighbors());
@@ -63,9 +63,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(0.0, estimator->getAverageBroadcastRate());
 			for (size_t i = 0; i < horizon; i++) {
 				if (i % 2 == 0)
-					estimator->reportBroadcast(id);
+					estimator->reportNonBeaconBroadcast(id);
 				if (i % 4 == 0)
-					estimator->reportBroadcast(other_id);
+					estimator->reportNonBeaconBroadcast(other_id);
 				estimator->update();
 			}
 			CPPUNIT_ASSERT_EQUAL((0.5 + 0.25) / 2, estimator->getAverageBroadcastRate());

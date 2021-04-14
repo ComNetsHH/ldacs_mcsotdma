@@ -21,7 +21,8 @@ bool BeaconModule::isConnected() const {
 }
 
 unsigned int BeaconModule::chooseNextBeaconSlot(bool random_choice) const {
-	return 0;
+	std::vector<unsigned int> viable_slots;
+//	for (unsigned int t = beacon_offset)
 }
 
 unsigned int BeaconModule::computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const {

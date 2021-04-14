@@ -22,7 +22,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Report the reception of a broadcast during the current slot for the given 'id'.
 		 * @param id
 		 */
-		void reportBroadcast(const MacId& id);
+		void reportNonBeaconBroadcast(const MacId& id);
 
 		/**
 		 * Update the estimates. Should be called every slot.

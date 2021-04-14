@@ -20,6 +20,7 @@
 #include "MCSOTDMA_PhyTests.cpp"
 #include "P2PLinkManagerTests.cpp"
 #include "BeaconModuleTests.cpp"
+#include "CongestionEstimatorTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
@@ -36,6 +37,8 @@ int main() {
 //	runner.addTest(ContentionEstimatorTests::suite());
 //	runner.addTest(MCSOTDMA_PhyTests::suite());
 	runner.addTest(BeaconModuleTests::suite());
+	runner.addTest(CongestionEstimatorTests::suite());
+	runner.addTest(ContentionEstimatorTests::suite());
 
 	//	runner.addTest(BCLinkManagerTests::suite());
 	//	runner.addTest(SystemTests::suite());

@@ -168,7 +168,7 @@ void BCLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::P
 
 void BCLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	MacId sender = header->src_id;
-	contention_estimator.reportBroadcast(sender);
+	contention_estimator.reportNonBeaconBroadcast(sender);
 	coutd << "updated contention -> ";
 }
 

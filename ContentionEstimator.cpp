@@ -16,7 +16,7 @@ ContentionEstimator::ContentionEstimator(const ContentionEstimator& other) : Con
 	received_broadcast_on_this_slot = other.received_broadcast_on_this_slot;
 }
 
-void ContentionEstimator::reportBroadcast(const MacId& id) {
+void ContentionEstimator::reportNonBeaconBroadcast(const MacId& id) {
 	received_broadcast_on_this_slot[id] = true;
 	contention_estimates.emplace(id, MovingAverage(this->horizon));
 }

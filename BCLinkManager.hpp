@@ -75,8 +75,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int min_beacon_gap = 1;
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;
-		/** For each neighbor, a moving average over past slots is kept, so that the contention by the neighbors is estimated. */
+		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
 		ContentionEstimator contention_estimator;
+		/** Congestion estimation is neighbor activity regarding all broadcasts. */
+		ContentionEstimator congestion_estimator;
 		/** Number of slots in-between beacons. */
 		unsigned int beacon_offset = 2500;
 		/** Default number of beacon transmissions until a new slot is sought. */

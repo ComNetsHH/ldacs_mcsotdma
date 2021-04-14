@@ -189,7 +189,7 @@ void OldBCLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 
 void OldBCLinkManager::processIncomingBase(L2HeaderBase*& header) {
 	coutd << "updated contention estimate -> ";
-	contention_estimator.reportBroadcast(header->src_id);
+	contention_estimator.reportNonBeaconBroadcast(header->src_id);
 }
 
 void OldBCLinkManager::onSlotEnd() {
