@@ -37,11 +37,11 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	// If the exact same reservation already exists, just return it and be done with it.
 	if (getReservation(slot_offset) == reservation)
 		return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
-	// Ensure that linked tables have capacity.
-	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT))
+	// Ensure that linked hardware tables have capacity.
+	if ((reservation.isTx() || reservation.isTxCont()) && transmitter_reservation_table != nullptr)
 		if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))
 			throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward TX reservation because the linked transmitter table is not idle.");
-	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX) {
+	if ((reservation.isRx() || reservation.isRxCont()) && !receiver_reservation_tables.empty()) {
 		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset](ReservationTable* table) {
 			return table->isIdle(slot_offset) || table->isLocked(slot_offset);
 		})) {
@@ -58,14 +58,14 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	else if (!currently_idle && reservation.isIdle()) // non-idle -> idle
 		num_idle_future_slots++;
 	// If a transmitter table is linked, mark it there, too.
-	if (transmitter_reservation_table != nullptr && (reservation.getAction() == Reservation::TX || reservation.getAction() == Reservation::TX_CONT)) {
+	if ((reservation.isTx() || reservation.isTxCont()) && transmitter_reservation_table != nullptr) {
 		// Need a copy here s.t. the linked table's recursive call won't set all slots now.
 		Reservation cpy = Reservation(reservation);
 		cpy.setNumRemainingSlots(0);
 		transmitter_reservation_table->mark(slot_offset, cpy);
 	}
 	// Same for receiver tables
-	if (!receiver_reservation_tables.empty() && reservation.getAction() == Reservation::RX)
+	if ((reservation.isRx() || reservation.isRxCont()) && !receiver_reservation_tables.empty())
 		for (ReservationTable* rx_table : receiver_reservation_tables) {
 			if (rx_table->getReservation(slot_offset).isIdle()) {
 				// Need a copy here s.t. the linked table's recursive call won't set all slots now.

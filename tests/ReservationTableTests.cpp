@@ -699,14 +699,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			unsigned int num_slots = 3;
 			Reservation res = Reservation(MacId(42), Reservation::RX, num_slots);
-			unsigned int slot_offset = 5;
+			int slot_offset = 5;
 			table->mark(slot_offset, res);
 			std::vector<ReservationTable*> rx_tables = {table_rx_1, table_rx_2};
 			for (size_t t = slot_offset; t < slot_offset + num_slots; t++) {
 				CPPUNIT_ASSERT_EQUAL(true, std::any_of(rx_tables.begin(), rx_tables.end(), [t] (ReservationTable* rx_table) {
 					bool is_busy = !rx_table->isIdle(t);
-					std::cout << "t=" << t << ": " << rx_table->getReservation(t) << " -> " << (is_busy ? "busy" : "idle") << std::endl;
-					std::cout.flush();
+//					std::cout << "t=" << t << ": " << rx_table->getReservation(t) << " -> " << (is_busy ? "busy" : "idle") << std::endl;
+//					std::cout.flush();
 					return is_busy;
 				}));
 			}
