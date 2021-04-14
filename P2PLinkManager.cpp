@@ -416,6 +416,22 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	// If the link is of any other status, this must be a renewal request.
 	} else {
 		coutd << "renewal request -> ";
+		// if an earlier link had been agreed upon, free its resources
+		if (next_link_state != nullptr) {
+			coutd << "clearing earlier-made slot reservations: ";
+			ReservationTable *table = reservation_manager->getReservationTable(next_link_state->channel);
+			for (unsigned int burst = 0; burst < default_timeout; burst++) {
+				for (unsigned t = 0; t < next_link_state->burst_length; t++) {
+					unsigned int offset = next_link_state->next_burst_start + burst*burst_offset + t;
+					const Reservation &res = table->getReservation(offset);
+					if (res.getTarget() == link_id) {
+						coutd << "t=" << offset << ":" << res << " ";
+						table->mark(offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+					}
+				}
+			}
+			coutd << " -> ";
+		}
 		assert(current_link_state != nullptr);
 		current_link_state->renewal_due = true;
 		LinkState *state = processRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
@@ -427,21 +443,6 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 			coutd << "no viables resources; aborting -> ";
 		// If one was picked, then ...
 		} else {
-			// if an earlier link had been agreed upon, free its resources
-			if (next_link_state != nullptr) {
-				coutd << "clearing earlier-made slot reservations: ";
-				ReservationTable *table = reservation_manager->getReservationTable(next_link_state->channel);
-				for (unsigned int burst = 0; burst < default_timeout; burst++) {
-					for (unsigned t = 0; t < next_link_state->burst_length; t++) {
-						unsigned int offset = next_link_state->next_burst_start + burst*burst_offset + t;
-						const Reservation &res = table->getReservation(offset);
-						if (res.getTarget() == link_id) {
-							coutd << "t=" << offset << ":" << res << " ";
-							table->mark(offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-						}
-					}
-				}
-			}
 			// remember the choice,
 			delete next_link_state;
 			next_link_state = state;

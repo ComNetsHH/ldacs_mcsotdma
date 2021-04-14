@@ -528,6 +528,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_me->current_link_state->scheduled_link_requests.size());
 			// Reconnect -> last reply should be received.
+			coutd << "RECONNECT" << std::endl;
 			phy_layer_you->connected_phy = phy_layer_me;
 
 			num_slots = 0;
