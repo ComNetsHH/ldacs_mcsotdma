@@ -123,6 +123,9 @@ bool ReservationTable::anyRxReservations(int32_t slot_offset) const {
 	if (!this->isValid(slot_offset))
 		throw std::invalid_argument("ReservationTable::anyRxReservations for planning horizon smaller than queried offset!");
 	const Reservation& res = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
+	if (res.isRx() || res.isRxCont()) {
+		coutd << "busy with: " << getReservation(slot_offset) << "! ";
+	}
 	return res.isRx() || res.isRxCont();
 }
 

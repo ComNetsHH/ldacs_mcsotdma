@@ -10,6 +10,7 @@
 #include <IArq.hpp>
 #include "ReservationManager.hpp"
 #include "LinkManager.hpp"
+#include "MCSOTDMA_Phy.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -61,6 +62,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
         ReservationManager* getReservationManager();
 
         void onSlotEnd();
+
+        const MCSOTDMA_Phy* getPhy() const;
 
 	protected:
 		/**

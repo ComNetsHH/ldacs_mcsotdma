@@ -38,6 +38,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map
 		}
 		// ... and try to find candidate slots,
 		std::vector<unsigned int> candidate_slots = table->findCandidates(num_slots, min_offset, burst_length, burst_length_tx, is_init);
+
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
 			coutd << slot << ":" << slot + burst_length - 1 << " ";
@@ -312,7 +313,7 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	if (initial_setup)
 		min_offset = 2;
 	else
-		min_offset = getExpiryOffset() + 1; // Right after link expiry.
+		min_offset = getExpiryOffset() + current_link_state->burst_length + 1; // Right after link expiry.
 
 	unsigned int burst_length_tx = std::max(uint32_t(1), estimateCurrentNumSlots()); // in slots.
 	unsigned int burst_length = burst_length_tx + reported_desired_tx_slots; // own transmission slots + those the communication partner desires
@@ -494,7 +495,7 @@ std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomRes
 				viable_resource_slot.push_back(slot);
 				coutd << "(viable) ";
 			} else
-				coutd << "(busy) ";
+				coutd << "(busy:" << table->getReservation(slot) << " RX=" << (mac->isAnyReceiverIdle(slot, burst_length_tx) ? "idle " : "busy ") << "TX=" << (mac->isTransmitterIdle(slot + burst_length_tx, burst_length-burst_length_tx) ? "idle " : "busy ") <<  ") ";
 		}
 	}
 	if (viable_resource_channel.empty())

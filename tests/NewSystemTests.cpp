@@ -451,6 +451,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Ensures that a 2nd request is sent if the first one's reply was dropped, and that reservations made for this first request are cleared once the second one is taken.
 		 */
 		void testLinkExpiringAndLostReply() {
+//			coutd.setVerbose(true);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_you->should_there_be_more_p2p_data = false;
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
@@ -528,8 +529,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_me->current_link_state->scheduled_link_requests.size());
 			// Reconnect -> last reply should be received.
 			phy_layer_you->connected_phy = phy_layer_me;
+
 			num_slots = 0;
 			while (lm_you->link_status != LinkManager::Status::link_renewal_complete_local && num_slots++ < max_num_slots) {
+				phy_layer_you->connected_phy = phy_layer_me;
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -578,8 +581,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(false, lm_me->current_link_state->renewal_due);
 			CPPUNIT_ASSERT_EQUAL(false, lm_you->current_link_state->renewal_due);
 
-//			coutd.setVerbose(true);
 			coutd << "LINK RENEWAL COMPLETE" << std::endl;
+			for (size_t t = 0; t < lm_me->burst_offset; t++) {
+				coutd << "t=" << t << ": " << lm_me->current_reservation_table->getReservation(t) << " | " << lm_you->current_reservation_table->getReservation(t) << std::endl;
+			}
 
 			while (lm_me->current_reservation_table->getReservation(0).isIdle()) {
 				mac_layer_me->update(1);

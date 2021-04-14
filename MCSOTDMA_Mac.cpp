@@ -211,3 +211,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
 }
+
+const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {
+	return (MCSOTDMA_Phy*) lower_layer;
+}

@@ -615,8 +615,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_tx->lme->max_num_renewal_attempts), lm_tx->lme->scheduled_requests.size());
 			num_slots = 0;
 			while (lm_tx->lme->scheduled_requests.size() > lm_tx->lme->max_num_renewal_attempts - 1 && num_slots++ < max_num_slots) {
-				mac_layer_me->update(lm_tx->lme->tx_offset);
-				mac_layer_you->update(lm_tx->lme->tx_offset);
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
 				mac_layer_me->execute();
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
@@ -629,10 +629,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(OldLinkManager::Status::link_established, lm_rx->link_status);
 
 			// Proceed until the reply has been received.
-			num_slots = 0, max_num_slots = 25;
+			num_slots = 0;
 			while ((lm_tx->link_status != OldLinkManager::link_renewal_complete) && num_slots++ < max_num_slots) {
-				mac_layer_me->update(lm_tx->lme->tx_offset);
-				mac_layer_you->update(lm_tx->lme->tx_offset);
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
 				mac_layer_me->execute();
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();

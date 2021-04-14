@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <algorithm>
 #include "ReservationManager.hpp"
 #include "coutdebug.hpp"
 
@@ -109,7 +110,7 @@ ReservationTable* ReservationManager::getReservationTable(const FrequencyChannel
 	if (channel == nullptr)
 		return nullptr;
 	ReservationTable* table;
-	if (*channel == *broadcast_frequency_channel)
+	if (broadcast_reservation_table != nullptr && *channel == *broadcast_frequency_channel)
 		table = broadcast_reservation_table;
 	else {
 		auto it = p2p_channel_map.find(*channel);
