@@ -131,7 +131,7 @@ void OldBCLinkManager::onSlotStart(uint64_t num_slots) {
 	traffic_estimate.reset();
 
 	for (uint64_t t = 0; t < num_slots; t++)
-		contention_estimator.update();
+		contention_estimator.update(num_slots);
 	if (current_reservation_table->getReservation(0).isIdle()) {
 		coutd << "marking BC reception: ";
 		markReservations(1, 0, 0, 1, SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX);

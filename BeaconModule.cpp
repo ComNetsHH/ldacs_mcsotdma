@@ -8,6 +8,10 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
+const unsigned int BeaconModule::MIN_BEACON_OFFSET = 80; /* 80*12ms=960ms */
+const unsigned int BeaconModule::MAX_BEACON_OFFSET = 25000; /* 5min */
+const unsigned int BeaconModule::INITIAL_BEACON_OFFSET = MIN_BEACON_OFFSET;
+
 BeaconModule::BeaconModule(ReservationTable* bc_table, unsigned int min_beacon_gap) : bc_table(bc_table), min_beacon_gap(min_beacon_gap) {}
 
 BeaconModule::BeaconModule(ReservationTable* bc_table) : BeaconModule(bc_table, 1) {}
@@ -31,5 +35,5 @@ unsigned int BeaconModule::computeBeaconInterval(double target_congestion, doubl
 	// Find offset that meets congestion target.
 	auto tau = (unsigned int) (std::ceil(m*(1+r)) / n);
 	// Return within allowed bounds.
-	return std::min(max_beacon_offset, std::max(min_beacon_offset, tau));
+	return std::min(MAX_BEACON_OFFSET, std::max(MIN_BEACON_OFFSET, tau));
 }

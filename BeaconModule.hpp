@@ -17,6 +17,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class BeaconModuleTests;
 
 	public:
+		/** Beacon interval minimum and maximum. */
+		static const unsigned int MIN_BEACON_OFFSET,
+								  MAX_BEACON_OFFSET;
+	    /** Initial beacon offset at power-on. */
+		static const unsigned int INITIAL_BEACON_OFFSET;
+
+	public:
 		BeaconModule(ReservationTable *bc_table, unsigned int min_beacon_gap);
 		explicit BeaconModule(ReservationTable *bc_table);
 		virtual ~BeaconModule() = default;
@@ -48,18 +55,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Number of candidate slots that should be considered when an initial beacon slot is chosen. */
 		const unsigned int n_beacon_slot_candidates = 3;
 		/** The minimum interval in slots that should be kept in-between beacons. */
-		unsigned int beacon_offset = min_beacon_offset;
-		/** Beacon interval minimum and maximum. */
-		const unsigned int min_beacon_offset = 80, /* 80*12ms=960ms */
-						   max_beacon_offset = 25000; /* 5min */
+		unsigned int beacon_offset = MIN_BEACON_OFFSET;
 	    /** Minimum number of time slots to next beacon slot of any user. */
 	    const unsigned int min_beacon_gap;
 		/** The broadcast channel ReservationTable. */
 		ReservationTable *bc_table = nullptr;
 		/** Whether this node has performed network entry. */
 		bool is_connected = false;
+		/** Target collision probability for beacon broadcasts. */
+		double beacon_coll_prob = .01;
 	};
 }
+
+
 
 
 #endif //TUHH_INTAIRNET_MC_SOTDMA_BEACONMODULE_HPP

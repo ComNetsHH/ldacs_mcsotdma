@@ -34,8 +34,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				BeaconModule mod = BeaconModule(bc_table, min_beacon_gap);
 				for (unsigned int num_active_neighbors = 1; num_active_neighbors < 1000; num_active_neighbors++) {
 					unsigned int beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
-					CPPUNIT_ASSERT(beacon_offset >= mod.min_beacon_offset);
-					CPPUNIT_ASSERT(beacon_offset <= mod.max_beacon_offset);
+					CPPUNIT_ASSERT(beacon_offset >= mod.MIN_BEACON_OFFSET);
+					CPPUNIT_ASSERT(beacon_offset <= mod.MAX_BEACON_OFFSET);
 				}
 			}
 		}

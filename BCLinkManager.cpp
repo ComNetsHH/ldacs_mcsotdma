@@ -8,10 +8,12 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
+
 BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
-	: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), min_beacon_gap(min_beacon_gap) {
-	contention_estimator = ContentionEstimator(beacon_offset);
-}
+	: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac),
+	contention_estimator(),
+	congestion_estimator(BeaconModule::INITIAL_BEACON_OFFSET),
+	beacon_module(nullptr, min_beacon_gap) {}
 
 void BCLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 
@@ -84,8 +86,8 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *this << "::onSlotStart(" << num_slots << ") -> ";
 
-	for (uint64_t t = 0; t < num_slots; t++)
-		contention_estimator.update();
+	contention_estimator.update(num_slots);
+//	congestion_estimator.update(num_slots);
 	if (current_reservation_table->getReservation(0).isIdle()) {
 		coutd << "marking BC reception" << std::endl;
 		try {
@@ -140,7 +142,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 	coutd << *this << "::broadcastSlotSelection -> ";
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
-	unsigned int num_candidates = getNumCandidateSlots(this->bc_coll_prob);
+	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, 1, 1, 1, false);
 	if (candidate_slots.empty())
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
@@ -167,9 +169,6 @@ void BCLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::P
 }
 
 void BCLinkManager::processIncomingBase(L2HeaderBase*& header) {
-	MacId sender = header->src_id;
-	contention_estimator.reportNonBeaconBroadcast(sender);
-	coutd << "updated contention -> ";
 }
 
 void BCLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
@@ -191,4 +190,18 @@ BCLinkManager::~BCLinkManager() {
 		delete pair.first;
 		delete pair.second;
 	}
+}
+
+void BCLinkManager::assign(const FrequencyChannel* channel) {
+	LinkManager::assign(channel);
+	beacon_module.setBcReservationTable(current_reservation_table);
+}
+
+void BCLinkManager::onPacketReception(L2Packet*& packet) {
+	LinkManager::onPacketReception(packet);
+	// Congestion is concerned with *any* received broadcast
+	congestion_estimator.reportBroadcast(packet->getOrigin());
+	// Contention is only concerned with non-beacon broadcasts
+	if (packet->getBeaconIndex() == -1)
+		contention_estimator.reportNonBeaconBroadcast(packet->getOrigin());
 }
