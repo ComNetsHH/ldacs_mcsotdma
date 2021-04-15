@@ -63,12 +63,24 @@ bool Reservation::isTxCont() const {
 	return action == TX_CONT;
 }
 
+bool Reservation::isBeaconTx() const {
+	return action == TX_BEACON;
+}
+
 bool Reservation::isRx() const {
 	return action == RX;
 }
 
 bool Reservation::isRxCont() const {
 	return action == RX_CONT;
+}
+
+bool Reservation::isBeaconRx() const {
+	return action == RX_BEACON;
+}
+
+bool Reservation::isBeacon() const {
+	return isBeaconRx() || isBeaconTx();
 }
 
 bool Reservation::isLocked() const {
