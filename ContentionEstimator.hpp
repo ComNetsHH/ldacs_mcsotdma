@@ -25,9 +25,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void reportNonBeaconBroadcast(const MacId& id);
 
 		/**
-		 * Update the estimates. Should be called every slot.
+		 * Update the estimates.
 		 */
-		void update();
+		void update(size_t num_slots);
 
 		/**
 		 * @param id
@@ -53,8 +53,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		double getAverageBroadcastRate() const;
 
 	protected:
+		/** Number of slots to aggregate for contention estimation on the broadcast channel. */
+		const unsigned int DEFAULT_CONTENTION_WINDOW_SIZE = 5000;
 		std::map<MacId, MovingAverage> contention_estimates;
-		std::map<MacId, bool> received_broadcast_on_this_slot;
+		MacId id_of_broadcast_this_slot = SYMBOLIC_ID_UNSET;
 		size_t horizon;
 	};
 }
