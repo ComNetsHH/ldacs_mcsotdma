@@ -35,6 +35,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		bool isConnected() const;
 
+		bool shouldSendBeaconThisSlot() const;
+
+		void update(size_t num_slots);
+
+		void scheduleNextBeacon();
+
+		/**
+		 * @return Current beacon offset.
+		 */
+		unsigned int getBeaconOffset() const;
+
 	protected:
 		/**
 		 * @param random_choice Whether to choose randomly from a number of viable candidates.
@@ -56,6 +67,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int n_beacon_slot_candidates = 3;
 		/** The minimum interval in slots that should be kept in-between beacons. */
 		unsigned int beacon_offset = MIN_BEACON_OFFSET;
+		unsigned int next_beacon_in = beacon_offset;
 	    /** Minimum number of time slots to next beacon slot of any user. */
 	    const unsigned int min_beacon_gap;
 		/** The broadcast channel ReservationTable. */

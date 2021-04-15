@@ -72,36 +72,90 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_request->getRequestIndex() > -1);
 		}
 
-		void testCongestion() {
+		void testContention() {
 			auto *broadcast_packet = new L2Packet();
 			broadcast_packet->addMessage(new L2HeaderBase(MacId(42), 0, 0, 0, 0), nullptr);
 			broadcast_packet->addMessage(new L2HeaderBroadcast(), nullptr);
 
 			// Zero broadcast rate so far.
-			CPPUNIT_ASSERT_EQUAL(0.0, link_manager->contention_estimator.getAverageBroadcastRate());
+			CPPUNIT_ASSERT_EQUAL(0.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
 			link_manager->onSlotStart(1);
 			// Receive one packet.
 			link_manager->onPacketReception(broadcast_packet);
-			link_manager->onSlotEnd();
-			link_manager->onSlotStart(1);
 			// 100% broadcasts so far
-			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageBroadcastRate());
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
 			link_manager->onSlotStart(1);
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+			link_manager->onSlotEnd();
 			// 50% broadcasts so far
-			CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageBroadcastRate());
-			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
 			link_manager->onSlotStart(1);
-			// one broadcast in three slots so far
-			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->contention_estimator.getAverageBroadcastRate());
+			CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 			link_manager->onSlotEnd();
+			// one broadcast in three slots so far
+			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
+			link_manager->onSlotStart(1);
+			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(1.0/4.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
 			link_manager->onSlotStart(1);
 			L2Packet *copy = broadcast_packet->copy();
 			link_manager->onPacketReception(copy);
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
 			link_manager->onSlotStart(1);
 			// two broadcast in five slots so far
-			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageBroadcastRate());
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+		}
+
+		void testCongestionWithBeacon() {
+			auto *beacon_packet = new L2Packet();
+			beacon_packet->addMessage(new L2HeaderBase(MacId(42), 0, 0, 0, 0), nullptr);
+			beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
+
+			// Zero broadcast rate so far.
+			CPPUNIT_ASSERT_EQUAL(0.0, link_manager->congestion_estimator.getCongestion());
+			// Receive one packet.
+			link_manager->onSlotStart(1);
+			link_manager->onPacketReception(beacon_packet);
+			// 100% broadcasts so far
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->congestion_estimator.getCongestion());
+
+			link_manager->onSlotStart(1);
+			// 50% broadcasts so far
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(.5, link_manager->congestion_estimator.getCongestion());
+
+			link_manager->onSlotStart(1);
+			link_manager->onSlotEnd();
+			// one broadcast in three slots so far
+			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->congestion_estimator.getCongestion());
+
+			link_manager->onSlotStart(1);
+			beacon_packet = new L2Packet();
+			beacon_packet->addMessage(new L2HeaderBase(MacId(42), 0, 0, 0, 0), nullptr);
+			beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
+			link_manager->onPacketReception(beacon_packet);
+			// two broadcast in five slots so far
+			CPPUNIT_ASSERT_EQUAL(2.0/4.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(2.0/4.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotStart(1);
+			CPPUNIT_ASSERT_EQUAL(2.0/4.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->congestion_estimator.getCongestion());
 		}
 
 //		void testSetBeaconHeader() {
@@ -215,7 +269,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
 		CPPUNIT_TEST(testBroadcast);
 		CPPUNIT_TEST(testSendLinkRequestOnBC);
-		CPPUNIT_TEST(testCongestion);
+		CPPUNIT_TEST(testContention);
+		CPPUNIT_TEST(testCongestionWithBeacon);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

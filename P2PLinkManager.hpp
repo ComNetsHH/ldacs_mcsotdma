@@ -53,14 +53,14 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				void update(unsigned int num_slots) {
 					// Update counter until this control message is due.
 					if (remaining_offset < num_slots)
-						throw std::invalid_argument("ControlMessageReservation::update would decrement the remaining slots past zero - did we miss the corresponding slot?!");
+						throw std::invalid_argument("ControlMessageReservation::onSlotEnd would decrement the remaining slots past zero - did we miss the corresponding slot?!");
 					remaining_offset -= num_slots;
 
 					// Update payload slot offsets to reflect a correct offset with respect to the current time.
 					for (auto &pair : payload->proposed_resources) {
 						for (unsigned int& i : pair.second) {
 							if (i < num_slots)
-								throw std::invalid_argument("ControlMessageReservation::update would decrement a slot offset past zero. Are we late with sending this reply?");
+								throw std::invalid_argument("ControlMessageReservation::onSlotEnd would decrement a slot offset past zero. Are we late with sending this reply?");
 							i -= num_slots;
 						}
 					}

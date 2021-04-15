@@ -27,14 +27,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(0.0, estimator->getCongestion());
 			for (unsigned int t = 0; t < horizon; t++) {
 				estimator->reportBroadcast(MacId(t));
-				estimator->update(1);
+				estimator->onSlotEnd();
 			}
 			CPPUNIT_ASSERT_EQUAL(1.0, estimator->getCongestion());
 			CPPUNIT_ASSERT_EQUAL(horizon, estimator->getNumActiveNeighbors());
 			for (unsigned int t = 0; t < horizon; t++)
 				CPPUNIT_ASSERT_EQUAL(true, estimator->isActive(MacId(t)));
 			CPPUNIT_ASSERT_EQUAL(false, estimator->isActive(MacId(horizon)));
-			CPPUNIT_ASSERT_THROW(estimator->update(1), std::runtime_error);
+			CPPUNIT_ASSERT_THROW(estimator->onSlotEnd(), std::runtime_error);
 			estimator->reset(horizon);
 			CPPUNIT_ASSERT_EQUAL(0.0, estimator->getCongestion());
 
@@ -42,21 +42,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, horizon % 2 == 0);
 			for (unsigned int t = 0; t < horizon / 2; t++) {
 				estimator->reportBroadcast(MacId(t));
-				estimator->update(1);
+				estimator->onSlotEnd();
 			}
 			// Getting the congestion returns the congestion *so far*.
 			CPPUNIT_ASSERT_EQUAL(1.0, estimator->getCongestion());
 			CPPUNIT_ASSERT_EQUAL(horizon, estimator->getNumActiveNeighbors());
 			// No more broadcasts.
 			for (unsigned int t = 0; t < horizon / 2; t++)
-				estimator->update(1);
+				estimator->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(.5, estimator->getCongestion());
 			CPPUNIT_ASSERT_EQUAL(horizon, estimator->getNumActiveNeighbors());
 
 			// Now one full horizon of zero broadcasts.
 			estimator->reset(horizon);
 			for (unsigned int t = 0; t < horizon; t++)
-				estimator->update(1);
+				estimator->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(.0, estimator->getCongestion());
 			// Should still report the 50% of users from last round.
 			CPPUNIT_ASSERT_EQUAL(horizon / 2, estimator->getNumActiveNeighbors());
@@ -64,7 +64,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Another empty round.
 			estimator->reset(horizon);
 			for (unsigned int t = 0; t < horizon; t++)
-				estimator->update(1);
+				estimator->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(.0, estimator->getCongestion());
 			// Now zero users should be reported as active.
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), estimator->getNumActiveNeighbors());

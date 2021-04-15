@@ -27,7 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * Update the estimates.
 		 */
-		void update(size_t num_slots);
+		void onSlotEnd();
 
 		/**
 		 * @param id
@@ -50,7 +50,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Active means that their current estimate is larger than zero.
 		 * @return Average active neighbor broadcast rate.
 		 */
-		double getAverageBroadcastRate() const;
+		double getAverageNonBeaconBroadcastRate() const;
 
 	protected:
 		/** Number of slots to aggregate for contention estimation on the broadcast channel. */

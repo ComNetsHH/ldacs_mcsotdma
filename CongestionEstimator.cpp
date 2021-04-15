@@ -9,18 +9,20 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 CongestionEstimator::CongestionEstimator(size_t horizon) : horizon(horizon), congestion_average(horizon), num_slots_so_far(0) {}
 
 void CongestionEstimator::reportBroadcast(const MacId& id) {
+	if (broadcast_reported_this_slot)
+		throw std::runtime_error("CongestionEstimator::reportBroadcast called twice this slot.");
 	congestion_average.put(1);
 	active_neighbors_list.insert(id);
 	broadcast_reported_this_slot = true;
 }
 
-void CongestionEstimator::update(size_t num_slots) {
+void CongestionEstimator::onSlotEnd() {
 	if (!broadcast_reported_this_slot)
 		congestion_average.put(0);
 	broadcast_reported_this_slot = false;
-	num_slots_so_far += num_slots;
+	num_slots_so_far += 1;
 	if (num_slots_so_far > horizon)
-		throw std::runtime_error("CongestionEstimation has exceeded its horizon!");
+		throw std::runtime_error("CongestionEstimation has exceeded its horizon - it should have been reset on the last beacon!");
 }
 
 void CongestionEstimator::reset(size_t new_horizon) {

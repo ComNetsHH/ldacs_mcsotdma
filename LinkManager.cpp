@@ -94,7 +94,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			coutd << "' -> ";
 	}
 	statistic_num_received_packets++;
-	assert(!packet->getHeaders().empty() && "OldLinkManager::onPacketReception(empty packet)");
+	assert(!packet->getHeaders().empty() && "LinkManager::onPacketReception(empty packet)");
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
 	bool contains_data = false;
@@ -116,7 +116,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 //				header = nullptr;
 //				delete payload;
 //				payload = nullptr;
-				coutd << std::endl;
 				statistic_num_received_beacons++;
 				break;
 			}

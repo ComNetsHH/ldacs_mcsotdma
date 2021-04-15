@@ -818,8 +818,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			num_slots = 0;
 			while (lm_me->link_status != LinkManager::link_not_established && num_slots++ < max_slots) {
-				mac_layer_me->update(lm_me->burst_offset);
-				mac_layer_you->update(lm_you->burst_offset);
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
 				mac_layer_me->execute();
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
@@ -1510,12 +1510,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 			// Proceed to one more data transmission.
-			mac_layer_me->update(lm_me->burst_offset);
-			mac_layer_you->update(lm_me->burst_offset);
-			mac_layer_me->execute();
-			mac_layer_you->execute();
-			mac_layer_me->onSlotEnd();
-			mac_layer_you->onSlotEnd();
+			for (size_t t = 0; t < lm_me->burst_offset; t++) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
 			// Proceed one more slot.
 			mac_layer_me->update(1);
 			mac_layer_you->update(1);

@@ -17,7 +17,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void reportBroadcast(const MacId& id);
 
-		void update(size_t num_slots);
+		void onSlotEnd();
 
 		void reset(size_t new_horizon);
 

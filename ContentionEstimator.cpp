@@ -22,7 +22,7 @@ void ContentionEstimator::reportNonBeaconBroadcast(const MacId& id) {
 	id_of_broadcast_this_slot = id;
 }
 
-void ContentionEstimator::update(size_t num_slots) {
+void ContentionEstimator::onSlotEnd() {
 	// Put in zero's for all those users that didn't broadcast this slot.
 	for (auto &it : contention_estimates) {
 		const MacId &id = it.first;
@@ -30,8 +30,6 @@ void ContentionEstimator::update(size_t num_slots) {
 			it.second.put(0);
 	}
 	id_of_broadcast_this_slot = SYMBOLIC_ID_UNSET;
-	if (num_slots > 1)
-		update(num_slots - 1);
 }
 
 double ContentionEstimator::getContentionEstimate(const MacId& id) const {
@@ -53,7 +51,7 @@ unsigned int ContentionEstimator::getNumActiveNeighbors() const {
 	return n;
 }
 
-double ContentionEstimator::getAverageBroadcastRate() const {
+double ContentionEstimator::getAverageNonBeaconBroadcastRate() const {
 	double r = 0.0, n = 0.0;
 	for (const auto& estimate : contention_estimates) {
 		double neighbor_rate = estimate.second.get();

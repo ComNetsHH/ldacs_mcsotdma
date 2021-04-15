@@ -27,6 +27,8 @@ bool BeaconModule::isConnected() const {
 unsigned int BeaconModule::chooseNextBeaconSlot(bool random_choice) const {
 	std::vector<unsigned int> viable_slots;
 //	for (unsigned int t = beacon_offset)
+
+	return beacon_offset;
 }
 
 unsigned int BeaconModule::computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const {
@@ -37,3 +39,23 @@ unsigned int BeaconModule::computeBeaconInterval(double target_congestion, doubl
 	// Return within allowed bounds.
 	return std::min(MAX_BEACON_OFFSET, std::max(MIN_BEACON_OFFSET, tau));
 }
+
+bool BeaconModule::shouldSendBeaconThisSlot() const {
+	return next_beacon_in == 0;
+}
+
+void BeaconModule::update(size_t num_slots) {
+	if (num_slots > next_beacon_in)
+		throw std::invalid_argument("BeaconModule::onSlotEnd(" + std::to_string(num_slots) + ") misses next beacon slot!");
+	next_beacon_in -= num_slots;
+}
+
+void BeaconModule::scheduleNextBeacon() {
+	next_beacon_in = chooseNextBeaconSlot(false);
+}
+
+unsigned int BeaconModule::getBeaconOffset() const {
+	return this->beacon_offset;
+}
+
+

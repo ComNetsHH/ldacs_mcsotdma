@@ -33,6 +33,12 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	packet->addMessage(base_header, nullptr);
 	packet->addMessage(new L2HeaderBroadcast(), nullptr);
 	unsigned long capacity = mac->getCurrentDatarate();
+
+	// Put highest priority on beacons.
+	if (beacon_module.shouldSendBeaconThisSlot()) {
+		// !TODO
+	}
+
 	// Put a priority on link requests.
 	while (!link_requests.empty()) {
 		// Fetch next link request.
@@ -86,8 +92,9 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *this << "::onSlotStart(" << num_slots << ") -> ";
 
-	contention_estimator.update(num_slots);
-//	congestion_estimator.update(num_slots);
+	// Update modules.
+	beacon_module.update(num_slots);
+	// Mark reception slot if there's nothing else to do.
 	if (current_reservation_table->getReservation(0).isIdle()) {
 		coutd << "marking BC reception" << std::endl;
 		try {
@@ -104,6 +111,15 @@ void BCLinkManager::onSlotEnd() {
 			throw std::runtime_error("BCLinkManager::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
 		next_broadcast_slot -= 1;
 	}
+	if (beacon_module.shouldSendBeaconThisSlot()) {
+		// Schedule next beacon slot.
+		beacon_module.scheduleNextBeacon();
+		// Reset congestion estimator with new beacon interval.
+		congestion_estimator.reset(beacon_module.getBeaconOffset());
+	}
+	// Update estimators.
+	contention_estimator.onSlotEnd();
+	congestion_estimator.onSlotEnd();
 }
 
 void BCLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {
@@ -116,7 +132,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	// Average broadcast rate.
-	double r = contention_estimator.getAverageBroadcastRate();
+	double r = contention_estimator.getAverageNonBeaconBroadcastRate();
 	// Number of active neighbors.
 	unsigned int m = contention_estimator.getNumActiveNeighbors();
 	double num_candidates = 0;
@@ -156,7 +172,7 @@ void BCLinkManager::scheduleBroadcastSlot() {
 }
 
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	LinkManager::processIncomingBeacon(origin_id, header, payload);
+	// !TODO
 }
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
@@ -198,10 +214,11 @@ void BCLinkManager::assign(const FrequencyChannel* channel) {
 }
 
 void BCLinkManager::onPacketReception(L2Packet*& packet) {
-	LinkManager::onPacketReception(packet);
 	// Congestion is concerned with *any* received broadcast
 	congestion_estimator.reportBroadcast(packet->getOrigin());
 	// Contention is only concerned with non-beacon broadcasts
 	if (packet->getBeaconIndex() == -1)
 		contention_estimator.reportNonBeaconBroadcast(packet->getOrigin());
+
+	LinkManager::onPacketReception(packet);
 }

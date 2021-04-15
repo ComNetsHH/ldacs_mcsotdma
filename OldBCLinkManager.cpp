@@ -131,7 +131,7 @@ void OldBCLinkManager::onSlotStart(uint64_t num_slots) {
 	traffic_estimate.reset();
 
 	for (uint64_t t = 0; t < num_slots; t++)
-		contention_estimator.update(num_slots);
+		contention_estimator.onSlotEnd();
 	if (current_reservation_table->getReservation(0).isIdle()) {
 		coutd << "marking BC reception: ";
 		markReservations(1, 0, 0, 1, SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX);
@@ -143,7 +143,7 @@ unsigned int OldBCLinkManager::getNumCandidateSlots(double target_collision_prob
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	// Average broadcast rate.
-	double r = contention_estimator.getAverageBroadcastRate();
+	double r = contention_estimator.getAverageNonBeaconBroadcastRate();
 	// Number of active neighbors.
 	unsigned int m = contention_estimator.getNumActiveNeighbors();
 	double expected_num_bc_accesses = 0;
