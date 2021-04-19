@@ -19,6 +19,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setUp() override {
 			planning_horizon = 1024;
 			bc_table = new ReservationTable(planning_horizon);
+
 			beacon_module = new BeaconModule();
 			beacon_module->setBcReservationTable(bc_table);
 		}
@@ -81,12 +82,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				p2p_table.mark(t, Reservation(MacId(12), Reservation::TX));
 
 			BeaconPayload payload = BeaconPayload();
+			uint64_t bc_freq = 1000, p2p_freq = 2000;
+			payload.encode(1000, bc_table);
+			payload.encode(2000, &p2p_table);
+
+			const auto &bc_vec = payload.local_reservations[bc_freq];
+			CPPUNIT_ASSERT_EQUAL(bc_table->countReservedTxSlots(SYMBOLIC_LINK_ID_BROADCAST), bc_vec.size());
+			for (size_t i = 0; i < marked_bc_slots.size(); i++)
+				CPPUNIT_ASSERT_EQUAL(marked_bc_slots.at(i), bc_vec.at(i));
+
+			const auto &p2p_vec = payload.local_reservations[p2p_freq];
+			CPPUNIT_ASSERT_EQUAL(p2p_table.countReservedTxSlots(MacId(12)), p2p_vec.size());
+			for (size_t i = 0; i < marked_p2p_slots.size(); i++)
+				CPPUNIT_ASSERT_EQUAL(marked_p2p_slots.at(i), p2p_vec.at(i));
 		}
 
 		CPPUNIT_TEST_SUITE(BeaconModuleTests);
 			CPPUNIT_TEST(testBeaconInterval);
 			CPPUNIT_TEST(testChooseNextBeaconSlot);
 			CPPUNIT_TEST(testKeepGapPattern);
+			CPPUNIT_TEST(testBeaconMessage);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

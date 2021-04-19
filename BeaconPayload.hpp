@@ -40,16 +40,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			return bits;
 		}
 
-		void encode(const ReservationTable *table) {
-			FrequencyChannel channel = FrequencyChannel(*table->getLinkedChannel());
+		void encode(uint64_t center_freq, const ReservationTable *table) {
+			auto &vec = local_reservations[center_freq];
 			for (int t = 0; t < table->getPlanningHorizon(); t++) {
 				const Reservation &res = table->getReservation(t);
 				if (res.isBeacon() || res.isTx() || res.isTxCont() || res.isRx() || res.isRxCont())
-					local_reservations.at(channel).push_back(t);
+					vec.push_back(t);
 			}
 		}
 
-		std::map<FrequencyChannel, std::vector<unsigned int>> local_reservations;
+		std::map<uint64_t , std::vector<unsigned int>> local_reservations;
 	};
 
 }
