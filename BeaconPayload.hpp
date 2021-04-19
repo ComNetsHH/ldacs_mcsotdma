@@ -19,9 +19,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	public:
 		static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8;
 
-		explicit BeaconPayload(const MacId& beacon_owner_id) : beacon_owner_id(beacon_owner_id) {}
+		BeaconPayload() = default;
 
-		BeaconPayload(const BeaconPayload& other) : BeaconPayload(other.beacon_owner_id) {
+		BeaconPayload(const BeaconPayload& other) : BeaconPayload() {
 			for (const auto& pair : other.local_reservations)
 				for (unsigned int t : pair.second)
 					local_reservations.at(pair.first).push_back(t);
@@ -40,8 +40,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			return bits;
 		}
 
+		void encode(const ReservationTable *table) {
+			FrequencyChannel channel = FrequencyChannel(*table->getLinkedChannel());
+			for (int t = 0; t < table->getPlanningHorizon(); t++) {
+				const Reservation &res = table->getReservation(t);
+				if (res.isBeacon() || res.isTx() || res.isTxCont() || res.isRx() || res.isRxCont())
+					local_reservations.at(channel).push_back(t);
+			}
+		}
+
 		std::map<FrequencyChannel, std::vector<unsigned int>> local_reservations;
-		const MacId beacon_owner_id;
 	};
 
 }

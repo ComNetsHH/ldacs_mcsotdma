@@ -5,6 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../BeaconModule.hpp"
+#include "../BeaconPayload.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BeaconModuleTests : public CppUnit::TestFixture {
@@ -68,6 +69,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			min_gap = 3;
 			next_slot = beacon_module->chooseNextBeaconSlot(beacon_offset, num_candidates, min_gap);
 			CPPUNIT_ASSERT_EQUAL(beacon_offset + min_gap + 1, next_slot);
+		}
+
+		void testBeaconMessage() {
+			std::vector<unsigned int> marked_bc_slots = {2, 4, 13},
+									  marked_p2p_slots = {12, 55, 65};
+			ReservationTable p2p_table = ReservationTable(bc_table->getPlanningHorizon());
+			for (auto t : marked_bc_slots)
+				bc_table->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+			for (auto t : marked_p2p_slots)
+				p2p_table.mark(t, Reservation(MacId(12), Reservation::TX));
+
+			BeaconPayload payload = BeaconPayload();
 		}
 
 		CPPUNIT_TEST_SUITE(BeaconModuleTests);

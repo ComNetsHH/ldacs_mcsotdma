@@ -162,44 +162,6 @@ bool ReservationTable::isUtilized(int32_t start, uint32_t length) const {
 	return !this->isIdle(start, length);
 }
 
-int32_t ReservationTable::findEarliestIdleRange(int32_t start, uint32_t length, bool consider_transmitter, bool consider_receivers) const {
-	if (!isValid(start, length))
-		throw std::invalid_argument("Invalid slot range!");
-	if (consider_transmitter && transmitter_reservation_table == nullptr)
-		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_transmitter==true for unset transmitter table.");
-	if (consider_receivers && receiver_reservation_tables.empty())
-		throw std::runtime_error("ReservationTable::findEarliestIdleRange with consider_receivers==true for unset receiver tables.");
-	bool tx_idle, rx_idle;
-	for (int32_t i = start; i < int32_t(this->planning_horizon); i++) {
-		if (this->isIdle(i, length)) {
-			// Neither TX nor RX matter
-			if (!consider_transmitter && !consider_receivers)
-				return i;
-				// Both RX && TX matter
-			else if (consider_transmitter && consider_receivers) {
-				tx_idle = !transmitter_reservation_table->isIdle(i, length);
-				rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable* table) {
-					return table->isIdle(i, length);
-				});
-				if (tx_idle && rx_idle)
-					return i;
-				// TX && !RX
-			} else if (consider_transmitter && !consider_receivers) {
-				if (transmitter_reservation_table->isIdle(i, length))
-					return i;
-				// !TX && RX
-			} else {
-				rx_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [i, length](ReservationTable* table) {
-					return table->isIdle(i, length);
-				});
-				if (rx_idle)
-					return i;
-			}
-		}
-	}
-	throw std::range_error("No idle slot range of specified length found.");
-}
-
 unsigned int ReservationTable::findEarliestIdleSlots(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const {
 	if (!isValid(start_offset, burst_length))
 		throw std::invalid_argument("Invalid slot range!");
@@ -308,26 +270,6 @@ uint64_t ReservationTable::getNumIdleSlots() const {
 	return this->num_idle_future_slots;
 }
 
-std::vector<int32_t> ReservationTable::findCandidateSlots(unsigned int min_offset, unsigned int num_candidates, unsigned int range_length, bool consider_transmitter, bool consider_receivers) const {
-	std::vector<int32_t> start_slots;
-	int32_t last_offset = min_offset;
-	for (size_t i = 0; i < num_candidates; i++) {
-		// Try to find another slot range.
-		try {
-			int32_t start_slot = findEarliestIdleRange(last_offset, range_length, consider_transmitter, consider_receivers);
-			start_slots.push_back(start_slot);
-			last_offset = start_slot + 1; // Next attempt, look later than current one.
-		} catch (const std::range_error& e) {
-			// This is thrown if no idle range can be found.
-			break; // Stop if no more ranges can be found.
-		} catch (const std::invalid_argument& e) {
-			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
-			break; // Stop if no more ranges can be found.
-		} // all other exceptions should still end execution
-	}
-	return start_slots;
-}
-
 std::vector<unsigned int> ReservationTable::findCandidates(unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init) const {
 	std::vector<unsigned int> start_slots;
 	unsigned int last_offset = min_offset;
@@ -348,50 +290,6 @@ std::vector<unsigned int> ReservationTable::findCandidates(unsigned int num_slot
 	return start_slots;
 }
 
-bool ReservationTable::lock(const std::vector<int32_t>& slot_offsets, bool lock_tx, bool lock_rx) {
-	// Ensure that you *can* lock all tables that should be locked *before* actually doing so.
-	if (!canLock(slot_offsets))
-		return false;
-	if (lock_tx) {
-		if (transmitter_reservation_table == nullptr)
-			throw std::runtime_error("ReservationTable::lock with lock_tx=true and unset transmitter reservation table.");
-		if (!transmitter_reservation_table->canLock(slot_offsets))
-			return false;
-	}
-	if (lock_rx) {
-		if (receiver_reservation_tables.empty())
-			throw std::runtime_error("ReservationTable::lock with lock_rx=true and unset receiver reservation table.");
-		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offsets](ReservationTable* table) {
-			return table->canLock(slot_offsets);
-		})) {
-			return false;
-		}
-	}
-	// Then apply locking.
-	for (int32_t t : slot_offsets)
-		slot_utilization_vec.at(convertOffsetToIndex(t)).setAction(Reservation::LOCKED);
-//		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).lock())
-//			throw std::runtime_error("ReservationTable::lock didn't succeed."); // canLock must've been broken, so throw an error
-
-	if (lock_tx)
-		if (!transmitter_reservation_table->lock(slot_offsets, false, false))
-			throw std::runtime_error("ReservationTable::lock didn't succeed for transmitter table."); // canLock must've been broken, so throw an error
-	if (lock_rx) {
-		bool success = false;
-		for (auto* rx_table : receiver_reservation_tables) {
-			if (rx_table->canLock(slot_offsets)) {
-				if (!rx_table->lock(slot_offsets, false, false))
-					throw std::runtime_error("ReservationTable::lock didn't succeed for receiver table."); // canLock must've been broken, so throw an error
-				// Lock just *one* receiver table, i.e. the first one where you can.
-				success = true;
-				break;
-			}
-		}
-		return success;
-	}
-	return true;
-}
-
 void ReservationTable::lock(unsigned int slot_offset) {
 	// Nothing to do if it's already locked.
 	if (isLocked(slot_offset))
@@ -401,13 +299,6 @@ void ReservationTable::lock(unsigned int slot_offset) {
 		throw std::range_error("ReservationTable::lock for non-idle and non-locked slot.");
 	// Then lock.
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::LOCKED);
-}
-
-bool ReservationTable::canLock(const std::vector<int32_t>& slot_offsets) const {
-	for (int32_t t : slot_offsets)
-		if (!slot_utilization_vec.at(convertOffsetToIndex(t)).isIdle())
-			return false;
-	return true;
 }
 
 bool ReservationTable::canLock(unsigned int slot_offset) const {
