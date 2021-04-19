@@ -35,11 +35,11 @@ unsigned int BeaconModule::chooseNextBeaconSlot(unsigned int min_beacon_offset, 
 			// ... ensure that in both directions of time, at least the min of non-beacon slots is kept
 			bool viable = true;
 			// ... check past
-			for (int t_past = 1; viable && t_past < (int) min_gap_to_next_beacon; t++)
-				viable = !bc_table->getReservation(t - t_past).isBeacon();
+			for (int t_past = 1; viable && t_past < (int) min_gap_to_next_beacon + 1; t_past++)
+				viable = !bc_table->getReservation(t - t_past).isBeacon(); // checks for both own beacon tx and rx of other users' beacons
 			// ... check future
 			if (viable)
-				for (int t_future = 1; viable && t_future < (int) min_gap_to_next_beacon; t++)
+				for (int t_future = 1; viable && t_future < (int) min_gap_to_next_beacon + 1; t_future++)
 					viable = !bc_table->getReservation(t + t_future).isBeacon();
 			// ... and save the slot if all conditions are met.
 			if (viable)
