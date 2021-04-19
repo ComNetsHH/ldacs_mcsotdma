@@ -34,7 +34,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (unsigned int t = 0; t < horizon; t++)
 				CPPUNIT_ASSERT_EQUAL(true, estimator->isActive(MacId(t)));
 			CPPUNIT_ASSERT_EQUAL(false, estimator->isActive(MacId(horizon)));
-			CPPUNIT_ASSERT_THROW(estimator->onSlotEnd(), std::runtime_error);
 			estimator->reset(horizon);
 			CPPUNIT_ASSERT_EQUAL(0.0, estimator->getCongestion());
 

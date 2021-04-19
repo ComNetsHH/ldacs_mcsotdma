@@ -11,9 +11,11 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
 	: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac),
-	contention_estimator(),
-	congestion_estimator(BeaconModule::INITIAL_BEACON_OFFSET),
-	beacon_module(nullptr, min_beacon_gap) {}
+		contention_estimator(),
+		congestion_estimator(BeaconModule::INITIAL_BEACON_OFFSET),
+		beacon_module() {
+	beacon_module.setMinBeaconGap(min_beacon_gap);
+}
 
 void BCLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 
@@ -35,9 +37,9 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	unsigned long capacity = mac->getCurrentDatarate();
 
 	// Put highest priority on beacons.
-	if (beacon_module.shouldSendBeaconThisSlot()) {
-		// !TODO
-	}
+//	if (beacon_module.shouldSendBeaconThisSlot()) {
+//		// !TODO
+//	}
 
 	// Put a priority on link requests.
 	while (!link_requests.empty()) {
@@ -91,9 +93,6 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *this << "::onSlotStart(" << num_slots << ") -> ";
-
-	// Update modules.
-	beacon_module.update(num_slots);
 	// Mark reception slot if there's nothing else to do.
 	if (current_reservation_table->getReservation(0).isIdle()) {
 		coutd << "marking BC reception" << std::endl;
@@ -113,13 +112,14 @@ void BCLinkManager::onSlotEnd() {
 	}
 	if (beacon_module.shouldSendBeaconThisSlot()) {
 		// Schedule next beacon slot.
-		beacon_module.scheduleNextBeacon();
+		beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors());
 		// Reset congestion estimator with new beacon interval.
 		congestion_estimator.reset(beacon_module.getBeaconOffset());
 	}
 	// Update estimators.
 	contention_estimator.onSlotEnd();
 	congestion_estimator.onSlotEnd();
+	beacon_module.onSlotEnd();
 }
 
 void BCLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {

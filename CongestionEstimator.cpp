@@ -2,11 +2,12 @@
 // Created by seba on 4/14/21.
 //
 
+#include <iostream>
 #include "CongestionEstimator.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-CongestionEstimator::CongestionEstimator(size_t horizon) : horizon(horizon), congestion_average(horizon), num_slots_so_far(0) {}
+CongestionEstimator::CongestionEstimator(size_t horizon) : horizon(horizon), congestion_average(horizon) {}
 
 void CongestionEstimator::reportBroadcast(const MacId& id) {
 	if (broadcast_reported_this_slot)
@@ -20,9 +21,6 @@ void CongestionEstimator::onSlotEnd() {
 	if (!broadcast_reported_this_slot)
 		congestion_average.put(0);
 	broadcast_reported_this_slot = false;
-	num_slots_so_far += 1;
-	if (num_slots_so_far > horizon)
-		throw std::runtime_error("CongestionEstimation has exceeded its horizon - it should have been reset on the last beacon!");
 }
 
 void CongestionEstimator::reset(size_t new_horizon) {
@@ -33,7 +31,6 @@ void CongestionEstimator::reset(size_t new_horizon) {
 	last_active_neighbors_list = active_neighbors_list;
 	// And clear the current ones.
 	active_neighbors_list.clear();
-	num_slots_so_far = 0;
 }
 
 double CongestionEstimator::getCongestion() const {

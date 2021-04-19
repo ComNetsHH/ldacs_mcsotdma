@@ -31,7 +31,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MovingAverage congestion_average;
 		std::set<MacId> active_neighbors_list, last_active_neighbors_list;
 		size_t horizon;
-		size_t num_slots_so_far;
 		bool broadcast_reported_this_slot = false;
 	};
 }

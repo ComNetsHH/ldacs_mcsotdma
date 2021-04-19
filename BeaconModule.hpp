@@ -7,6 +7,7 @@
 
 
 #include "ReservationTable.hpp"
+#include <random>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 /**
@@ -24,8 +25,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		static const unsigned int INITIAL_BEACON_OFFSET;
 
 	public:
-		BeaconModule(ReservationTable *bc_table, unsigned int min_beacon_gap);
-		explicit BeaconModule(ReservationTable *bc_table);
+		BeaconModule(ReservationTable *bc_table, unsigned int min_beacon_gap, double congestion_goal);
+		explicit BeaconModule();
 		virtual ~BeaconModule() = default;
 
 		void setBcReservationTable(ReservationTable *broadcast_reservation_table);
@@ -37,21 +38,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool shouldSendBeaconThisSlot() const;
 
-		void update(size_t num_slots);
+		void onSlotEnd();
 
-		void scheduleNextBeacon();
+		void scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors);
 
 		/**
 		 * @return Current beacon offset.
 		 */
 		unsigned int getBeaconOffset() const;
 
+		/**
+		 * @param n Minimum number of non-beacon-reserved slots to keep when scheduling a new beacon slot.
+		 */
+		void setMinBeaconGap(unsigned int n);
+
 	protected:
 		/**
 		 * @param random_choice Whether to choose randomly from a number of viable candidates.
 		 * @return A time slot to use for the next beacon.
 		 */
-		unsigned int chooseNextBeaconSlot(bool random_choice) const;
+		unsigned int chooseNextBeaconSlot(unsigned int min_beacon_offset, unsigned int num_candidates, unsigned int min_gap_to_next_beacon);
 
 		/**
 		 *
@@ -62,20 +68,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const;
 
+		unsigned long getRandomInt(size_t start, size_t end);
+
 	protected:
+		/** When scheduling beacon slots, aim to keep this percentage of slots idle in-between two beacon broadcasts. */
+		const double BC_CONGESTION_GOAL;
 		/** Number of candidate slots that should be considered when an initial beacon slot is chosen. */
-		const unsigned int n_beacon_slot_candidates = 3;
+		const unsigned int N_BEACON_SLOT_CANDIDATES = 3;
+		/** Minimum number of time slots to next beacon slot of any user. */
+		unsigned int min_beacon_gap;
+
 		/** The minimum interval in slots that should be kept in-between beacons. */
 		unsigned int beacon_offset = MIN_BEACON_OFFSET;
 		unsigned int next_beacon_in = beacon_offset;
-	    /** Minimum number of time slots to next beacon slot of any user. */
-	    const unsigned int min_beacon_gap;
 		/** The broadcast channel ReservationTable. */
 		ReservationTable *bc_table = nullptr;
 		/** Whether this node has performed network entry. */
 		bool is_connected = false;
 		/** Target collision probability for beacon broadcasts. */
 		double beacon_coll_prob = .01;
+
+		std::random_device* random_device;
+		std::mt19937 generator;
 	};
 }
 

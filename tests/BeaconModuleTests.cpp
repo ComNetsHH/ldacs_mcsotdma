@@ -18,7 +18,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setUp() override {
 			planning_horizon = 1024;
 			bc_table = new ReservationTable(planning_horizon);
-			beacon_module = new BeaconModule(bc_table);
+			beacon_module = new BeaconModule();
+			beacon_module->setBcReservationTable(bc_table);
 		}
 
 		void tearDown() override {
@@ -31,7 +32,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double avg_broadcast_rate = 10.3;
 
 			for (unsigned int min_beacon_gap = 0; min_beacon_gap < 10; min_beacon_gap++) {
-				BeaconModule mod = BeaconModule(bc_table, min_beacon_gap);
+				BeaconModule mod = BeaconModule(bc_table, min_beacon_gap, .45);
 				for (unsigned int num_active_neighbors = 1; num_active_neighbors < 1000; num_active_neighbors++) {
 					unsigned int beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
 					CPPUNIT_ASSERT(beacon_offset >= mod.MIN_BEACON_OFFSET);
