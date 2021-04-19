@@ -6,7 +6,7 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_P2PLINKMANAGER_HPP
 
 #include <stdint-gcc.h>
-#include "NewLinkManager.hpp"
+#include "LinkManager.hpp"
 #include "MovingAverage.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {

@@ -30,8 +30,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testDiscardPacketWhenNoReceiverListens() {
 //            coutd.setVerbose(true);
-			L2Packet packet = L2Packet();
-			phy->onReception(&packet, center_freq1);
+			auto *packet = new L2Packet();
+			phy->onReception(packet, center_freq1);
 			// Should've been discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->statistic_num_received_packets);
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->statistic_num_missed_packets);
@@ -39,10 +39,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Now destine it to us.
 			auto* header = new L2HeaderBase(communication_partner_id, 0, 0, 0, 0);
-			packet.addMessage(header, nullptr);
+			packet->addMessage(header, nullptr);
 			auto* header2 = new L2HeaderUnicast(own_id, false, 0, 0, 0);
-			packet.addMessage(header2, nullptr);
-			phy->onReception(&packet, center_freq1);
+			packet->addMessage(header2, nullptr);
+			phy->onReception(packet, center_freq1);
 			// Should still be discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->statistic_num_received_packets);
 			// But since we're the destination, it should count towards missed packets.
@@ -53,8 +53,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy->tuneReceiver(center_freq1);
 			CPPUNIT_ASSERT_EQUAL(false, phy->rx_frequencies.empty());
 
-			// std::runtime_error because the OldLinkManager will complain that it's not expecting packets.
-			CPPUNIT_ASSERT_THROW(phy->onReception(&packet, center_freq1), std::runtime_error);
+			phy->onReception(packet, center_freq1);
 			// Should *not* have been discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->statistic_num_received_packets);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), mac->statistic_num_packets_received);
@@ -63,7 +62,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			phy->update(1);
 			CPPUNIT_ASSERT_EQUAL(true, phy->rx_frequencies.empty());
-			phy->onReception(&packet, center_freq1);
+			phy->onReception(packet, center_freq1);
 
 			// Should again be discarded - no receiver is tuned *in this time slot*.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->statistic_num_received_packets);

@@ -27,7 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	public:
 		BeaconModule(ReservationTable *bc_table, unsigned int min_beacon_gap, double congestion_goal);
 		explicit BeaconModule();
-		virtual ~BeaconModule() = default;
+		virtual ~BeaconModule();
 
 		void setBcReservationTable(ReservationTable *broadcast_reservation_table);
 

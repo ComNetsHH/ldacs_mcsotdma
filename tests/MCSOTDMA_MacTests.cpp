@@ -9,7 +9,6 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../MCSOTDMA_Mac.hpp"
-#include "../OldLinkManager.hpp"
 #include "MockLayers.hpp"
 #include "../LinkManager.hpp"
 
@@ -66,35 +65,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->link_managers.size());
 			MacId id = MacId(42);
 			mac->notifyOutgoing(1024, id);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), mac->link_managers.size());
-			auto *link_manager = (OldLinkManager*) mac->link_managers.at(id);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), mac->link_managers.size());
+			auto *link_manager = (LinkManager*) mac->link_managers.at(id);
 			CPPUNIT_ASSERT(link_manager);
 			CPPUNIT_ASSERT(id == link_manager->getLinkId());
-//				coutd.setVerbose(false);
-		}
-
-		void testMakeReservation() {
-			// No injected link request yet.
-			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc->control_message_injections.size());
-			mac->notifyOutgoing(1024, communication_partner_id);
-			CPPUNIT_ASSERT(((OldLinkManager*) mac->getLinkManager(communication_partner_id))->link_status == OldLinkManager::Status::awaiting_reply);
-			// Now there should be one.
-			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc->control_message_injections.size());
-		}
-
-		void testUpdate() {
-			testMakeReservation();
-//				coutd.setVerbose(true);
-			// No outgoing packets yet.
-			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->outgoing_packets.size());
-			auto link_manager = (OldLinkManager*) mac->getLinkManager(communication_partner_id);
-			link_manager->link_status = OldLinkManager::link_established;
-			reservation_manager->p2p_reservation_tables.at(0)->mark(1, Reservation(communication_partner_id, Reservation::Action::TX));
-			mac->update(1);
-			mac->execute();
-			// Now there should be one.
-			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->outgoing_packets.size());
-			CPPUNIT_ASSERT(phy->outgoing_packets.at(0)->getBits() <= phy->getCurrentDatarate());
 //				coutd.setVerbose(false);
 		}
 
@@ -120,10 +94,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 
-	CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
+		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testLinkManagerCreation);
-			CPPUNIT_TEST(testMakeReservation);
-			CPPUNIT_TEST(testUpdate);
 			CPPUNIT_TEST(testPositions);
 		CPPUNIT_TEST_SUITE_END();
 	};

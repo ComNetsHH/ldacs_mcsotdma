@@ -4,7 +4,6 @@
 
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
-#include "OldBCLinkManager.hpp"
 #include "P2PLinkManager.hpp"
 #include "BCLinkManager.hpp"
 #include <IPhy.hpp>
@@ -174,16 +173,10 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	} else {
 		// Auto-assign broadcast channel
 		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
-			if (use_new_link_manager)
-				link_manager = new BCLinkManager(reservation_manager, this, 1);
-			else
-				link_manager = new OldBCLinkManager(internal_id, reservation_manager, this);
+			link_manager = new BCLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
-			if (use_new_link_manager)
-				link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
-			else
-				link_manager = new OldLinkManager(internal_id, reservation_manager, this);
+			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
 			// Receiver tables are only set for P2PLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);

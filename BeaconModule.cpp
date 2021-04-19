@@ -16,6 +16,10 @@ BeaconModule::BeaconModule(ReservationTable* bc_table, unsigned int min_beacon_g
 
 BeaconModule::BeaconModule() : BeaconModule(nullptr, 1, .45) {}
 
+BeaconModule::~BeaconModule() {
+	delete random_device;
+}
+
 void BeaconModule::setBcReservationTable(ReservationTable* broadcast_reservation_table) {
 	this->bc_table = broadcast_reservation_table;
 }

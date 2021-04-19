@@ -22,29 +22,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit BeaconPayload(const MacId& beacon_owner_id) : beacon_owner_id(beacon_owner_id) {}
 
 		BeaconPayload(const BeaconPayload& other) : BeaconPayload(other.beacon_owner_id) {
-			for (const auto& item : other.local_reservations)
-				local_reservations.push_back(item);
+			for (const auto& pair : other.local_reservations)
+				for (unsigned int t : pair.second)
+					local_reservations.at(pair.first).push_back(t);
 		}
 
 		Payload* copy() const override {
 			return new BeaconPayload(*this);
 		}
 
-		~BeaconPayload() override {
-			for (const auto& pair : local_reservations)
-				delete pair.second;
-		}
-
 		unsigned int getBits() const override {
 			unsigned int bits = 0;
 			for (auto pair : local_reservations) {
-				bits += pair.second->countReservedTxSlots(beacon_owner_id) * BITS_PER_SLOT;
 				bits += BITS_PER_CHANNEL;
+				bits += pair.second.size() * BITS_PER_SLOT;
 			}
 			return bits;
 		}
 
-		std::vector<std::pair<FrequencyChannel, ReservationTable*>> local_reservations;
+		std::map<FrequencyChannel, std::vector<unsigned int>> local_reservations;
 		const MacId beacon_owner_id;
 	};
 

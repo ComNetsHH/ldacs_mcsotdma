@@ -10,13 +10,10 @@
 #include "ReservationTableTests.cpp"
 #include "ReservationManagerTests.cpp"
 #include "FrequencyChannelTests.cpp"
-#include "LinkManagerTests.cpp"
 #include "BCLinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
 #include "ContentionEstimatorTests.cpp"
-#include "SystemTests.cpp"
 #include "NewSystemTests.cpp"
-#include "LinkManagementEntityTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
 #include "P2PLinkManagerTests.cpp"
 #include "BeaconModuleTests.cpp"
@@ -40,10 +37,6 @@ int main() {
 	runner.addTest(CongestionEstimatorTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(BCLinkManagerTests::suite());
-
-	//	runner.addTest(SystemTests::suite());
-	//	runner.addTest(LinkManagerTests::suite());
-	//	runner.addTest(LinkManagementEntityTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;
