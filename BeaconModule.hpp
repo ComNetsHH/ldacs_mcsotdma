@@ -63,7 +63,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param reservation_tables
 		 * @return A new beacon message.
 		 */
-		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables) const;
+		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table) const;
 
 	protected:
 		/**

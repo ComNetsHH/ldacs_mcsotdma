@@ -38,9 +38,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	// Put highest priority on beacons.
 	if (beacon_module.shouldSendBeaconThisSlot()) {
 		coutd << "broadcasting beacon -> ";
-		std::pair<L2HeaderBeacon*, BeaconPayload*> beacon_message = beacon_module.generateBeacon(reservation_manager->getP2PReservationTables());
-		beacon_message.second->encode(reservation_manager->getBroadcastFreqChannel()->getCenterFrequency(), reservation_manager->getBroadcastReservationTable());
-		packet->addMessage(beacon_message);
+		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
 	} else {
 		coutd << "broadcasting data -> ";
 		packet->addMessage(new L2HeaderBroadcast(), nullptr);

@@ -94,8 +94,10 @@ unsigned long BeaconModule::getRandomInt(size_t start, size_t end) {
 	return distribution(generator);
 }
 
-std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables) const {
-	return {new L2HeaderBeacon(), new BeaconPayload(reservation_tables)};
+std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table) const {
+	auto *payload = new BeaconPayload(reservation_tables);
+	payload->encode(bc_table->getLinkedChannel()->getCenterFrequency(), bc_table);
+	return {new L2HeaderBeacon(), payload};
 }
 
 
