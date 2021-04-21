@@ -15,7 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 * These tests aim at both sides of a communication link, so that e.g. link renewal can be properly tested,
 	 * ensuring that both sides are in valid states at all times.
 	 */
-	class NewSystemTests : public CppUnit::TestFixture {
+	class SystemTests : public CppUnit::TestFixture {
 	private:
 		TestEnvironment* env_me, * env_you;
 
@@ -38,9 +38,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env_me = new TestEnvironment(own_id, partner_id, true);
 			env_you = new TestEnvironment(partner_id, own_id, true);
 
-			center_frequency1 = env_me->center_frequency1;
-			center_frequency2 = env_me->center_frequency2;
-			center_frequency3 = env_me->center_frequency3;
+			center_frequency1 = env_me->p2p_freq_1;
+			center_frequency2 = env_me->p2p_freq_2;
+			center_frequency3 = env_me->p2p_freq_3;
 			bc_frequency = env_me->bc_frequency;
 			bandwidth = env_me->bandwidth;
 			planning_horizon = env_me->planning_horizon;
@@ -1751,7 +1751,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 
-	CPPUNIT_TEST_SUITE(NewSystemTests);
+	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
 			CPPUNIT_TEST(testLinkExpiry);

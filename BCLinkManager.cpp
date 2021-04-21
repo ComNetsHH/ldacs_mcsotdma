@@ -185,7 +185,8 @@ void BCLinkManager::scheduleBroadcastSlot() {
 }
 
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	// !TODO
+	coutd << "parsing incoming beacon -> ";
+	beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 }
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {

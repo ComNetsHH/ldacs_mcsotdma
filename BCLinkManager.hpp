@@ -14,7 +14,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BCLinkManager : public LinkManager {
 
 		friend class BCLinkManagerTests;
-		friend class NewSystemTests;
+		friend class SystemTests;
 
 	public:
 		BCLinkManager(ReservationManager *reservation_manager, MCSOTDMA_Mac *mac, unsigned int min_beacon_gap);

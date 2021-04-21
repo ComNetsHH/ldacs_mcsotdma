@@ -55,7 +55,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class LinkManagerTests;
 		friend class BCLinkManagerTests;
 		friend class SystemTests;
-		friend class NewSystemTests;
+		friend class SystemTests;
 		friend class TestEnvironment;
 
 	public:
@@ -211,7 +211,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	public:
 		MacId id, partner_id;
 		uint32_t planning_horizon = 512;
-		uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
+		uint64_t p2p_freq_1 = 962, p2p_freq_2 = 963, p2p_freq_3 = 964, bc_frequency = 965, bandwidth = 500;
 		NetworkLayer* net_layer;
 		RLCLayer* rlc_layer;
 		ARQLayer* arq_layer;
@@ -226,9 +226,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer->reservation_manager->addReceiverReservationTable(table);
 
 			mac_layer->reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
+			mac_layer->reservation_manager->addFrequencyChannel(true, p2p_freq_1, bandwidth);
+			mac_layer->reservation_manager->addFrequencyChannel(true, p2p_freq_2, bandwidth);
+			mac_layer->reservation_manager->addFrequencyChannel(true, p2p_freq_3, bandwidth);
 
 			arq_layer = new ARQLayer();
 			arq_layer->should_forward = true;

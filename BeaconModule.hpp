@@ -8,6 +8,7 @@
 
 #include "ReservationTable.hpp"
 #include "BeaconPayload.hpp"
+#include "ReservationManager.hpp"
 #include <random>
 #include <L2Header.hpp>
 
@@ -64,6 +65,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return A new beacon message.
 		 */
 		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table) const;
+
+		void parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager *manager) const;
 
 	protected:
 		/**

@@ -62,7 +62,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
-		std::map<uint64_t , std::vector<unsigned int>> local_reservations;
+		std::map<uint64_t, std::vector<unsigned int>> local_reservations;
 	};
 
 }

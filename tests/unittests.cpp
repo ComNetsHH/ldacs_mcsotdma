@@ -13,7 +13,7 @@
 #include "BCLinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
 #include "ContentionEstimatorTests.cpp"
-#include "NewSystemTests.cpp"
+#include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
 #include "P2PLinkManagerTests.cpp"
 #include "BeaconModuleTests.cpp"
@@ -29,7 +29,7 @@ int main() {
 	runner.addTest(ReservationManagerTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
 	runner.addTest(P2PLinkManagerTests::suite());
-	runner.addTest(NewSystemTests::suite());
+	runner.addTest(SystemTests::suite());
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(MCSOTDMA_PhyTests::suite());

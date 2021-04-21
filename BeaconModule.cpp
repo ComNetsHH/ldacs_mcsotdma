@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include "BeaconModule.hpp"
+#include "coutdebug.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -98,6 +99,32 @@ std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const st
 	auto *payload = new BeaconPayload(reservation_tables);
 	payload->encode(bc_table->getLinkedChannel()->getCenterFrequency(), bc_table);
 	return {new L2HeaderBeacon(), payload};
+}
+
+void BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {
+	if (payload != nullptr) {
+		// Go through all indicated reservations...
+		for (const auto& pair : payload->local_reservations) {
+			// ... fetch frequency channel ...
+			const uint64_t center_freq = pair.first;
+			const FrequencyChannel* channel = manager->getFreqChannelByCenterFreq(center_freq);
+			ReservationTable* table = manager->getReservationTable(channel);
+			coutd << "f=" << *channel << ": ";
+			// ... for every time slot ...
+			for (auto slot : pair.second) {
+				int t = (int) slot;
+				const Reservation& res = table->getReservation(t);
+				// ... mark it as BUSY if it's locally idle
+				if (res.isIdle()) {
+					table->mark(t, Reservation(sender_id, Reservation::BUSY));
+					coutd << "marked t=" << t << " as busy -> ";
+				} else if (!res.isBusy()) // print error if it's neither IDLE nor BUSY
+					coutd << "won't mark t=" << t << " which is already reserved for: " << res << " -> ";
+			}
+		}
+	} else
+		coutd << "ignoring empty beacon payload -> ";
+	coutd << "done parsing beacon -> ";
 }
 
 

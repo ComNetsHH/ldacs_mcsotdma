@@ -275,6 +275,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(2), num_beacons_sent);
 		}
 
+		void testParseBeacon() {
+//			coutd.setVerbose(true);
+			TestEnvironment env_you = TestEnvironment(partner_id, id);
+			ReservationTable *table_1 = env_you.mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_1));
+			ReservationTable *table_2 = env_you.mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_2));
+
+			ReservationTable *table_1_me = env->mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_1));
+			ReservationTable *table_2_me = env->mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_2));
+
+			std::vector<int> slots_1 = {12, 23, 55}, slots_2 = {5, 6, 7};
+			for (auto t : slots_1)
+				table_1->mark(t, Reservation(MacId(100), Reservation::TX));
+			for (auto t : slots_2)
+				table_2->mark(t, Reservation(MacId(101), Reservation::TX));
+
+			for (auto t : slots_1)
+				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_1_me->getReservation(t));
+			for (auto t : slots_2)
+				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_2_me->getReservation(t));
+
+			ReservationManager *manager = env_you.mac_layer->reservation_manager;
+			auto beacon_msg = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon(manager->getP2PReservationTables(), manager->getBroadcastReservationTable());
+			link_manager->processIncomingBeacon(partner_id, beacon_msg.first, beacon_msg.second);
+
+			for (auto t : slots_1)
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_1_me->getReservation(t));
+			for (auto t : slots_2)
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_2_me->getReservation(t));
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -283,6 +313,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testContention);
 		CPPUNIT_TEST(testCongestionWithBeacon);
 		CPPUNIT_TEST(testScheduleNextBeacon);
+		CPPUNIT_TEST(testParseBeacon);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

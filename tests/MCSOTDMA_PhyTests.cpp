@@ -19,7 +19,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	public:
 		void setUp() override {
 			env = new TestEnvironment(own_id, communication_partner_id);
-			center_freq1 = env->center_frequency1;
+			center_freq1 = env->p2p_freq_1;
 			phy = env->phy_layer;
 			mac = env->mac_layer;
 		}

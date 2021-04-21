@@ -23,7 +23,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
-		friend class NewSystemTests;
+		friend class SystemTests;
 
 	public:
 		enum Status {
