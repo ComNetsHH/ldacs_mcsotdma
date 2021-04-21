@@ -12,30 +12,24 @@ const unsigned int BeaconModule::MIN_BEACON_OFFSET = 80; /* 80*12ms=960ms */
 const unsigned int BeaconModule::MAX_BEACON_OFFSET = 25000; /* 5min */
 const unsigned int BeaconModule::INITIAL_BEACON_OFFSET = MIN_BEACON_OFFSET;
 
-BeaconModule::BeaconModule(ReservationTable* bc_table, unsigned int min_beacon_gap, double congestion_goal) : bc_table(bc_table), min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal), random_device(new std::random_device), generator((*random_device)()) {}
+BeaconModule::BeaconModule(unsigned int min_beacon_gap, double congestion_goal) : min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal), random_device(new std::random_device), generator((*random_device)()) {}
 
-BeaconModule::BeaconModule() : BeaconModule(nullptr, 1, .45) {}
+BeaconModule::BeaconModule() : BeaconModule(1, .45) {}
 
 BeaconModule::~BeaconModule() {
 	delete random_device;
-}
-
-void BeaconModule::setBcReservationTable(ReservationTable* broadcast_reservation_table) {
-	this->bc_table = broadcast_reservation_table;
 }
 
 bool BeaconModule::isConnected() const {
 	return this->is_connected;
 }
 
-unsigned int BeaconModule::chooseNextBeaconSlot(unsigned int min_beacon_offset, unsigned int num_candidates, unsigned int min_gap_to_next_beacon) {
+unsigned int BeaconModule::chooseNextBeaconSlot(unsigned int min_beacon_offset, unsigned int num_candidates, unsigned int min_gap_to_next_beacon, const ReservationTable *bc_table, const ReservationTable *tx_table) {
 	std::vector<unsigned int> viable_slots;
 	// Until we've found sufficiently many candidates...
 	for (int t = (int) min_beacon_offset; viable_slots.size() < num_candidates && t < (int) bc_table->getPlanningHorizon(); t++) {
-		// ... fetch the reservation at t
-		const Reservation &res = bc_table->getReservation(t);
 		// ... if it is idle,
-		if (res.isIdle()) {
+		if (bc_table->isIdle(t) && tx_table->isIdle(t)) {
 			// ... ensure that in both directions of time, at least the min of non-beacon slots is kept
 			bool viable = true;
 			// ... check past
@@ -79,9 +73,10 @@ void BeaconModule::onSlotEnd() {
 	next_beacon_in -= 1;
 }
 
-void BeaconModule::scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors) {
+unsigned int BeaconModule::scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table) {
 	this->beacon_offset = computeBeaconInterval(BC_CONGESTION_GOAL, avg_broadcast_rate, num_active_neighbors);
-	next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->N_BEACON_SLOT_CANDIDATES, min_beacon_gap);
+	next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->N_BEACON_SLOT_CANDIDATES, min_beacon_gap, bc_table, tx_table);
+	return next_beacon_in;
 }
 
 unsigned int BeaconModule::getBeaconOffset() const {
@@ -97,6 +92,10 @@ unsigned long BeaconModule::getRandomInt(size_t start, size_t end) {
 		return start;
 	std::uniform_int_distribution<> distribution(start, end - 1);
 	return distribution(generator);
+}
+
+std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables) const {
+	return {new L2HeaderBeacon(), new BeaconPayload(reservation_tables)};
 }
 
 

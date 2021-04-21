@@ -7,7 +7,9 @@
 
 
 #include "ReservationTable.hpp"
+#include "BeaconPayload.hpp"
 #include <random>
+#include <L2Header.hpp>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 /**
@@ -25,11 +27,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		static const unsigned int INITIAL_BEACON_OFFSET;
 
 	public:
-		BeaconModule(ReservationTable *bc_table, unsigned int min_beacon_gap, double congestion_goal);
-		explicit BeaconModule();
+		BeaconModule(unsigned int min_beacon_gap, double congestion_goal);
+		BeaconModule();
 		virtual ~BeaconModule();
-
-		void setBcReservationTable(ReservationTable *broadcast_reservation_table);
 
 		/**
 		 * @return Whether the node is currently connected to a LDACS A2A network, i.e. has performed network entry.
@@ -40,7 +40,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void onSlotEnd();
 
-		void scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors);
+		/**
+		 * It does *not* mark the slot in the table.
+		 * @param avg_broadcast_rate
+		 * @param num_active_neighbors
+		 * @param bc_table
+		 * @return A suitable slot for the next beacon transmission.
+		 */
+		unsigned int scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table);
 
 		/**
 		 * @return Current beacon offset.
@@ -52,12 +59,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void setMinBeaconGap(unsigned int n);
 
+		/**
+		 * @param reservation_tables
+		 * @return A new beacon message.
+		 */
+		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables) const;
+
 	protected:
 		/**
 		 * @param random_choice Whether to choose randomly from a number of viable candidates.
 		 * @return A time slot to use for the next beacon.
 		 */
-		unsigned int chooseNextBeaconSlot(unsigned int min_beacon_offset, unsigned int num_candidates, unsigned int min_gap_to_next_beacon);
+		unsigned int chooseNextBeaconSlot(unsigned int min_beacon_offset, unsigned int num_candidates, unsigned int min_gap_to_next_beacon, const ReservationTable *bc_table, const ReservationTable *tx_table);
 
 		/**
 		 *
@@ -81,8 +94,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** The minimum interval in slots that should be kept in-between beacons. */
 		unsigned int beacon_offset = MIN_BEACON_OFFSET;
 		unsigned int next_beacon_in = beacon_offset;
-		/** The broadcast channel ReservationTable. */
-		ReservationTable *bc_table = nullptr;
 		/** Whether this node has performed network entry. */
 		bool is_connected = false;
 		/** Target collision probability for beacon broadcasts. */

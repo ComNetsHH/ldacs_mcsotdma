@@ -33,33 +33,43 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	auto *packet = new L2Packet();
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);
 	packet->addMessage(base_header, nullptr);
-	packet->addMessage(new L2HeaderBroadcast(), nullptr);
 	unsigned long capacity = mac->getCurrentDatarate();
 
 	// Put highest priority on beacons.
-//	if (beacon_module.shouldSendBeaconThisSlot()) {
-//		// !TODO
-//	}
-
-	// Put a priority on link requests.
-	while (!link_requests.empty()) {
-		// Fetch next link request.
-		auto &pair = link_requests.at(0);
-		// Compute payload.
-		if (pair.second->callback == nullptr)
-			throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
-		pair.second->callback->populateLinkRequest(pair.first, pair.second);
-		// Add to the packet if it fits.
-		if (packet->getBits() + pair.first->getBits() + pair.second->getBits() <= capacity) {
-			packet->addMessage(pair.first, pair.second);
-			link_requests.erase(link_requests.begin());
-			coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
-			statistic_num_sent_requests++;
-		} else
-			break; // Stop if it doesn't fit anymore.
+	if (beacon_module.shouldSendBeaconThisSlot()) {
+		coutd << "broadcasting beacon -> ";
+		std::pair<L2HeaderBeacon*, BeaconPayload*> beacon_message = beacon_module.generateBeacon(reservation_manager->getP2PReservationTables());
+		beacon_message.second->encode(reservation_manager->getBroadcastFreqChannel()->getCenterFrequency(), reservation_manager->getBroadcastReservationTable());
+		packet->addMessage(beacon_message);
+	} else {
+		coutd << "broadcasting data -> ";
+		packet->addMessage(new L2HeaderBroadcast(), nullptr);
+		// Put a priority on link requests.
+		while (!link_requests.empty()) {
+			// Fetch next link request.
+			auto &pair = link_requests.at(0);
+			// Compute payload.
+			if (pair.second->callback == nullptr)
+				throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
+			pair.second->callback->populateLinkRequest(pair.first, pair.second);
+			// Add to the packet if it fits.
+			if (packet->getBits() + pair.first->getBits() + pair.second->getBits() <= capacity) {
+				packet->addMessage(pair.first, pair.second);
+				link_requests.erase(link_requests.begin());
+				coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
+				statistic_num_sent_requests++;
+			} else
+				break; // Stop if it doesn't fit anymore.
+		}
+		// Add broadcast data.
+		unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
+		coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
+		L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
+		for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
+			if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
+				packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
+		delete upper_layer_data;
 	}
-	// Add broadcast payload
-//	L2Packet *broadcast_data = mac->requestSegment(capacity - packet->getBits(), SYMBOLIC_LINK_ID_BROADCAST);
 
 	// Schedule next broadcast if there's more data to send.
 	if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
@@ -74,7 +84,6 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	}
 
 	statistic_num_sent_packets++;
-
 	return packet;
 }
 
@@ -112,7 +121,13 @@ void BCLinkManager::onSlotEnd() {
 	}
 	if (beacon_module.shouldSendBeaconThisSlot()) {
 		// Schedule next beacon slot.
-		beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors());
+		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
+		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
+			std::cerr << "res=" << current_reservation_table->getReservation(next_beacon_slot) << std::endl;
+			throw std::runtime_error("BCLinkManager::onSlotEnd Scheduled a beacon slot at a non-idle resource.");
+		}
+		current_reservation_table->mark(next_beacon_slot, Reservation(mac->getMacId(), Reservation::TX_BEACON));
+		coutd << "scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
 		// Reset congestion estimator with new beacon interval.
 		congestion_estimator.reset(beacon_module.getBeaconOffset());
 	}
@@ -210,7 +225,6 @@ BCLinkManager::~BCLinkManager() {
 
 void BCLinkManager::assign(const FrequencyChannel* channel) {
 	LinkManager::assign(channel);
-	beacon_module.setBcReservationTable(current_reservation_table);
 }
 
 void BCLinkManager::onPacketReception(L2Packet*& packet) {

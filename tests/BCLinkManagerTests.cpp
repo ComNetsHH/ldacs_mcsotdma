@@ -265,19 +265,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //		}
 
 		void testScheduleNextBeacon() {
-			for (size_t t = 0; t < 160; t++) {
+			size_t num_beacons_sent = 0;
+			for (size_t t = 0; t < BeaconModule::MIN_BEACON_OFFSET*2.5; t++) {
 				link_manager->onSlotStart(1);
+				if (link_manager->beacon_module.shouldSendBeaconThisSlot())
+					num_beacons_sent++;
 				link_manager->onSlotEnd();
 			}
+			CPPUNIT_ASSERT_EQUAL(size_t(2), num_beacons_sent);
 		}
 
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
-//		CPPUNIT_TEST(testBroadcastSlotSelection);
-//		CPPUNIT_TEST(testScheduleBroadcastSlot);
-//		CPPUNIT_TEST(testBroadcast);
-//		CPPUNIT_TEST(testSendLinkRequestOnBC);
-//		CPPUNIT_TEST(testContention);
-//		CPPUNIT_TEST(testCongestionWithBeacon);
+		CPPUNIT_TEST(testBroadcastSlotSelection);
+		CPPUNIT_TEST(testScheduleBroadcastSlot);
+		CPPUNIT_TEST(testBroadcast);
+		CPPUNIT_TEST(testSendLinkRequestOnBC);
+		CPPUNIT_TEST(testContention);
+		CPPUNIT_TEST(testCongestionWithBeacon);
 		CPPUNIT_TEST(testScheduleNextBeacon);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);

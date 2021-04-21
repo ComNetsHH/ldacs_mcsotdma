@@ -9,6 +9,7 @@
 #include <MacId.hpp>
 #include "FrequencyChannel.hpp"
 #include "ReservationTable.hpp"
+#include <map>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -20,6 +21,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8;
 
 		BeaconPayload() = default;
+
+		/**
+		 * Convenience constructor that calls `encode(table)` on each given table.
+		 * @param reservation_tables
+		 */
+		explicit BeaconPayload(const std::vector<ReservationTable*>& reservation_tables) {
+			for (const auto *table : reservation_tables) {
+				if (table->getLinkedChannel() == nullptr)
+					throw std::invalid_argument("BeaconPayload(rx_tables) got a ReservationTable with no linked FrequencyChannel.");
+				this->encode(table->getLinkedChannel()->getCenterFrequency(), table);
+			}
+		}
 
 		BeaconPayload(const BeaconPayload& other) : BeaconPayload() {
 			for (const auto& pair : other.local_reservations)
