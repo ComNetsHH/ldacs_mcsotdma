@@ -12,6 +12,7 @@
 #include "FrequencyChannel.hpp"
 #include "ReservationTable.hpp"
 #include "ReservationManager.hpp"
+#include "LinkInfoPayload.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -45,7 +46,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		public:
 			class Callback {
 			public:
-				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) = 0;
+				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload *&payload) = 0;
 			};
 
 			LinkRequestPayload() = default;
@@ -143,6 +144,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		virtual void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		virtual void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);
 
 	protected:
 		/**
@@ -180,6 +182,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			statistic_num_received_beacons = 0,
 			statistic_num_received_requests = 0,
 			statistic_num_received_replies = 0,
+			statistic_num_received_link_infos = 0,
 			statistic_num_sent_packets = 0,
 			statistic_num_sent_beacons = 0,
 			statistic_num_sent_requests = 0,

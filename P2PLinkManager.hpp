@@ -11,7 +11,7 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback {
+class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback, public LinkInfoPayload::Callback {
 
 		friend class P2PLinkManagerTests;
 		friend class SystemTests;
@@ -37,9 +37,15 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 
+		LinkInfo getLinkInfo() override;
+
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 
-		void assign(const FrequencyChannel* channel) override;
+		void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
+
+public:
+
+	void assign(const FrequencyChannel* channel) override;
 
 	protected:
 
@@ -233,7 +239,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Whether the current slot is the end slot of a burst. */
 			bool burst_end_during_this_slot = false;
 			bool updated_timeout_this_slot = false;
+			/** Whether this slot a link was initially established. */
 			bool established_initial_link_this_slot = false;
+			/** Whether this slot a link was established, initial or renewed. */
+			bool established_link_this_slot = false;
 		};
 	}
 

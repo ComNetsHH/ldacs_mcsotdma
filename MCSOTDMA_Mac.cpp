@@ -48,8 +48,10 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	// Notify the broadcast channel manager.
 	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotStart(num_slots);
 	// Notify all other LinkManagers.
-	for (auto item : link_managers)
-		item.second->onSlotStart(num_slots);
+	for (auto item : link_managers) {
+		if (item.first != SYMBOLIC_LINK_ID_BROADCAST)
+			item.second->onSlotStart(num_slots);
+	}
 	// Notify the PHY about the channels to which receivers are tuned to in this time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	size_t num_rx = 0;
@@ -63,6 +65,7 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 			}
 		}
 	}
+	coutd << std::endl;
 }
 
 std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
@@ -196,7 +199,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 		link_manager->linkTxTable(reservation_manager->getTxTable());
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
-			throw std::runtime_error("Attempted to insert new OldLinkManager, but there already was one.");
+			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
 //		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "OldLinkManager") << "(" << internal_id << ") ";
 
 	}
@@ -212,7 +215,7 @@ ReservationManager* MCSOTDMA_Mac::getReservationManager() {
 }
 
 void MCSOTDMA_Mac::onSlotEnd() {
-	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotEnd();
+//	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotEnd();
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
 }

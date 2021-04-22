@@ -67,6 +67,8 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
 				packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
 		delete upper_layer_data;
+		if (packet->getLinkInfoIndex() != -1)
+			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
 	}
 
 	// Schedule next broadcast if there's more data to send.
@@ -99,10 +101,10 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
-	coutd << *this << "::onSlotStart(" << num_slots << ") -> ";
+	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << (next_broadcast_scheduled ? "next broadcast in " + std::to_string(next_broadcast_slot) + " slots -> " : "");
 	// Mark reception slot if there's nothing else to do.
 	if (current_reservation_table->getReservation(0).isIdle()) {
-		coutd << "marking BC reception" << std::endl;
+		coutd << "marking BC reception -> ";
 		try {
 			current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 		} catch (const std::exception& e) {
@@ -114,7 +116,7 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 void BCLinkManager::onSlotEnd() {
 	if (next_broadcast_scheduled) {
 		if (next_broadcast_slot == 0)
-			throw std::runtime_error("BCLinkManager::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
+			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
 		next_broadcast_slot -= 1;
 	}
 	if (beacon_module.shouldSendBeaconThisSlot()) {
@@ -234,4 +236,15 @@ void BCLinkManager::onPacketReception(L2Packet*& packet) {
 		contention_estimator.reportNonBeaconBroadcast(packet->getOrigin());
 
 	LinkManager::onPacketReception(packet);
+}
+
+void BCLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+	const LinkInfo &info = payload->getLinkInfo();
+	const MacId &tx_id = info.getTxId(), &rx_id = info.getRxId();
+	if (tx_id == mac->getMacId() || rx_id == mac->getMacId()) {
+		coutd << "involves us; discarding -> ";
+	} else {
+		coutd << "passing on to " << tx_id  << " -> ";
+		((P2PLinkManager*) mac->getLinkManager(tx_id))->processIncomingLinkInfo(header, payload);
+	}
 }
