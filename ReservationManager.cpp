@@ -16,14 +16,14 @@ void ReservationManager::addFrequencyChannel(bool is_p2p, uint64_t center_freque
 	auto* table = new ReservationTable(planning_horizon);
 	auto* channel = new FrequencyChannel(is_p2p, center_frequency, bandwidth);
 	table->linkFrequencyChannel(channel);
-	if (transmitter_table != nullptr)
-		table->linkTransmitterReservationTable(this->transmitter_table);
+	if (hardware_tx_table != nullptr)
+		table->linkTransmitterReservationTable(this->hardware_tx_table);
 	if (is_p2p) {
 		p2p_frequency_channels.push_back(channel);
 		p2p_reservation_tables.push_back(table);
 		p2p_channel_map[*channel] = p2p_frequency_channels.size() - 1;
 		p2p_table_map[table] = p2p_reservation_tables.size() - 1;
-		for (ReservationTable* rx_table : receiver_reservation_tables)
+		for (ReservationTable* rx_table : hardware_rx_tables)
 			table->linkReceiverReservationTable(rx_table);
 	} else {
 		if (broadcast_frequency_channel == nullptr && broadcast_reservation_table == nullptr) {
@@ -165,7 +165,7 @@ FrequencyChannel* ReservationManager::matchFrequencyChannel(const FrequencyChann
 }
 
 void ReservationManager::setTransmitterReservationTable(ReservationTable* tx_table) {
-	this->transmitter_table = tx_table;
+	this->hardware_tx_table = tx_table;
 }
 
 FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center_frequency) {
@@ -178,7 +178,7 @@ FrequencyChannel* ReservationManager::getFreqChannelByCenterFreq(uint64_t center
 }
 
 void ReservationManager::addReceiverReservationTable(ReservationTable*& rx_table) {
-	this->receiver_reservation_tables.push_back(rx_table);
+	this->hardware_rx_tables.push_back(rx_table);
 }
 
 std::vector<FrequencyChannel*>& ReservationManager::getP2PFreqChannels() {
@@ -186,9 +186,13 @@ std::vector<FrequencyChannel*>& ReservationManager::getP2PFreqChannels() {
 }
 
 const std::vector<ReservationTable*>& ReservationManager::getRxTables() const {
-	return receiver_reservation_tables;
+	return hardware_rx_tables;
 }
 
 ReservationTable* ReservationManager::getTxTable() const {
-	return transmitter_table;
+	return hardware_tx_table;
+}
+
+std::vector<ReservationTable*>& ReservationManager::getP2PReservationTables() {
+	return this->p2p_reservation_tables;
 }

@@ -9,28 +9,27 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 ContentionEstimator::ContentionEstimator(size_t horizon) : horizon(horizon) {}
 
-ContentionEstimator::ContentionEstimator() : horizon(100) {}
+ContentionEstimator::ContentionEstimator() : horizon(DEFAULT_CONTENTION_WINDOW_SIZE) {}
 
 ContentionEstimator::ContentionEstimator(const ContentionEstimator& other) : ContentionEstimator(other.horizon) {
 	contention_estimates = other.contention_estimates;
-	received_broadcast_on_this_slot = other.received_broadcast_on_this_slot;
 }
 
-void ContentionEstimator::reportBroadcast(const MacId& id) {
-	received_broadcast_on_this_slot[id] = true;
-	contention_estimates.emplace(id, MovingAverage(this->horizon));
+void ContentionEstimator::reportNonBeaconBroadcast(const MacId& id) {
+	if (contention_estimates.find(id) == contention_estimates.end())
+		contention_estimates.emplace(id, MovingAverage(this->horizon));
+	contention_estimates.at(id).put(1);
+	id_of_broadcast_this_slot = id;
 }
 
-void ContentionEstimator::update() {
-	// For every neighbor that was reported...
-	for (auto& it : received_broadcast_on_this_slot) {
-		const MacId& id = it.first;
-		bool received_broadcast = it.second;
-		// ... put the number of broadcasts in this slot into the corresponding MovingAverage...
-		contention_estimates.at(id).put(received_broadcast ? 1 : 0);
-		// ... and set the reporting to false for the next slot.
-		it.second = false;
+void ContentionEstimator::onSlotEnd() {
+	// Put in zero's for all those users that didn't broadcast this slot.
+	for (auto &it : contention_estimates) {
+		const MacId &id = it.first;
+		if (id != id_of_broadcast_this_slot)
+			it.second.put(0);
 	}
+	id_of_broadcast_this_slot = SYMBOLIC_ID_UNSET;
 }
 
 double ContentionEstimator::getContentionEstimate(const MacId& id) const {
@@ -52,7 +51,7 @@ unsigned int ContentionEstimator::getNumActiveNeighbors() const {
 	return n;
 }
 
-double ContentionEstimator::getAverageBroadcastRate() const {
+double ContentionEstimator::getAverageNonBeaconBroadcastRate() const {
 	double r = 0.0, n = 0.0;
 	for (const auto& estimate : contention_estimates) {
 		double neighbor_rate = estimate.second.get();

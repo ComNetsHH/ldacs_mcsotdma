@@ -24,7 +24,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			if (data == nullptr)
 				throw std::invalid_argument("PHY::receiveFromUpper(nullptr)");
 			coutd << "PHY::receiveFromUpper(" << data->getBits() << "bits, " << center_frequency << "kHz)";
-			if (connected_phy == nullptr) {
+			if (connected_phys.empty()) {
 				coutd << " -> buffered." << std::endl;
 				outgoing_packets.push_back(data);
 				outgoing_packet_freqs.push_back(center_frequency);
@@ -32,7 +32,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				coutd << " -> sent." << std::endl;
 				outgoing_packets.push_back(data->copy());
 				outgoing_packet_freqs.push_back(center_frequency);
-				connected_phy->onReception(data, center_frequency);
+				for (auto phy : connected_phys)
+					phy->onReception(data->copy(), center_frequency);
+				delete data;
 			}
 		}
 
@@ -47,7 +49,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		std::vector<L2Packet*> outgoing_packets;
 		std::vector<unsigned int> outgoing_packet_freqs;
-		PHYLayer* connected_phy = nullptr;
+		std::vector<PHYLayer*> connected_phys = std::vector<PHYLayer*>();
 	};
 
 	class MACLayer : public MCSOTDMA_Mac {
@@ -55,7 +57,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class LinkManagerTests;
 		friend class BCLinkManagerTests;
 		friend class SystemTests;
-		friend class NewSystemTests;
+		friend class SystemTests;
 		friend class TestEnvironment;
 
 	public:
@@ -211,7 +213,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	public:
 		MacId id, partner_id;
 		uint32_t planning_horizon = 512;
-		uint64_t center_frequency1 = 962, center_frequency2 = 963, center_frequency3 = 964, bc_frequency = 965, bandwidth = 500;
+		uint64_t p2p_freq_1 = 962, p2p_freq_2 = 963, p2p_freq_3 = 964, bc_frequency = 965, bandwidth = 500;
 		NetworkLayer* net_layer;
 		RLCLayer* rlc_layer;
 		ARQLayer* arq_layer;
@@ -221,15 +223,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id, bool use_new_link_manager) : id(own_id), partner_id(communication_partner_id) {
 			phy_layer = new PHYLayer(planning_horizon);
 			mac_layer = new MACLayer(own_id, planning_horizon);
-			mac_layer->use_new_link_manager = use_new_link_manager;
 			mac_layer->reservation_manager->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
 			for (ReservationTable*& table : phy_layer->getReceiverReservationTables())
 				mac_layer->reservation_manager->addReceiverReservationTable(table);
 
 			mac_layer->reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency1, bandwidth);
-			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency2, bandwidth);
-			mac_layer->reservation_manager->addFrequencyChannel(true, center_frequency3, bandwidth);
+			mac_layer->reservation_manager->addFrequencyChannel(true, p2p_freq_1, bandwidth);
+			mac_layer->reservation_manager->addFrequencyChannel(true, p2p_freq_2, bandwidth);
+			mac_layer->reservation_manager->addFrequencyChannel(true, p2p_freq_3, bandwidth);
 
 			arq_layer = new ARQLayer();
 			arq_layer->should_forward = true;

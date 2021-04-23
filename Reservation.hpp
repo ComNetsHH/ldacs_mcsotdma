@@ -27,10 +27,14 @@ class Reservation {
 			RX,
 			/** Reservation for me, and I should *continue listening* during this slot. */
 			RX_CONT,
+			/** Reservation for me, and I should *listen* for a beacon during this slot. */
+			RX_BEACON,
 			/** Reservation for me, and I should *start to transmit* during this slot. */
 			TX,
 			/** Reservation for me, and I should *continue transmitting* during this slot. */
 			TX_CONT,
+			/** Reservation for me, and i should *transmit* a beacon during this slot. */
+			TX_BEACON,
 			/** A locked reservation has been considered in a link request proposal and shouldn't be used until this negotiation has concluded. */
 			LOCKED
 		};
@@ -114,6 +118,21 @@ class Reservation {
 		bool isRxCont() const;
 
 		/**
+		 * @return Whether this denotes a resource for beacon reception.
+		 */
+		bool isBeaconRx() const;
+
+		/**
+		 * @return Whether this denotes a resource for beacon transmission.
+		 */
+		bool isBeaconTx() const;
+
+		/**
+		 * @return Whether this denotes a resource for beacon reception or transmission.
+		 */
+		bool isBeacon() const;
+
+		/**
 		 * @return Whether this resource is locked as it was used for making a proposal and shouldn't be considered for further reservations until the negotiation has concluded.
 		 */
 		bool isLocked() const;
@@ -141,6 +160,14 @@ class Reservation {
 				str = "RX";
 				break;
 			}
+			case Reservation::RX_CONT: {
+				str = "RX_CONT";
+				break;
+			}
+			case Reservation::RX_BEACON: {
+				str = "RX_BEACON";
+				break;
+			}
 			case Reservation::TX: {
 				str = "TX";
 				break;
@@ -149,8 +176,8 @@ class Reservation {
 				str = "TX_CONT";
 				break;
 			}
-			case Reservation::RX_CONT: {
-				str = "RX_CONT";
+			case Reservation::TX_BEACON: {
+				str = "TX_BEACON";
 				break;
 			}
 			case Reservation::LOCKED: {

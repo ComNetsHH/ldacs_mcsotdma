@@ -6,15 +6,16 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_P2PLINKMANAGER_HPP
 
 #include <stdint-gcc.h>
-#include "NewLinkManager.hpp"
+#include "LinkManager.hpp"
 #include "MovingAverage.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback {
+class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback, public LinkInfoPayload::Callback {
 
 		friend class P2PLinkManagerTests;
-		friend class NewSystemTests;
+		friend class SystemTests;
+		friend class ThreeUsersTests;
 
 	public:
 		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
@@ -37,9 +38,15 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 
+		LinkInfo getLinkInfo() override;
+
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 
-		void assign(const FrequencyChannel* channel) override;
+		void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
+
+public:
+
+	void assign(const FrequencyChannel* channel) override;
 
 	protected:
 
@@ -53,14 +60,14 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				void update(unsigned int num_slots) {
 					// Update counter until this control message is due.
 					if (remaining_offset < num_slots)
-						throw std::invalid_argument("ControlMessageReservation::update would decrement the remaining slots past zero - did we miss the corresponding slot?!");
+						throw std::invalid_argument("ControlMessageReservation::onSlotEnd would decrement the remaining slots past zero - did we miss the corresponding slot?!");
 					remaining_offset -= num_slots;
 
 					// Update payload slot offsets to reflect a correct offset with respect to the current time.
 					for (auto &pair : payload->proposed_resources) {
 						for (unsigned int& i : pair.second) {
 							if (i < num_slots)
-								throw std::invalid_argument("ControlMessageReservation::update would decrement a slot offset past zero. Are we late with sending this reply?");
+								throw std::invalid_argument("ControlMessageReservation::onSlotEnd would decrement a slot offset past zero. Are we late with sending this reply?");
 							i -= num_slots;
 						}
 					}
@@ -204,6 +211,20 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 */
 			unsigned int getExpiryOffset() const;
 
+			/**
+			 * @param t
+			 * @return Whether slot at t is part of a transmission burst of this link.
+			 * @throws runtime_error If no reservation table is currently set.
+			 */
+			bool isSlotPartOfBurst(int t) const;
+
+			/**
+			 * @return Offset to the start of the *next* transmission burst of this link.
+			 * @throws range_error If no next burst can be found.
+			 * @throws runtime_error If no reservation table is currently set.
+			 */
+			int getNumSlotsUntilNextBurst() const;
+
 	protected:
 			/** The default number of frames a newly established P2P link remains valid for. */
 			const unsigned int default_timeout;
@@ -233,7 +254,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Whether the current slot is the end slot of a burst. */
 			bool burst_end_during_this_slot = false;
 			bool updated_timeout_this_slot = false;
+			/** Whether this slot a link was initially established. */
 			bool established_initial_link_this_slot = false;
+			/** Whether this slot a link was established, initial or renewed. */
+			bool established_link_this_slot = false;
 		};
 	}
 

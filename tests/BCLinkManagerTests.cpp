@@ -72,6 +72,92 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_request->getRequestIndex() > -1);
 		}
 
+		void testContention() {
+			auto *broadcast_packet = new L2Packet();
+			broadcast_packet->addMessage(new L2HeaderBase(MacId(42), 0, 0, 0, 0), nullptr);
+			broadcast_packet->addMessage(new L2HeaderBroadcast(), nullptr);
+
+			// Zero broadcast rate so far.
+			CPPUNIT_ASSERT_EQUAL(0.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
+			link_manager->onSlotStart(1);
+			// Receive one packet.
+			link_manager->onPacketReception(broadcast_packet);
+			// 100% broadcasts so far
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
+			link_manager->onSlotStart(1);
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+			link_manager->onSlotEnd();
+			// 50% broadcasts so far
+			CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
+			link_manager->onSlotStart(1);
+			CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+			link_manager->onSlotEnd();
+			// one broadcast in three slots so far
+			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
+			link_manager->onSlotStart(1);
+			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(1.0/4.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
+			link_manager->onSlotStart(1);
+			L2Packet *copy = broadcast_packet->copy();
+			link_manager->onPacketReception(copy);
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+
+			link_manager->onSlotStart(1);
+			// two broadcast in five slots so far
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
+		}
+
+		void testCongestionWithBeacon() {
+			auto *beacon_packet = new L2Packet();
+			beacon_packet->addMessage(new L2HeaderBase(MacId(42), 0, 0, 0, 0), nullptr);
+			beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
+
+			// Zero broadcast rate so far.
+			CPPUNIT_ASSERT_EQUAL(0.0, link_manager->congestion_estimator.getCongestion());
+			// Receive one packet.
+			link_manager->onSlotStart(1);
+			link_manager->onPacketReception(beacon_packet);
+			// 100% broadcasts so far
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->congestion_estimator.getCongestion());
+
+			link_manager->onSlotStart(1);
+			// 50% broadcasts so far
+			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(.5, link_manager->congestion_estimator.getCongestion());
+
+			link_manager->onSlotStart(1);
+			link_manager->onSlotEnd();
+			// one broadcast in three slots so far
+			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->congestion_estimator.getCongestion());
+
+			link_manager->onSlotStart(1);
+			beacon_packet = new L2Packet();
+			beacon_packet->addMessage(new L2HeaderBase(MacId(42), 0, 0, 0, 0), nullptr);
+			beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
+			link_manager->onPacketReception(beacon_packet);
+			// two broadcast in five slots so far
+			CPPUNIT_ASSERT_EQUAL(2.0/4.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(2.0/4.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotStart(1);
+			CPPUNIT_ASSERT_EQUAL(2.0/4.0, link_manager->congestion_estimator.getCongestion());
+			link_manager->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->congestion_estimator.getCongestion());
+		}
+
 //		void testSetBeaconHeader() {
 //			L2HeaderBeacon header = L2HeaderBeacon();
 //			link_manager->setHeaderFields(&header);
@@ -178,11 +264,57 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 ////				coutd.setVerbose(false);
 //		}
 
+		void testScheduleNextBeacon() {
+			size_t num_beacons_sent = 0;
+			for (size_t t = 0; t < BeaconModule::MIN_BEACON_OFFSET*2.5; t++) {
+				link_manager->onSlotStart(1);
+				if (link_manager->beacon_module.shouldSendBeaconThisSlot())
+					num_beacons_sent++;
+				link_manager->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(2), num_beacons_sent);
+		}
+
+		void testParseBeacon() {
+//			coutd.setVerbose(true);
+			TestEnvironment env_you = TestEnvironment(partner_id, id);
+			ReservationTable *table_1 = env_you.mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_1));
+			ReservationTable *table_2 = env_you.mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_2));
+
+			ReservationTable *table_1_me = env->mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_1));
+			ReservationTable *table_2_me = env->mac_layer->reservation_manager->getReservationTable(env_you.mac_layer->reservation_manager->getFreqChannelByCenterFreq(env_you.p2p_freq_2));
+
+			std::vector<int> slots_1 = {12, 23, 55}, slots_2 = {5, 6, 7};
+			for (auto t : slots_1)
+				table_1->mark(t, Reservation(MacId(100), Reservation::TX));
+			for (auto t : slots_2)
+				table_2->mark(t, Reservation(MacId(101), Reservation::TX));
+
+			for (auto t : slots_1)
+				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_1_me->getReservation(t));
+			for (auto t : slots_2)
+				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_2_me->getReservation(t));
+
+			ReservationManager *manager = env_you.mac_layer->reservation_manager;
+			auto beacon_msg = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon(manager->getP2PReservationTables(), manager->getBroadcastReservationTable());
+			link_manager->processIncomingBeacon(partner_id, beacon_msg.first, beacon_msg.second);
+
+			for (auto t : slots_1)
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_1_me->getReservation(t));
+			for (auto t : slots_2)
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_2_me->getReservation(t));
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
 		CPPUNIT_TEST(testBroadcast);
 		CPPUNIT_TEST(testSendLinkRequestOnBC);
+		CPPUNIT_TEST(testContention);
+		CPPUNIT_TEST(testCongestionWithBeacon);
+		CPPUNIT_TEST(testScheduleNextBeacon);
+		CPPUNIT_TEST(testParseBeacon);
+
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
 //			CPPUNIT_TEST(testGetNumCandidateSlots);

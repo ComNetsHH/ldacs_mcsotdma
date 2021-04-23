@@ -94,7 +94,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			coutd << "' -> ";
 	}
 	statistic_num_received_packets++;
-	assert(!packet->getHeaders().empty() && "OldLinkManager::onPacketReception(empty packet)");
+	assert(!packet->getHeaders().empty() && "LinkManager::onPacketReception(empty packet)");
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
 	bool contains_data = false;
@@ -116,7 +116,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 //				header = nullptr;
 //				delete payload;
 //				payload = nullptr;
-				coutd << std::endl;
 				statistic_num_received_beacons++;
 				break;
 			}
@@ -152,8 +151,14 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 //				payload = nullptr;
 				break;
 			}
+			case L2Header::link_info: {
+				coutd << "processing link info -> ";
+				processIncomingLinkInfo((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);
+				statistic_num_received_link_infos++;
+				break;
+			}
 			default: {
-				throw std::invalid_argument("OldLinkManager::onPacketReception for an unexpected header type.");
+				throw std::invalid_argument("LinkManager::onPacketReception for an unexpected header type.");
 			}
 		}
 	}
@@ -195,5 +200,10 @@ void LinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Pa
 
 void LinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
 	coutd << *this << "::processIncomingLinkReply" << std::endl;
-	throw std::invalid_argument("Link replies ");
+	throw std::runtime_error("not implemented");
+}
+
+void LinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+	coutd << *this << "::processIncomingLinkInfo" << std::endl;
+	throw std::runtime_error("not implemented");
 }

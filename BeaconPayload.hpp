@@ -9,6 +9,7 @@
 #include <MacId.hpp>
 #include "FrequencyChannel.hpp"
 #include "ReservationTable.hpp"
+#include <map>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -19,33 +20,49 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	public:
 		static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8;
 
-		explicit BeaconPayload(const MacId& beacon_owner_id) : beacon_owner_id(beacon_owner_id) {}
+		BeaconPayload() = default;
 
-		BeaconPayload(const BeaconPayload& other) : BeaconPayload(other.beacon_owner_id) {
-			for (const auto& item : other.local_reservations)
-				local_reservations.push_back(item);
+		/**
+		 * Convenience constructor that calls `encode(table)` on each given table.
+		 * @param reservation_tables
+		 */
+		explicit BeaconPayload(const std::vector<ReservationTable*>& reservation_tables) {
+			for (const auto *table : reservation_tables) {
+				if (table->getLinkedChannel() == nullptr)
+					throw std::invalid_argument("BeaconPayload(rx_tables) got a ReservationTable with no linked FrequencyChannel.");
+				this->encode(table->getLinkedChannel()->getCenterFrequency(), table);
+			}
+		}
+
+		BeaconPayload(const BeaconPayload& other) : BeaconPayload() {
+			for (const auto& pair : other.local_reservations)
+				for (unsigned int t : pair.second)
+					local_reservations.at(pair.first).push_back(t);
 		}
 
 		Payload* copy() const override {
 			return new BeaconPayload(*this);
 		}
 
-		~BeaconPayload() override {
-			for (const auto& pair : local_reservations)
-				delete pair.second;
-		}
-
 		unsigned int getBits() const override {
 			unsigned int bits = 0;
 			for (auto pair : local_reservations) {
-				bits += pair.second->countReservedTxSlots(beacon_owner_id) * BITS_PER_SLOT;
 				bits += BITS_PER_CHANNEL;
+				bits += pair.second.size() * BITS_PER_SLOT;
 			}
 			return bits;
 		}
 
-		std::vector<std::pair<FrequencyChannel, ReservationTable*>> local_reservations;
-		const MacId beacon_owner_id;
+		void encode(uint64_t center_freq, const ReservationTable *table) {
+			auto &vec = local_reservations[center_freq];
+			for (int t = 0; t < table->getPlanningHorizon(); t++) {
+				const Reservation &res = table->getReservation(t);
+				if (res.isBeacon() || res.isTx() || res.isTxCont() || res.isRx() || res.isRxCont())
+					vec.push_back(t);
+			}
+		}
+
+		std::map<uint64_t, std::vector<unsigned int>> local_reservations;
 	};
 
 }

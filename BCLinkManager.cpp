@@ -8,9 +8,13 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
+
 BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
-	: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), min_beacon_gap(min_beacon_gap) {
-	contention_estimator = ContentionEstimator(beacon_offset);
+	: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac),
+		contention_estimator(),
+		congestion_estimator(BeaconModule::INITIAL_BEACON_OFFSET),
+		beacon_module() {
+	beacon_module.setMinBeaconGap(min_beacon_gap);
 }
 
 void BCLinkManager::onReceptionBurstStart(unsigned int burst_length) {
@@ -29,27 +33,43 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	auto *packet = new L2Packet();
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);
 	packet->addMessage(base_header, nullptr);
-	packet->addMessage(new L2HeaderBroadcast(), nullptr);
 	unsigned long capacity = mac->getCurrentDatarate();
-	// Put a priority on link requests.
-	while (!link_requests.empty()) {
-		// Fetch next link request.
-		auto &pair = link_requests.at(0);
-		// Compute payload.
-		if (pair.second->callback == nullptr)
-			throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
-		pair.second->callback->populateLinkRequest(pair.first, pair.second);
-		// Add to the packet if it fits.
-		if (packet->getBits() + pair.first->getBits() + pair.second->getBits() <= capacity) {
-			packet->addMessage(pair.first, pair.second);
-			link_requests.erase(link_requests.begin());
-			coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
-			statistic_num_sent_requests++;
-		} else
-			break; // Stop if it doesn't fit anymore.
+
+	// Put highest priority on beacons.
+	if (beacon_module.shouldSendBeaconThisSlot()) {
+		coutd << "broadcasting beacon -> ";
+		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
+	} else {
+		coutd << "broadcasting data -> ";
+		packet->addMessage(new L2HeaderBroadcast(), nullptr);
+		// Put a priority on link requests.
+		while (!link_requests.empty()) {
+			// Fetch next link request.
+			auto &pair = link_requests.at(0);
+			// Compute payload.
+			if (pair.second->callback == nullptr)
+				throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
+			pair.second->callback->populateLinkRequest(pair.first, pair.second);
+			// Add to the packet if it fits.
+			if (packet->getBits() + pair.first->getBits() + pair.second->getBits() <= capacity) {
+				packet->addMessage(pair.first, pair.second);
+				link_requests.erase(link_requests.begin());
+				coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
+				statistic_num_sent_requests++;
+			} else
+				break; // Stop if it doesn't fit anymore.
+		}
+		// Add broadcast data.
+		unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
+		coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
+		L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
+		for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
+			if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
+				packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
+		delete upper_layer_data;
+		if (packet->getLinkInfoIndex() != -1)
+			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
 	}
-	// Add broadcast payload
-//	L2Packet *broadcast_data = mac->requestSegment(capacity - packet->getBits(), SYMBOLIC_LINK_ID_BROADCAST);
 
 	// Schedule next broadcast if there's more data to send.
 	if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
@@ -64,7 +84,6 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	}
 
 	statistic_num_sent_packets++;
-
 	return packet;
 }
 
@@ -82,12 +101,10 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
-	coutd << *this << "::onSlotStart(" << num_slots << ") -> ";
-
-	for (uint64_t t = 0; t < num_slots; t++)
-		contention_estimator.update();
+	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << (next_broadcast_scheduled ? "next broadcast in " + std::to_string(next_broadcast_slot) + " slots -> " : "");
+	// Mark reception slot if there's nothing else to do.
 	if (current_reservation_table->getReservation(0).isIdle()) {
-		coutd << "marking BC reception" << std::endl;
+		coutd << "marking BC reception -> ";
 		try {
 			current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 		} catch (const std::exception& e) {
@@ -99,9 +116,25 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 void BCLinkManager::onSlotEnd() {
 	if (next_broadcast_scheduled) {
 		if (next_broadcast_slot == 0)
-			throw std::runtime_error("BCLinkManager::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
+			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
 		next_broadcast_slot -= 1;
 	}
+	if (beacon_module.shouldSendBeaconThisSlot()) {
+		// Schedule next beacon slot.
+		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
+		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
+			std::cerr << "res=" << current_reservation_table->getReservation(next_beacon_slot) << std::endl;
+			throw std::runtime_error("BCLinkManager::onSlotEnd Scheduled a beacon slot at a non-idle resource.");
+		}
+		current_reservation_table->mark(next_beacon_slot, Reservation(mac->getMacId(), Reservation::TX_BEACON));
+		coutd << "scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
+		// Reset congestion estimator with new beacon interval.
+		congestion_estimator.reset(beacon_module.getBeaconOffset());
+	}
+	// Update estimators.
+	contention_estimator.onSlotEnd();
+	congestion_estimator.onSlotEnd();
+	beacon_module.onSlotEnd();
 }
 
 void BCLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {
@@ -114,7 +147,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	// Average broadcast rate.
-	double r = contention_estimator.getAverageBroadcastRate();
+	double r = contention_estimator.getAverageNonBeaconBroadcastRate();
 	// Number of active neighbors.
 	unsigned int m = contention_estimator.getNumActiveNeighbors();
 	double num_candidates = 0;
@@ -140,7 +173,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 	coutd << *this << "::broadcastSlotSelection -> ";
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
-	unsigned int num_candidates = getNumCandidateSlots(this->bc_coll_prob);
+	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, 1, 1, 1, false);
 	if (candidate_slots.empty())
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
@@ -154,7 +187,8 @@ void BCLinkManager::scheduleBroadcastSlot() {
 }
 
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	LinkManager::processIncomingBeacon(origin_id, header, payload);
+	coutd << "parsing incoming beacon -> ";
+	beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 }
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
@@ -167,9 +201,6 @@ void BCLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::P
 }
 
 void BCLinkManager::processIncomingBase(L2HeaderBase*& header) {
-	MacId sender = header->src_id;
-	contention_estimator.reportBroadcast(sender);
-	coutd << "updated contention -> ";
 }
 
 void BCLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
@@ -190,5 +221,30 @@ BCLinkManager::~BCLinkManager() {
 	for (auto pair : link_requests) {
 		delete pair.first;
 		delete pair.second;
+	}
+}
+
+void BCLinkManager::assign(const FrequencyChannel* channel) {
+	LinkManager::assign(channel);
+}
+
+void BCLinkManager::onPacketReception(L2Packet*& packet) {
+	// Congestion is concerned with *any* received broadcast
+	congestion_estimator.reportBroadcast(packet->getOrigin());
+	// Contention is only concerned with non-beacon broadcasts
+	if (packet->getBeaconIndex() == -1)
+		contention_estimator.reportNonBeaconBroadcast(packet->getOrigin());
+
+	LinkManager::onPacketReception(packet);
+}
+
+void BCLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+	const LinkInfo &info = payload->getLinkInfo();
+	const MacId &tx_id = info.getTxId(), &rx_id = info.getRxId();
+	if (tx_id == mac->getMacId() || rx_id == mac->getMacId()) {
+		coutd << "involves us; discarding -> ";
+	} else {
+		coutd << "passing on to " << tx_id  << " -> ";
+		((P2PLinkManager*) mac->getLinkManager(tx_id))->processIncomingLinkInfo(header, payload);
 	}
 }

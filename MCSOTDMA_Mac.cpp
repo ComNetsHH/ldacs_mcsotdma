@@ -4,7 +4,6 @@
 
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
-#include "OldBCLinkManager.hpp"
 #include "P2PLinkManager.hpp"
 #include "BCLinkManager.hpp"
 #include <IPhy.hpp>
@@ -49,8 +48,10 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	// Notify the broadcast channel manager.
 	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotStart(num_slots);
 	// Notify all other LinkManagers.
-	for (auto item : link_managers)
-		item.second->onSlotStart(num_slots);
+	for (auto item : link_managers) {
+		if (item.first != SYMBOLIC_LINK_ID_BROADCAST)
+			item.second->onSlotStart(num_slots);
+	}
 	// Notify the PHY about the channels to which receivers are tuned to in this time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	size_t num_rx = 0;
@@ -64,6 +65,7 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 			}
 		}
 	}
+	coutd << std::endl;
 }
 
 std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
@@ -132,6 +134,18 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				link_manager->onTransmissionBurst(reservation.getNumRemainingSlots());
 				break;
 			}
+			case Reservation::TX_BEACON: {
+				num_txs++;
+				if (num_txs > num_transmitters)
+					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
+				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onTransmissionBurstStart(reservation.getNumRemainingSlots());
+			}
+			case Reservation::RX_BEACON: {
+				num_rxs++;
+				if (num_rxs > num_transmitters)
+					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
+				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onReceptionBurstStart(reservation.getNumRemainingSlots());
+			}
 		}
 		coutd.decreaseIndent();
 		coutd << std::endl;
@@ -174,16 +188,10 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	} else {
 		// Auto-assign broadcast channel
 		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
-			if (use_new_link_manager)
-				link_manager = new BCLinkManager(reservation_manager, this, 1);
-			else
-				link_manager = new OldBCLinkManager(internal_id, reservation_manager, this);
+			link_manager = new BCLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
-			if (use_new_link_manager)
-				link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
-			else
-				link_manager = new OldLinkManager(internal_id, reservation_manager, this);
+			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
 			// Receiver tables are only set for P2PLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
@@ -191,7 +199,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 		link_manager->linkTxTable(reservation_manager->getTxTable());
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
-			throw std::runtime_error("Attempted to insert new OldLinkManager, but there already was one.");
+			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
 //		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "OldLinkManager") << "(" << internal_id << ") ";
 
 	}
@@ -207,7 +215,7 @@ ReservationManager* MCSOTDMA_Mac::getReservationManager() {
 }
 
 void MCSOTDMA_Mac::onSlotEnd() {
-	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotEnd();
+//	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotEnd();
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
 }

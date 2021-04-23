@@ -7,6 +7,7 @@
 #include "P2PLinkManager.hpp"
 #include "coutdebug.hpp"
 #include "BCLinkManager.hpp"
+#include "MCSOTDMA_Mac.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -221,6 +222,7 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 	burst_end_during_this_slot = false;
 	updated_timeout_this_slot = false;
 	established_initial_link_this_slot = false;
+	established_link_this_slot = false;
 	num_slots_since_last_burst_start += num_slots;
 	num_slots_since_last_burst_end += num_slots;
 
@@ -294,6 +296,13 @@ void P2PLinkManager::onSlotEnd() {
 	if (next_link_state != nullptr) {
 		if (next_link_state->next_burst_start == 0)
 			next_link_state->next_burst_start = burst_offset;
+	}
+	if (established_link_this_slot) {
+		coutd << *mac << "::" << *this << "::onSlotEnd -> passing link info broadcast into broadcast queue -> ";
+		auto *packet = new L2Packet();
+		packet->addMessage(new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0), nullptr);
+		packet->addMessage(new L2HeaderLinkInfo(), new LinkInfoPayload(this));
+		mac->injectIntoUpper(packet);
 	}
 }
 
@@ -573,6 +582,7 @@ void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const
 	coutd << "setting link status to '";
 	link_status = link_established;
 	established_initial_link_this_slot = true;
+	established_link_this_slot = true;
 	coutd << link_status << "' -> ";
 }
 
@@ -687,6 +697,7 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 		if (link_status == awaiting_data_tx) {
 			// Link is now established.
 			link_status = link_established;
+			established_link_this_slot = true;
 			coutd << "this transmission establishes the link, setting status to '" << link_status << "' -> informing upper layers -> ";
 			// Inform upper sublayers.
 			mac->notifyAboutNewLink(link_id);
@@ -767,6 +778,7 @@ void P2PLinkManager::onTimeoutExpiry() {
 		next_link_state = nullptr;
 		coutd << "updating status: " << link_status << "->" << LinkManager::link_established << " -> link renewal complete." << std::endl;
 		link_status = link_established;
+		established_link_this_slot = true;
 	} else {
 		coutd << "no pending renewal, updating status: " << link_status << "->" << LinkManager::link_not_established << " -> cleared associated channel at " << *current_channel << " -> ";
 		current_channel = nullptr;
@@ -830,4 +842,63 @@ unsigned int P2PLinkManager::getExpiryOffset() const {
 		return 0;
 	else
 		return (current_link_state->timeout - 1)*burst_offset + current_link_state->burst_length;
+}
+
+LinkInfo P2PLinkManager::getLinkInfo() {
+	if (current_link_state == nullptr)
+		throw std::runtime_error("P2PLinkManager::getLinkInfo for current_link_state == nullptr");
+	MacId tx_id = current_link_state->is_link_initiator ? mac->getMacId() : link_id;
+	MacId rx_id = current_link_state->is_link_initiator ? link_id : mac->getMacId();
+	int offset = getNumSlotsUntilNextBurst();
+	unsigned int timeout = current_link_state->timeout;
+	if (isSlotPartOfBurst(0))
+		timeout = timeout > 0 ? timeout-1 : timeout;
+	LinkInfo info = LinkInfo(tx_id, rx_id, current_channel->getCenterFrequency(), offset, timeout, current_link_state->burst_length, current_link_state->burst_length_tx);
+	coutd << info;
+	return info;
+}
+
+void P2PLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+	const LinkInfo &info = payload->getLinkInfo();
+	coutd << info << " -> ";
+	const FrequencyChannel *channel = reservation_manager->getFreqChannelByCenterFreq(info.getP2PChannelCenterFreq());
+	ReservationTable *table = reservation_manager->getReservationTable(channel);
+	coutd << "f=" << *channel << ": ";
+	for (int burst = 0; burst < info.getTimeout(); burst++) {
+		for (int t = burst*((int) burst_offset) + info.getOffset(); t < burst*((int) burst_offset) + info.getOffset() + info.getBurstLength(); t++) {
+			const Reservation& res = table->getReservation(t);
+			coutd << "t=" << t << ":" << res << "->";
+			if (res.isIdle()) {
+				bool initiator_tx_range = t < burst*((int) burst_offset) + info.getOffset() + info.getBurstLengthTx();
+				MacId id = initiator_tx_range ? info.getTxId() : info.getRxId();
+				coutd << *table->mark(t, Reservation(id, Reservation::BUSY)) << " -> ";
+			} else
+				coutd << "skip -> ";
+		}
+	}
+}
+
+bool P2PLinkManager::isSlotPartOfBurst(int t) const {
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("P2PLinkManager::isSlotPartOfBurst for nullptr ReservationTable");
+	const Reservation &res = current_reservation_table->getReservation(t);
+	return res.getTarget() == link_id && (current_link_state->is_link_initiator ? (res.isTx() || res.isTxCont()) : (res.isRx() || res.isRxCont()));
+}
+
+int P2PLinkManager::getNumSlotsUntilNextBurst() const {
+	if (current_reservation_table == nullptr || current_link_state == nullptr)
+		throw std::runtime_error("P2PLinkManager::getNumSlotsUntilNextBurst for nullptr ReservationTable or LinkState.");
+	else {
+		// Proceed to after a potential current burst.
+		int t = 1;
+		while (isSlotPartOfBurst(t))
+			t++;
+		// Now look for the next burst start.
+		for (;t < current_reservation_table->getPlanningHorizon(); t++) {
+			const Reservation &res = current_reservation_table->getReservation(t);
+			if (res.getTarget() == link_id && (current_link_state->is_link_initiator ? res.isTx() : res.isRx()))
+				return t;
+		}
+	}
+	throw std::range_error("P2PLinkManager::getNumSlotsUntilNextBurst can't find next burst.");
 }

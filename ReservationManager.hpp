@@ -55,6 +55,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		std::vector<FrequencyChannel*>& getP2PFreqChannels();
 
+		std::vector<ReservationTable*>& getP2PReservationTables();
+
 		FrequencyChannel* getFreqChannel(const ReservationTable* table);
 
 		ReservationTable* getReservationTableByIndex(size_t index);
@@ -114,7 +116,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void addReceiverReservationTable(ReservationTable*& rx_table);
 
+		/**
+		 * @return Hardware receiver ReservationTables.
+		 */
 		const std::vector<ReservationTable*>& getRxTables() const;
+
+		/**
+		 * @return Hardware transmitter ReservationTable.
+		 */
 		ReservationTable* getTxTable() const;
 
 	protected:
@@ -140,9 +149,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		FrequencyChannel* broadcast_frequency_channel = nullptr;
 		/** A single broadcast channel reservation table is kept. */
 		ReservationTable* broadcast_reservation_table = nullptr;
-		/** The PHY layer may keep a transmitter ReservationTable, which should be linked to all ReservationTables within this manager. */
-		ReservationTable* transmitter_table = nullptr;
-		std::vector<ReservationTable*> receiver_reservation_tables;
+		/** A transmitter ReservationTable may be kept, which will be linked to all ReservationTables within this manager. */
+		ReservationTable* hardware_tx_table = nullptr;
+		/** A number of hardware receiver ReservationTables may be kept, which will be linked to all ReservationTables within this manager. */
+		std::vector<ReservationTable*> hardware_rx_tables;
 	};
 
 }
