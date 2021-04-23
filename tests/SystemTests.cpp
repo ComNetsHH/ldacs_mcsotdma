@@ -56,8 +56,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer_me = env_me->phy_layer;
 			phy_layer_you = env_you->phy_layer;
 
-			phy_layer_me->connected_phy = phy_layer_you;
-			phy_layer_you->connected_phy = phy_layer_me;
+			phy_layer_me->connected_phys.push_back(phy_layer_you);
+			phy_layer_you->connected_phys.push_back(phy_layer_me);
 
 			num_outgoing_bits = 512;
 			lm_me = (P2PLinkManager*) mac_layer_me->getLinkManager(partner_id);
@@ -371,8 +371,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Make sure it hasn't been sent yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->num_renewal_attempts), lm_me->current_link_state->scheduled_link_requests.size());
 			// *Drop* the next packet.
-			phy_layer_me->connected_phy = nullptr;
-			phy_layer_you->connected_phy = nullptr;
+			phy_layer_me->connected_phys.clear();
+			phy_layer_you->connected_phys.clear();
 			// Proceed to the request slot.
 			for (size_t t = 0; t < lm_me->burst_offset; t++) {
 				mac_layer_me->update(1);
@@ -404,8 +404,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_me->current_link_state->scheduled_link_requests.size());
 			// Reconnect.
-			phy_layer_me->connected_phy = phy_layer_you;
-			phy_layer_you->connected_phy = phy_layer_me;
+			phy_layer_me->connected_phys.push_back(phy_layer_you);
+			phy_layer_you->connected_phys.push_back(phy_layer_me);
 			// Last request should be received.
 			num_pending_requests = lm_me->current_link_state->scheduled_link_requests.size();
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->num_renewal_attempts - 2), num_pending_requests);
@@ -495,7 +495,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Make sure it hasn't been sent yet.
 			CPPUNIT_ASSERT_EQUAL(size_t(lm_me->num_renewal_attempts), lm_me->current_link_state->scheduled_link_requests.size());
 			// *Drop* the next reply.
-			phy_layer_you->connected_phy = nullptr;
+			phy_layer_you->connected_phys.clear();
 			// Proceed to the request slot.
 			for (size_t t = 0; t < lm_me->burst_offset; t++) {
 				mac_layer_me->update(1);
@@ -535,11 +535,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_me->current_link_state->scheduled_link_requests.size());
 			// Reconnect -> last reply should be received.
 			coutd << "RECONNECT" << std::endl;
-			phy_layer_you->connected_phy = phy_layer_me;
+			phy_layer_you->connected_phys.push_back(phy_layer_me);
 
 			num_slots = 0;
 			while (lm_you->link_status != LinkManager::Status::link_renewal_complete_local && num_slots++ < max_num_slots) {
-				phy_layer_you->connected_phy = phy_layer_me;
+				phy_layer_you->connected_phys.push_back(phy_layer_me);
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -672,7 +672,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
 			// Disconnect.
-			phy_layer_me->connected_phy = nullptr;
+			phy_layer_me->connected_phys.clear();
 			// Send and lose first renewal reply.
 			size_t earliest_request_offset = 10000;
 			for (const auto &msg : lm_me->current_link_state->scheduled_link_requests) {
@@ -717,7 +717,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			coutd << std::endl;
 			CPPUNIT_ASSERT(num_locked > 0);
 			// Reconnect.
-			phy_layer_me->connected_phy = phy_layer_you;
+			phy_layer_me->connected_phys.push_back(phy_layer_you);
 //			coutd.setVerbose(false);
 			earliest_request_offset = 10000;
 			for (const auto &msg : lm_me->current_link_state->scheduled_link_requests) {
@@ -1429,8 +1429,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout - 1, lm_you->current_link_state->timeout);
 
 			// From now on, drop all packets.
-			phy_layer_me->connected_phy = nullptr;
-			phy_layer_you->connected_phy = nullptr;
+			phy_layer_me->connected_phys.clear();
+			phy_layer_you->connected_phys.clear();
 
 			num_slots = 0;
 			max_num_slots = lm_me->current_link_state->timeout * lm_me->burst_offset + lm_me->burst_offset;
@@ -1476,8 +1476,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkRenewalAfterExpiry() {
 			testLinkRenewalFails();
 			// Reconnect.
-			phy_layer_me->connected_phy = phy_layer_you;
-			phy_layer_you->connected_phy = phy_layer_me;
+			phy_layer_me->connected_phys.push_back(phy_layer_you);
+			phy_layer_you->connected_phys.push_back(phy_layer_me);
 			// Now try link establishment again.
 //			coutd.setVerbose(true);
 			size_t num_slots = 0, max_num_slots = 100;
@@ -1679,7 +1679,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 
-			phy_layer_you->connected_phy = nullptr;
+			phy_layer_you->connected_phys.clear();
 			// Proceed until expiry.
 			size_t expiry_slot = lm_me->getExpiryOffset() + lm_me->burst_offset - 1;
 //			coutd.setVerbose(true);
@@ -1720,8 +1720,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
 
 			// Sever connection.
-			phy_layer_me->connected_phy = nullptr;
-			phy_layer_you->connected_phy = nullptr;
+			phy_layer_me->connected_phys.clear();
+			phy_layer_you->connected_phys.clear();
 
 			// Proceed to expiry.
 			num_slots = 0;

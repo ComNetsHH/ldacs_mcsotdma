@@ -849,7 +849,11 @@ LinkInfo P2PLinkManager::getLinkInfo() {
 		throw std::runtime_error("P2PLinkManager::getLinkInfo for current_link_state == nullptr");
 	MacId tx_id = current_link_state->is_link_initiator ? mac->getMacId() : link_id;
 	MacId rx_id = current_link_state->is_link_initiator ? link_id : mac->getMacId();
-	LinkInfo info = LinkInfo(tx_id, rx_id, current_channel->getCenterFrequency(), (int) current_link_state->next_burst_start, current_link_state->timeout, current_link_state->burst_length, current_link_state->burst_length_tx);
+	int offset = getNumSlotsUntilNextBurst();
+	unsigned int timeout = current_link_state->timeout;
+	if (isSlotPartOfBurst(0))
+		timeout = timeout > 0 ? timeout-1 : timeout;
+	LinkInfo info = LinkInfo(tx_id, rx_id, current_channel->getCenterFrequency(), offset, timeout, current_link_state->burst_length, current_link_state->burst_length_tx);
 	coutd << info;
 	return info;
 }
@@ -861,15 +865,40 @@ void P2PLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, co
 	ReservationTable *table = reservation_manager->getReservationTable(channel);
 	coutd << "f=" << *channel << ": ";
 	for (int burst = 0; burst < info.getTimeout(); burst++) {
-		for (int t = burst*((int) burst_offset) + info.getOffset(); t < info.getOffset() + info.getBurstLength(); t++) {
+		for (int t = burst*((int) burst_offset) + info.getOffset(); t < burst*((int) burst_offset) + info.getOffset() + info.getBurstLength(); t++) {
 			const Reservation& res = table->getReservation(t);
 			coutd << "t=" << t << ":" << res << "->";
 			if (res.isIdle()) {
-				bool initiator_tx_range = t < info.getOffset() + info.getBurstLengthTx();
+				bool initiator_tx_range = t < burst*((int) burst_offset) + info.getOffset() + info.getBurstLengthTx();
 				MacId id = initiator_tx_range ? info.getTxId() : info.getRxId();
 				coutd << *table->mark(t, Reservation(id, Reservation::BUSY)) << " -> ";
 			} else
 				coutd << "skip -> ";
 		}
 	}
+}
+
+bool P2PLinkManager::isSlotPartOfBurst(int t) const {
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("P2PLinkManager::isSlotPartOfBurst for nullptr ReservationTable");
+	const Reservation &res = current_reservation_table->getReservation(t);
+	return res.getTarget() == link_id && (current_link_state->is_link_initiator ? (res.isTx() || res.isTxCont()) : (res.isRx() || res.isRxCont()));
+}
+
+int P2PLinkManager::getNumSlotsUntilNextBurst() const {
+	if (current_reservation_table == nullptr || current_link_state == nullptr)
+		throw std::runtime_error("P2PLinkManager::getNumSlotsUntilNextBurst for nullptr ReservationTable or LinkState.");
+	else {
+		// Proceed to after a potential current burst.
+		int t = 1;
+		while (isSlotPartOfBurst(t))
+			t++;
+		// Now look for the next burst start.
+		for (;t < current_reservation_table->getPlanningHorizon(); t++) {
+			const Reservation &res = current_reservation_table->getReservation(t);
+			if (res.getTarget() == link_id && (current_link_state->is_link_initiator ? res.isTx() : res.isRx()))
+				return t;
+		}
+	}
+	throw std::range_error("P2PLinkManager::getNumSlotsUntilNextBurst can't find next burst.");
 }

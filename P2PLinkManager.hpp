@@ -15,6 +15,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 		friend class P2PLinkManagerTests;
 		friend class SystemTests;
+		friend class ThreeUsersTests;
 
 	public:
 		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
@@ -209,6 +210,20 @@ public:
 			 * @return Number of slots until timeout reaches value of 1 (just before expiry).
 			 */
 			unsigned int getExpiryOffset() const;
+
+			/**
+			 * @param t
+			 * @return Whether slot at t is part of a transmission burst of this link.
+			 * @throws runtime_error If no reservation table is currently set.
+			 */
+			bool isSlotPartOfBurst(int t) const;
+
+			/**
+			 * @return Offset to the start of the *next* transmission burst of this link.
+			 * @throws range_error If no next burst can be found.
+			 * @throws runtime_error If no reservation table is currently set.
+			 */
+			int getNumSlotsUntilNextBurst() const;
 
 	protected:
 			/** The default number of frames a newly established P2P link remains valid for. */

@@ -9,6 +9,8 @@ TUHH_INTAIRNET_MCSOTDMA::LinkInfo::LinkInfo(const TUHH_INTAIRNET_MCSOTDMA::MacId
 
 TUHH_INTAIRNET_MCSOTDMA::LinkInfo::LinkInfo() : LinkInfo(SYMBOLIC_ID_UNSET, SYMBOLIC_ID_UNSET, 0, 0, 0, 0, 0) {}
 
+TUHH_INTAIRNET_MCSOTDMA::LinkInfo::LinkInfo(const TUHH_INTAIRNET_MCSOTDMA::LinkInfo& other) : tx_id(other.tx_id), rx_id(other.rx_id), p2p_channel_center_freq(other.p2p_channel_center_freq), offset(other.offset), timeout(other.timeout), burst_length(other.burst_length), burst_length_tx(other.burst_length_tx) {}
+
 const TUHH_INTAIRNET_MCSOTDMA::MacId& TUHH_INTAIRNET_MCSOTDMA::LinkInfo::getTxId() const {
 	return tx_id;
 }

@@ -18,6 +18,7 @@
 #include "P2PLinkManagerTests.cpp"
 #include "BeaconModuleTests.cpp"
 #include "CongestionEstimatorTests.cpp"
+#include "ThreeUsersTests.cpp"
 
 int main() {
 	coutd.setVerbose(false);
@@ -37,6 +38,7 @@ int main() {
 	runner.addTest(CongestionEstimatorTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(BCLinkManagerTests::suite());
+	runner.addTest(ThreeUsersTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

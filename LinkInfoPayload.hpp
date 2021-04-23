@@ -24,7 +24,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit LinkInfoPayload(Callback *callback) : callback(callback) {}
 
 		Payload* copy() const override {
-			return new LinkInfoPayload(this->callback);
+			auto *copy = new LinkInfoPayload(this->callback);
+			copy->link_info = LinkInfo(link_info);
+			return copy;
 		}
 
 		unsigned int getBits() const override {

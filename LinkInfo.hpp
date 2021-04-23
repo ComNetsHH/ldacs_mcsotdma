@@ -26,6 +26,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		LinkInfo(const MacId& tx_id, const MacId& rx_id, uint64_t p2p_channel_center_freq, int offset, unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx);
 		LinkInfo();
+		LinkInfo(const LinkInfo &other);
 
 		/**
 		 * @return Identifier of the initiator of a link.

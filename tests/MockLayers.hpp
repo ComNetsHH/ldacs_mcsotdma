@@ -24,7 +24,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			if (data == nullptr)
 				throw std::invalid_argument("PHY::receiveFromUpper(nullptr)");
 			coutd << "PHY::receiveFromUpper(" << data->getBits() << "bits, " << center_frequency << "kHz)";
-			if (connected_phy == nullptr) {
+			if (connected_phys.empty()) {
 				coutd << " -> buffered." << std::endl;
 				outgoing_packets.push_back(data);
 				outgoing_packet_freqs.push_back(center_frequency);
@@ -32,7 +32,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				coutd << " -> sent." << std::endl;
 				outgoing_packets.push_back(data->copy());
 				outgoing_packet_freqs.push_back(center_frequency);
-				connected_phy->onReception(data, center_frequency);
+				for (auto phy : connected_phys)
+					phy->onReception(data->copy(), center_frequency);
+				delete data;
 			}
 		}
 
@@ -47,7 +49,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		std::vector<L2Packet*> outgoing_packets;
 		std::vector<unsigned int> outgoing_packet_freqs;
-		PHYLayer* connected_phy = nullptr;
+		std::vector<PHYLayer*> connected_phys = std::vector<PHYLayer*>();
 	};
 
 	class MACLayer : public MCSOTDMA_Mac {
