@@ -75,7 +75,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const size_t num_transmitters = 1, num_receivers = 2;
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;
-		size_t statistic_num_packets_received = 0;
+		size_t statistic_num_packets_received = 0, statistic_num_packet_collisions = 0, statistic_num_packet_decoded = 0;
+		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {

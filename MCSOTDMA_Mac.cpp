@@ -160,13 +160,12 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");
 	statistic_num_packets_received++;
-	// Forward broadcasts to the BCLinkManager...
-	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON)
-		getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
-	// Forward packet intended for us to the corresponding OldLinkManager that manages the packet's sender
-	else if (dest_id == id)
-		getLinkManager(packet->getOrigin())->onPacketReception(packet);
-	else
+	// Store,
+	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON || dest_id == id) {
+		received_packets[center_frequency].push_back(packet);
+		coutd << "stored until slot end.";
+	// ... or discard.
+	} else
 		coutd << "packet not intended for us; discarding." << std::endl;
 }
 
@@ -215,7 +214,25 @@ ReservationManager* MCSOTDMA_Mac::getReservationManager() {
 }
 
 void MCSOTDMA_Mac::onSlotEnd() {
-//	getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onSlotEnd();
+	for (auto &packet_freq_pair : received_packets) {
+		uint64_t freq = packet_freq_pair.first;
+		std::vector<L2Packet*> packets = packet_freq_pair.second;
+		if (packets.size() == 1) {
+			L2Packet *packet = packets.at(0);
+			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
+			else
+				getLinkManager(packet->getOrigin())->onPacketReception(packet);
+			statistic_num_packet_decoded++;
+		} else if (packets.size() > 1) {
+			coutd << "collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
+			statistic_num_packet_collisions += packets.size();
+			for (auto packet : packets)
+				delete packet;
+		}
+	}
+	received_packets.clear();
+
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
 }

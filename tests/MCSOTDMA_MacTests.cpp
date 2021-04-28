@@ -93,10 +93,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, exception_thrown);
 		}
 
+		void testCollision() {
+			auto *packet1 = new L2Packet(), *packet2 = new L2Packet();
+			packet1->addMessage(new L2HeaderBase(MacId(10), 0, 0, 0, 0), nullptr);
+			packet1->addMessage(new L2HeaderBroadcast(), nullptr);
+			packet2->addMessage(new L2HeaderBase(MacId(11), 0, 0, 0, 0), nullptr);
+			packet2->addMessage(new L2HeaderBroadcast(), nullptr);
+			mac->receiveFromLower(packet1, bc_frequency);
+			mac->receiveFromLower(packet2, bc_frequency);
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(size_t(2), mac->statistic_num_packet_collisions);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), mac->statistic_num_packets_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->statistic_num_packet_decoded);
+		}
+
 
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testLinkManagerCreation);
 			CPPUNIT_TEST(testPositions);
+			CPPUNIT_TEST(testCollision);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
