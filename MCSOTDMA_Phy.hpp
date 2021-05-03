@@ -6,10 +6,11 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_MCSOTDMA_PHY_HPP
 
 #include <IPhy.hpp>
+#include <IOmnetPluggable.hpp>
 #include "ReservationTable.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
-	class MCSOTDMA_Phy : public IPhy {
+	class MCSOTDMA_Phy : public IPhy, public IOmnetPluggable {
 
 		friend class MCSOTDMA_PhyTests;
 
@@ -36,6 +37,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<ReservationTable*> receiver_reservation_tables;
 		/** Collects the number of packets intended for this user that were missed because no receiver was tuned to the channel. */
 		size_t statistic_num_received_packets = 0, statistic_num_missed_packets = 0;
+		const std::string str_statistic_num_received_packets = "MCSOTDMA:Phy:statistic_num_received_packets",
+			str_statistic_num_missed_packets = "MCSOTDMA:Phy:statistic_num_missed_packets";
 	};
 }
 

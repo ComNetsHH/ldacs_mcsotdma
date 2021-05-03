@@ -8,6 +8,7 @@
 #include <IMac.hpp>
 #include <L2Packet.hpp>
 #include <IArq.hpp>
+#include <IOmnetPluggable.hpp>
 #include "ReservationManager.hpp"
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Phy.hpp"
@@ -17,7 +18,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	/**
 	 * Implements the MAC interface.
 	 */
-	class MCSOTDMA_Mac : public IMac {
+	class MCSOTDMA_Mac : public IMac, public IOmnetPluggable {
 	public:
 		friend class MCSOTDMA_MacTests;
 
@@ -75,7 +76,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const size_t num_transmitters = 1, num_receivers = 2;
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;
-		size_t statistic_num_packets_received = 0, statistic_num_packet_collisions = 0, statistic_num_packet_decoded = 0;
+		/** Number of signals that have arrived at this user. */
+		size_t statistic_num_packets_received = 0;
+		const std::string str_statistic_num_packets_received = "MCSOTDMA:statistic_num_packets_received(num)";
+		/** Number of packets that were dropped due to collisions. */
+		size_t statistic_num_packet_collisions = 0;
+		const std::string str_statistic_num_packet_collisions = "MCSOTDMA:statistic_num_packet_collisions(num)";
+		/** Number of packets that were successfully received by this user. */
+		size_t statistic_num_packet_decoded = 0;
+		const std::string str_statistic_num_packet_decoded = "MCSOTDMA:statistic_num_packet_decoded(num)";
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
 	};
 

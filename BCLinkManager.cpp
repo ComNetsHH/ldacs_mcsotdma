@@ -135,6 +135,8 @@ void BCLinkManager::onSlotEnd() {
 	contention_estimator.onSlotEnd();
 	congestion_estimator.onSlotEnd();
 	beacon_module.onSlotEnd();
+
+	LinkManager::onSlotEnd();
 }
 
 void BCLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {

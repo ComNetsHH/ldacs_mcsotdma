@@ -199,7 +199,6 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
-//		coutd << "instantiated new " << (internal_id == SYMBOLIC_LINK_ID_BROADCAST ? "BCLinkManager" : "OldLinkManager") << "(" << internal_id << ") ";
 
 	}
 	return link_manager;
@@ -227,7 +226,8 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		} else if (packets.size() > 1) {
 			coutd << "collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
 			statistic_num_packet_collisions += packets.size();
-			for (auto packet : packets)
+
+			for (auto *packet : packets)
 				delete packet;
 		}
 	}
@@ -235,6 +235,10 @@ void MCSOTDMA_Mac::onSlotEnd() {
 
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
+
+	emit(str_statistic_num_packets_received, statistic_num_packets_received);
+	emit(str_statistic_num_packet_collisions, statistic_num_packet_collisions);
+	emit(str_statistic_num_packet_decoded, statistic_num_packet_decoded);
 }
 
 const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {

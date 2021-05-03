@@ -304,6 +304,7 @@ void P2PLinkManager::onSlotEnd() {
 		packet->addMessage(new L2HeaderLinkInfo(), new LinkInfoPayload(this));
 		mac->injectIntoUpper(packet);
 	}
+	LinkManager::onSlotEnd();
 }
 
 std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareRequestMessage(bool initial_request) {
