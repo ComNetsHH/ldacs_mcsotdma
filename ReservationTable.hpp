@@ -13,6 +13,16 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
+	class no_rx_available_error : public std::runtime_error {
+	public:
+		explicit no_rx_available_error(const std::string& arg) : std::runtime_error(arg) {}
+	};
+
+	class no_tx_available_error : public std::runtime_error {
+	public:
+		explicit no_tx_available_error(const std::string& arg) : std::runtime_error(arg) {}
+	};
+
 	/**
 	 * A reservation table keeps track of all slots of a particular, logical frequency channel for a pre-defined planning horizon.
 	 * It is regularly updated when new information about slot utilization becomes available.

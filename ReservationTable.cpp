@@ -40,14 +40,14 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	// Ensure that linked hardware tables have capacity.
 	if ((reservation.isTx() || reservation.isTxCont()) && transmitter_reservation_table != nullptr)
 		if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))
-			throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward TX reservation because the linked transmitter table is not idle.");
+			throw no_tx_available_error("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward TX reservation because the linked transmitter table is not idle.");
 	if ((reservation.isRx() || reservation.isRxCont()) && !receiver_reservation_tables.empty()) {
 		if (!std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset](ReservationTable* table) {
 			return table->isIdle(slot_offset) || table->isLocked(slot_offset);
 		})) {
 			for (const auto& rx_table : receiver_reservation_tables)
 				coutd << std::endl << "Problematic reservation: " << rx_table->getReservation(slot_offset) << std::endl;
-			throw std::invalid_argument("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
+			throw no_rx_available_error("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
 		}
 	}
 	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
