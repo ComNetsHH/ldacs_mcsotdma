@@ -89,6 +89,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool next_broadcast_scheduled = false;
 		unsigned int next_broadcast_slot = 0;
 		BeaconModule beacon_module;
+		const unsigned int MIN_CANDIDATES = 3;
 	};
 }
 

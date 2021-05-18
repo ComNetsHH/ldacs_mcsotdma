@@ -161,8 +161,9 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		unsigned int k = n == 0 ? 1 : std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 		num_candidates += p * k;
 	}
-	coutd << "avg_broadcast_rate=" << r << " num_active_neighbors=" << m << " -> num_candidates=" << std::ceil(num_candidates) << " -> ";
-	return std::ceil(num_candidates);
+	unsigned int final_num_candidates = std::max(this->MIN_CANDIDATES, (unsigned int) std::ceil(num_candidates));
+	coutd << "avg_broadcast_rate=" << r << " num_active_neighbors=" << m << " -> num_candidates=" << final_num_candidates << " -> ";
+	return final_num_candidates;
 }
 
 unsigned long long BCLinkManager::nchoosek(unsigned long n, unsigned long k) const {

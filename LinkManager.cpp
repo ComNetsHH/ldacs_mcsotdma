@@ -84,7 +84,7 @@ unsigned long LinkManager::getRandomInt(size_t start, size_t end) {
 }
 
 void LinkManager::onPacketReception(L2Packet*& packet) {
-	coutd << *this << "::onPacketReception... ";
+	coutd << *mac << "::" << *this << "::onPacketReception... ";
 	coutd << "a packet from '" << packet->getOrigin() << "' ";
 	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
 		coutd << "to '" << packet->getDestination() << "";
