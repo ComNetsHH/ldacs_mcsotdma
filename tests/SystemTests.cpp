@@ -422,7 +422,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->scheduled_link_requests.empty());
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
 			// Proceed until reply is sent.
-			for (size_t t = 0; t < lm_me->burst_offset * 2; t++) {
+			for (size_t t = 0; t < lm_me->burst_offset * 2 + BCLinkManager::MIN_CANDIDATES; t++) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -539,7 +539,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			num_slots = 0;
 			while (lm_you->link_status != LinkManager::Status::link_renewal_complete_local && num_slots++ < max_num_slots) {
-				phy_layer_you->connected_phys.push_back(phy_layer_me);
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -565,7 +564,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT(lm_me->current_link_state != nullptr);
 			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_link_state->scheduled_link_requests.empty());
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
+			CPPUNIT_ASSERT(lm_me->link_status == LinkManager::Status::awaiting_reply || lm_me->link_status == LinkManager::Status::link_renewal_complete);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_renewal_complete_local, lm_you->link_status);
 //			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->current_link_state->scheduled_link_replies.size());
 			// Proceed until reply is sent.
@@ -943,9 +942,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_you->link_status);
-			// One data transmission should've happened (which established the link at RX).
-			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
-			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout - 1, lm_you->current_link_state->timeout);
 
 			// Proceed until the first request.
 			CPPUNIT_ASSERT(lm_me->num_renewal_attempts > 0);
@@ -1176,9 +1172,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_you->link_status);
-			// One data transmission should've happened (which established the link at RX).
-			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
-			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout - 1, lm_you->current_link_state->timeout);
 
 			// Proceed until the first request.
 			CPPUNIT_ASSERT(lm_me->num_renewal_attempts > 0);
