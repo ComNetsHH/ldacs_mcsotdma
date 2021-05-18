@@ -31,6 +31,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 		LinkInfo getLinkInfo() override;
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		void processIncomingLinkRequest_Renewal(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
 		void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 		void assign(const FrequencyChannel* channel) override;
 
