@@ -585,8 +585,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// A 2nd TX reservation should throw an exception because we support only one transmitter.
 			ReservationTable second_table = ReservationTable(planning_horizon);
 			second_table.linkTransmitterReservationTable(table_tx);
-			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX)), std::invalid_argument);
-			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(MacId(1), Reservation::TX)), std::invalid_argument);
+			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX)), no_tx_available_error);
+			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(MacId(1), Reservation::TX)), no_tx_available_error);
 
 			table->lock(3);
 			table_tx->lock(3);
@@ -621,8 +621,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ReservationTable third_table = ReservationTable(planning_horizon);
 			third_table.linkReceiverReservationTable(table_rx_1);
 			third_table.linkReceiverReservationTable(table_rx_2);
-			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX)), std::invalid_argument);
-			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(MacId(1), Reservation::RX)), std::invalid_argument);
+			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX)), no_rx_available_error);
+			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(MacId(1), Reservation::RX)), no_rx_available_error);
 		}
 
 		void testLinkedRXTablesMultiSlot() {
