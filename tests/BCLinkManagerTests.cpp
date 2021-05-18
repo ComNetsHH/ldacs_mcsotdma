@@ -35,12 +35,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testBroadcastSlotSelection() {
 			// No active neighbors -> just take next slot.
 			unsigned int chosen_slot = link_manager->broadcastSlotSelection();
-			CPPUNIT_ASSERT_EQUAL(uint32_t(1), chosen_slot);
+			CPPUNIT_ASSERT(chosen_slot >= uint32_t(1) && chosen_slot <= BCLinkManager::MIN_CANDIDATES);
 		}
 
 		void testScheduleBroadcastSlot() {
 			link_manager->scheduleBroadcastSlot();
-			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_manager->next_broadcast_slot);
+			CPPUNIT_ASSERT(link_manager->next_broadcast_slot >= uint32_t(1) && link_manager->next_broadcast_slot <= BCLinkManager::MIN_CANDIDATES);
 		}
 
 		void testBroadcast() {
