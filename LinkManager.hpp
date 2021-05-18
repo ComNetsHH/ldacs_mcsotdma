@@ -66,6 +66,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				return num_bits;
 			}
 
+			/**
+			 * @return Proposed slot offset that is farthest in the future, i.e. the 'latest'.
+			 */
+			unsigned int getLatestProposedSlot() const {
+				unsigned int latest_slot = 0;
+				for (const auto &item : proposed_resources) {
+					for (const auto &slot : item.second) {
+						if (slot > latest_slot)
+							latest_slot = slot;
+					}
+				}
+				return latest_slot;
+			}
+
 			/** <channel, <start slots>>-map of proposed resources. */
 			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
 			std::map<const FrequencyChannel*, std::vector<unsigned int>> locked_resources;

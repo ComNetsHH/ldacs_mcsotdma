@@ -19,34 +19,20 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 	public:
 		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
-
 		~P2PLinkManager() override;
 
 		void onReceptionBurstStart(unsigned int burst_length) override;
-
 		void onReceptionBurst(unsigned int remaining_burst_length) override;
-
 		L2Packet* onTransmissionBurstStart(unsigned int remaining_burst_length) override;
-
 		void onTransmissionBurst(unsigned int remaining_burst_length) override;
-
 		void notifyOutgoing(unsigned long num_bits) override;
-
 		void onSlotStart(uint64_t num_slots) override;
-
 		void onSlotEnd() override;
-
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
-
 		LinkInfo getLinkInfo() override;
-
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
-
 		void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
-
-public:
-
-	void assign(const FrequencyChannel* channel) override;
+		void assign(const FrequencyChannel* channel) override;
 
 	protected:
 
@@ -139,6 +125,8 @@ public:
 				/** The last-proposed resources for link renewal are saved s.t. locked resources can be freed when an agreement is found. */
 				LinkRequestPayload* last_proposed_renewal_resources = nullptr;
 				unsigned int last_proposal_sent = 0;
+				unsigned int latest_agreement_opportunity = 0;
+				bool waiting_for_agreement = false;
 			};
 
 			/**
@@ -224,6 +212,8 @@ public:
 			 * @throws runtime_error If no reservation table is currently set.
 			 */
 			int getNumSlotsUntilNextBurst() const;
+
+			void terminateLink();
 
 	protected:
 			/** The default number of frames a newly established P2P link remains valid for. */

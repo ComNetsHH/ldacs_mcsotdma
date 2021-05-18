@@ -50,10 +50,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			delete env3;
 		}
 
+		/**
+		 * Ensures that when two users communicate, the third is eventually informed through a LinkInfo.
+		 */
 		void testLinkEstablishmentTwoUsers() {
 //			coutd.setVerbose(true);
 			MACLayer* mac_tx = env1->mac_layer, *mac_rx = env2->mac_layer, *mac_3 = env3->mac_layer;
-			auto* p2p_tx = (P2PLinkManager*) mac_tx->getLinkManager(id2), * p2p_rx = (P2PLinkManager*) mac_rx->getLinkManager(id1);
+			auto* p2p_tx = (P2PLinkManager*) mac_tx->getLinkManager(id2), *p2p_rx = (P2PLinkManager*) mac_rx->getLinkManager(id1);
 			p2p_tx->notifyOutgoing(num_outgoing_bits);
 			size_t num_slots = 0, max_num_slots = 100;
 			while (p2p_rx->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
@@ -117,9 +120,45 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			testLinkEstablishmentTwoUsers();
 		}
 
+		/**
+		 * Tests that three users can communicate like so: A->B B->C.
+		 * They initiate communication at exactly the same moment in time.
+		 */
+		void threeUsersNonOverlappingTest() {
+			coutd.setVerbose(true);
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			auto* p2p_1 = (P2PLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (P2PLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (P2PLinkManager*) mac_3->getLinkManager(id2);
+			p2p_1->notifyOutgoing(num_outgoing_bits);
+			p2p_2->notifyOutgoing(num_outgoing_bits);
+
+			size_t num_slots = 0, max_num_slots = 200;
+			while (p2p_1->link_status != LinkManager::Status::link_established
+					&& p2p_2->link_status != LinkManager::Status::link_established
+		            && p2p_3->link_status != LinkManager::Status::link_established
+					&& num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+				p2p_1->notifyOutgoing(num_outgoing_bits);
+				p2p_2->notifyOutgoing(num_outgoing_bits);
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(p2p_1->link_status, LinkManager::Status::link_established);
+			CPPUNIT_ASSERT_EQUAL(p2p_2->link_status, LinkManager::Status::link_established);
+			CPPUNIT_ASSERT_EQUAL(p2p_3->link_status, LinkManager::Status::link_established);
+		}
+
+
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
+//			CPPUNIT_TEST(threeUsersNonOverlappingTest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

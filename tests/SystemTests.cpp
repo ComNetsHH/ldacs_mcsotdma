@@ -1826,6 +1826,47 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, rlc_layer_you->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty());
 		}
 
+		/**
+		 * Tests that if a link request is lost, establishment is re-tried after all reception possibilities have passed.
+		 */
+		void testReestablishmentAfterDrop() {
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			size_t num_slots = 0, max_slots = 200;
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
+
+			// Sever connection.
+			env_me->phy_layer->connected_phys.clear();
+
+			while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_scheduled && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			// Link request should've been sent, so we're 'awaiting_reply', but as it was dropped, they know nothing of it.
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, lm_you->link_status);
+
+			// Reconnect.
+			env_me->phy_layer->connected_phys.push_back(env_you->phy_layer);
+			num_slots = 0;
+			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
+		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -1855,7 +1896,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testUnSyncedRenewal);
 			CPPUNIT_TEST(testLinkEstablishmentAfterFailedRenewal);
 			CPPUNIT_TEST(testLinkInfoBroadcast);
-
+			CPPUNIT_TEST(testReestablishmentAfterDrop);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

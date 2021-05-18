@@ -292,6 +292,14 @@ void P2PLinkManager::onSlotEnd() {
 	if (current_link_state != nullptr) {
 		if (current_link_state->next_burst_start == 0)
 			current_link_state->next_burst_start = burst_offset;
+		// If we're awaiting a reply, make sure that we've not missed the latest reception opportunity.
+		if (link_status == awaiting_reply && current_link_state->waiting_for_agreement) {
+			if (current_link_state->latest_agreement_opportunity == 0) {
+				// We've missed the latest opportunity. Reset the link status.
+				terminateLink();
+			} else
+				current_link_state->latest_agreement_opportunity -= 1;
+		}
 	}
 	if (next_link_state != nullptr) {
 		if (next_link_state->next_burst_start == 0)
@@ -355,6 +363,9 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 				current_link_state->scheduled_rx_slots.emplace_back(channel, offset);
 			}
 		}
+		// Remember the latest slot where a reply could be received.
+		current_link_state->latest_agreement_opportunity = payload->getLatestProposedSlot();
+		current_link_state->waiting_for_agreement = true;
 	} else {
 		delete next_link_state;
 		next_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
@@ -585,6 +596,7 @@ void P2PLinkManager::processInitialReply(const L2HeaderLinkReply*& header, const
 	established_initial_link_this_slot = true;
 	established_link_this_slot = true;
 	coutd << link_status << "' -> ";
+	current_link_state->waiting_for_agreement = false;
 }
 
 void P2PLinkManager::processRenewalReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload) {
@@ -634,6 +646,7 @@ void P2PLinkManager::processRenewalReply(const L2HeaderLinkReply*& header, const
 	// Update status.
 	coutd << "-> changing status '" << link_status << "->" << LinkManager::link_renewal_complete << "' -> ";
 	link_status = link_renewal_complete;
+	next_link_state->waiting_for_agreement = false;
 }
 
 std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {
@@ -782,25 +795,7 @@ void P2PLinkManager::onTimeoutExpiry() {
 		established_link_this_slot = true;
 	} else {
 		coutd << "no pending renewal, updating status: " << link_status << "->" << LinkManager::link_not_established << " -> cleared associated channel at " << *current_channel << " -> ";
-		current_channel = nullptr;
-		current_reservation_table = nullptr;
-		link_status = LinkManager::link_not_established;
-		coutd << "clearing pending RX reservations: ";
-		for (auto &pair : current_link_state->scheduled_rx_slots) {
-			ReservationTable *table = reservation_manager->getReservationTable(pair.first);
-			table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-			coutd << pair.second << "@" << *pair.first << " ";
-		}
-		if (current_link_state->last_proposed_renewal_resources != nullptr)
-			clearLockedResources(current_link_state->last_proposed_renewal_resources, current_link_state->last_proposal_sent);
-		delete current_link_state;
-		current_link_state = nullptr;
-		delete next_link_state;
-		next_link_state = nullptr;
-		coutd << "-> link reset -> ";
-		// Check if there's more data,
-		if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
-			notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
+		terminateLink();
 	}
 }
 
@@ -902,4 +897,26 @@ int P2PLinkManager::getNumSlotsUntilNextBurst() const {
 		}
 	}
 	throw std::range_error("P2PLinkManager::getNumSlotsUntilNextBurst can't find next burst.");
+}
+
+void P2PLinkManager::terminateLink() {
+	current_channel = nullptr;
+	current_reservation_table = nullptr;
+	link_status = LinkManager::link_not_established;
+	coutd << "clearing pending RX reservations: ";
+	for (auto &pair : current_link_state->scheduled_rx_slots) {
+		ReservationTable *table = reservation_manager->getReservationTable(pair.first);
+		table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+		coutd << pair.second << "@" << *pair.first << " ";
+	}
+	if (current_link_state->last_proposed_renewal_resources != nullptr)
+		clearLockedResources(current_link_state->last_proposed_renewal_resources, current_link_state->last_proposal_sent);
+	delete current_link_state;
+	current_link_state = nullptr;
+	delete next_link_state;
+	next_link_state = nullptr;
+	coutd << "-> link reset -> ";
+	// Check if there's more data,
+	if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
+		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 }
