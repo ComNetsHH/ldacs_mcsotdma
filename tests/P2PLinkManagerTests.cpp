@@ -30,10 +30,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			delete env;
 		}
 
-		void testP2PSlotSelectionHelper(bool is_init) {
+		void testInitialP2PSlotSelection() {
 			//			coutd.setVerbose(true);
 			unsigned int num_channels = 1, num_slots = 3, min_offset = 2, burst_length = 5, burst_length_tx = 3;
-			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx, is_init);
+			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx);
 			auto map = pair.first;
 			CPPUNIT_ASSERT_EQUAL(size_t(num_channels), map.size());
 			std::vector<unsigned int> expected_slots = {2, 3, 4, 5, 6, 7, 8},
@@ -55,7 +55,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}));
 			}
 			// Since this is an initial slot selection, for the burst start slots a receiver should also be reserved.
-			bool expect_rx_to_be_reserved = is_init;
+			bool expect_rx_to_be_reserved = true;
 			for (unsigned int offset : start_offsets)
 				CPPUNIT_ASSERT_EQUAL(expect_rx_to_be_reserved, std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [offset](ReservationTable *table) {
 					return table->getReservation(offset) == Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED);
@@ -64,18 +64,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(false);
 		}
 
-		void testInitialP2PSlotSelection() {
-			testP2PSlotSelectionHelper(true);
-		}
-
-		void testRenewalP2PSlotSelection() {
-			testP2PSlotSelectionHelper(false);
-		}
-
 		void testMultiChannelP2PSlotSelection() {
 //			coutd.setVerbose(true);
 			unsigned int num_channels = 3, num_slots = 3, min_offset = 2, burst_length = 5, burst_length_tx = 3;
-			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx, false);
+			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx);
 			auto map = pair.first;
 			// As many entries as channels.
 			CPPUNIT_ASSERT_EQUAL(size_t(num_channels), map.size());
@@ -97,7 +89,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that the link request header fields and proposal payload are set correctly. */
 		void testPrepareInitialLinkRequest() {
-			auto link_request_msg = link_manager->prepareRequestMessage(true);
+			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 			CPPUNIT_ASSERT_EQUAL(link_manager->default_timeout, link_request_msg.first->timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_request_msg.first->burst_length);
@@ -118,13 +110,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testProcessInitialRequestAllLocked() {
-			auto link_request_msg = link_manager->prepareRequestMessage(true);
+			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 			CPPUNIT_ASSERT_THROW(link_manager->processRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second), std::invalid_argument);
 		}
 
 		void testProcessInitialRequest() {
-			auto link_request_msg = link_manager->prepareRequestMessage(true);
+			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
@@ -192,7 +184,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			// Prepare request from another user.
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
-			auto link_request_msg = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->prepareRequestMessage(true);
+			auto link_request_msg = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 
 			// Right now, the link should be unestablished.
@@ -209,7 +201,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_manager->current_channel != nullptr);
 			CPPUNIT_ASSERT(link_manager->current_reservation_table != nullptr);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
-			CPPUNIT_ASSERT_EQUAL(size_t(0), link_manager->current_link_state->scheduled_link_requests.size());
 			// Within one P2P frame there should just be the transmission of the reply scheduled.
 			size_t num_tx = 0;
 			for (size_t t = 0; t < link_manager->burst_offset; t++) {
@@ -313,7 +304,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Prepare request.
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
 			link_manager->notifyOutgoing(512);
-			auto link_request_msg = link_manager->prepareRequestMessage(true);
+			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 			// Receive request.
 			((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processIncomingLinkRequest((const L2Header*&) link_request_msg.first, (const L2Packet::Payload*&) link_request_msg.second, own_id);
@@ -371,7 +362,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testLinkRequestSize() {
 			testProcessInitialLinkReply();
-			auto request_msg = link_manager->prepareRequestMessage(false);
+			auto request_msg = link_manager->prepareRequestMessage();
 			P2PLinkManager::ControlMessageReservation msg = P2PLinkManager::ControlMessageReservation(0, (L2Header*&) request_msg.first, (LinkManager::LinkRequestPayload*&) request_msg.second);
 			L2HeaderLinkRequest request = L2HeaderLinkRequest();
 			CPPUNIT_ASSERT_EQUAL(request.getBits(), msg.getHeader()->getBits());
@@ -383,16 +374,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testPrepareRequestMessageMemoryLeak() {
-			auto pair = link_manager->prepareRequestMessage(false);
+			auto pair = link_manager->prepareRequestMessage();
 			std::vector<P2PLinkManager::ControlMessageReservation> vec;
 			link_manager->current_link_state = new P2PLinkManager::LinkState(10, 10, 10);
-			// Valgrind shouldn't report leaked memory, because the scheduled_link_requests container deletes the contained memory upon the LinkState destructor.
-			link_manager->current_link_state->scheduled_link_requests.emplace_back(0, (L2Header*&) pair.first, (LinkManager::LinkRequestPayload*&) pair.second);
+			delete pair.first;
+			delete pair.second;
 		}
 
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
-		CPPUNIT_TEST(testRenewalP2PSlotSelection);
 		CPPUNIT_TEST(testMultiChannelP2PSlotSelection);
 		CPPUNIT_TEST(testPrepareInitialLinkRequest);
 		CPPUNIT_TEST(testProcessInitialRequestAllLocked);

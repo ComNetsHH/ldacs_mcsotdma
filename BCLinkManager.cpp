@@ -98,7 +98,7 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "scheduling next broadcast -> ";
 		scheduleBroadcastSlot();
 	}
-	coutd << "next broadcast scheduled in " << next_broadcast_slot << " slots." << std::endl;
+	coutd << "next broadcast scheduled in " << next_broadcast_slot << " slots -> ";
 }
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
