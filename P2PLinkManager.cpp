@@ -406,24 +406,17 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	if (link_status == link_not_established) {
 		coutd << "initial request -> ";
 		processIncomingLinkRequest_Initial(header, payload, origin);
-	// If the link is of any other status, this must be a renewal request.
+	// If the link is of any other status, there is nothing to do.
 	} else {
-		coutd << "renewal request -> ";
-		processIncomingLinkRequest_Renewal(header, payload, origin);
+		coutd << "link is not unestablished; ignoring -> ";
 	}
 }
 
 void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
-	// Pick a random resource from those proposed.
-	LinkState *state = processRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
-	state->initial_setup = true;
-	// If no viable resources were found, ...
-	if (state->channel == nullptr) {
-		// do nothing.
-		delete state;
-		coutd << "no viables resources; aborting -> ";
-		// If one was picked, then ...
-	} else {
+	try {
+		// Pick a random resource from those proposed.
+		LinkState* state = processRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
+		state->initial_setup = true;
 		// remember the choice,
 		delete current_link_state;
 		current_link_state = state;
@@ -442,68 +435,8 @@ void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header,
 		// and update status.
 		coutd << "changing status " << link_status << "->" << awaiting_data_tx << " -> ";
 		link_status = awaiting_data_tx;
-	}
-}
-
-void P2PLinkManager::processIncomingLinkRequest_Renewal(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
-// if an earlier link had been agreed upon, free its resources
-	if (next_link_state != nullptr) {
-		coutd << "clearing earlier-made slot reservations: ";
-		ReservationTable *table = reservation_manager->getReservationTable(next_link_state->channel);
-		for (unsigned int burst = 0; burst < default_timeout; burst++) {
-			for (unsigned t = 0; t < next_link_state->burst_length; t++) {
-				unsigned int offset = next_link_state->next_burst_start + burst*burst_offset + t;
-				const Reservation &res = table->getReservation(offset);
-				if (res.getTarget() == link_id) {
-					coutd << "t=" << offset << ":" << res << " ";
-					table->mark(offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-				}
-			}
-		}
-		coutd << " -> ";
-	}
-	assert(current_link_state != nullptr);
-	current_link_state->renewal_due = true;
-	LinkState *state = processRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
-	state->initial_setup = false;
-	// If no viable resources were found, ...
-	if (state->channel == nullptr) {
-		// do nothing.
-		delete state;
-		coutd << "no viables resources; aborting -> ";
-		// If one was picked, then ...
-	} else {
-		// remember the choice,
-		delete next_link_state;
-		next_link_state = state;
-		coutd << "randomly chose " << *next_link_state->channel << "@" << next_link_state->next_burst_start << " -> ";
-		// schedule a link reply,
-		auto link_reply_message = prepareReply(origin, next_link_state->channel, next_link_state->next_burst_start, next_link_state->burst_length, next_link_state->burst_length_tx);
-		// during the next transmission burst,
-		// if there are no slots scheduled for this user's transmission, ...
-		if (current_link_state->burst_length_tx == current_link_state->burst_length) {
-			// ... then for once schedule the last slot
-			int last_slot_next_burst = burst_offset + current_link_state->burst_length - 1;
-			coutd << "scheduling link reply at last slot of next burst (hijacking the t=" << last_slot_next_burst << ":" << current_reservation_table->getReservation(last_slot_next_burst) << " slot for a TX slot) -> ";
-			assert(current_reservation_table->getReservation(last_slot_next_burst).isRx() || current_reservation_table->getReservation(last_slot_next_burst).isRxCont());
-			current_reservation_table->mark(last_slot_next_burst, Reservation(link_id, Reservation::TX));
-			current_link_state->scheduled_link_replies.emplace_back(last_slot_next_burst, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
-			// if there *are* slots scheduled for this user's transmission, ...
-		} else {
-			// ... then schedule the reply there
-			coutd << "scheduling link reply for next burst -> ";
-			int tx_slot_next_burst = burst_offset + current_link_state->burst_length_tx;
-			assert(current_reservation_table->getReservation(tx_slot_next_burst).isTx());
-			current_link_state->scheduled_link_replies.emplace_back(tx_slot_next_burst, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
-		}
-		// Mark slots of the new link.
-		ReservationTable *table = reservation_manager->getReservationTable(next_link_state->channel);
-		coutd << "-> mark new slot reservations: ";
-		for (unsigned int t = 0; t < default_timeout; t++)
-			scheduleBurst(next_link_state->next_burst_start + t*burst_offset, next_link_state->burst_length, next_link_state->burst_length_tx, link_id, table, false);
-		// and update status.
-		coutd << "changing status " << link_status << "->" << link_renewal_complete_local << " -> ";
-		link_status = link_renewal_complete_local;
+	} catch (const std::invalid_argument& e) {
+		coutd << "no viable resources; aborting -> ";
 	}
 }
 
@@ -529,7 +462,7 @@ std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomRes
 		}
 	}
 	if (viable_resource_channel.empty())
-		return {nullptr, 0};
+		throw std::invalid_argument("No viable resources were provided.");
 	else {
 		auto random_index = getRandomInt(0, viable_resource_channel.size());
 		return {viable_resource_channel.at(random_index), viable_resource_slot.at(random_index)};
@@ -543,11 +476,16 @@ P2PLinkManager::LinkState* P2PLinkManager::processRequest(const L2HeaderLinkRequ
 	state->is_link_initiator = false;
 
 	// Parse proposed resources.
-	auto chosen_resource = chooseRandomResource(payload->proposed_resources, header->burst_length, header->burst_length_tx);
-	// ... and save it.
-	state->channel = chosen_resource.first;
-	state->next_burst_start = chosen_resource.second;
-	return state;
+	try {
+		auto chosen_resource = chooseRandomResource(payload->proposed_resources, header->burst_length, header->burst_length_tx);
+		// ... and save it.
+		state->channel = chosen_resource.first;
+		state->next_burst_start = chosen_resource.second;
+		return state;
+	} catch (const std::invalid_argument& e) {
+		// If no resources were viable, forward this error.
+		throw e;
+	}
 }
 
 void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {

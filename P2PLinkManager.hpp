@@ -146,7 +146,23 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage(bool initial_request);
 			std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
+			/**
+			 * Processes a link establishment request by parsing it and selecting a viable, proposed resource.
+			 * @param header
+			 * @param payload
+			 * @return A LinkState with the selected resource saved.
+			 * @throws std::invalid_argument If no resource was viable.
+			 */
 			LinkState* processRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+
+			/**
+			 * Checks the provided resources for viable ones and selects from those one randomly.
+			 * @param resources
+			 * @param burst_length
+			 * @param burst_length_tx
+			 * @return Pair of (FrequencyChannel, time slot)
+			 * @throws std::invalid_argument If no resources were viable.
+			 */
 			std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
 
 			void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;

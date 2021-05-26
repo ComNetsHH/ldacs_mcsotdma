@@ -120,14 +120,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testProcessInitialRequestAllLocked() {
 			auto link_request_msg = link_manager->prepareRequestMessage(true);
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
-//			coutd.setVerbose(true);
-			P2PLinkManager::LinkState *state = link_manager->processRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
-			// Since the same user that created the request is now processing it, all resources must be locked, so none can be found viable.
-			CPPUNIT_ASSERT(state->channel == nullptr);
-			delete state;
-			delete link_request_msg.first;
-			delete link_request_msg.second;
-//			coutd.setVerbose(false);
+			CPPUNIT_ASSERT_THROW(link_manager->processRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second), std::invalid_argument);
 		}
 
 		void testProcessInitialRequest() {
