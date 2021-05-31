@@ -98,7 +98,7 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "scheduling next broadcast -> ";
 		scheduleBroadcastSlot();
 	}
-	coutd << "next broadcast scheduled in " << next_broadcast_slot << " slots." << std::endl;
+	coutd << "next broadcast scheduled in " << next_broadcast_slot << " slots -> ";
 }
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
@@ -144,6 +144,18 @@ void BCLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::Li
 	link_requests.emplace_back(header, payload);
 	// Notify about outgoing data, which may schedule the next broadcast slot.
 	notifyOutgoing(header->getBits() + payload->getBits());
+}
+
+size_t BCLinkManager::cancelLinkRequest(const MacId& id) {
+	size_t num_removed = 0;
+	for (auto it = link_requests.begin(); it != link_requests.end(); it++) {
+		const auto* header = it->first;
+		if (header->getDestId() == id) {
+			link_requests.erase(it--);
+			num_removed++;
+		}
+	}
+	return num_removed;
 }
 
 unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {

@@ -73,10 +73,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void update(uint64_t num_slots);
 
+		std::vector<std::pair<Reservation, const FrequencyChannel*>> collectReservations(unsigned int slot_offset) const;
+
 		/**
 		 * Fetches current reservations from each ReservationTable.
 		 */
-		std::vector<std::pair<Reservation, const FrequencyChannel*>> collectCurrentReservations();
+		std::vector<std::pair<Reservation, const FrequencyChannel*>> collectCurrentReservations() const;
 
 		/**
 		 * @return Number of frequency channels and corresponding reservation tables that are managed.

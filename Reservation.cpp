@@ -67,6 +67,10 @@ bool Reservation::isBeaconTx() const {
 	return action == TX_BEACON;
 }
 
+bool Reservation::isAnyTx() const {
+	return isTx() || isTxCont() || isBeaconTx();
+}
+
 bool Reservation::isRx() const {
 	return action == RX;
 }
@@ -77,6 +81,10 @@ bool Reservation::isRxCont() const {
 
 bool Reservation::isBeaconRx() const {
 	return action == RX_BEACON;
+}
+
+bool Reservation::isAnyRx() const {
+	return isRx() || isRxCont() || isBeaconRx();
 }
 
 bool Reservation::isBeacon() const {

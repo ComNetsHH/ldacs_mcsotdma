@@ -89,12 +89,16 @@ ReservationTable* ReservationManager::getBroadcastReservationTable() {
 	return this->broadcast_reservation_table;
 }
 
-std::vector<std::pair<Reservation, const FrequencyChannel*>> ReservationManager::collectCurrentReservations() {
+std::vector<std::pair<Reservation, const FrequencyChannel*>> ReservationManager::collectReservations(unsigned int slot_offset) const {
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations;
-	reservations.emplace_back(broadcast_reservation_table->getReservation(0), broadcast_frequency_channel);
+	reservations.emplace_back(broadcast_reservation_table->getReservation(slot_offset), broadcast_frequency_channel);
 	for (ReservationTable* table : p2p_reservation_tables)
-		reservations.emplace_back(table->getReservation(0), table->getLinkedChannel());
+		reservations.emplace_back(table->getReservation(slot_offset), table->getLinkedChannel());
 	return reservations;
+}
+
+std::vector<std::pair<Reservation, const FrequencyChannel*>> ReservationManager::collectCurrentReservations() const {
+	return collectReservations(0);
 }
 
 FrequencyChannel* ReservationManager::getFreqChannel(const ReservationTable* table) {

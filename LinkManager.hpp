@@ -35,11 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/** Link establishment request has been prepared and we're waiting for the reply. */
 			awaiting_reply,
 			/** Link establishment reply has been prepared and we're waiting for the first message. */
-			awaiting_data_tx,
-			/** Link renewal has been completed locally after having received a renewal request, but the reply may not have arrived at the destination yet. */
-			link_renewal_complete_local,
-			/** Link renewal has been completed. After expiry, the new reservations take action. */
-			link_renewal_complete
+			awaiting_data_tx
 		};
 
 		class LinkRequestPayload : public L2Packet::Payload {
@@ -84,7 +80,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
 			std::map<const FrequencyChannel*, std::vector<unsigned int>> locked_resources;
 			Callback *callback = nullptr;
-			bool initial_request = false;
 		};
 
 		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
@@ -229,10 +224,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager::Status& status) {
 		std::string str;
 		switch (status) {
-			case LinkManager::link_renewal_complete: {
-				str = "link_renewal_complete";
-				break;
-			}
 			case LinkManager::link_not_established: {
 				str = "link_not_established";
 				break;
@@ -249,11 +240,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				str = "awaiting_data_tx";
 				break;
 			}
-			case LinkManager::link_renewal_complete_local: {
-				str = "link_renewal_complete_local";
-				break;
-			}
-
 		}
 		return stream << str;
 	}

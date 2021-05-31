@@ -62,6 +62,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
         const MCSOTDMA_Phy* getPhy() const;
 
+		std::vector<std::pair<Reservation, const FrequencyChannel*>> getReservations(unsigned int t) const;
+
 	protected:
 		/**
 		 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.

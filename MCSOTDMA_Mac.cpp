@@ -56,7 +56,7 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	size_t num_rx = 0;
 	for (const auto& pair : reservations) {
-		if (pair.first.isRx()) {
+		if (pair.first.isAnyRx()) {
 			num_rx++;
 			try {
 				lower_layer->tuneReceiver(pair.second->getCenterFrequency());
@@ -243,4 +243,8 @@ void MCSOTDMA_Mac::onSlotEnd() {
 
 const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {
 	return (MCSOTDMA_Phy*) lower_layer;
+}
+
+std::vector<std::pair<Reservation, const FrequencyChannel*>> MCSOTDMA_Mac::getReservations(unsigned int t) const {
+	return reservation_manager->collectReservations(t);
 }

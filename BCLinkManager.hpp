@@ -44,6 +44,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void sendLinkRequest(L2HeaderLinkRequest* header, LinkRequestPayload* payload);
 
+		/**
+		 * Cancels all link requests towards 'id'.
+		 * @param id
+		 * @return Number of removed requests.
+		 */
+		size_t cancelLinkRequest(const MacId& id);
+
 		void assign(const FrequencyChannel* channel) override;
 
 	protected:

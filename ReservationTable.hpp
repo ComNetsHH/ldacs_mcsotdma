@@ -87,10 +87,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param min_offset Minimum slot offset for the first proposed slot.
 		 * @param burst_length Number of slots the burst must occupy.
 		 * @param burst_length_tx Number of first slots that should be used for transmission.
-		 * @param is_init Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
+		 * @param rx_idle_during_first_slot Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
 		 * @return Start slot offsets.
 		 */
-		std::vector<unsigned int> findCandidates(unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init) const;
+		std::vector<unsigned int> findCandidates(unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const;
 
 		void lock(unsigned int slot_offset);
 

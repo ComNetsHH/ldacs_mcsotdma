@@ -85,17 +85,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			public:
 				LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx) : timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx), next_burst_start(0) {}
 				virtual ~LinkState() {
-					delete last_proposed_renewal_resources;
-					for (auto msg : scheduled_link_requests)
-						msg.delete_mem();
 					for (auto msg : scheduled_link_replies)
 						msg.delete_mem();
-				}
-
-				void clearRequests() {
-					for (auto msg : scheduled_link_requests)
-						msg.delete_mem();
-					scheduled_link_requests.clear();
 				}
 
 				void clearReplies() {
@@ -114,21 +105,15 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				bool is_link_initiator = false;
 				/** Whether this state results from an initial link establishment as opposed to a renewed one. */
 				bool initial_setup = false;
-				/** Whether a link renewal is due. */
-				bool renewal_due = false;
 				const FrequencyChannel *channel = nullptr;
 				unsigned int next_burst_start;
-				/** Link replies may be scheduled on specific slots. */
-				std::vector<ControlMessageReservation> scheduled_link_replies;
-				/** Link requests may be scheduled on specific slots. */
-				std::vector<ControlMessageReservation> scheduled_link_requests;
 				/** Initial link establishment makes these RX reservations to listen for replies. */
 				std::vector<std::pair<const FrequencyChannel*, unsigned int>> scheduled_rx_slots;
-				/** The last-proposed resources for link renewal are saved s.t. locked resources can be freed when an agreement is found. */
-				LinkRequestPayload* last_proposed_renewal_resources = nullptr;
 				unsigned int last_proposal_sent = 0;
 				unsigned int latest_agreement_opportunity = 0;
 				bool waiting_for_agreement = false;
+				/** Link replies may be scheduled on specific slots. */
+				std::vector<ControlMessageReservation> scheduled_link_replies;
 			};
 
 			/**
@@ -141,17 +126,31 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param is_init Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
 			 * @return <Proposal map, locked map>
 			 */
-			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map<const FrequencyChannel*, std::vector<unsigned int>>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool is_init);
+			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map<const FrequencyChannel*, std::vector<unsigned int>>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx);
 
-			std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage(bool initial_request);
+			std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage();
 			std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
+			/**
+			 * Processes a link establishment request by parsing it and selecting a viable, proposed resource.
+			 * @param header
+			 * @param payload
+			 * @return A LinkState with the selected resource saved.
+			 * @throws std::invalid_argument If no resource was viable.
+			 */
 			LinkState* processRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+
+			/**
+			 * Checks the provided resources for viable ones and selects from those one randomly.
+			 * @param resources
+			 * @param burst_length
+			 * @param burst_length_tx
+			 * @return Pair of (FrequencyChannel, time slot)
+			 * @throws std::invalid_argument If no resources were viable.
+			 */
 			std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
 
 			void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
-			void processInitialReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
-			void processRenewalReply(const L2HeaderLinkReply*& header, const LinkManager::LinkRequestPayload*& payload);
 
 			/**
 			 * @param table
@@ -172,15 +171,6 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param link_initiator Whether the first slots should be TX or RX.
 			 */
 			void scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable *table, bool link_initiator);
-
-			/**
-			 * @param timeout
-			 * @param init_offset First transmission burst offset.
-			 * @param burst_offset
-			 * @param num_attempts
-			 * @return Slot offsets where link renewal requests should be sent.
-			 */
-			std::vector<unsigned int> scheduleRenewalRequestSlots(unsigned int timeout, unsigned int init_offset, unsigned int burst_offset, unsigned int num_attempts) const;
 
 			void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 			void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
@@ -215,6 +205,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 */
 			int getNumSlotsUntilNextBurst() const;
 
+			/**
+			 * Clears pending RX reservations (to listen for link replies) and resets link status.
+			 */
 			void terminateLink();
 
 	protected:
@@ -226,8 +219,6 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			unsigned int num_p2p_channels_to_propose = 2;
 			/** The number of time slots per P2P channel that should be proposed using link request. */
 			const unsigned int num_slots_per_p2p_channel_to_propose = 3;
-			/** The number of renewal attempts that should be made. */
-			const unsigned int num_renewal_attempts = 3;
 
 			/** An estimate of this link's outgoing traffic estimate. */
 			MovingAverage outgoing_traffic_estimate;
@@ -236,8 +227,6 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 
 			/** The current link's state. */
 			LinkState *current_link_state = nullptr;
-			/** The next link's state, which may be applied upon link renewal. */
-			LinkState *next_link_state = nullptr;
 
 			size_t num_slots_since_last_burst_start = 0,
 				   num_slots_since_last_burst_end = 0;

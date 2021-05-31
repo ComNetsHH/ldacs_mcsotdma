@@ -108,6 +108,11 @@ class Reservation {
 		bool isTxCont() const;
 
 		/**
+		 * @return Whether this denotes any type of transmission.
+		 */
+		bool isAnyTx() const;
+
+		/**
 		 * @return Whether this denotes a reception resource.
 		 */
 		bool isRx() const;
@@ -121,6 +126,11 @@ class Reservation {
 		 * @return Whether this denotes a resource for beacon reception.
 		 */
 		bool isBeaconRx() const;
+
+		/**
+		 * @return Whether this denotes any type of reception.
+		 */
+		bool isAnyRx() const;
 
 		/**
 		 * @return Whether this denotes a resource for beacon transmission.
