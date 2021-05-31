@@ -146,6 +146,18 @@ void BCLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::Li
 	notifyOutgoing(header->getBits() + payload->getBits());
 }
 
+size_t BCLinkManager::cancelLinkRequest(const MacId& id) {
+	size_t num_removed = 0;
+	for (auto it = link_requests.begin(); it != link_requests.end(); it++) {
+		const auto* header = it->first;
+		if (header->getDestId() == id) {
+			link_requests.erase(it--);
+			num_removed++;
+		}
+	}
+	return num_removed;
+}
+
 unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");

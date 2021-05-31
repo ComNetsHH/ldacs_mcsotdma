@@ -163,6 +163,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "link not established, changing status to '" << link_status << "', triggering link establishment -> ";
 		auto link_request_msg = prepareRequestMessage();
 		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);
+		statistic_num_sent_requests++;
 	} else
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
@@ -223,6 +224,9 @@ void P2PLinkManager::onSlotEnd() {
 			if (current_link_state->latest_agreement_opportunity == 0) {
 				// We've missed the latest opportunity. Reset the link status.
 				terminateLink();
+				// Check if there's more data,
+				if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
+					notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 			} else
 				current_link_state->latest_agreement_opportunity -= 1;
 		}
@@ -304,6 +308,18 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 	statistic_num_received_requests++;
 	// If currently the link is unestablished, then this request must be an initial request.
 	if (link_status == link_not_established) {
+		processIncomingLinkRequest_Initial(header, payload, origin);
+	// If a link request had been prepared by this node and a link request arrives here
+	// then reset the link, stop trying to send the local request, and process the remote request.
+	} else if (link_status == awaiting_reply) {
+		// Cancel buffered and unsent local link requests.
+		size_t num_cancelled_requests = ((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
+		coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
+		assert(statistic_num_sent_requests >= num_cancelled_requests);
+		statistic_num_sent_requests -= num_cancelled_requests;
+		// Reset link.
+		terminateLink();
+		// Process request.
 		processIncomingLinkRequest_Initial(header, payload, origin);
 	// If the link is of any other status, there is nothing to do.
 	} else {
@@ -560,6 +576,9 @@ void P2PLinkManager::onTimeoutExpiry() {
 	coutd << "timeout reached -> ";
 	coutd << "updating status: " << link_status << "->" << LinkManager::link_not_established << " -> cleared associated channel at " << *current_channel << " -> ";
 	terminateLink();
+	// Check if there's more data,
+	if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
+		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 }
 
 void P2PLinkManager::clearLockedResources(LinkManager::LinkRequestPayload*& proposal, unsigned int num_slot_since_proposal) {
@@ -666,16 +685,15 @@ void P2PLinkManager::terminateLink() {
 	current_channel = nullptr;
 	current_reservation_table = nullptr;
 	link_status = LinkManager::link_not_established;
-	coutd << "clearing pending RX reservations: ";
-	for (auto &pair : current_link_state->scheduled_rx_slots) {
-		ReservationTable *table = reservation_manager->getReservationTable(pair.first);
-		table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-		coutd << pair.second << "@" << *pair.first << " ";
+	if (current_link_state != nullptr) {
+		coutd << "clearing pending RX reservations: ";
+		for (auto& pair : current_link_state->scheduled_rx_slots) {
+			ReservationTable* table = reservation_manager->getReservationTable(pair.first);
+			table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+			coutd << pair.second << "@" << *pair.first << " ";
+		}
+		delete current_link_state;
+		current_link_state = nullptr;
 	}
-	delete current_link_state;
-	current_link_state = nullptr;
-	coutd << "-> link reset -> ";
-	// Check if there's more data,
-	if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
-		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
+	coutd << "link reset -> ";
 }

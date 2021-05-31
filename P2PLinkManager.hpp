@@ -205,6 +205,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 */
 			int getNumSlotsUntilNextBurst() const;
 
+			/**
+			 * Clears pending RX reservations (to listen for link replies) and resets link status.
+			 */
 			void terminateLink();
 
 	protected:
