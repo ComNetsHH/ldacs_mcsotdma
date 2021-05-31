@@ -154,7 +154,7 @@ void P2PLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
 }
 
 void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
-	coutd << *this << "::notifyOutgoing(" << num_bits << ") -> ";
+	coutd << *mac << "::" << *this << "::notifyOutgoing(" << num_bits << ") -> ";
 	// Update outgoing traffic estimate.
 	outgoing_traffic_estimate.put(num_bits);
 
@@ -169,7 +169,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void P2PLinkManager::onSlotStart(uint64_t num_slots) {
-	coutd << *this << "::onSlotStart(" << num_slots << ") -> ";
+	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";
 	burst_start_during_this_slot = false;
 	burst_end_during_this_slot = false;
 	updated_timeout_this_slot = false;
@@ -222,6 +222,7 @@ void P2PLinkManager::onSlotEnd() {
 		// If we're awaiting a reply, make sure that we've not missed the latest reception opportunity.
 		if (link_status == awaiting_reply && current_link_state->waiting_for_agreement) {
 			if (current_link_state->latest_agreement_opportunity == 0) {
+				coutd << *mac << "::" << *this << " missed last link establishment opportunity, resetting link -> ";
 				// We've missed the latest opportunity. Reset the link status.
 				terminateLink();
 				// Check if there's more data,
@@ -304,7 +305,7 @@ bool P2PLinkManager::isViable(const ReservationTable* table, unsigned int burst_
 }
 
 void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
-	coutd << *this << "::processIncomingLinkRequest -> ";
+	coutd << *mac << "::" << *this << "::processIncomingLinkRequest -> ";
 	statistic_num_received_requests++;
 	// If currently the link is unestablished, then this request must be an initial request.
 	if (link_status == link_not_established) {
@@ -627,7 +628,12 @@ LinkInfo P2PLinkManager::getLinkInfo() {
 		throw std::runtime_error("P2PLinkManager::getLinkInfo for current_link_state == nullptr");
 	MacId tx_id = current_link_state->is_link_initiator ? mac->getMacId() : link_id;
 	MacId rx_id = current_link_state->is_link_initiator ? link_id : mac->getMacId();
-	int offset = getNumSlotsUntilNextBurst();
+	int offset;
+	try {
+		offset = getNumSlotsUntilNextBurst();
+	} catch (const std::exception& e) {
+		throw std::runtime_error("P2PLinkManager::getLinkInfo error: " + std::string(e.what()));
+	}
 	unsigned int timeout = current_link_state->timeout;
 	if (isSlotPartOfBurst(0))
 		timeout = timeout > 0 ? timeout-1 : timeout;
@@ -692,8 +698,8 @@ void P2PLinkManager::terminateLink() {
 			table->mark(pair.second, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 			coutd << pair.second << "@" << *pair.first << " ";
 		}
-		delete current_link_state;
-		current_link_state = nullptr;
 	}
-	coutd << "link reset -> ";
+	delete current_link_state;
+	current_link_state = nullptr;
+	coutd << "link reset, status is " << link_status << " -> ";
 }

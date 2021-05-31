@@ -224,7 +224,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 				getLinkManager(packet->getOrigin())->onPacketReception(packet);
 			statistic_num_packet_decoded++;
 		} else if (packets.size() > 1) {
-			coutd << "collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
+			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
 			statistic_num_packet_collisions += packets.size();
 
 			for (auto *packet : packets)
