@@ -191,6 +191,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool canLock(unsigned int slot_offset) const;
 
+		/**
+		 * Scans ahead and checks whether the given slot at 't' ends a communication burst with target 'id'.
+		 * @param t The time slot in question.
+		 * @param id The reservation target associated with the burst.
+		 * @return  Whether the slot at 't' ends a communication burst with 'id'.
+		 */
+		bool isBurstEnd(int t, const MacId& id) const;
+
 	protected:
 		bool isValid(int32_t slot_offset) const;
 

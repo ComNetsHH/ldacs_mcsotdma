@@ -15,10 +15,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class BCLinkManagerTests;
 		friend class SystemTests;
+		friend class ThreeUsersTests;
 
 	public:
-		static constexpr unsigned int MIN_CANDIDATES = 3;
-
 		BCLinkManager(ReservationManager *reservation_manager, MCSOTDMA_Mac *mac, unsigned int min_beacon_gap);
 		virtual ~BCLinkManager();
 
@@ -98,6 +97,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool next_broadcast_scheduled = false;
 		unsigned int next_broadcast_slot = 0;
 		BeaconModule beacon_module;
+		/** Minimum number of slots to consider during slot selection. */
+		unsigned int MIN_CANDIDATES = 3;
 	};
 }
 

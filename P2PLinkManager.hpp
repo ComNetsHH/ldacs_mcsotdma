@@ -219,6 +219,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			unsigned int num_p2p_channels_to_propose = 2;
 			/** The number of time slots per P2P channel that should be proposed using link request. */
 			const unsigned int num_slots_per_p2p_channel_to_propose = 3;
+			const std::string str_statistic_num_links_established;
+			unsigned long statistic_num_links_established = 0;
 
 			/** An estimate of this link's outgoing traffic estimate. */
 			MovingAverage outgoing_traffic_estimate;
@@ -228,12 +230,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** The current link's state. */
 			LinkState *current_link_state = nullptr;
 
-			size_t num_slots_since_last_burst_start = 0,
-				   num_slots_since_last_burst_end = 0;
-			/** Whether the current slot is the initial slot of a burst. */
-			bool burst_start_during_this_slot = false;
-			/** Whether the current slot is the end slot of a burst. */
-			bool burst_end_during_this_slot = false;
+			/** Whether the current slot was used for communication. */
+			bool communication_during_this_slot = false;
 			bool updated_timeout_this_slot = false;
 			/** Whether this slot a link was initially established. */
 			bool established_initial_link_this_slot = false;

@@ -8,8 +8,6 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-const unsigned int BCLinkManager::MIN_CANDIDATES;
-
 BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
 	: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac),
 		contention_estimator(),
