@@ -650,7 +650,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(lm_me->statistic_num_sent_requests + lm_you->statistic_num_sent_requests >= 1); // due to collisions, several attempts may be required
 		}
 
-		void testBurstEndDetection() {
+		/**
+		 * Tests that burst ends are correctly detected and timeouts changed synchronously.
+		 */
+		void testTimeout() {
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			rlc_layer_you->should_there_be_more_p2p_data = false;
 			// Force bidirectional link.
@@ -743,20 +746,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
-			CPPUNIT_TEST(testLinkEstablishment);
-			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
-			CPPUNIT_TEST(testLinkExpiry);
-			CPPUNIT_TEST(testLinkExpiryMultiSlot);
-			CPPUNIT_TEST(testReservationsUntilExpiry);
-			CPPUNIT_TEST(testLinkRenewal);
-			CPPUNIT_TEST(testCommunicateInOtherDirection);
-			CPPUNIT_TEST(testCommunicateReverseOrder);
-			CPPUNIT_TEST(testPacketSize);
-			CPPUNIT_TEST(testReportedTxSlotDesire);
-			CPPUNIT_TEST(testLinkInfoBroadcast);
-			CPPUNIT_TEST(testReestablishmentAfterDrop);
-			CPPUNIT_TEST(testSimultaneousRequests);
-//			CPPUNIT_TEST(testBurstEndDetection);
+//			CPPUNIT_TEST(testLinkEstablishment);
+//			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+//			CPPUNIT_TEST(testLinkExpiry);
+//			CPPUNIT_TEST(testLinkExpiryMultiSlot);
+//			CPPUNIT_TEST(testReservationsUntilExpiry);
+//			CPPUNIT_TEST(testLinkRenewal);
+//			CPPUNIT_TEST(testCommunicateInOtherDirection);
+//			CPPUNIT_TEST(testCommunicateReverseOrder);
+//			CPPUNIT_TEST(testPacketSize);
+//			CPPUNIT_TEST(testReportedTxSlotDesire);
+//			CPPUNIT_TEST(testLinkInfoBroadcast);
+//			CPPUNIT_TEST(testReestablishmentAfterDrop);
+//			CPPUNIT_TEST(testSimultaneousRequests);
+			CPPUNIT_TEST(testTimeout);
 //			CPPUNIT_TEST(testManyReestablishments);
 
 	CPPUNIT_TEST_SUITE_END();
