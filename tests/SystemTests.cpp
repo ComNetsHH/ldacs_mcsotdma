@@ -696,6 +696,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_you->link_status);
+
+			// Now do reestablishments.
+			lm_me->reported_desired_tx_slots = 1;
+			lm_me->notifyOutgoing(512);
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			size_t num_reestablishments = 10;
+			coutd.setVerbose(true);
+			for (size_t n = 0; n < num_reestablishments; n++) {
+				num_slots = 0;
+				while (lm_you->statistic_num_links_established < (n+1) && num_slots++ < max_slots) {
+					mac_layer_you->update(1);
+					mac_layer_me->update(1);
+					mac_layer_you->execute();
+					mac_layer_me->execute();
+					mac_layer_you->onSlotEnd();
+					mac_layer_me->onSlotEnd();
+					CPPUNIT_ASSERT(!(lm_me->link_status == LinkManager::link_established && lm_you->link_status == LinkManager::link_not_established));
+					if (lm_me->current_link_state != nullptr && lm_you->current_link_state != nullptr)
+						CPPUNIT_ASSERT_EQUAL(lm_you->current_link_state->timeout, lm_me->current_link_state->timeout);
+				}
+			}
 		}
 
 		/**
@@ -735,7 +756,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkInfoBroadcast);
 			CPPUNIT_TEST(testReestablishmentAfterDrop);
 			CPPUNIT_TEST(testSimultaneousRequests);
-			CPPUNIT_TEST(testBurstEndDetection);
+//			CPPUNIT_TEST(testBurstEndDetection);
 //			CPPUNIT_TEST(testManyReestablishments);
 
 	CPPUNIT_TEST_SUITE_END();

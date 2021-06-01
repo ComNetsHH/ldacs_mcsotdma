@@ -470,6 +470,7 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 					res_tx = pair.first;
 			}
 			if (!res_tx.isBeaconTx()) {
+				std::cerr << std::endl << "reservation " << res_tx << " conflicts with scheduling " << res << std::endl;
 				throw std::invalid_argument("MAC(" + std::to_string(mac->getMacId().getId()) + ")::" + "P2PLinkManager(" + std::to_string(link_id.getId()) + ")::scheduleBurst couldn't schedule burst at t=" + std::to_string(burst_start_offset + t) + " because there's a conflict with: " + std::to_string(res_tx.getAction()) + "@" + std::to_string(res_tx.getTarget().getId()));
 			}
 		}
@@ -489,8 +490,8 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 					res_tx = pair.first;
 			}
 			if (!res_tx.isBeaconTx()) {
-				std::cerr << std::endl << "conflicting reservation: " << res << std::endl;
-				throw std::runtime_error("P2PLinkManager::scheduleBurst couldn't schedule burst at t=" + std::to_string(burst_start_offset + t) + " because there's a conflict with: " + std::to_string(res.getAction()) + "@" + std::to_string(res.getTarget().getId()));
+				std::cerr << std::endl << "reservation " << res_tx << " conflicts with scheduling " << res << std::endl;
+				throw std::runtime_error("P2PLinkManager::scheduleBurst couldn't schedule burst at t=" + std::to_string(burst_start_offset + t) + " (" + std::to_string(res.getAction()) + "@" + std::to_string(res.getTarget().getId()) + ") because there's a conflict with: " + std::to_string(res_tx.getAction()) + "@" + std::to_string(res_tx.getTarget().getId()));
 			}
 		}
 	}

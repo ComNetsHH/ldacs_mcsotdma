@@ -68,18 +68,17 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		delete upper_layer_data;
 		if (packet->getLinkInfoIndex() != -1)
 			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
-	}
-
-	// Schedule next broadcast if there's more data to send.
-	if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
-		coutd << "scheduling next slot in ";
-		scheduleBroadcastSlot();
-		coutd << next_broadcast_slot << " slots -> ";
-		// Put it into the header.
-		base_header->burst_offset = next_broadcast_slot;
-	} else {
-		next_broadcast_scheduled = false;
-		coutd << "no more broadcast data, not scheduling a next slot -> ";
+		// Schedule next broadcast if there's more data to send.
+		if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
+			coutd << "scheduling next slot in ";
+			scheduleBroadcastSlot();
+			coutd << next_broadcast_slot << " slots -> ";
+			// Put it into the header.
+			base_header->burst_offset = next_broadcast_slot;
+		} else {
+			next_broadcast_scheduled = false;
+			coutd << "no more broadcast data, not scheduling a next slot -> ";
+		}
 	}
 
 	statistic_num_sent_packets++;
