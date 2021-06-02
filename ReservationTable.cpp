@@ -293,7 +293,7 @@ void ReservationTable::lock(unsigned int slot_offset) {
 		return;
 	// Ensure that you *can* lock before actually doing so.
 	if (!isIdle(slot_offset))
-		throw std::range_error("ReservationTable::lock for non-idle and non-locked slot.");
+		throw std::range_error("ReservationTable::lock_bursts for non-idle and non-locked slot.");
 	// Then lock.
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::LOCKED);
 }

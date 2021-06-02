@@ -45,20 +45,8 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 			coutd << slot << ":" << slot + burst_length - 1 << " ";
 		coutd << " -> ";
 
-		// ... for an initial link request, we need to reserve a receiver at each start slot and mark them as RX.
-		for (unsigned int offset : candidate_slots) {
-			bool could_lock_receiver = false;
-			for (auto* rx_table : rx_tables)
-				if (rx_table->canLock(offset)) {
-					rx_table->lock(offset);
-					could_lock_receiver = true;
-					break;
-				}
-			if (!could_lock_receiver)
-				throw std::range_error("P2PLinkManager::p2pSlotSelection cannot reserve any receiver for first slot of burst.");
-		}
-		// ... and lock them s.t. future proposals don't consider them.
-		locked_resources_map = lock(candidate_slots, burst_length, burst_length_tx, table);
+		// ... and lock them s.t. other proposals don't consider them.
+		locked_resources_map = lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, table);
 		coutd << "locked -> ";
 
 		// Fill proposal.
@@ -68,52 +56,68 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 	return {proposal_map, locked_resources_map};
 }
 
-P2PLinkManager::LockMap P2PLinkManager::lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table) {
+P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, ReservationTable* table) {
 	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
 
 	// 1st: check that slots *can* be locked.
-	// For every burst start slot...
-	for (unsigned int burst_start_offset : start_slots) {
-		// the first burst_length_tx slots...
-		for (unsigned int t = 0; t < burst_length_tx; t++) {
-			unsigned int offset = burst_start_offset + t;
-			// ... should be lockable locally
-			if (!table->canLock(offset))
-				throw std::range_error("LinkManager::lock cannot lock local ReservationTable.");
-			// ... and at the transmitter
-			if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable *tx_table){return tx_table->canLock(offset);}))
-				throw std::range_error("LinkManager::lock cannot lock TX ReservationTable.");
-			unique_offsets_tx.emplace(offset);
-			unique_offsets_local.emplace(offset);
-		}
-		// Latter burst_length_rx slots...
-		for (unsigned int t = burst_length_tx; t < burst_length; t++) {
-			unsigned int offset = burst_start_offset + t;
-			// ... should be lockable locally
-			if (!table->canLock(offset))
-				throw std::range_error("LinkManager::lock cannot lock local ReservationTable.");
-			// ... and at the receiver
-			if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable *rx_table){return rx_table->canLock(offset);}))
-				throw std::range_error("LinkManager::lock cannot lock RX ReservationTable.");
-			unique_offsets_rx.emplace(offset);
-			unique_offsets_local.emplace(offset);
+	for (auto burst_start : start_slots) {
+		for (unsigned int n_burst = 0; n_burst < timeout + 1; n_burst++) {
+
+			// The first burst is where a link reply is expected...
+			if (n_burst == 0) {
+				// ... so lock the resource locally,
+				if (!table->canLock(burst_start))
+					throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
+				unique_offsets_local.emplace(burst_start);
+				// ... and at a receiver.
+				if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start](ReservationTable* rx_table) { return rx_table->canLock(burst_start);}))
+					throw std::range_error("LinkManager::lock cannot lock_bursts RX ReservationTable.");
+				unique_offsets_rx.emplace(burst_start);
+
+			// Later ones are data transmissions...
+			} else {
+				// the first burst_length_tx slots...
+				for (unsigned int t = 0; t < burst_length_tx; t++) {
+					unsigned int offset = burst_start + t;
+					// ... should be lockable locally
+					if (!table->canLock(offset))
+						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
+					// ... and at the transmitter
+					if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable* tx_table) { return tx_table->canLock(offset); }))
+						throw std::range_error("LinkManager::lock cannot lock_bursts TX ReservationTable.");
+					unique_offsets_tx.emplace(offset);
+					unique_offsets_local.emplace(offset);
+				}
+				// Latter burst_length_rx slots...
+				for (unsigned int t = burst_length_tx; t < burst_length; t++) {
+					unsigned int offset = burst_start + t;
+					// ... should be lockable locally
+					if (!table->canLock(offset))
+						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
+					// ... and at the receiver
+					if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable* rx_table) { return rx_table->canLock(offset); }))
+						throw std::range_error("LinkManager::lock cannot lock_bursts RX ReservationTable.");
+					unique_offsets_rx.emplace(offset);
+					unique_offsets_local.emplace(offset);
+				}
+			}
 		}
 	}
 
 	// 2nd: actually lock them.
-	LockMap lock_map = LockMap();
+	LockMap locked_resources_map = LockMap();
 	// *All* slots should be locked in the local ReservationTable.
 	for (unsigned int offset : unique_offsets_local) {
 		table->lock(offset);
-		lock_map.locks_local.emplace_back(table, offset);
+		locked_resources_map.locks_local.emplace_back(table, offset);
 	}
 	// Then lock transmitter resources.
 	for (unsigned int offset : unique_offsets_tx) {
 		for (auto* tx_table : tx_tables)
 			if (tx_table->canLock(offset)) {
 				tx_table->lock(offset);
-				lock_map.locks_transmitter.emplace_back(tx_table, offset);
+				locked_resources_map.locks_transmitter.emplace_back(tx_table, offset);
 				break;
 			}
 	}
@@ -122,11 +126,11 @@ P2PLinkManager::LockMap P2PLinkManager::lock(const std::vector<unsigned int>& st
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(offset)) {
 				rx_table->lock(offset);
-				lock_map.locks_receiver.emplace_back(rx_table, offset);
+				locked_resources_map.locks_receiver.emplace_back(rx_table, offset);
 				break;
 			}
 	}
-	return lock_map;
+	return locked_resources_map;
 }
 
 void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {

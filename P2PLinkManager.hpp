@@ -146,12 +146,12 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/**
 			 * Locks given ReservationTable, as well as transmitter and receiver resources for the given candidate slots.
 			 * @param start_slots Starting slot offsets.
-			 * @param burst_length Number of first slots to lock the transmitter for.
-			 * @param burst_length_tx Number of trailing slots to lock the receiver for
+			 * @param burst_length Number of first slots to lock_bursts the transmitter for.
+			 * @param burst_length_tx Number of trailing slots to lock_bursts the receiver for
 			 * @param table ReservationTable in which slots should be locked.
 			 * @return Slot offsets that were locked.
 			 */
-			LockMap lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table);
+			LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, ReservationTable* table);
 
 			/**
 			 * Computes a map of proposed P2P channels and corresponding slot offsets.
@@ -250,7 +250,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 	private:
 		/**
 		 * Helper function that clears all locks on the respective ReservationTable after normalizing by the given offset.
-		 * For example, if in 'resources' an offset at 7 is saved and the normalization_offset is 2 (2 slots have passed since the lock came into effect), then now a resource at offset 7-2=5 will be freed.
+		 * For example, if in 'resources' an offset at 7 is saved and the normalization_offset is 2 (2 slots have passed since the lock_bursts came into effect), then now a resource at offset 7-2=5 will be freed.
 		 * @param locked_resources
 		 * @param normalization_offset Number of slots that have passed since 'resources' were locked.
 		 */
