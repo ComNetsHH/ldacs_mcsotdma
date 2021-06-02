@@ -322,10 +322,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
-//			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
-//			CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
+			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
+			CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
 //			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);
-			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
+//			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 //			CPPUNIT_TEST(threeUsersNonOverlappingTest);
 		CPPUNIT_TEST_SUITE_END();
 	};

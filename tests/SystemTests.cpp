@@ -705,7 +705,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			lm_me->notifyOutgoing(512);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			size_t num_reestablishments = 10;
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			for (size_t n = 0; n < num_reestablishments; n++) {
 				num_slots = 0;
 				while (lm_you->statistic_num_links_established < (n+1) && num_slots++ < max_slots) {
@@ -730,7 +730,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_you->should_there_be_more_p2p_data = false;
 			lm_me->notifyOutgoing(512);
 			size_t num_reestablishments = 10, num_slots = 0, max_slots = 10000;
-			coutd.setVerbose(true);
+//			coutd.setVerbose(true);
 			while (lm_you->statistic_num_links_established != num_reestablishments && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -746,20 +746,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
-//			CPPUNIT_TEST(testLinkEstablishment);
-//			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
-//			CPPUNIT_TEST(testLinkExpiry);
-//			CPPUNIT_TEST(testLinkExpiryMultiSlot);
-//			CPPUNIT_TEST(testReservationsUntilExpiry);
-//			CPPUNIT_TEST(testLinkRenewal);
-//			CPPUNIT_TEST(testCommunicateInOtherDirection);
-//			CPPUNIT_TEST(testCommunicateReverseOrder);
-//			CPPUNIT_TEST(testPacketSize);
-//			CPPUNIT_TEST(testReportedTxSlotDesire);
-//			CPPUNIT_TEST(testLinkInfoBroadcast);
-//			CPPUNIT_TEST(testReestablishmentAfterDrop);
-//			CPPUNIT_TEST(testSimultaneousRequests);
-			CPPUNIT_TEST(testTimeout);
+			CPPUNIT_TEST(testLinkEstablishment);
+			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+			CPPUNIT_TEST(testLinkExpiry);
+			CPPUNIT_TEST(testLinkExpiryMultiSlot);
+			CPPUNIT_TEST(testReservationsUntilExpiry);
+			CPPUNIT_TEST(testLinkRenewal);
+			CPPUNIT_TEST(testCommunicateInOtherDirection);
+			CPPUNIT_TEST(testCommunicateReverseOrder);
+			CPPUNIT_TEST(testPacketSize);
+			CPPUNIT_TEST(testReportedTxSlotDesire);
+			CPPUNIT_TEST(testLinkInfoBroadcast);
+			CPPUNIT_TEST(testReestablishmentAfterDrop);
+			CPPUNIT_TEST(testSimultaneousRequests);
+//			CPPUNIT_TEST(testTimeout);
 //			CPPUNIT_TEST(testManyReestablishments);
 
 	CPPUNIT_TEST_SUITE_END();

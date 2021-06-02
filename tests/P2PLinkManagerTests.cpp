@@ -54,11 +54,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					return table->getReservation(offset) == Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED);
 				}));
 			}
-			// Since this is an initial slot selection, for the burst start slots a receiver should also be reserved.
+			// Since this is an initial slot selection, for the burst start slots a receiver should also be locked.
 			bool expect_rx_to_be_reserved = true;
 			for (unsigned int offset : start_offsets)
 				CPPUNIT_ASSERT_EQUAL(expect_rx_to_be_reserved, std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [offset](ReservationTable *table) {
-					return table->getReservation(offset) == Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED);
+					return table->getReservation(offset).isLocked();
 				}));
 
 //			coutd.setVerbose(false);

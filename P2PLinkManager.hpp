@@ -118,7 +118,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Container class of the resources that were locked during link establishment. */
 			class LockMap {
 			public:
-				LockMap() = default;
+				LockMap() : num_slots_since_creation(0) {};
 
 				/** Transmitter resources that were locked. */
 				std::vector<std::pair<ReservationTable*, unsigned int>> locks_transmitter;
@@ -126,7 +126,23 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				std::vector<std::pair<ReservationTable*, unsigned int>> locks_receiver;
 				/** Local resources that were locked. */
 				std::vector<std::pair<ReservationTable*, unsigned int>> locks_local;
+
+				size_t size_local() const {
+					return locks_local.size();
+				}
+				size_t size_receiver() const {
+					return locks_receiver.size();
+				}
+				size_t size_transmitter() const {
+					return locks_transmitter.size();
+				}
+				bool anyLocks() const {
+					return size_local() + size_receiver() + size_transmitter() > 0;
+				}
+
+				unsigned int num_slots_since_creation;
 			};
+
 			/**
 			 * Locks given ReservationTable, as well as transmitter and receiver resources for the given candidate slots.
 			 * @param start_slots Starting slot offsets.
@@ -204,7 +220,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			bool decrementTimeout();
 			void onTimeoutExpiry();
 
-			void clearLockedResources(const LockMap& locked_resources, unsigned int num_slot_since_proposal);
+			void clearLockedResources(const LockMap& locked_resources);
 
 			unsigned int estimateCurrentNumSlots() const;
 			/**
@@ -270,6 +286,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Saves all locked resources. */
 			LockMap lock_map;
 		};
+
 	}
 
 #endif //TUHH_INTAIRNET_MC_SOTDMA_P2PLINKMANAGER_HPP
