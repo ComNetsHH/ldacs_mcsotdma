@@ -32,7 +32,6 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		LinkInfo getLinkInfo() override;
 		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 		void processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
-		void processIncomingLinkRequest_Renewal(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
 		void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 		void assign(const FrequencyChannel* channel) override;
 
@@ -41,7 +40,6 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Allows the scheduling of control messages at specific slots. */
 			class ControlMessageReservation {
 			public:
-//				ControlMessageReservation(unsigned int slot_offset, L2Header *header, LinkRequestPayload *payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
 				ControlMessageReservation(unsigned int slot_offset, L2Header *&header, LinkRequestPayload *&payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
 				virtual ~ControlMessageReservation() = default;
 
@@ -81,6 +79,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				LinkRequestPayload *payload;
 			};
 
+			/** Container class of the state of a link. */
 			class LinkState {
 			public:
 				LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx) : timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx), next_burst_start(0) {}
@@ -116,6 +115,28 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				std::vector<ControlMessageReservation> scheduled_link_replies;
 			};
 
+			/** Container class of the resources that were locked during link establishment. */
+			class LockMap {
+			public:
+				LockMap() = default;
+
+				/** Transmitter resources that were locked. */
+				std::vector<std::pair<ReservationTable*, unsigned int>> locks_transmitter;
+				/** Receiver resources that were locked. */
+				std::vector<std::pair<ReservationTable*, unsigned int>> locks_receiver;
+				/** Local resources that were locked. */
+				std::vector<std::pair<ReservationTable*, unsigned int>> locks_local;
+			};
+			/**
+			 * Locks given ReservationTable, as well as transmitter and receiver resources for the given candidate slots.
+			 * @param start_slots Starting slot offsets.
+			 * @param burst_length Number of first slots to lock the transmitter for.
+			 * @param burst_length_tx Number of trailing slots to lock the receiver for
+			 * @param table ReservationTable in which slots should be locked.
+			 * @return Slot offsets that were locked.
+			 */
+			LockMap lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table);
+
 			/**
 			 * Computes a map of proposed P2P channels and corresponding slot offsets.
 			 * @param num_channels Target number of P2P channels that should be proposed.
@@ -126,7 +147,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param is_init Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
 			 * @return <Proposal map, locked map>
 			 */
-			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map<const FrequencyChannel*, std::vector<unsigned int>>> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx);
+			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkManager::LockMap> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx);
 
 			std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage();
 			std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
@@ -183,7 +204,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			bool decrementTimeout();
 			void onTimeoutExpiry();
 
-			void clearLockedResources(LinkRequestPayload*& proposal, unsigned int num_slot_since_proposal);
+			void clearLockedResources(const LockMap& locked_resources, unsigned int num_slot_since_proposal);
 
 			unsigned int estimateCurrentNumSlots() const;
 			/**
@@ -209,6 +230,15 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * Clears pending RX reservations (to listen for link replies) and resets link status.
 			 */
 			void terminateLink();
+
+	private:
+		/**
+		 * Helper function that clears all locks on the respective ReservationTable after normalizing by the given offset.
+		 * For example, if in 'resources' an offset at 7 is saved and the normalization_offset is 2 (2 slots have passed since the lock came into effect), then now a resource at offset 7-2=5 will be freed.
+		 * @param locked_resources
+		 * @param normalization_offset Number of slots that have passed since 'resources' were locked.
+		 */
+		void clearLocks(const std::vector<std::pair<ReservationTable*, unsigned int>>& locked_resources, unsigned int normalization_offset);
 
 	protected:
 			/** The default number of frames a newly established P2P link remains valid for. */
@@ -239,6 +269,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			bool established_initial_link_this_slot = false;
 			/** Whether this slot a link was established, initial or renewed. */
 			bool established_link_this_slot = false;
+			/** Saves all locked resources. */
+			LockMap lock_map;
 		};
 	}
 

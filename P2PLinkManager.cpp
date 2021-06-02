@@ -18,9 +18,9 @@ P2PLinkManager::~P2PLinkManager() {
 	delete current_link_state;
 }
 
-std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map<const FrequencyChannel*, std::vector<unsigned int>>> P2PLinkManager::p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx) {
+std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkManager::LockMap> P2PLinkManager::p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx) {
 	auto proposal_map = std::map<const FrequencyChannel*, std::vector<unsigned int>>();
-	auto locked_map = std::map<const FrequencyChannel*, std::vector<unsigned int>>();
+	auto lock_map = LockMap();
 	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
 	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
 	// ... until we have considered the target number of channels ...
@@ -57,16 +57,75 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, std::map
 				throw std::range_error("P2PLinkManager::p2pSlotSelection cannot reserve any receiver for first slot of burst.");
 		}
 		// ... and lock them s.t. future proposals don't consider them.
-		std::vector<unsigned int> locked_offsets = lock(candidate_slots, burst_length, burst_length_tx, table);
-		for (unsigned int slot : locked_offsets)
-			locked_map[table->getLinkedChannel()].push_back(slot);
+		lock_map = lock(candidate_slots, burst_length, burst_length_tx, table);
 		coutd << "locked -> ";
 
 		// Fill proposal.
 		for (unsigned int slot : candidate_slots)
 			proposal_map[table->getLinkedChannel()].push_back(slot);
 	}
-	return {proposal_map, locked_map};
+	return {proposal_map, lock_map};
+}
+
+P2PLinkManager::LockMap P2PLinkManager::lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table) {
+	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
+	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
+
+	// 1st: check that slots *can* be locked.
+	// For every burst start slot...
+	for (unsigned int burst_start_offset : start_slots) {
+		// the first burst_length_tx slots...
+		for (unsigned int t = 0; t < burst_length_tx; t++) {
+			unsigned int offset = burst_start_offset + t;
+			// ... should be lockable locally
+			if (!table->canLock(offset))
+				throw std::range_error("LinkManager::lock cannot lock local ReservationTable.");
+			// ... and at the transmitter
+			if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable *tx_table){return tx_table->canLock(offset);}))
+				throw std::range_error("LinkManager::lock cannot lock TX ReservationTable.");
+			unique_offsets_tx.emplace(offset);
+			unique_offsets_local.emplace(offset);
+		}
+		// Latter burst_length_rx slots...
+		for (unsigned int t = burst_length_tx; t < burst_length; t++) {
+			unsigned int offset = burst_start_offset + t;
+			// ... should be lockable locally
+			if (!table->canLock(offset))
+				throw std::range_error("LinkManager::lock cannot lock local ReservationTable.");
+			// ... and at the receiver
+			if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable *rx_table){return rx_table->canLock(offset);}))
+				throw std::range_error("LinkManager::lock cannot lock RX ReservationTable.");
+			unique_offsets_rx.emplace(offset);
+			unique_offsets_local.emplace(offset);
+		}
+	}
+
+	// 2nd: actually lock them.
+	LockMap lock_map = LockMap();
+	// *All* slots should be locked in the local ReservationTable.
+	for (unsigned int offset : unique_offsets_local) {
+		table->lock(offset);
+		lock_map.locks_local.emplace_back(table, offset);
+	}
+	// Then lock transmitter resources.
+	for (unsigned int offset : unique_offsets_tx) {
+		for (auto* tx_table : tx_tables)
+			if (tx_table->canLock(offset)) {
+				tx_table->lock(offset);
+				lock_map.locks_transmitter.emplace_back(tx_table, offset);
+				break;
+			}
+	}
+	// Then receiver resources.
+	for (unsigned int offset : unique_offsets_rx) {
+		for (auto* rx_table : rx_tables)
+			if (rx_table->canLock(offset)) {
+				rx_table->lock(offset);
+				lock_map.locks_receiver.emplace_back(rx_table, offset);
+				break;
+			}
+	}
+	return lock_map;
 }
 
 void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
@@ -260,7 +319,7 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	// Populate payload.
 	const auto &proposed_locked_pair = p2pSlotSelection(num_p2p_channels_to_propose, num_slots_per_p2p_channel_to_propose, min_offset, burst_length, burst_length_tx);
 	payload->proposed_resources = proposed_locked_pair.first;
-	payload->locked_resources = proposed_locked_pair.second;
+	this->lock_map = proposed_locked_pair.second;
 	// Populate header.
 	header->timeout = default_timeout;
 	header->burst_length = burst_length;
@@ -581,23 +640,25 @@ void P2PLinkManager::onTimeoutExpiry() {
 		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 }
 
-void P2PLinkManager::clearLockedResources(LinkManager::LinkRequestPayload*& proposal, unsigned int num_slot_since_proposal) {
-	for (const auto& item : proposal->locked_resources) {
-		const FrequencyChannel *channel = item.first;
-		const std::vector<unsigned int> &slots = item.second;
-		ReservationTable *table = reservation_manager->getReservationTable(channel);
-		for (unsigned int slot : slots) {
-			if (slot < num_slot_since_proposal)
-				continue; // Skip those that have already passed.
-			unsigned int normalized_offset = slot - num_slot_since_proposal;
-			if (!table->getReservation(normalized_offset).isLocked()) {
-				std::cout << "Conflict: t=" << normalized_offset << " " << table->getReservation(normalized_offset) << std::endl;
-				assert(table->getReservation(normalized_offset).isLocked());
-			}
-			table->mark(normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-			coutd << *channel << "@" << normalized_offset << " ";
-		}
+void P2PLinkManager::clearLocks(const std::vector<std::pair<ReservationTable*, unsigned int>>& locked_resources, unsigned int normalization_offset) {
+	for (const auto& pair : locked_resources) {
+		ReservationTable *table = pair.first;
+		const auto* channel = table->getLinkedChannel();
+		unsigned int slot = pair.second;
+		if (slot < normalization_offset)
+			continue; // Skip those that have already passed.
+		unsigned int normalized_offset = slot - normalization_offset;
+		if (!table->getReservation((int) normalized_offset).isLocked())
+			throw std::invalid_argument("P2PLinkManager::clearLocks for non-locked slot at t=" + std::to_string(normalized_offset) + ", conflicting with " + table->getReservation((int) normalized_offset).toString());
+		table->mark((int) normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+		coutd << *channel << "@" << normalized_offset << " ";
 	}
+}
+
+void P2PLinkManager::clearLockedResources(const LockMap& locked_resources, unsigned int num_slot_since_proposal) {
+	clearLocks(locked_resources.locks_local, num_slot_since_proposal);
+	clearLocks(locked_resources.locks_receiver, num_slot_since_proposal);
+	clearLocks(locked_resources.locks_transmitter, num_slot_since_proposal);
 }
 
 void P2PLinkManager::assign(const FrequencyChannel* channel) {

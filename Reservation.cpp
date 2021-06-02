@@ -3,6 +3,7 @@
 //
 
 #include <cassert>
+#include <sstream>
 #include "Reservation.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
@@ -93,6 +94,12 @@ bool Reservation::isBeacon() const {
 
 bool Reservation::isLocked() const {
 	return action == LOCKED;
+}
+
+std::string Reservation::toString() const {
+	std::stringstream stream;
+	stream << *this;
+	return stream.str();
 }
 
 //bool Reservation::lock() {
