@@ -61,25 +61,25 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
 
 	// 1st: check that slots *can* be locked.
-	for (auto burst_start : start_slots) {
+	for (auto burst_start_offset : start_slots) {
+		// Go over all bursts of the entire link.
 		for (unsigned int n_burst = 0; n_burst < timeout + 1; n_burst++) {
-
 			// The first burst is where a link reply is expected...
 			if (n_burst == 0) {
 				// ... so lock the resource locally,
-				if (!table->canLock(burst_start))
+				if (!table->canLock(burst_start_offset))
 					throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
-				unique_offsets_local.emplace(burst_start);
+				unique_offsets_local.emplace(burst_start_offset);
 				// ... and at a receiver.
-				if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start](ReservationTable* rx_table) { return rx_table->canLock(burst_start);}))
+				if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start_offset](ReservationTable* rx_table) { return rx_table->canLock(burst_start_offset);}))
 					throw std::range_error("LinkManager::lock cannot lock_bursts RX ReservationTable.");
-				unique_offsets_rx.emplace(burst_start);
+				unique_offsets_rx.emplace(burst_start_offset);
 
 			// Later ones are data transmissions...
 			} else {
 				// the first burst_length_tx slots...
 				for (unsigned int t = 0; t < burst_length_tx; t++) {
-					unsigned int offset = burst_start + t;
+					unsigned int offset = burst_start_offset + t;
 					// ... should be lockable locally
 					if (!table->canLock(offset))
 						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
@@ -91,7 +91,7 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 				}
 				// Latter burst_length_rx slots...
 				for (unsigned int t = burst_length_tx; t < burst_length; t++) {
-					unsigned int offset = burst_start + t;
+					unsigned int offset = burst_start_offset + t;
 					// ... should be lockable locally
 					if (!table->canLock(offset))
 						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
