@@ -46,7 +46,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 		coutd << " -> ";
 
 		// ... and lock them s.t. other proposals don't consider them.
-		locked_resources_map = lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, table);
+		locked_resources_map = lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, true, table);
 		coutd << "locked -> ";
 
 		// Fill proposal.
@@ -56,16 +56,16 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 	return {proposal_map, locked_resources_map};
 }
 
-P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, ReservationTable* table) {
+P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool consider_initial_link_reply_slot, ReservationTable* table) {
 	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
 
 	// 1st: check that slots *can* be locked.
 	for (auto burst_start_offset : start_slots) {
 		// Go over all bursts of the entire link.
-		for (unsigned int n_burst = 0; n_burst < timeout + 1; n_burst++) {
+		for (unsigned int n_burst = 0; n_burst < timeout + (consider_initial_link_reply_slot ? 1 : 0); n_burst++) {
 			// The first burst is where a link reply is expected...
-			if (n_burst == 0) {
+			if (consider_initial_link_reply_slot && n_burst == 0) {
 				// ... so lock the resource locally,
 				if (!table->canLock(burst_start_offset))
 					throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
@@ -380,9 +380,13 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 }
 
 void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	if (lock_map.anyLocks()) {
+		clearLockedResources(lock_map);
+		lock_map = LockMap();
+	}
 	try {
 		// Pick a random resource from those proposed.
-		LinkState* state = processRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
+		LinkState* state = selectResourceFromRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
 		state->initial_setup = true;
 		// remember the choice,
 		delete current_link_state;
@@ -390,6 +394,10 @@ void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header,
 		current_channel = current_link_state->channel;
 		current_reservation_table = reservation_manager->getReservationTable(current_channel);
 		coutd << "randomly chose " << current_link_state->next_burst_start << "@" << *current_channel << " -> ";
+		// lock all resources of the link
+		coutd << "locking resources on entire link: ";
+		this->lock_map = lock_bursts({current_link_state->next_burst_start}, current_link_state->burst_length, current_link_state->burst_length_tx, current_link_state->timeout, false, current_reservation_table);
+		coutd << lock_map.size_local() << " local, " << lock_map.size_receiver() << " receiver and " << lock_map.size_transmitter() << " transmitter resources were locked -> ";
 		// schedule a link reply,
 		auto link_reply_message = prepareReply(origin, current_link_state->channel, current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx);
 		current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
@@ -441,7 +449,7 @@ std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomRes
 	}
 }
 
-P2PLinkManager::LinkState* P2PLinkManager::processRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+P2PLinkManager::LinkState* P2PLinkManager::selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
 	// Parse header fields.
 	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
 	// Since this user is processing the request, they have not initiated the link.

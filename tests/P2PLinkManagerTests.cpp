@@ -109,19 +109,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			delete link_request_msg.second;
 		}
 
-		void testProcessInitialRequestAllLocked() {
+		void testSelectResourceFromRequestAllLocked() {
 			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
-			CPPUNIT_ASSERT_THROW(link_manager->processRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second), std::invalid_argument);
+			CPPUNIT_ASSERT_THROW(link_manager->selectResourceFromRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second), std::invalid_argument);
 		}
 
-		void testProcessInitialRequest() {
+		void testSelectResourceFromRequest() {
 			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
-			P2PLinkManager::LinkState *state = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
-
+			P2PLinkManager::LinkState *state = ((P2PLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->selectResourceFromRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
 			CPPUNIT_ASSERT_EQUAL(state->timeout, link_request_msg.first->timeout);
 			CPPUNIT_ASSERT_EQUAL(state->burst_length_tx, link_request_msg.first->burst_length_tx);
 			CPPUNIT_ASSERT_EQUAL(state->burst_length, link_request_msg.first->burst_length);
@@ -385,8 +384,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testMultiChannelP2PSlotSelection);
 		CPPUNIT_TEST(testPrepareInitialLinkRequest);
-		CPPUNIT_TEST(testProcessInitialRequestAllLocked);
-		CPPUNIT_TEST(testProcessInitialRequest);
+		CPPUNIT_TEST(testSelectResourceFromRequestAllLocked);
+		CPPUNIT_TEST(testSelectResourceFromRequest);
 		CPPUNIT_TEST(testTriggerLinkEstablishment);
 		CPPUNIT_TEST(testReplyToRequest);
 		CPPUNIT_TEST(testDecrementControlMessageOffsets);

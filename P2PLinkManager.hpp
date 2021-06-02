@@ -147,11 +147,13 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * Locks given ReservationTable, as well as transmitter and receiver resources for the given candidate slots.
 			 * @param start_slots Starting slot offsets.
 			 * @param burst_length Number of first slots to lock_bursts the transmitter for.
-			 * @param burst_length_tx Number of trailing slots to lock_bursts the receiver for
+			 * @param burst_length_tx Number of trailing slots to lock_bursts the receiver for.
+			 * @param timeout Number of bursts that should be locked.
+			 * @param consider_initial_link_reply_slot Whether in addition to 'timeout' burst, there should be an additional, first burst where the receiver is locked to receive a link reply.
 			 * @param table ReservationTable in which slots should be locked.
 			 * @return Slot offsets that were locked.
 			 */
-			LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, ReservationTable* table);
+			LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool consider_initial_link_reply_slot, ReservationTable* table);
 
 			/**
 			 * Computes a map of proposed P2P channels and corresponding slot offsets.
@@ -175,7 +177,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @return A LinkState with the selected resource saved.
 			 * @throws std::invalid_argument If no resource was viable.
 			 */
-			LinkState* processRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+			LinkState* selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
 
 			/**
 			 * Checks the provided resources for viable ones and selects from those one randomly.
