@@ -37,7 +37,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		BeaconPayload(const BeaconPayload& other) : BeaconPayload() {
 			for (const auto& pair : other.local_reservations)
 				for (unsigned int t : pair.second)
-					local_reservations.at(pair.first).push_back(t);
+					local_reservations[pair.first].push_back(t);
 		}
 
 		Payload* copy() const override {

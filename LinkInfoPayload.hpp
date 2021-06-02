@@ -41,7 +41,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			if (callback == nullptr)
 				throw std::runtime_error("LinkInfoPayload::populate for unset callback.");
 			coutd << "populating link info payload: ";
-			link_info = callback->getLinkInfo();
+			try {
+				link_info = callback->getLinkInfo();
+			} catch (const std::runtime_error& e) {
+				coutd << "link has expired by now, nothing to do";
+				// If the link has expired by now, there's nothing to do.
+			}
 			coutd << " -> ";
 		}
 
