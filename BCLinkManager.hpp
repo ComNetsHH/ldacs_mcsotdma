@@ -99,6 +99,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		BeaconModule beacon_module;
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
+
+		const std::string str_statistic_contention = "MCSOTDMA:statistic_contention";
+		const std::string str_statistic_num_active_neighbors = "MCSOTDMA:statistic_num_active_neighbors";
+		const std::string str_statistic_num_broadcast_candidate_slots = "MCSOTDMA:statistic_broadcast_candidate_slots";;
+		unsigned long statistic_num_broadcast_candidate_slots = 0;
 	};
 }
 

@@ -160,8 +160,10 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	// Average broadcast rate.
 	double r = contention_estimator.getAverageNonBeaconBroadcastRate();
+	mac->emit(str_statistic_contention, r);
 	// Number of active neighbors.
 	unsigned int m = contention_estimator.getNumActiveNeighbors();
+	mac->emit(str_statistic_num_active_neighbors, (size_t) m);
 	double num_candidates = 0;
 	// For every number n of channel accesses from 0 to all neighbors...
 	for (auto n = 0; n <= m; n++) {
@@ -187,6 +189,8 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
+	statistic_num_broadcast_candidate_slots = num_candidates;
+	mac->emit(str_statistic_num_broadcast_candidate_slots, statistic_num_broadcast_candidate_slots);
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, 1, 1, 1, false);
 	if (candidate_slots.empty())
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
