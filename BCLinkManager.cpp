@@ -191,7 +191,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
 	statistic_num_broadcast_candidate_slots = num_candidates;
 	mac->emit(str_statistic_num_broadcast_candidate_slots, statistic_num_broadcast_candidate_slots);
-	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, 1, 1, 1, false);
+	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, 1, 1, 1, 1, 0, false);
 	if (candidate_slots.empty())
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
 	return candidate_slots.at(getRandomInt(0, candidate_slots.size()));

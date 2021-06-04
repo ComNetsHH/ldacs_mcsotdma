@@ -4,6 +4,7 @@
 
 #include <set>
 #include <cassert>
+#include <sstream>
 #include "P2PLinkManager.hpp"
 #include "coutdebug.hpp"
 #include "BCLinkManager.hpp"
@@ -38,7 +39,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 			continue;
 		}
 		// ... and try to find candidate slots,
-		std::vector<unsigned int> candidate_slots = table->findCandidates(num_slots, min_offset, burst_length, burst_length_tx, true);
+		std::vector<unsigned int> candidate_slots = table->findCandidates(num_slots, min_offset, burst_offset, burst_length, burst_length_tx, default_timeout, true);
 
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
@@ -67,12 +68,20 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 			// The first burst is where a link reply is expected...
 			if (consider_initial_link_reply_slot && n_burst == 0) {
 				// ... so lock the resource locally,
-				if (!table->canLock(burst_start_offset))
-					throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
+				if (!table->canLock(burst_start_offset)) {
+					const Reservation &conflict_res = table->getReservation((int) burst_start_offset);
+					std::stringstream ss;
+					ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
+					throw std::range_error(ss.str());
+				}
 				unique_offsets_local.emplace(burst_start_offset);
 				// ... and at a receiver.
-				if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start_offset](ReservationTable* rx_table) { return rx_table->canLock(burst_start_offset);}))
-					throw std::range_error("LinkManager::lock cannot lock_bursts RX ReservationTable.");
+				if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start_offset](ReservationTable* rx_table) { return rx_table->canLock(burst_start_offset);})) {
+					const Reservation &conflict_res = table->getReservation((int) burst_start_offset);
+					std::stringstream ss;
+					ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
+					throw std::range_error(ss.str());
+				}
 				unique_offsets_rx.emplace(burst_start_offset);
 
 			// Later ones are data transmissions...
@@ -81,11 +90,25 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 				for (unsigned int t = 0; t < burst_length_tx; t++) {
 					unsigned int offset = burst_start_offset + n_burst*burst_offset + t;
 					// ... should be lockable locally
-					if (!table->canLock(offset))
-						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
+					if (!table->canLock(offset)) {
+						const Reservation &conflict_res = table->getReservation((int) offset);
+						std::stringstream ss;
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
+						throw std::range_error(ss.str());
+					}
 					// ... and at the transmitter
-					if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable* tx_table) { return tx_table->canLock(offset); }))
-						throw std::range_error("LinkManager::lock cannot lock_bursts TX ReservationTable.");
+					if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable* tx_table) { return tx_table->canLock(offset); })) {
+						Reservation conflict_res = Reservation();
+						for (auto it = tx_tables.begin(); it != tx_tables.end() && conflict_res.isIdle(); it++) {
+							const auto tx_table = *it;
+							if (!tx_table->getReservation(offset).isIdle()) {
+								conflict_res = tx_table->getReservation(offset);
+							}
+						}
+						std::stringstream ss;
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
+						throw std::range_error(ss.str());
+					}
 					unique_offsets_tx.emplace(offset);
 					unique_offsets_local.emplace(offset);
 				}
@@ -93,11 +116,25 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 				for (unsigned int t = burst_length_tx; t < burst_length; t++) {
 					unsigned int offset = burst_start_offset + n_burst*burst_offset + t;
 					// ... should be lockable locally
-					if (!table->canLock(offset))
-						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
+					if (!table->canLock(offset)) {
+						const Reservation &conflict_res = table->getReservation((int) offset);
+						std::stringstream ss;
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
+						throw std::range_error(ss.str());
+					}
 					// ... and at the receiver
-					if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable* rx_table) { return rx_table->canLock(offset); }))
-						throw std::range_error("LinkManager::lock cannot lock_bursts RX ReservationTable.");
+					if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable* rx_table) { return rx_table->canLock(offset); })) {
+						Reservation conflict_res = Reservation();
+						for (auto it = rx_tables.begin(); it != rx_tables.end() && conflict_res.isIdle(); it++) {
+							const auto rx_table = *it;
+							if (!rx_table->getReservation(offset).isIdle()) {
+								conflict_res = rx_table->getReservation(offset);
+							}
+						}
+						std::stringstream ss;
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
+						throw std::range_error(ss.str());
+					}
 					unique_offsets_rx.emplace(offset);
 					unique_offsets_local.emplace(offset);
 				}

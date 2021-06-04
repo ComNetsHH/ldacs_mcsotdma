@@ -149,7 +149,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				if (offset == lm_me->burst_offset)
 					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
 				else
-					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isIdle());
+					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isLocked());
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets); // just the request which had been forwarded by the BCLinkManager
@@ -251,7 +251,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				if (offset == lm_me->burst_offset)
 					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
 				else
-					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isIdle());
+					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isLocked());
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
@@ -396,6 +396,47 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_you->link_status);
 		}
 
+		void testLinkTermination() {
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
+
+			lm_me->notifyOutgoing(512);
+			size_t num_slots = 0, max_slots = 1024;
+			while (lm_me->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_me->link_status);
+
+			num_slots = 0;
+			while (lm_me->link_status != LinkManager::link_not_established && num_slots++ < max_slots) {
+				mac_layer_me->update(1);
+				mac_layer_you->update(1);
+				mac_layer_me->execute();
+				mac_layer_you->execute();
+				mac_layer_me->onSlotEnd();
+				mac_layer_you->onSlotEnd();
+			}
+			mac_layer_me->update(1);
+			mac_layer_you->update(1);
+			mac_layer_me->execute();
+			mac_layer_you->execute();
+			mac_layer_me->onSlotEnd();
+			mac_layer_you->onSlotEnd();
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_me->link_status);
+			// Everything should be idle.
+			for (const auto *table : mac_layer_me->reservation_manager->getP2PReservationTables()) {
+				for (int t = 0; t < table->getPlanningHorizon(); t++)
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));
+			}
+		}
+
 		void testLinkRenewal() {
 //			coutd.setVerbose(true);
 			testLinkEstablishment();
@@ -405,7 +446,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(packets_so_far > 0);
 
 //			coutd.setVerbose(true);
-			for (size_t t = 0; t < 500; t++) {
+			size_t num_slots = 0, max_slots = 1024;
+			while (lm_me->statistic_num_links_established < 2 && num_slots++ < max_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -414,6 +456,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), lm_me->statistic_num_links_established);
 			CPPUNIT_ASSERT( lm_me->link_status != LinkManager::link_not_established);
 			CPPUNIT_ASSERT(lm_you->statistic_num_received_packets > packets_so_far);
 		}
@@ -769,6 +813,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkExpiry);
 			CPPUNIT_TEST(testLinkExpiryMultiSlot);
 			CPPUNIT_TEST(testReservationsUntilExpiry);
+			CPPUNIT_TEST(testLinkTermination);
 			CPPUNIT_TEST(testLinkRenewal);
 			CPPUNIT_TEST(testCommunicateInOtherDirection);
 			CPPUNIT_TEST(testCommunicateReverseOrder);
