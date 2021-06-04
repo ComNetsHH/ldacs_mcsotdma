@@ -46,7 +46,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 		coutd << " -> ";
 
 		// ... and lock them s.t. other proposals don't consider them.
-		locked_resources_map = lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, true, table);
+		locked_resources_map.merge(lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, true, table));
 
 		// Fill proposal.
 		for (unsigned int slot : candidate_slots)
@@ -664,20 +664,17 @@ void P2PLinkManager::onTimeoutExpiry() {
 void P2PLinkManager::clearLocks(const std::vector<std::pair<ReservationTable*, unsigned int>>& locked_resources, unsigned int normalization_offset) {
 	for (const auto& pair : locked_resources) {
 		ReservationTable *table = pair.first;
-		const auto* channel = table->getLinkedChannel();
 		unsigned int slot = pair.second;
 		if (slot < normalization_offset)
 			continue; // Skip those that have already passed.
 		unsigned int normalized_offset = slot - normalization_offset;
-		if (table->getReservation((int) normalized_offset).isLocked()) {
+		if (table->getReservation((int) normalized_offset).isLocked())
 			table->mark((int) normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-			coutd << *channel << "@" << normalized_offset << " ";
-		}
 	}
 }
 
 void P2PLinkManager::clearLockedResources(const LockMap& locked_resources) {
-	coutd << "freeing " << locked_resources.size_local() << " local, " << locked_resources.size_receiver() << " receiver and " << locked_resources.size_transmitter() << " transmitter locks on resources: ";
+	coutd << "freeing " << locked_resources.size_local() << " local + " << locked_resources.size_receiver() << " receiver + " << locked_resources.size_transmitter() << " transmitter locks on resources ";
 	clearLocks(locked_resources.locks_local, locked_resources.num_slots_since_creation);
 	clearLocks(locked_resources.locks_receiver, locked_resources.num_slots_since_creation);
 	clearLocks(locked_resources.locks_transmitter, locked_resources.num_slots_since_creation);

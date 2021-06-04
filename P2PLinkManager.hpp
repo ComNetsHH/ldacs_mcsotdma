@@ -127,6 +127,15 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				/** Local resources that were locked. */
 				std::vector<std::pair<ReservationTable*, unsigned int>> locks_local;
 
+				void merge(const LockMap& other) {
+					for (const auto& pair : other.locks_local)
+						locks_local.push_back(pair);
+					for (const auto& pair : other.locks_receiver)
+						locks_receiver.push_back(pair);
+					for (const auto& pair : other.locks_transmitter)
+						locks_transmitter.push_back(pair);
+				}
+
 				size_t size_local() const {
 					return locks_local.size();
 				}

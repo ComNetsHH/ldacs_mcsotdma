@@ -76,6 +76,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		void testClearLockedResources() {
+			// Make locks.
+			auto link_request_msg = link_manager->prepareRequestMessage();
+			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
+			link_manager->clearLockedResources(link_manager->lock_map);
+			// *Everything* should be unlocked now.
+			for (const auto* table : reservation_manager->getP2PReservationTables()) {
+				for (int t = 0; t < table->getPlanningHorizon(); t++) {
+					if (table->getReservation(t).isLocked())
+						std::cerr << "f=" << *table->getLinkedChannel() << " t=" << t << ": " << table->getReservation(t) << std::endl;
+					CPPUNIT_ASSERT_EQUAL(false, table->getReservation(t).isLocked());
+				}
+			}
+		}
+
 		void testMultiChannelP2PSlotSelection() {
 //			coutd.setVerbose(true);
 			unsigned int num_channels = 3, num_slots = 3, min_offset = 2, burst_length = 5, burst_length_tx = 3;
@@ -396,6 +411,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
+		CPPUNIT_TEST(testClearLockedResources);
 		CPPUNIT_TEST(testMultiChannelP2PSlotSelection);
 		CPPUNIT_TEST(testPrepareInitialLinkRequest);
 		CPPUNIT_TEST(testSelectResourceFromRequestAllLocked);
