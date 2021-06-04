@@ -425,8 +425,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 		// Cancel buffered and unsent local link requests.
 		size_t num_cancelled_requests = ((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
 		coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
-		assert(statistic_num_received_requests >= num_cancelled_requests);
-		statistic_num_received_requests -= num_cancelled_requests;
+		statistic_num_cancelled_requests += num_cancelled_requests;
 		// Reset link.
 		terminateLink();
 		// Process request.
