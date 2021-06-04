@@ -38,6 +38,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class LinkManagementEntityTests;
 
+		ReservationTable();
+
 		/**
 		 * @param planning_horizon The number of time slots this reservation table will keep saved. It denotes the number of slots both into the future, as well as a history of as many slots. The number of slots saved is correspondingly planning_horizon*2.
 		 */

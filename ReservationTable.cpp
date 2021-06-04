@@ -21,6 +21,8 @@ ReservationTable::ReservationTable(uint32_t planning_horizon)
 	// In practice, allocating even much less results in a std::bad_alloc anyway...
 }
 
+ReservationTable::ReservationTable() : ReservationTable(512) {}
+
 ReservationTable::ReservationTable(uint32_t planning_horizon, const Reservation& default_reservation) : ReservationTable(planning_horizon) {
 	this->default_reservation = default_reservation;
 	for (auto& it : slot_utilization_vec)
