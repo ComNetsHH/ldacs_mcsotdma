@@ -219,7 +219,7 @@ unsigned int ReservationTable::findEarliestIdleSlotsBC(unsigned int start_offset
 	if (!isValid((int) start_offset))
 		throw std::invalid_argument("Invalid slot range!");
 	if (transmitter_reservation_table == nullptr)
-		throw std::runtime_error("ReservationTable::findEarliestIdleSlotsP2P for unset transmitter table.");
+		throw std::runtime_error("ReservationTable::findEarliestIdleSlotsBC for unset transmitter table.");
 
 	for (int t = (int) start_offset; t < planning_horizon; t++) {
 		if (isBurstValid(t, 1, 1, false))

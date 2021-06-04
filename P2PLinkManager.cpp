@@ -47,7 +47,11 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 		coutd << " -> ";
 
 		// ... and lock them s.t. other proposals don't consider them.
-		locked_resources_map.merge(lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, true, table));
+		try {
+			locked_resources_map.merge(lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, true, table));
+		} catch (const std::exception& e) {
+			throw std::runtime_error("Error during P2P slot selection: " + std::string(e.what()));
+		}
 
 		// Fill proposal.
 		for (unsigned int slot : candidate_slots)
@@ -56,7 +60,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 	return {proposal_map, locked_resources_map};
 }
 
-P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool consider_initial_link_reply_slot, ReservationTable* table) {
+P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool receive_reply, ReservationTable* table) {
 	coutd << "locking: ";
 	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
@@ -64,9 +68,9 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 	// 1st: check that slots *can* be locked.
 	for (auto burst_start_offset : start_slots) {
 		// Go over all bursts of the entire link.
-		for (unsigned int n_burst = 0; n_burst < timeout + (consider_initial_link_reply_slot ? 1 : 0); n_burst++) {
+		for (unsigned int n_burst = 0; n_burst < timeout + 1; n_burst++) {
 			// The first burst is where a link reply is expected...
-			if (consider_initial_link_reply_slot && n_burst == 0) {
+			if (n_burst == 0) {
 				// ... so lock the resource locally,
 				if (!table->canLock(burst_start_offset)) {
 					const Reservation &conflict_res = table->getReservation((int) burst_start_offset);
@@ -75,15 +79,29 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 					throw std::range_error(ss.str());
 				}
 				unique_offsets_local.emplace(burst_start_offset);
-				// ... and at a receiver.
-				if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start_offset](ReservationTable* rx_table) { return rx_table->canLock(burst_start_offset);})) {
-					const Reservation &conflict_res = table->getReservation((int) burst_start_offset);
-					std::stringstream ss;
-					ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
-					throw std::range_error(ss.str());
+				// ... and at a receiver if the caller is the link initiator (who has to *receive* the link reply)
+				if (receive_reply) {
+					if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start_offset](ReservationTable* rx_table) { return rx_table->canLock(burst_start_offset); })) {
+						Reservation conflict_res = Reservation();
+						for (size_t i = 0; i < rx_tables.size() && conflict_res.isIdle(); i++)
+							conflict_res = rx_tables.at(i)->getReservation((int) burst_start_offset);
+						std::stringstream ss;
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
+						throw std::range_error(ss.str());
+					}
+					unique_offsets_rx.emplace(burst_start_offset);
+				// ... or at a transmitter if the caller is the communication partner (who has to *send* the link reply)
+				} else {
+					if (!mac->isTransmitterIdle(burst_start_offset, 1)) {
+						Reservation conflict_res = Reservation();
+						for (size_t i = 0; i < tx_tables.size() && conflict_res.isIdle(); i++)
+							conflict_res = tx_tables.at(i)->getReservation((int) burst_start_offset);
+						std::stringstream ss;
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
+						throw std::range_error(ss.str());
+					}
+					unique_offsets_rx.emplace(burst_start_offset);
 				}
-				unique_offsets_rx.emplace(burst_start_offset);
-
 			// Later ones are data transmissions...
 			} else {
 				// the first burst_length_tx slots...
@@ -379,17 +397,19 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	coutd << "request populated -> ";
 }
 
-bool P2PLinkManager::isViable(const ReservationTable* table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx) const {
-	// Entire slot range must be idle.
-	bool viable = table->isIdle(burst_start, burst_length);
-	// A receiver must be idle during the first slots.
+bool P2PLinkManager::isProposalViable(const ReservationTable* table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
+	// Should be able to transmit reply at initial slot.
+	bool viable = table->isIdle((int) burst_start, 1) && mac->isTransmitterIdle(burst_start, 1);
+	// Then for each communication burst...
 	if (viable)
-		viable = mac->isAnyReceiverIdle(burst_start, burst_length_tx);
-	// And a transmitter during the latter slots.
-	if (viable) {
-		unsigned int burst_length_rx = burst_length - burst_length_tx;
-		viable = mac->isTransmitterIdle(burst_start + burst_length_tx, burst_length_rx);
-	}
+		for (unsigned int burst = 1; burst < timeout + 1; burst++) {
+			int slot = (int) (burst_start + burst*burst_offset);
+			unsigned int burst_length_rx = burst_length - burst_length_tx;
+			// Entire slot range must be idle && receiver during first slots && transmitter during later ones.
+			viable = table->isIdle(slot, burst_length)
+						&& mac->isAnyReceiverIdle(slot, burst_length_tx)
+						&& mac->isTransmitterIdle(burst_start + burst_length_tx, burst_length_rx);
+		}
 	return viable;
 }
 
@@ -434,8 +454,12 @@ void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header,
 		coutd << "randomly chose " << current_link_state->next_burst_start << "@" << *current_channel << " -> ";
 		// lock all resources of the link
 		coutd << "locking resources on entire link: ";
-		this->lock_map = lock_bursts({current_link_state->next_burst_start}, current_link_state->burst_length, current_link_state->burst_length_tx, current_link_state->timeout, false, current_reservation_table);
-		coutd << lock_map.size_local() << " local, " << lock_map.size_receiver() << " receiver and " << lock_map.size_transmitter() << " transmitter resources were locked -> ";
+		try {
+			this->lock_map = lock_bursts({current_link_state->next_burst_start}, current_link_state->burst_length, current_link_state->burst_length_tx, current_link_state->timeout, false, current_reservation_table);
+			coutd << lock_map.size_local() << " local, " << lock_map.size_receiver() << " receiver and " << lock_map.size_transmitter() << " transmitter resources were locked -> ";
+		} catch (const std::exception& e) {
+			throw std::runtime_error("Error during link request processing: " + std::string(e.what()));
+		}
 		// schedule a link reply,
 		auto link_reply_message = prepareReply(origin, current_link_state->channel, current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx);
 		current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
@@ -470,8 +494,8 @@ std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomRes
 		coutd << "checking ";
 		for (unsigned int slot : slots) {
 			coutd << slot << "@" << *channel << " ";
-			// ... isViable checks that the range is idle and hardware available && the second check ensures there's transmitter capacity for the one-off reply
-			if (isViable(table, slot, burst_length, burst_length_tx) && mac->isTransmitterIdle(slot, 1)) {
+			// ... isViableProposal checks that the range is idle and hardware available
+			if (isProposalViable(table, slot, burst_length, burst_length_tx, burst_offset, default_timeout)) {
 				viable_resource_channel.push_back(channel);
 				viable_resource_slot.push_back(slot);
 				coutd << "(viable) ";

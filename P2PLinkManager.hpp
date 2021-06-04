@@ -158,11 +158,11 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param burst_length Number of first slots to lock_bursts the transmitter for.
 			 * @param burst_length_tx Number of trailing slots to lock_bursts the receiver for.
 			 * @param timeout Number of bursts that should be locked.
-			 * @param consider_initial_link_reply_slot Whether in addition to 'timeout' burst, there should be an additional, first burst where the receiver is locked to receive a link reply.
+			 * @param receive_reply Whether in addition to 'timeout' burst, there should be an additional, first burst where the receiver is locked to receive a link reply.
 			 * @param table ReservationTable in which slots should be locked.
 			 * @return Slot offsets that were locked.
 			 */
-			LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool consider_initial_link_reply_slot, ReservationTable* table);
+			LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool receive_reply, ReservationTable* table);
 
 			/**
 			 * Computes a map of proposed P2P channels and corresponding slot offsets.
@@ -205,9 +205,11 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param burst_start
 			 * @param burst_length
 			 * @param burst_length_tx
-			 * @return Whether the entire range is idle && a receiver is idle during the first burst_length_tx slots && a transmitter is idle during the remaining slots.
+			 * @param burst_offset
+			 * @param timeout
+			 * @return Whether the entire communication link's resource range is idle && a receiver is idle during the first burst_length_tx slots && a transmitter is idle during the remaining slots.
 			 */
-			bool isViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx) const;
+			bool isProposalViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
 
 			/**
 			 * Helper function that schedules a communication burst with TX, TX_CONT, RX, RX_CONT reservations.
