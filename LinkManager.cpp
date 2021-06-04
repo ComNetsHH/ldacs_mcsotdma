@@ -159,6 +159,7 @@ void LinkManager::onSlotEnd() {
 	mac->emit(str_statistic_num_received_packets, statistic_num_received_packets);
 	mac->emit(str_statistic_num_received_beacons, statistic_num_received_beacons);
 	mac->emit(str_statistic_num_received_requests, statistic_num_received_requests);
+	mac->emit(str_statistic_num_cancelled_requests, statistic_num_cancelled_requests);
 	mac->emit(str_statistic_num_received_replies, statistic_num_received_replies);
 	mac->emit(str_statistic_num_received_link_infos, statistic_num_received_link_infos);
 	mac->emit(str_statistic_num_sent_packets, statistic_num_sent_packets);
