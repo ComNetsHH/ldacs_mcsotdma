@@ -100,7 +100,7 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
 						throw std::range_error(ss.str());
 					}
-					unique_offsets_rx.emplace(burst_start_offset);
+					unique_offsets_tx.emplace(burst_start_offset);
 				}
 			// Later ones are data transmissions...
 			} else {
@@ -408,7 +408,7 @@ bool P2PLinkManager::isProposalViable(const ReservationTable* table, unsigned in
 			// Entire slot range must be idle && receiver during first slots && transmitter during later ones.
 			viable = table->isIdle(slot, burst_length)
 						&& mac->isAnyReceiverIdle(slot, burst_length_tx)
-						&& mac->isTransmitterIdle(burst_start + burst_length_tx, burst_length_rx);
+						&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);
 		}
 	return viable;
 }
