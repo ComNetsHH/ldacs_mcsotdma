@@ -31,37 +31,49 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testInitialP2PSlotSelection() {
-			//			coutd.setVerbose(true);
 			unsigned int num_channels = 1, num_slots = 3, min_offset = 2, burst_length = 5, burst_length_tx = 3;
 			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx);
 			auto map = pair.first;
 			CPPUNIT_ASSERT_EQUAL(size_t(num_channels), map.size());
-			std::vector<unsigned int> expected_slots = {2, 3, 4, 5, 6, 7, 8},
-					expected_slots_tx = {2, 3, 4, 5, 6},
-					expected_slots_rx = {5, 6, 7, 8};
+
 			const FrequencyChannel* channel = map.begin()->first;
 			const std::vector<unsigned int> start_offsets = map.begin()->second;
+			const auto* reservation_table = reservation_manager->getReservationTable(channel);
+			const auto* tx_table = reservation_manager->getTxTable();
 
-			// All slots should be reserved locally.
-			for (unsigned int offset : expected_slots)
-				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED), reservation_manager->getReservationTable(channel)->getReservation(offset));
-			// For the first couple of slots the transmitter should be reserved.
-			for (unsigned int offset : expected_slots_tx)
-				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED), reservation_manager->getTxTable()->getReservation(offset));
-			// For the latter slots a receiver should be reserved.
-			for (unsigned int offset : expected_slots_rx) {
-				CPPUNIT_ASSERT_EQUAL(true, std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [offset](ReservationTable *table) {
-					return table->getReservation(offset) == Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED);
+			// At these slots the reply may arrive, so expect a receiver as well as the local ReservationTable to be locked.
+			for (unsigned int t = min_offset; t < min_offset + num_slots; t++) {
+				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED), reservation_table->getReservation(t));
+				CPPUNIT_ASSERT_EQUAL(true, std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [t](ReservationTable *table) {
+					return table->getReservation(t) == Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED);
 				}));
+				// The transmitter should *not* be locked.
+				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), tx_table->getReservation(t));
 			}
-			// Since this is an initial slot selection, for the burst start slots a receiver should also be locked.
-			bool expect_rx_to_be_reserved = true;
-			for (unsigned int offset : start_offsets)
-				CPPUNIT_ASSERT_EQUAL(expect_rx_to_be_reserved, std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [offset](ReservationTable *table) {
-					return table->getReservation(offset).isLocked();
-				}));
 
-//			coutd.setVerbose(false);
+			// Then for every burst until timeout, the initial slots should be TX-reserved and the latter RX-reserved.
+			for (unsigned int offset : start_offsets) {
+				for (unsigned int burst = 1; burst < link_manager->default_timeout + 1; burst++) { // Start at 1 due to very first burst belonging to a reply
+					for (unsigned int t = 0; t < burst_length; t++) {
+						unsigned int slot = offset + burst*link_manager->burst_offset + t;
+						// TX reservations
+						if (t < burst_length_tx) {
+							// Locally locked
+							CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED), reservation_table->getReservation(slot));
+							// Transmitter locked
+							CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED), tx_table->getReservation(slot));
+						// RX reservations
+						} else {
+							// Locally locked
+							CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED), reservation_table->getReservation(slot));
+							// Receiver locked
+							CPPUNIT_ASSERT_EQUAL(true, std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot](ReservationTable *table) {
+								return table->getReservation(slot) == Reservation(SYMBOLIC_ID_UNSET, Reservation::LOCKED);
+							}));
+						}
+					}
+				}
+			}
 		}
 
 		void testMultiChannelP2PSlotSelection() {
@@ -219,7 +231,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), res);
 					num_rx++;
 				} else
-					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res);
+					CPPUNIT_ASSERT(res.isLocked() || res.isIdle());
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx);
 			delete link_request_msg.first;
@@ -320,7 +332,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			L2Packet *link_reply = rx_env.phy_layer->outgoing_packets.at(0);
 			int reply_index = link_reply->getReplyIndex();
 			CPPUNIT_ASSERT(reply_index > -1);
-			// Locally some RX reservations should exist, everything else should be idle.
+			// Locally some RX reservations should exist, later link resources should be locked and everything else idle.
 			size_t num_rx_res = 0;
 			for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
 				const ReservationTable *table = reservation_manager->getReservationTable(channel);
@@ -328,12 +340,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					if (table->getReservation(t).isRx())
 						num_rx_res++;
 					else
-						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));
+						CPPUNIT_ASSERT(table->getReservation(t).isIdle() || table->getReservation(t).isLocked());
 				}
 			}
 			CPPUNIT_ASSERT(num_rx_res > 0);
 			// Process the link reply.
+//			coutd.setVerbose(true);
 			link_manager->processIncomingLinkReply((const L2HeaderLinkEstablishmentReply*&) link_reply->getHeaders().at(reply_index), (const L2Packet::Payload*&) link_reply->getPayloads().at(reply_index));
+//			coutd.setVerbose(false);
 			// Transmission bursts should've been saved now.
 			const ReservationTable *table = link_manager->current_reservation_table;
 			for (unsigned int burst = 1; burst < link_manager->default_timeout; burst++) {

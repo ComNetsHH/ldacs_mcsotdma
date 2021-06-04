@@ -73,6 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			// Single message.
 			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// New data for communication partner.
 			mac_layer_me->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_slots = 20;
@@ -98,6 +99,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
 			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout, lm_you->current_link_state->timeout);
+			CPPUNIT_ASSERT_EQUAL(false, lm_me->current_link_state->scheduled_rx_slots.empty());
+			for (const auto &pair : lm_me->current_link_state->scheduled_rx_slots) {
+				const auto *channel = pair.first;
+				unsigned int start_slot = pair.second;
+				ReservationTable *table = mac_layer_me->reservation_manager->getReservationTable(channel);
+				// RX slots should've been scheduled
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), table->getReservation(start_slot));
+				// and all bursts afterwards should've been locked
+				for (unsigned int n_burst = 1; n_burst < lm_me->current_link_state->timeout + 1; n_burst++) { // start at 1 since very first burst is reply reception
+					for (unsigned int t = 0; t < lm_me->current_link_state->burst_length; t++) {
+						int slot = ((int) start_slot) + n_burst*lm_me->burst_offset + t;
+						if (t < lm_me->current_link_state->burst_length_tx)
+							CPPUNIT_ASSERT_EQUAL(true, table->getReservation(slot).isLocked());
+					}
+				}
+			}
+
 
 			// Increment time until status is 'link_established'.
 			num_slots = 0;

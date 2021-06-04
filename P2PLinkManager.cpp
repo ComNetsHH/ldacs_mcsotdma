@@ -47,7 +47,6 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 
 		// ... and lock them s.t. other proposals don't consider them.
 		locked_resources_map = lock_bursts(candidate_slots, burst_length, burst_length_tx, default_timeout, true, table);
-		coutd << "locked -> ";
 
 		// Fill proposal.
 		for (unsigned int slot : candidate_slots)
@@ -57,6 +56,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 }
 
 P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool consider_initial_link_reply_slot, ReservationTable* table) {
+	coutd << "locking: ";
 	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
 
@@ -79,7 +79,7 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 			} else {
 				// the first burst_length_tx slots...
 				for (unsigned int t = 0; t < burst_length_tx; t++) {
-					unsigned int offset = burst_start_offset + t;
+					unsigned int offset = burst_start_offset + n_burst*burst_offset + t;
 					// ... should be lockable locally
 					if (!table->canLock(offset))
 						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
@@ -91,7 +91,7 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 				}
 				// Latter burst_length_rx slots...
 				for (unsigned int t = burst_length_tx; t < burst_length; t++) {
-					unsigned int offset = burst_start_offset + t;
+					unsigned int offset = burst_start_offset + n_burst*burst_offset + t;
 					// ... should be lockable locally
 					if (!table->canLock(offset))
 						throw std::range_error("LinkManager::lock cannot lock_bursts local ReservationTable.");
@@ -110,14 +110,14 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 	// *All* slots should be locked in the local ReservationTable.
 	for (unsigned int offset : unique_offsets_local) {
 		table->lock(offset);
-		locked_resources_map.locks_local.emplace_back(table, offset);
+		locked_resources_map.locks_local.push_back({table, offset});
 	}
 	// Then lock transmitter resources.
 	for (unsigned int offset : unique_offsets_tx) {
 		for (auto* tx_table : tx_tables)
 			if (tx_table->canLock(offset)) {
 				tx_table->lock(offset);
-				locked_resources_map.locks_transmitter.emplace_back(tx_table, offset);
+				locked_resources_map.locks_transmitter.push_back({tx_table, offset});
 				break;
 			}
 	}
@@ -126,10 +126,11 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(offset)) {
 				rx_table->lock(offset);
-				locked_resources_map.locks_receiver.emplace_back(rx_table, offset);
+				locked_resources_map.locks_receiver.push_back({rx_table, offset});
 				break;
 			}
 	}
+	coutd << unique_offsets_local.size() << " local + " << unique_offsets_rx.size() << " receiver + " << unique_offsets_tx.size() << " transmitter resources -> ";
 	return locked_resources_map;
 }
 
@@ -493,6 +494,11 @@ void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentRep
 	coutd << "received on " << *channel << "@" << slot_offset << " -> ";
 	// Assign channel.
 	assign(channel);
+	// Clear locked resources.
+	if (lock_map.anyLocks()) {
+		clearLockedResources(lock_map);
+		lock_map = LockMap();
+	}
 	// Make reservations.
 	coutd << "scheduling transmission bursts: ";
 	for (unsigned int burst = 1; burst < default_timeout + 1; burst++)  // Start with next P2P frame
@@ -671,7 +677,7 @@ void P2PLinkManager::clearLocks(const std::vector<std::pair<ReservationTable*, u
 }
 
 void P2PLinkManager::clearLockedResources(const LockMap& locked_resources) {
-	coutd << "freeing " << lock_map.size_local() << " local, " << lock_map.size_receiver() << " receiver and " << lock_map.size_transmitter() << " transmitter locks on resources: ";
+	coutd << "freeing " << locked_resources.size_local() << " local, " << locked_resources.size_receiver() << " receiver and " << locked_resources.size_transmitter() << " transmitter locks on resources: ";
 	clearLocks(locked_resources.locks_local, locked_resources.num_slots_since_creation);
 	clearLocks(locked_resources.locks_receiver, locked_resources.num_slots_since_creation);
 	clearLocks(locked_resources.locks_transmitter, locked_resources.num_slots_since_creation);

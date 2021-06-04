@@ -72,8 +72,7 @@ ReservationTable* ReservationManager::getLeastUtilizedP2PReservationTable() {
 	return least_used_table;
 }
 
-std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison>
-ReservationManager::getSortedP2PReservationTables() const {
+std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationManager::ReservationTableComparison> ReservationManager::getSortedP2PReservationTables() const {
 	auto queue = std::priority_queue<ReservationTable*, std::vector<ReservationTable*>, ReservationTableComparison>();
 	for (auto it = p2p_reservation_tables.begin(); it < p2p_reservation_tables.end(); it++) {
 		queue.push(*it);
