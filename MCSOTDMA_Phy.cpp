@@ -62,7 +62,7 @@ void MCSOTDMA_Phy::onReception(L2Packet* packet, uint64_t center_frequency) {
 		IPhy::onReception(packet, center_frequency);
 	} else {
 		coutd << "PHY doesn't receive packet (no RX tuned to frequency '" << center_frequency << "kHz').";
-		if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == ((MCSOTDMA_Mac*) upper_layer)->getMacId()) {
+		if (packet->getDestination() == SYMBOLIC_LINK_ID_BEACON || packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == ((MCSOTDMA_Mac*) upper_layer)->getMacId()) {
 			statistic_num_missed_packets++;
 			emit(str_statistic_num_missed_packets, statistic_num_missed_packets);
 			coutd << " (this was destined to us, so I'm counting it as a missed packet).";
