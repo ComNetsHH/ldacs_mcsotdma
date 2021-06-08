@@ -437,6 +437,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 }
 
 void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	// Unlock any previously-locked resources, as a new link request re-starts this procedure.
 	if (lock_map.anyLocks()) {
 		clearLockedResources(lock_map);
 		lock_map = LockMap();
@@ -470,13 +471,15 @@ void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header,
 		try {
 			scheduleBurst(burst_offset + current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx, origin, current_reservation_table, current_link_state->is_link_initiator);
 		} catch (const std::invalid_argument& e) {
-			coutd << "conflict at t=" << burst_offset + current_link_state->next_burst_start << ": " << e.what() << " -> ";
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::processIncomingLinkRequest conflict at t=" << burst_offset + current_link_state->next_burst_start << ": " << e.what() << "!";
+			throw std::runtime_error(ss.str());
 		}
 		// and update status.
 		coutd << "changing status " << link_status << "->" << awaiting_data_tx << " -> ";
 		link_status = awaiting_data_tx;
 	} catch (const std::invalid_argument& e) {
-		coutd << "no viable resources; aborting -> ";
+		coutd << "error during link request processing: " << e.what() << " -> assuming no viable resources; aborting -> ";
 	}
 }
 
@@ -499,7 +502,7 @@ std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomRes
 				viable_resource_slot.push_back(slot);
 				coutd << "(viable) ";
 			} else
-				coutd << "(busy:" << table->getReservation(slot) << " RX=" << (mac->isAnyReceiverIdle(slot, burst_length_tx) ? "idle " : "busy ") << "TX=" << (mac->isTransmitterIdle(slot + burst_length_tx, burst_length-burst_length_tx) ? "idle " : "busy ") <<  ") ";
+				coutd << "(busy) ";
 		}
 	}
 	if (viable_resource_channel.empty())
@@ -540,6 +543,7 @@ void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentRep
 
 	const auto*& payload = (const LinkManager::LinkRequestPayload*&) payload_ptr;
 
+	current_link_state->is_link_initiator = true;
 	// Reset timeout.
 	current_link_state->timeout = default_timeout;
 	// Parse resource.
@@ -563,9 +567,11 @@ void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentRep
 	coutd << "scheduling transmission bursts: ";
 	for (unsigned int burst = 1; burst < default_timeout + 1; burst++)  // Start with next P2P frame
 		try {
-			scheduleBurst(burst * burst_offset + slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, true);
+			scheduleBurst(burst * burst_offset + slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
 		} catch (const std::invalid_argument& e) {
-			coutd << "conflict at t=" << burst*burst_offset + slot_offset << ": " << e.what() << " -> ";
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::processIncomingLinkReply conflict at t=" << burst*burst_offset + slot_offset << ": " << e.what() << "!";
+			throw std::runtime_error(ss.str());
 		}
 	// Clear RX reservations made to receive this reply.
 	for (auto &pair : current_link_state->scheduled_rx_slots) {
@@ -611,8 +617,9 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 					res_tx = pair.first;
 			}
 			if (!res_tx.isBeaconTx()) {
-				std::cerr << std::endl << "reservation " << res_tx << " conflicts with scheduling " << res << std::endl;
-				throw std::invalid_argument("MAC(" + std::to_string(mac->getMacId().getId()) + ")::" + "P2PLinkManager(" + std::to_string(link_id.getId()) + ")::scheduleBurst couldn't schedule burst at t=" + std::to_string(burst_start_offset + t) + " because there's a conflict with: " + std::to_string(res_tx.getAction()) + "@" + std::to_string(res_tx.getTarget().getId()));
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::scheduleBursts couldn't schedule " << res << " at t=" << burst_start_offset + t << " because there's a conflict with " << res_tx << "!";
+				throw std::invalid_argument(ss.str());
 			}
 		}
 
@@ -631,8 +638,9 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 					res_tx = pair.first;
 			}
 			if (!res_tx.isBeaconTx()) {
-				std::cerr << std::endl << "reservation " << res_tx << " conflicts with scheduling " << res << std::endl;
-				throw std::runtime_error("P2PLinkManager::scheduleBurst couldn't schedule burst at t=" + std::to_string(burst_start_offset + t) + " (" + std::to_string(res.getAction()) + "@" + std::to_string(res.getTarget().getId()) + ") because there's a conflict with: " + std::to_string(res_tx.getAction()) + "@" + std::to_string(res_tx.getTarget().getId()));
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::scheduleBursts couldn't schedule " << res << " at t=" << burst_start_offset + t << " because there's a conflict with " << res_tx << "!";
+				throw std::invalid_argument(ss.str());
 			}
 		}
 	}
@@ -661,6 +669,11 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 			coutd << "this transmission establishes the link, setting status to '" << link_status << "' -> informing upper layers -> ";
 			// Inform upper sublayers.
 			mac->notifyAboutNewLink(link_id);
+			// Clear locked resources.
+			if (lock_map.anyLocks()) {
+				clearLockedResources(lock_map);
+				lock_map = LockMap();
+			}
 			// Mark reservations.
 			coutd << "reserving bursts: ";
 			assert(current_link_state != nullptr);
@@ -668,7 +681,9 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 				try {
 					scheduleBurst(burst * burst_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
 				} catch (const std::invalid_argument& e) {
-					coutd << "conflict at t=" << burst*burst_offset << ": " << e.what() << " -> ";
+					std::stringstream ss;
+					ss << *mac << "::" << *this << "::processIncomingUnicast conflict at t=" << burst*burst_offset << ": " << e.what() << "!";
+					throw std::runtime_error(ss.str());
 				}
 		}
 	}
