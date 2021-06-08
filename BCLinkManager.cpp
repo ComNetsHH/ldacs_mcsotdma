@@ -2,6 +2,7 @@
 // Created by seba on 2/18/21.
 //
 
+#include <sstream>
 #include "BCLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "P2PLinkManager.hpp"
@@ -121,11 +122,12 @@ void BCLinkManager::onSlotEnd() {
 		// Schedule next beacon slot.
 		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
 		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
-			std::cerr << "res=" << current_reservation_table->getReservation(next_beacon_slot) << std::endl;
-			throw std::runtime_error("BCLinkManager::onSlotEnd Scheduled a beacon slot at a non-idle resource.");
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::onSlotEnd scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";
+			throw std::runtime_error(ss.str());
 		}
 		current_reservation_table->mark(next_beacon_slot, Reservation(mac->getMacId(), Reservation::TX_BEACON));
-		coutd << "scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
+		coutd << *mac << "::" << *this << "::onSlotEnd scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
 		// Reset congestion estimator with new beacon interval.
 		congestion_estimator.reset(beacon_module.getBeaconOffset());
 	}
