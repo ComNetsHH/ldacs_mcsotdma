@@ -158,11 +158,11 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param burst_length Number of first slots to lock_bursts the transmitter for.
 			 * @param burst_length_tx Number of trailing slots to lock_bursts the receiver for.
 			 * @param timeout Number of bursts that should be locked.
-			 * @param receive_reply Whether in addition to 'timeout' burst, there should be an additional, first burst where the receiver is locked to receive a link reply.
+			 * @param is_link_initiator Whether in addition to 'timeout' burst, there should be an additional, first burst where the receiver is locked to receive a link reply.
 			 * @param table ReservationTable in which slots should be locked.
 			 * @return Slot offsets that were locked.
 			 */
-			LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool receive_reply, ReservationTable* table);
+			LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table);
 
 			/**
 			 * Computes a map of proposed P2P channels and corresponding slot offsets.

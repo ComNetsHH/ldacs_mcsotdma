@@ -49,12 +49,7 @@ unsigned int BeaconModule::chooseNextBeaconSlot(unsigned int min_beacon_offset, 
 	if (viable_slots.empty())
 		throw std::runtime_error("BeaconModule::chooseNextBeaconSlot couldn't find a single viable slot.");
 	// Choose a random slot from the viable ones.
-	unsigned int chosen_slot;
-	if (num_candidates > 1)
-		chosen_slot = viable_slots.at(getRandomInt(0, viable_slots.size()));
-	else
-		chosen_slot = viable_slots.at(0);
-	return chosen_slot;
+	return viable_slots.at(getRandomInt(0, viable_slots.size()));
 }
 
 unsigned int BeaconModule::computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const {

@@ -60,7 +60,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 	return {proposal_map, locked_resources_map};
 }
 
-P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool receive_reply, ReservationTable* table) {
+P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table) {
 	coutd << "locking: ";
 	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
@@ -75,18 +75,18 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 				if (!table->canLock(burst_start_offset)) {
 					const Reservation &conflict_res = table->getReservation((int) burst_start_offset);
 					std::stringstream ss;
-					ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
+					ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable for first burst at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
 					throw std::range_error(ss.str());
 				}
 				unique_offsets_local.emplace(burst_start_offset);
 				// ... and at a receiver if the caller is the link initiator (who has to *receive* the link reply)
-				if (receive_reply) {
+				if (is_link_initiator) {
 					if (!std::any_of(rx_tables.begin(), rx_tables.end(), [burst_start_offset](ReservationTable* rx_table) { return rx_table->canLock(burst_start_offset); })) {
 						Reservation conflict_res = Reservation();
 						for (size_t i = 0; i < rx_tables.size() && conflict_res.isIdle(); i++)
 							conflict_res = rx_tables.at(i)->getReservation((int) burst_start_offset);
 						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable for first burst at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
 						throw std::range_error(ss.str());
 					}
 					unique_offsets_rx.emplace(burst_start_offset);
@@ -97,7 +97,7 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 						for (size_t i = 0; i < tx_tables.size() && conflict_res.isIdle(); i++)
 							conflict_res = tx_tables.at(i)->getReservation((int) burst_start_offset);
 						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable for first burst at t=" << burst_start_offset << ", conflict with " << conflict_res << ".";
 						throw std::range_error(ss.str());
 					}
 					unique_offsets_tx.emplace(burst_start_offset);
@@ -111,24 +111,42 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 					if (!table->canLock(offset)) {
 						const Reservation &conflict_res = table->getReservation((int) offset);
 						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable for later burst " << n_burst << "/" << timeout+1 << " at t=" << offset << ", conflict with " << conflict_res << ".";
 						throw std::range_error(ss.str());
 					}
-					// ... and at the transmitter
-					if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable* tx_table) { return tx_table->canLock(offset); })) {
-						Reservation conflict_res = Reservation();
-						for (auto it = tx_tables.begin(); it != tx_tables.end() && conflict_res.isIdle(); it++) {
-							const auto tx_table = *it;
-							if (!tx_table->getReservation(offset).isIdle()) {
-								conflict_res = tx_table->getReservation(offset);
-							}
-						}
-						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
-						throw std::range_error(ss.str());
-					}
-					unique_offsets_tx.emplace(offset);
 					unique_offsets_local.emplace(offset);
+					// Link initiators transmit during the first slots
+					if (is_link_initiator) {
+						// ... and at the transmitter
+						if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable* tx_table) { return tx_table->canLock(offset); })) {
+							Reservation conflict_res = Reservation();
+							for (auto it = tx_tables.begin(); it != tx_tables.end() && conflict_res.isIdle(); it++) {
+								const auto tx_table = *it;
+								if (!tx_table->getReservation(offset).isIdle()) {
+									conflict_res = tx_table->getReservation(offset);
+								}
+							}
+							std::stringstream ss;
+							ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable for later burst " << n_burst << "/" << timeout+1 << " at t=" << offset << ", conflict with " << conflict_res << ".";
+							throw std::range_error(ss.str());
+						}
+						unique_offsets_tx.emplace(offset);
+					// Link recipients receive
+					} else {
+						if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable* rx_table) { return rx_table->canLock(offset); })) {
+							Reservation conflict_res = Reservation();
+							for (auto it = rx_tables.begin(); it != rx_tables.end() && conflict_res.isIdle(); it++) {
+								const auto rx_table = *it;
+								if (!rx_table->getReservation(offset).isIdle()) {
+									conflict_res = rx_table->getReservation(offset);
+								}
+							}
+							std::stringstream ss;
+							ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable for later burst " << n_burst << "/" << timeout+1 << " at t=" << offset << ", conflict with " << conflict_res << ".";
+							throw std::range_error(ss.str());
+						}
+						unique_offsets_rx.emplace(offset);
+					}
 				}
 				// Latter burst_length_rx slots...
 				for (unsigned int t = burst_length_tx; t < burst_length; t++) {
@@ -137,24 +155,41 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 					if (!table->canLock(offset)) {
 						const Reservation &conflict_res = table->getReservation((int) offset);
 						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
+						ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable for later burst " << n_burst << "/" << timeout+1 << " at t=" << offset << ", conflict with " << conflict_res << ".";
 						throw std::range_error(ss.str());
 					}
-					// ... and at the receiver
-					if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable* rx_table) { return rx_table->canLock(offset); })) {
-						Reservation conflict_res = Reservation();
-						for (auto it = rx_tables.begin(); it != rx_tables.end() && conflict_res.isIdle(); it++) {
-							const auto rx_table = *it;
-							if (!rx_table->getReservation(offset).isIdle()) {
-								conflict_res = rx_table->getReservation(offset);
-							}
-						}
-						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable at t=" << offset << ", conflict with " << conflict_res << ".";
-						throw std::range_error(ss.str());
-					}
-					unique_offsets_rx.emplace(offset);
 					unique_offsets_local.emplace(offset);
+					// Link initiators receive during the later slots
+					if (is_link_initiator) {
+						if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable* rx_table) { return rx_table->canLock(offset); })) {
+							Reservation conflict_res = Reservation();
+							for (auto it = rx_tables.begin(); it != rx_tables.end() && conflict_res.isIdle(); it++) {
+								const auto rx_table = *it;
+								if (!rx_table->getReservation(offset).isIdle()) {
+									conflict_res = rx_table->getReservation(offset);
+								}
+							}
+							std::stringstream ss;
+							ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable for later burst " << n_burst << "/" << timeout+1 << "at t=" << offset << ", conflict with " << conflict_res << ".";
+							throw std::range_error(ss.str());
+						}
+						unique_offsets_rx.emplace(offset);
+					// Link recipients transmit
+					} else {
+						if (!std::any_of(tx_tables.begin(), tx_tables.end(), [offset](ReservationTable* tx_table) { return tx_table->canLock(offset); })) {
+							Reservation conflict_res = Reservation();
+							for (auto it = tx_tables.begin(); it != tx_tables.end() && conflict_res.isIdle(); it++) {
+								const auto tx_table = *it;
+								if (!tx_table->getReservation(offset).isIdle()) {
+									conflict_res = tx_table->getReservation(offset);
+								}
+							}
+							std::stringstream ss;
+							ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable for later burst " << n_burst << "/" << timeout+1 << " at t=" << offset << ", conflict with " << conflict_res << ".";
+							throw std::range_error(ss.str());
+						}
+						unique_offsets_tx.emplace(offset);
+					}
 				}
 			}
 		}
