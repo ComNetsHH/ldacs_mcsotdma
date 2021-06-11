@@ -38,6 +38,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class LinkManagementEntityTests;
 
+		ReservationTable();
+
 		/**
 		 * @param planning_horizon The number of time slots this reservation table will keep saved. It denotes the number of slots both into the future, as well as a history of as many slots. The number of slots saved is correspondingly planning_horizon*2.
 		 */
@@ -83,14 +85,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const Reservation& getReservation(int offset) const;
 
 		/**
-		 * @param num_slots Target number of slot offsets per P2P channel that should be proposed.
+		 * @param num_proposal_slots Target number of slot offsets per P2P channel that should be proposed.
 		 * @param min_offset Minimum slot offset for the first proposed slot.
+		 * @param burst_offset Periodicity of transmission bursts.
 		 * @param burst_length Number of slots the burst must occupy.
 		 * @param burst_length_tx Number of first slots that should be used for transmission.
-		 * @param rx_idle_during_first_slot Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
+		 * @param timeout Number of transmission bursts until link expiry.
+		 * @param p2p Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
 		 * @return Start slot offsets.
 		 */
-		std::vector<unsigned int> findCandidates(unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const;
+		std::vector<unsigned int> findCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool p2p) const;
 
 		void lock(unsigned int slot_offset);
 
@@ -191,6 +195,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool canLock(unsigned int slot_offset) const;
 
+		/**
+		 * Scans ahead and checks whether the given slot at 't' ends a communication burst with target 'id'.
+		 * @param t The time slot in question.
+		 * @param id The reservation target associated with the burst.
+		 * @return  Whether the slot at 't' ends a communication burst with 'id'.
+		 */
+		bool isBurstEnd(int t, const MacId& id) const;
+
 	protected:
 		bool isValid(int32_t slot_offset) const;
 
@@ -220,12 +232,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param start_offset
 		 * @param burst_length
 		 * @param burst_length_tx
-		 * @param rx_idle_during_first_slot
+		 * @param burst_offset
+		 * @param timeout
 		 * @return Slot offset that marks the beginning of a burst of slots that are idle.
 		 * @throws range_error If no suitable slot range can be found.
 		 * @throws invalid_argument If the planning horizon is exceeded.
 		 */
-		unsigned int findEarliestIdleSlots(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const;
+		unsigned int findEarliestIdleSlotsP2P(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
+		unsigned int findEarliestIdleSlotsBC(unsigned int start_offset) const;
+
+		/**
+		 * @param start_slot
+		 * @param burst_length
+		 * @param burst_length_tx
+		 * @param rx_idle_during_first_slot
+		 * @return Whether the given transmission burst is reservable.
+		 */
+		bool isBurstValid(int start_slot, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const;
 
 	protected:
 		/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */

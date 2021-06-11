@@ -138,7 +138,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				num_txs++;
 				if (num_txs > num_transmitters)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
-				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onTransmissionBurstStart(reservation.getNumRemainingSlots());
+				passToLower(getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onTransmissionBurstStart(reservation.getNumRemainingSlots()), channel->getCenterFrequency());
 			}
 			case Reservation::RX_BEACON: {
 				num_rxs++;
@@ -214,8 +214,12 @@ ReservationManager* MCSOTDMA_Mac::getReservationManager() {
 
 void MCSOTDMA_Mac::onSlotEnd() {
 	for (auto &packet_freq_pair : received_packets) {
+		// On this frequency channel,
 		uint64_t freq = packet_freq_pair.first;
+		// these packets were received.
 		std::vector<L2Packet*> packets = packet_freq_pair.second;
+
+		// If it's just a single packet, then it can be decoded.
 		if (packets.size() == 1) {
 			L2Packet *packet = packets.at(0);
 			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
@@ -223,8 +227,9 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			else
 				getLinkManager(packet->getOrigin())->onPacketReception(packet);
 			statistic_num_packet_decoded++;
+		// We cannot receive several packets on this channel simultaneously - drop it due to a collision.
 		} else if (packets.size() > 1) {
-			coutd << "collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
+			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
 			statistic_num_packet_collisions += packets.size();
 
 			for (auto *packet : packets)

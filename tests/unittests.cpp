@@ -30,7 +30,6 @@ int main() {
 	runner.addTest(ReservationManagerTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
 	runner.addTest(P2PLinkManagerTests::suite());
-	runner.addTest(SystemTests::suite());
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(MCSOTDMA_PhyTests::suite());
@@ -38,6 +37,7 @@ int main() {
 	runner.addTest(CongestionEstimatorTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(BCLinkManagerTests::suite());
+	runner.addTest(SystemTests::suite());
 	runner.addTest(ThreeUsersTests::suite());
 
 	runner.run();

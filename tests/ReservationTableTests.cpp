@@ -279,7 +279,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
 			unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
 			// At first, all slots are free.
-			std::vector<unsigned int> candidate_slots = table->findCandidates(num_candidates, min_offset, range_length, range_length, false);
+			std::vector<unsigned int> candidate_slots = table->findCandidates(num_candidates, min_offset, 0, range_length, range_length, 0, true);
 			// So we should have no problem finding enough candidates.
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 			// And these should be consecutive slots starting at 0.
@@ -288,20 +288,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testFindCandidateSlotsComplicated() {
-			// This test requires that the planning horizon is 25.
-			CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
 			unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
+			unsigned int burst_offset = 5, timeout = 1;
+			ReservationTable res_table = ReservationTable(burst_offset + 25);
+			res_table.linkTransmitterReservationTable(table_tx);
+			res_table.linkReceiverReservationTable(table_rx_1);
+			res_table.linkReceiverReservationTable(table_rx_2);
 			// Mark some slots as busy...
-			table->mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-			table->mark(6, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-			table->mark(13, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-			table->mark(19, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-			table->mark(20, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-			table->mark(25, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
-			std::vector<unsigned int> candidate_slots = table->findCandidates(num_candidates, min_offset, range_length, range_length, false);
+			res_table.mark(burst_offset + 0, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
+			res_table.mark(burst_offset + 6, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
+			res_table.mark(burst_offset + 13, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
+			res_table.mark(burst_offset + 19, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
+			res_table.mark(burst_offset + 20, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
+			res_table.mark(burst_offset + 25, Reservation(SYMBOLIC_ID_UNSET, Reservation::Action::BUSY));
+			std::vector<unsigned int> candidate_slots = res_table.findCandidates(num_candidates, min_offset, burst_offset, range_length, range_length, timeout, true);
 			// We should only be able to find 4 candidates.
 			CPPUNIT_ASSERT_EQUAL(size_t(4), candidate_slots.size());
-			// And these should be the following starting slots:
+			// And these should be the following starting slots:l;
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), candidate_slots.at(0));
 			CPPUNIT_ASSERT_EQUAL(uint32_t(7), candidate_slots.at(1));
 			CPPUNIT_ASSERT_EQUAL(uint32_t(8), candidate_slots.at(2));
@@ -315,7 +318,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
 			unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
 			// At first, all slots are free.
-			std::vector<unsigned int> candidate_slots = table->findCandidates(num_candidates, min_offset, range_length, range_length, true);
+			std::vector<unsigned int> candidate_slots = table->findCandidates(num_candidates, min_offset, 0, range_length, range_length, 0, true);
 			// So we should have no problem finding enough candidates.
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 			// And these should be consecutive slots starting at 0.
@@ -324,7 +327,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Now mark some slots as busy for the receiver.
 			rx_table.lock(0);
-			candidate_slots = table->findCandidates(num_candidates, min_offset, range_length, range_length, true);
+			candidate_slots = table->findCandidates(num_candidates, min_offset, 0, range_length, range_length, 0, true);
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 			// And these should be consecutive slots starting at 1.
 			for (int32_t i = 0; i < num_candidates; i++)
@@ -332,7 +335,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			rx_table.lock(2);
 			range_length = 1;
-			candidate_slots = table->findCandidates(num_candidates, min_offset, range_length, range_length, true);
+			candidate_slots = table->findCandidates(num_candidates, min_offset, 0, range_length, range_length, 0, true);
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 			// And these should be consecutive slots starting at 1 and exclude 2.
 			std::vector<int> expected_slots = {1, 3, 4, 5, 6};
@@ -538,12 +541,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLocking() {
 			// Find some candidate
 			unsigned int num_candidates = 3;
-			std::vector<unsigned int> slots = table->findCandidates(num_candidates, 0, 5, 5, true);
+			std::vector<unsigned int> slots = table->findCandidates(num_candidates, 0, 0, 5, 5, 0, true);
 			// Now lock these slots.
 			for (auto t : slots)
 				table->lock(t);
 			// So these slots should *not* be considered for a further request.
-			std::vector<unsigned int> slots2 = table->findCandidates(num_candidates, 0, 5, 5, true);
+			std::vector<unsigned int> slots2 = table->findCandidates(num_candidates, 0, 0, 5, 5, 0, true);
 			CPPUNIT_ASSERT_EQUAL(slots.size(), slots2.size());
 
 			for (int32_t i : slots) { // for every slot out of the first set
@@ -651,33 +654,32 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testFindEarliestIdleSlots() {
-						unsigned int min_offset = 0, burst_length = 5, burst_length_tx = 3;
-			bool rx_idle_during_first_slot = false;
-			unsigned int start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			unsigned int min_offset = 0, burst_length = 5, burst_length_tx = 3;
+			unsigned int burst_offset = 7, timeout = 1;
+			unsigned int start_slot = table->findEarliestIdleSlotsP2P(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), start_slot);
 
-			rx_idle_during_first_slot = true;
 			const Reservation res = Reservation(MacId(5), Reservation::BUSY);
 			table_rx_1->mark(0, res);
-			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			start_slot = table->findEarliestIdleSlotsP2P(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), start_slot);
 
 			table_rx_2->mark(0, res);
-			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			start_slot = table->findEarliestIdleSlotsP2P(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), start_slot);
 
-			table_tx->mark(1, res);
-			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			table_tx->mark(burst_offset + 1, res);
+			start_slot = table->findEarliestIdleSlotsP2P(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(2), start_slot);
 
-			table_rx_1->mark(2 + burst_length_tx, res);
-			table_rx_2->mark(2 + burst_length_tx, res);
-			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			table_rx_1->mark(burst_offset + 2 + burst_length_tx, res);
+			table_rx_2->mark(burst_offset + 2 + burst_length_tx, res);
+			start_slot = table->findEarliestIdleSlotsP2P(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(3), start_slot);
 
-			table_rx_1->mark(3 + burst_length_tx, res);
-			table_rx_2->mark(3 + burst_length_tx, res);
-			start_slot = table->findEarliestIdleSlots(min_offset, burst_length, burst_length_tx, rx_idle_during_first_slot);
+			table_rx_1->mark(burst_offset + 3 + burst_length_tx, res);
+			table_rx_2->mark(burst_offset + 3 + burst_length_tx, res);
+			start_slot = table->findEarliestIdleSlotsP2P(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(4), start_slot);
 		}
 

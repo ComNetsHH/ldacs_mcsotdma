@@ -32,7 +32,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	protected:
 		std::vector<unsigned long long> values;
-		size_t index;
+		std::size_t index;
 		bool has_been_updated = false;
 	};
 }

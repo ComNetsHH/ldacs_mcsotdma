@@ -14,6 +14,7 @@ set(MCSOTDMA_TEST_SRC tests/unittests.cpp tests/ReservationTableTests.cpp tests/
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/include -I/usr/local/include/ -L/usr/local/Cellar/cppunit/1.15.1/lib")
 
 # MC-SOTDMA library target.
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "-Wall")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(tuhh_intairnet_mc-sotdma SHARED ${MCSOTDMA_SRC} ${GLUE_SRC_HPP})
 # Link MC-SOTDMA library against shared Glue Library.

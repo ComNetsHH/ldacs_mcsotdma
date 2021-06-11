@@ -147,6 +147,8 @@ class Reservation {
 		 */
 		bool isLocked() const;
 
+		std::string toString() const;
+
 	protected:
 		/** Target MAC ID. */
 		MacId target;

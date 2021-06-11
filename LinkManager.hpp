@@ -48,7 +48,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkRequestPayload() = default;
 
 			/** Copy constructor. */
-			LinkRequestPayload(const LinkRequestPayload& other) : proposed_resources(other.proposed_resources), locked_resources(other.locked_resources) {}
+			LinkRequestPayload(const LinkRequestPayload& other) : proposed_resources(other.proposed_resources) {}
 			Payload* copy() const override {
 				return new LinkRequestPayload(*this);
 			}
@@ -78,7 +78,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			/** <channel, <start slots>>-map of proposed resources. */
 			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
-			std::map<const FrequencyChannel*, std::vector<unsigned int>> locked_resources;
 			Callback *callback = nullptr;
 		};
 
@@ -88,6 +87,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		                                                                                                str_statistic_num_received_packets("MCSOTDMA:statistic_num_received_packets(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_received_beacons("MCSOTDMA:statistic_num_received_beacons(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_received_requests("MCSOTDMA:statistic_num_received_requests(" + std::to_string(link_id.getId()) + ")"),
+		                                                                                                str_statistic_num_cancelled_requests("MCSOTDMA:statistic_num_cancelled_requests(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_received_replies("MCSOTDMA:statistic_num_received_replies(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_received_link_infos("MCSOTDMA:statistic_num_received_link_infos(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_sent_packets("MCSOTDMA:statistic_num_sent_packets(" + std::to_string(link_id.getId()) + ")"),
@@ -165,16 +165,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		virtual void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);
 
 	protected:
-		/**
-		 * Locks given ReservationTable, as well as transmitter and receiver resources for the given candidate slots.
-		 * @param start_slots Starting slot offsets.
-		 * @param burst_length Number of first slots to lock the transmitter for.
-		 * @param burst_length_tx Number of trailing slots to lock the receiver for
-		 * @param table ReservationTable in which slots should be locked.
-		 * @return Slot offsets that were locked.
-		 */
-		std::vector<unsigned int> lock(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, ReservationTable* table);
-
 		unsigned long getRandomInt(size_t start, size_t end);
 
 		virtual void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
@@ -199,6 +189,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const std::string str_statistic_num_received_packets,
 			str_statistic_num_received_beacons,
 			str_statistic_num_received_requests,
+			str_statistic_num_cancelled_requests,
 			str_statistic_num_received_replies,
 			str_statistic_num_received_link_infos,
 			str_statistic_num_sent_packets,
@@ -209,6 +200,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned long statistic_num_received_packets = 0,
 			statistic_num_received_beacons = 0,
 			statistic_num_received_requests = 0,
+			statistic_num_cancelled_requests = 0,
 			statistic_num_received_replies = 0,
 			statistic_num_received_link_infos = 0,
 			statistic_num_sent_packets = 0,
