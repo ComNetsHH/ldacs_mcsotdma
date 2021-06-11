@@ -447,6 +447,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 //			coutd.setVerbose(true);
 			size_t num_slots = 0, max_slots = 1024;
+//			coutd.setVerbose(true);
 			while (lm_me->statistic_num_links_established < 2 && num_slots++ < max_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
@@ -748,6 +749,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
 
 			num_slots = 0;
+//			coutd.setVerbose(true);
 			while (lm_me->link_status != LinkManager::link_not_established && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -771,12 +773,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (size_t n = 0; n < num_reestablishments; n++) {
 				num_slots = 0;
 				while (lm_you->statistic_num_links_established < (n+1) && num_slots++ < max_slots) {
-					mac_layer_you->update(1);
-					mac_layer_me->update(1);
-					mac_layer_you->execute();
-					mac_layer_me->execute();
-					mac_layer_you->onSlotEnd();
-					mac_layer_me->onSlotEnd();
+					try {
+						mac_layer_you->update(1);
+						mac_layer_me->update(1);
+						mac_layer_you->execute();
+						mac_layer_me->execute();
+						mac_layer_you->onSlotEnd();
+						mac_layer_me->onSlotEnd();
+					} catch (const std::exception& e) {
+						throw std::runtime_error("Error during reestablishment #" + std::to_string(n+1) + ": " + std::string(e.what()));
+					}
 					CPPUNIT_ASSERT(!(lm_me->link_status == LinkManager::link_established && lm_you->link_status == LinkManager::link_not_established));
 					if (lm_me->current_link_state != nullptr && lm_you->current_link_state != nullptr)
 						CPPUNIT_ASSERT_EQUAL(lm_you->current_link_state->timeout, lm_me->current_link_state->timeout);
@@ -822,7 +828,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkInfoBroadcast);
 			CPPUNIT_TEST(testReestablishmentAfterDrop);
 			CPPUNIT_TEST(testSimultaneousRequests);
-//			CPPUNIT_TEST(testTimeout);
+			CPPUNIT_TEST(testTimeout);
 //			CPPUNIT_TEST(testManyReestablishments);
 
 	CPPUNIT_TEST_SUITE_END();

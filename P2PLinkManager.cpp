@@ -437,11 +437,11 @@ bool P2PLinkManager::isProposalViable(const ReservationTable* table, unsigned in
 	bool viable = table->isIdle((int) burst_start, 1) && mac->isTransmitterIdle(burst_start, 1);
 	// Then for each communication burst...
 	if (viable)
-		for (unsigned int burst = 1; burst < timeout + 1; burst++) {
+		for (unsigned int burst = 1; viable && burst < timeout + 1; burst++) {
 			int slot = (int) (burst_start + burst*burst_offset);
 			unsigned int burst_length_rx = burst_length - burst_length_tx;
 			// Entire slot range must be idle && receiver during first slots && transmitter during later ones.
-			viable = table->isIdle(slot, burst_length)
+			viable = viable && table->isIdle(slot, burst_length)
 						&& mac->isAnyReceiverIdle(slot, burst_length_tx)
 						&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);
 		}

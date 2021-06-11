@@ -137,7 +137,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			p2p_1->notifyOutgoing(num_outgoing_bits);
 			p2p_2->notifyOutgoing(num_outgoing_bits);
 
-			size_t num_slots = 0, max_num_slots = 100;
+			size_t num_slots = 0, max_num_slots = 1000;
 			while ((p2p_1->link_status != LinkManager::link_established || p2p_2->link_status != LinkManager::link_established || p2p_3->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
@@ -153,28 +153,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
-
-			num_slots = 0;
-			size_t expected_num_packets = 5;
-			while ((p2p_1->statistic_num_sent_packets < expected_num_packets || p2p_2->statistic_num_sent_packets < expected_num_packets) && num_slots++ < max_num_slots) {
-				mac_1->update(1);
-				mac_2->update(1);
-				mac_3->update(1);
-				mac_1->execute();
-				mac_2->execute();
-				mac_3->execute();
-				mac_1->onSlotEnd();
-				mac_2->onSlotEnd();
-				mac_3->onSlotEnd();
-			}
-			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
-			CPPUNIT_ASSERT(p2p_1->statistic_num_sent_packets >= expected_num_packets);
-			CPPUNIT_ASSERT(p2p_1->statistic_num_sent_packets > p2p_1->statistic_num_sent_requests);
-			CPPUNIT_ASSERT(p2p_2->statistic_num_sent_packets >= expected_num_packets);
-			CPPUNIT_ASSERT(p2p_2->statistic_num_sent_packets > p2p_2->statistic_num_sent_requests);
 		}
 
 		/**
@@ -196,7 +174,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
 			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
 
-			size_t num_slots = 0, max_num_slots = 5000, num_renewals = 10;
+			size_t num_slots = 0, max_num_slots = 10000, num_renewals = 10;
 			while ((p2p_1_tx->statistic_num_links_established < num_renewals || p2p_2_tx->statistic_num_links_established < num_renewals) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
@@ -207,10 +185,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_1->onSlotEnd();
 				mac_2->onSlotEnd();
 				mac_3->onSlotEnd();
-				CPPUNIT_ASSERT(!(p2p_1_tx->link_status == LinkManager::link_established && p2p_1_rx->link_status == LinkManager::link_not_established));
-				CPPUNIT_ASSERT(!(p2p_2_tx->link_status == LinkManager::link_established && p2p_2_rx->link_status == LinkManager::link_not_established));
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT(p2p_1_tx->statistic_num_links_established >= num_renewals);
+			CPPUNIT_ASSERT(p2p_2_tx->statistic_num_links_established >= num_renewals);
+
 //			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1_tx->link_status);
 //			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2_tx->link_status);
 //			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2_rx->link_status);
@@ -324,7 +303,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
-//			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);
+			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);
 //			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 //			CPPUNIT_TEST(threeUsersNonOverlappingTest);
 		CPPUNIT_TEST_SUITE_END();

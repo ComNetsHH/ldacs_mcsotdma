@@ -38,7 +38,7 @@ int main() {
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(BCLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
-//	runner.addTest(ThreeUsersTests::suite());
+	runner.addTest(ThreeUsersTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;
