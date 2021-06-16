@@ -11,12 +11,13 @@
 #include "ReservationManager.hpp"
 #include <random>
 #include <L2Header.hpp>
+#include <RngProvider.hpp>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 /**
  * Handles beacon-related tasks such as selecting appropriate slots and preparing beacons.
  */
-	class BeaconModule {
+	class BeaconModule : public IRng {
 
 		friend class BeaconModuleTests;
 
@@ -84,8 +85,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const;
 
-		unsigned long getRandomInt(size_t start, size_t end);
-
 	protected:
 		/** When scheduling beacon slots, aim to keep this percentage of slots idle in-between two beacon broadcasts. */
 		const double BC_CONGESTION_GOAL;
@@ -101,9 +100,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool is_connected = false;
 		/** Target collision probability for beacon broadcasts. */
 		double beacon_coll_prob = .01;
-
-		std::random_device* random_device;
-		std::mt19937 generator;
 	};
 }
 

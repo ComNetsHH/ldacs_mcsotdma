@@ -13,12 +13,13 @@ const unsigned int BeaconModule::MIN_BEACON_OFFSET = 80; /* 80*12ms=960ms */
 const unsigned int BeaconModule::MAX_BEACON_OFFSET = 25000; /* 5min */
 const unsigned int BeaconModule::INITIAL_BEACON_OFFSET = MIN_BEACON_OFFSET;
 
-BeaconModule::BeaconModule(unsigned int min_beacon_gap, double congestion_goal) : min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal), random_device(new std::random_device), generator((*random_device)()) {}
+BeaconModule::BeaconModule(unsigned int min_beacon_gap, double congestion_goal) : min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal) {
+	signupInt();
+}
 
 BeaconModule::BeaconModule() : BeaconModule(1, .45) {}
 
 BeaconModule::~BeaconModule() {
-	delete random_device;
 }
 
 bool BeaconModule::isConnected() const {
@@ -81,13 +82,6 @@ unsigned int BeaconModule::getBeaconOffset() const {
 
 void BeaconModule::setMinBeaconGap(unsigned int n) {
 	this->min_beacon_gap = n;
-}
-
-unsigned long BeaconModule::getRandomInt(size_t start, size_t end) {
-	if (start == end)
-		return start;
-	std::uniform_int_distribution<> distribution(start, end - 1);
-	return distribution(generator);
 }
 
 std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table) const {
