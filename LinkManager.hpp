@@ -94,7 +94,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		                                                                                                str_statistic_num_sent_beacons("MCSOTDMA:statistic_num_sent_beacons(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_sent_requests("MCSOTDMA:statistic_num_sent_requests(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_sent_replies("MCSOTDMA:statistic_num_sent_replies(" + std::to_string(link_id.getId()) + ")") {
-            signupInt();
 		                                                                                                }
 
 	    virtual ~LinkManager() {

@@ -13,9 +13,7 @@ const unsigned int BeaconModule::MIN_BEACON_OFFSET = 80; /* 80*12ms=960ms */
 const unsigned int BeaconModule::MAX_BEACON_OFFSET = 25000; /* 5min */
 const unsigned int BeaconModule::INITIAL_BEACON_OFFSET = MIN_BEACON_OFFSET;
 
-BeaconModule::BeaconModule(unsigned int min_beacon_gap, double congestion_goal) : min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal) {
-	signupInt();
-}
+BeaconModule::BeaconModule(unsigned int min_beacon_gap, double congestion_goal) : min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal) {}
 
 BeaconModule::BeaconModule() : BeaconModule(1, .45) {}
 
