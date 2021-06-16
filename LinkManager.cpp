@@ -23,13 +23,6 @@ void LinkManager::assign(const FrequencyChannel* channel) {
 		coutd << *this << "::assign, but channel or reservation table are already assigned; ignoring -> ";
 }
 
-unsigned long LinkManager::getRandomInt(size_t start, size_t end) {
-	if (start == end)
-		return start;
-	std::uniform_int_distribution<> distribution(start, end - 1);
-	return distribution(generator);
-}
-
 void LinkManager::onPacketReception(L2Packet*& packet) {
 	coutd << *mac << "::" << *this << "::onPacketReception... ";
 	coutd << "a packet from '" << packet->getOrigin() << "' ";

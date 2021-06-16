@@ -8,6 +8,7 @@
 #include <random>
 #include <MacId.hpp>
 #include <L2Packet.hpp>
+#include <RngProvider.hpp>
 #include "coutdebug.hpp"
 #include "FrequencyChannel.hpp"
 #include "ReservationTable.hpp"
@@ -20,7 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BeaconPayload;
 
 	/** LinkManager interface. */
-	class LinkManager {
+	class LinkManager : public IRng {
 
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
@@ -83,7 +84,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
 		                                                                                                link_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-		                                                                                                random_device(new std::random_device), generator((*random_device)()),
 		                                                                                                str_statistic_num_received_packets("MCSOTDMA:statistic_num_received_packets(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_received_beacons("MCSOTDMA:statistic_num_received_beacons(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_received_requests("MCSOTDMA:statistic_num_received_requests(" + std::to_string(link_id.getId()) + ")"),
@@ -93,10 +93,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		                                                                                                str_statistic_num_sent_packets("MCSOTDMA:statistic_num_sent_packets(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_sent_beacons("MCSOTDMA:statistic_num_sent_beacons(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_sent_requests("MCSOTDMA:statistic_num_sent_requests(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_sent_replies("MCSOTDMA:statistic_num_sent_replies(" + std::to_string(link_id.getId()) + ")") {}
+		                                                                                                str_statistic_num_sent_replies("MCSOTDMA:statistic_num_sent_replies(" + std::to_string(link_id.getId()) + ")") {
+            signupInt();
+		                                                                                                }
 
 	    virtual ~LinkManager() {
-			delete random_device;
 		}
 
 		/**
@@ -165,8 +166,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		virtual void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);
 
 	protected:
-		unsigned long getRandomInt(size_t start, size_t end);
-
 		virtual void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
 		virtual void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header);
 		virtual void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
@@ -183,8 +182,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<ReservationTable*> rx_tables;
 		/** Link establishment status. */
 		Status link_status;
-		std::random_device* random_device;
-		std::mt19937 generator;
 
 		const std::string str_statistic_num_received_packets,
 			str_statistic_num_received_beacons,
