@@ -4,6 +4,7 @@
 
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
+#include "InetPacketPayload.hpp"
 #include "P2PLinkManager.hpp"
 #include "BCLinkManager.hpp"
 #include <IPhy.hpp>
@@ -232,9 +233,23 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
 			statistic_num_packet_collisions += packets.size();
 
-			for (auto *packet : packets)
-				delete packet;
-		}
+            for (auto *packet : packets) {
+                auto payloads = packet->getPayloads();
+                auto headers = packet->getHeaders();
+                for (int i = 0; i< headers.size(); i++) {
+                    if(payloads[i]) {
+                        if(headers[i]->frame_type == L2Header::FrameType::broadcast || headers[i]->frame_type == L2Header::FrameType::unicast) {
+                            if(((InetPacketPayload*)payloads[i])->original != nullptr) {
+                                //delete ((InetPacketPayload*)payloads[i])->original;
+                                //((InetPacketPayload*)payloads[i])->original = nullptr;
+                            }
+                        }
+                    }
+                }
+                delete packet;
+            }
+
+        }
 	}
 	received_packets.clear();
 
