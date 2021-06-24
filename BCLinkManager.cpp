@@ -138,6 +138,8 @@ void BCLinkManager::onSlotEnd() {
 	congestion_estimator.onSlotEnd();
 	beacon_module.onSlotEnd();
 	mac->emit(str_statistic_congestion, congestion_estimator.getCongestion());
+	mac->emit(str_statistic_contention, contention_estimator.getAverageNonBeaconBroadcastRate());
+	mac->emit(str_statistic_num_active_neighbors, (size_t) contention_estimator.getNumActiveNeighbors());
 
 	LinkManager::onSlotEnd();
 }
@@ -165,10 +167,8 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	// Average broadcast rate.
 	double r = contention_estimator.getAverageNonBeaconBroadcastRate();
-	mac->emit(str_statistic_contention, r);
 	// Number of active neighbors.
 	unsigned int m = contention_estimator.getNumActiveNeighbors();
-	mac->emit(str_statistic_num_active_neighbors, (size_t) m);
 	double num_candidates = 0;
 	// For every number n of channel accesses from 0 to all neighbors...
 	for (auto n = 0; n <= m; n++) {
