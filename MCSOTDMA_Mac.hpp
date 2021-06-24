@@ -112,19 +112,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
 
 		// Statistics
-		const std::string str_statistic_num_packets_received = "MCSOTDMA:statistic_num_packets_received(num)";
-		const std::string str_statistic_num_requests_received = "MCSOTDMA:statistic_num_link_requests_received(num)";
-		const std::string str_statistic_num_replies_received = "MCSOTDMA:statistic_num_link_replies_received(num)";
-		const std::string str_statistic_num_beacons_received = "MCSOTDMA:statistic_num_beacons_received(num)";
-		const std::string str_statistic_num_link_infos_received = "MCSOTDMA:statistic_num_link_infos_received(num)";
-		const std::string str_statistic_num_packets_sent = "MCSOTDMA:statistic_num_packets_sent(num)";
-		const std::string str_statistic_num_requests_sent = "MCSOTDMA:statistic_num_link_requests_sent(num)";
-		const std::string str_statistic_num_replies_sent = "MCSOTDMA:statistic_num_link_replies_sent(num)";
-		const std::string str_statistic_num_beacons_sent = "MCSOTDMA:statistic_num_beacons_sent(num)";
-		const std::string str_statistic_num_link_infos_sent = "MCSOTDMA:statistic_num_link_infos_sent(num)";
-		const std::string str_statistic_num_packet_collisions = "MCSOTDMA:statistic_num_packet_collisions(num)";
-		const std::string str_statistic_num_packet_decoded = "MCSOTDMA:statistic_num_packet_decoded(num)";
-		const std::string str_statistic_num_cancelled_link_requests = "MCSOTDMA:statistic_num_cancelled_link_requests(num)";
+		const std::string str_statistic_num_packets_received = "mcsotdma_statistic_num_packets_received";
+		const std::string str_statistic_num_requests_received = "mcsotdma_statistic_num_link_requests_received";
+		const std::string str_statistic_num_replies_received = "mcsotdma_statistic_num_link_replies_received";
+		const std::string str_statistic_num_beacons_received = "mcsotdma_statistic_num_beacons_received";
+		const std::string str_statistic_num_link_infos_received = "mcsotdma_statistic_num_link_infos_received";
+		const std::string str_statistic_num_packets_sent = "mcsotdma_statistic_num_packets_sent";
+		const std::string str_statistic_num_requests_sent = "mcsotdma_statistic_num_link_requests_sent";
+		const std::string str_statistic_num_replies_sent = "mcsotdma_statistic_num_link_replies_sent";
+		const std::string str_statistic_num_beacons_sent = "mcsotdma_statistic_num_beacons_sent";
+		const std::string str_statistic_num_link_infos_sent = "mcsotdma_statistic_num_link_infos_sent";
+		const std::string str_statistic_num_cancelled_link_requests = "mcsotdma_statistic_num_cancelled_link_requests";
+		const std::string str_statistic_num_packet_collisions = "mcsotdma_statistic_num_packet_collisions";
+		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
 		size_t statistic_num_packets_received = 0;
 		size_t statistic_num_requests_received = 0;
 		size_t statistic_num_replies_received = 0;
