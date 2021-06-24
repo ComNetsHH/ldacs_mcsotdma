@@ -137,6 +137,7 @@ void BCLinkManager::onSlotEnd() {
 	contention_estimator.onSlotEnd();
 	congestion_estimator.onSlotEnd();
 	beacon_module.onSlotEnd();
+	mac->emit(str_statistic_congestion, congestion_estimator.getCongestion());
 
 	LinkManager::onSlotEnd();
 }
