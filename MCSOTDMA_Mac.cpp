@@ -256,9 +256,19 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
 
+	// Statistics reporting.
 	emit(str_statistic_num_packets_received, statistic_num_packets_received);
 	emit(str_statistic_num_packet_collisions, statistic_num_packet_collisions);
 	emit(str_statistic_num_packet_decoded, statistic_num_packet_decoded);
+	emit(str_statistic_num_requests_received, statistic_num_requests_received);
+	emit(str_statistic_num_replies_received, statistic_num_replies_received);
+	emit(str_statistic_num_beacons_received, statistic_num_beacons_received);
+	emit(str_statistic_num_link_infos_received, statistic_num_link_infos_received);
+	emit(str_statistic_num_packets_sent, statistic_num_packets_sent);
+	emit(str_statistic_num_requests_sent, statistic_num_requests_sent);
+	emit(str_statistic_num_replies_sent, statistic_num_replies_sent);
+	emit(str_statistic_num_beacons_sent, statistic_num_beacons_sent);
+	emit(str_statistic_num_link_infos_sent, statistic_num_link_infos_sent);
 }
 
 const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {

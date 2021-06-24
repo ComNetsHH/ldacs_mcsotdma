@@ -40,6 +40,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		coutd << "broadcasting beacon -> ";
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
 		statistic_num_sent_beacons++;
+		mac->statisticReportBeaconSent();
 	} else {
 		coutd << "broadcasting data -> ";
 		packet->addMessage(new L2HeaderBroadcast(), nullptr);
@@ -57,6 +58,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				link_requests.erase(link_requests.begin());
 				coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
 				statistic_num_sent_requests++;
+				mac->statisticReportLinkRequestSent();
 			} else
 				break; // Stop if it doesn't fit anymore.
 		}
@@ -64,9 +66,14 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
 		coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
 		L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
-		for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
+		for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
 			if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
 				packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
+			if (upper_layer_data->getHeaders().at(i)->frame_type == L2Header::link_info) {
+				statistic_num_sent_link_infos++;
+				mac->statisticReportLinkInfoSent();
+			}
+		}
 		delete upper_layer_data;
 		if (packet->getLinkInfoIndex() != -1)
 			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
@@ -229,6 +236,7 @@ void BCLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2
 	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link request to P2PLinkManager -> ";
+		// do NOT report the received request to the MAC, as the P2PLinkManager will do that (otherwise it'll be counted twice)
 		statistic_num_received_requests++;
 		((P2PLinkManager*) mac->getLinkManager(origin))->processIncomingLinkRequest(header, payload, origin);
 	} else

@@ -93,7 +93,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		                                                                                                str_statistic_num_sent_packets("MCSOTDMA:statistic_num_sent_packets(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_sent_beacons("MCSOTDMA:statistic_num_sent_beacons(" + std::to_string(link_id.getId()) + ")"),
 		                                                                                                str_statistic_num_sent_requests("MCSOTDMA:statistic_num_sent_requests(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_sent_replies("MCSOTDMA:statistic_num_sent_replies(" + std::to_string(link_id.getId()) + ")") {
+		                                                                                                str_statistic_num_sent_replies("MCSOTDMA:statistic_num_sent_replies(" + std::to_string(link_id.getId()) + ")"),
+		                                                                                                str_statistic_num_sent_link_infos("MCSOTDMA:statistic_num_sent_link_infos(" + std::to_string(link_id.getId()) + ")") {
 		                                                                                                }
 
 	    virtual ~LinkManager() = default;
@@ -190,7 +191,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			str_statistic_num_sent_packets,
 			str_statistic_num_sent_beacons,
 			str_statistic_num_sent_requests,
-			str_statistic_num_sent_replies;
+			str_statistic_num_sent_replies,
+			str_statistic_num_sent_link_infos;
 
 		unsigned long statistic_num_received_packets = 0,
 			statistic_num_received_beacons = 0,
@@ -201,7 +203,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			statistic_num_sent_packets = 0,
 			statistic_num_sent_beacons = 0,
 			statistic_num_sent_requests = 0,
-			statistic_num_sent_replies = 0;
+			statistic_num_sent_replies = 0,
+			statistic_num_sent_link_infos = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {

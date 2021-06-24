@@ -64,6 +64,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		std::vector<std::pair<Reservation, const FrequencyChannel*>> getReservations(unsigned int t) const;
 
+		void statisticReportLinkRequestReceived() {
+			statistic_num_requests_received++;
+		}
+		void statisticReportLinkReplyReceived() {
+			statistic_num_replies_received++;
+		}
+		void statisticReportBeaconReceived() {
+			statistic_num_beacons_received++;
+		}
+		void statisticReportLinkInfoReceived() {
+			statistic_num_link_infos_received++;
+		}
+		void statisticReportPacketSent() {
+			statistic_num_packets_sent++;
+		}
+		void statisticReportLinkRequestSent() {
+			statistic_num_requests_sent++;
+		}
+		void statisticReportLinkReplySent() {
+			statistic_num_replies_sent++;
+		}
+		void statisticReportBeaconSent() {
+			statistic_num_beacons_sent++;
+		}
+		void statisticReportLinkInfoSent() {
+			statistic_num_link_infos_sent++;
+		}
+		void statisticReportCancelledLinkRequest() {
+			statistic_num_cancelled_link_requests++;
+		}
+
 	protected:
 		/**
 		 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.
@@ -78,16 +109,35 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const size_t num_transmitters = 1, num_receivers = 2;
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;
-		/** Number of signals that have arrived at this user. */
-		size_t statistic_num_packets_received = 0;
-		const std::string str_statistic_num_packets_received = "MCSOTDMA:statistic_num_packets_received(num)";
-		/** Number of packets that were dropped due to collisions. */
-		size_t statistic_num_packet_collisions = 0;
-		const std::string str_statistic_num_packet_collisions = "MCSOTDMA:statistic_num_packet_collisions(num)";
-		/** Number of packets that were successfully received by this user. */
-		size_t statistic_num_packet_decoded = 0;
-		const std::string str_statistic_num_packet_decoded = "MCSOTDMA:statistic_num_packet_decoded(num)";
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
+
+		// Statistics
+		const std::string str_statistic_num_packets_received = "MCSOTDMA:statistic_num_packets_received(num)";
+		const std::string str_statistic_num_requests_received = "MCSOTDMA:statistic_num_link_requests_received(num)";
+		const std::string str_statistic_num_replies_received = "MCSOTDMA:statistic_num_link_replies_received(num)";
+		const std::string str_statistic_num_beacons_received = "MCSOTDMA:statistic_num_beacons_received(num)";
+		const std::string str_statistic_num_link_infos_received = "MCSOTDMA:statistic_num_link_infos_received(num)";
+		const std::string str_statistic_num_packets_sent = "MCSOTDMA:statistic_num_packets_sent(num)";
+		const std::string str_statistic_num_requests_sent = "MCSOTDMA:statistic_num_link_requests_sent(num)";
+		const std::string str_statistic_num_replies_sent = "MCSOTDMA:statistic_num_link_replies_sent(num)";
+		const std::string str_statistic_num_beacons_sent = "MCSOTDMA:statistic_num_beacons_sent(num)";
+		const std::string str_statistic_num_link_infos_sent = "MCSOTDMA:statistic_num_link_infos_sent(num)";
+		const std::string str_statistic_num_packet_collisions = "MCSOTDMA:statistic_num_packet_collisions(num)";
+		const std::string str_statistic_num_packet_decoded = "MCSOTDMA:statistic_num_packet_decoded(num)";
+		const std::string str_statistic_num_cancelled_link_requests = "MCSOTDMA:statistic_num_cancelled_link_requests(num)";
+		size_t statistic_num_packets_received = 0;
+		size_t statistic_num_requests_received = 0;
+		size_t statistic_num_replies_received = 0;
+		size_t statistic_num_beacons_received = 0;
+		size_t statistic_num_link_infos_received = 0;
+		size_t statistic_num_packets_sent = 0;
+		size_t statistic_num_requests_sent = 0;
+		size_t statistic_num_replies_sent = 0;
+		size_t statistic_num_beacons_sent = 0;
+		size_t statistic_num_link_infos_sent = 0;
+		size_t statistic_num_packet_collisions = 0;
+		size_t statistic_num_packet_decoded = 0;
+		size_t statistic_num_cancelled_link_requests = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {

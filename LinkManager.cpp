@@ -34,6 +34,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			coutd << "' -> ";
 	}
 	statistic_num_received_packets++;
+
 	assert(!packet->getHeaders().empty() && "LinkManager::onPacketReception(empty packet)");
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
@@ -57,6 +58,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 //				delete payload;
 //				payload = nullptr;
 				statistic_num_received_beacons++;
+				mac->statisticReportBeaconReceived();
 				break;
 			}
 			case L2Header::broadcast: {
@@ -83,7 +85,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
 				processIncomingLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);
-				statistic_num_received_replies++;
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 //				delete header;
 //				header = nullptr;
@@ -95,6 +96,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 				coutd << "processing link info -> ";
 				processIncomingLinkInfo((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);
 				statistic_num_received_link_infos++;
+				mac->statisticReportLinkReplyReceived();
 				break;
 			}
 			default: {
@@ -159,4 +161,5 @@ void LinkManager::onSlotEnd() {
 	mac->emit(str_statistic_num_sent_beacons, statistic_num_sent_beacons);
 	mac->emit(str_statistic_num_sent_requests, statistic_num_sent_requests);
 	mac->emit(str_statistic_num_sent_replies, statistic_num_sent_replies);
+	mac->emit(str_statistic_num_sent_link_infos, statistic_num_sent_link_infos);
 }
