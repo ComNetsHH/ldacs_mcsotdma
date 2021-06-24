@@ -102,7 +102,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		const std::string str_statistic_contention = "MCSOTDMA:statistic_contention";
 		const std::string str_statistic_num_active_neighbors = "MCSOTDMA:statistic_num_active_neighbors";
-		const std::string str_statistic_num_broadcast_candidate_slots = "MCSOTDMA:statistic_broadcast_candidate_slots";;
+		const std::string str_statistic_num_broadcast_candidate_slots = "MCSOTDMA:statistic_broadcast_candidate_slots";
+		const std::string str_statistic_min_beacon_offset = "MCSOTDMA:statistic_min_beacon_offset";
 		unsigned long statistic_num_broadcast_candidate_slots = 0;
 	};
 }

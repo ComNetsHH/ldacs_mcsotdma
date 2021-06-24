@@ -52,7 +52,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table);
 
 		/**
-		 * @return Current beacon offset.
+		 * @return Current value for the minimum interval in slots that should be kept in-between beacons.
+		 * The actual beacon slot may differ from this through random selection.
 		 */
 		unsigned int getBeaconOffset() const;
 
