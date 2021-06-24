@@ -96,8 +96,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		                                                                                                str_statistic_num_sent_replies("MCSOTDMA:statistic_num_sent_replies(" + std::to_string(link_id.getId()) + ")") {
 		                                                                                                }
 
-	    virtual ~LinkManager() {
-		}
+	    virtual ~LinkManager() = default;
 
 		/**
 		 * When a packet has been received, this lets the LinkManager process it.
