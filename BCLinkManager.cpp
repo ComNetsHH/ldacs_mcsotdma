@@ -39,6 +39,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	if (beacon_module.shouldSendBeaconThisSlot()) {
 		coutd << "broadcasting beacon -> ";
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
+		statistic_num_sent_beacons++;
 	} else {
 		coutd << "broadcasting data -> ";
 		packet->addMessage(new L2HeaderBroadcast(), nullptr);
