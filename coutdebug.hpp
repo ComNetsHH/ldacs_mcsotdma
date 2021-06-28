@@ -8,6 +8,8 @@
 
 #include <iostream>
 
+extern std::ostream &dout;
+
 class coutdebug {
 private:
 	bool verbose;
@@ -23,7 +25,7 @@ public:
 	void increaseIndent() {
 		num_indents++;
 		if (verbose)
-			std::cout << "\t";
+			dout << "\t";
 	}
 
 	void decreaseIndent() {
@@ -37,9 +39,8 @@ public:
 
 	template<class T>
 	coutdebug& operator<<(const T& x) {
-		if (verbose) {
-			std::cout << x;
-		}
+		if (verbose)
+			dout << x;
 		return *this;
 	}
 
@@ -51,12 +52,12 @@ public:
 	// std::endl is a function with this signature.
 	typedef CoutType& (* StandardEndLine)(CoutType&);
 
-	// Define what to do when std::endl is passed to coutd.
+	virtual // Define what to do when std::endl is passed to coutd.
 	coutdebug& operator<<(StandardEndLine endl) {
 		if (verbose) {
-			endl(std::cout);
+			endl(dout);
 			for (unsigned int i = 0; i < num_indents; i++)
-				std::cout << "\t";
+				dout << "\t";
 		}
 		return *this;
 	}

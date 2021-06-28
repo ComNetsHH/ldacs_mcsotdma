@@ -21,7 +21,7 @@
 #include "ThreeUsersTests.cpp"
 
 int main() {
-	coutd.setVerbose(false);
+	coutd.setVerbose(true);
 	CppUnit::TextUi::TestRunner runner;
 
 	runner.addTest(MovingAverageTests::suite());
