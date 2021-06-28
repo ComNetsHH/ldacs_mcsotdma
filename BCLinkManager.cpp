@@ -43,6 +43,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		mac->statisticReportBeaconSent();
 	} else {
 		coutd << "broadcasting data -> ";
+		mac->statisticReportBroadcastSent();
 		packet->addMessage(new L2HeaderBroadcast(), nullptr);
 		// Put a priority on link requests.
 		while (!link_requests.empty()) {
@@ -63,18 +64,20 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				break; // Stop if it doesn't fit anymore.
 		}
 		// Add broadcast data.
-		unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
-		coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
-		L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
-		for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
-			if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
-				packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
-			if (upper_layer_data->getHeaders().at(i)->frame_type == L2Header::link_info) {
-				statistic_num_sent_link_infos++;
-				mac->statisticReportLinkInfoSent();
+		int remaining_bits = ((int) capacity) - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
+		if (remaining_bits > 0) {
+			coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
+			L2Packet* upper_layer_data = mac->requestSegment(remaining_bits, link_id);
+			for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
+				if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
+					packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
+				if (upper_layer_data->getHeaders().at(i)->frame_type == L2Header::link_info) {
+					statistic_num_sent_link_infos++;
+					mac->statisticReportLinkInfoSent();
+				}
 			}
+			delete upper_layer_data;
 		}
-		delete upper_layer_data;
 		if (packet->getLinkInfoIndex() != -1)
 			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
 		// Schedule next broadcast if there's more data to send.
@@ -91,6 +94,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	}
 
 	statistic_num_sent_packets++;
+	mac->statisticReportPacketSent();
 	return packet;
 }
 
@@ -221,7 +225,7 @@ void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon
 }
 
 void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
-	// TODO set next broadcast slot in reservation table
+	mac->statisticReportBroadcastReceived();
 }
 
 void BCLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {

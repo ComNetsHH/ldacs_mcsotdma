@@ -283,6 +283,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
 	statistic_num_sent_packets++;
 	mac->statisticReportPacketSent();
+	mac->statisticReportUnicastSent();
 	for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
 		if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
 			packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
@@ -702,6 +703,7 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 		coutd << "discarding unicast message not intended for us -> ";
 		return;
 	} else {
+		mac->statisticReportUnicastReceived();
 		if (link_status == awaiting_data_tx) {
 			// Link is now established.
 			link_status = link_established;
@@ -839,6 +841,7 @@ LinkInfo P2PLinkManager::getLinkInfo() {
 }
 
 void P2PLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+	mac->statisticReportLinkInfoReceived();
 	const LinkInfo &info = payload->getLinkInfo();
 	coutd << info << " -> ";
 	const FrequencyChannel *channel = reservation_manager->getFreqChannelByCenterFreq(info.getP2PChannelCenterFreq());

@@ -64,6 +64,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		std::vector<std::pair<Reservation, const FrequencyChannel*>> getReservations(unsigned int t) const;
 
+		void statisticReportBroadcastReceived() {
+			statistic_num_broadcasts_received++;
+		}
+		void statisticReportUnicastReceived() {
+			statistic_num_unicasts_received++;
+		}
 		void statisticReportLinkRequestReceived() {
 			statistic_num_requests_received++;
 		}
@@ -78,6 +84,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 		void statisticReportPacketSent() {
 			statistic_num_packets_sent++;
+		}
+		void statisticReportBroadcastSent() {
+			statistic_num_broadcasts_sent++;
+		}
+		void statisticReportUnicastSent() {
+			statistic_num_unicasts_sent++;
 		}
 		void statisticReportLinkRequestSent() {
 			statistic_num_requests_sent++;
@@ -113,12 +125,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		// Statistics
 		const std::string str_statistic_num_packets_received = "mcsotdma_statistic_num_packets_received";
+		const std::string str_statistic_num_broadcasts_received = "mcsotdma_statistic_num_broadcasts_received";
+		const std::string str_statistic_num_unicasts_received = "mcsotdma_statistic_num_unicasts_received";
 		const std::string str_statistic_num_requests_received = "mcsotdma_statistic_num_link_requests_received";
 		const std::string str_statistic_num_replies_received = "mcsotdma_statistic_num_link_replies_received";
 		const std::string str_statistic_num_beacons_received = "mcsotdma_statistic_num_beacons_received";
 		const std::string str_statistic_num_link_infos_received = "mcsotdma_statistic_num_link_infos_received";
 		const std::string str_statistic_num_packets_sent = "mcsotdma_statistic_num_packets_sent";
 		const std::string str_statistic_num_requests_sent = "mcsotdma_statistic_num_link_requests_sent";
+		const std::string str_statistic_num_broadcasts_sent = "mcsotdma_statistic_num_broadcasts_sent";
+		const std::string str_statistic_num_unicasts_sent = "mcsotdma_statistic_num_unicasts_sent";
 		const std::string str_statistic_num_replies_sent = "mcsotdma_statistic_num_link_replies_sent";
 		const std::string str_statistic_num_beacons_sent = "mcsotdma_statistic_num_beacons_sent";
 		const std::string str_statistic_num_link_infos_sent = "mcsotdma_statistic_num_link_infos_sent";
@@ -126,11 +142,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const std::string str_statistic_num_packet_collisions = "mcsotdma_statistic_num_packet_collisions";
 		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
 		size_t statistic_num_packets_received = 0;
+		size_t statistic_num_broadcasts_received = 0;
+		size_t statistic_num_unicasts_received = 0;
 		size_t statistic_num_requests_received = 0;
 		size_t statistic_num_replies_received = 0;
 		size_t statistic_num_beacons_received = 0;
 		size_t statistic_num_link_infos_received = 0;
 		size_t statistic_num_packets_sent = 0;
+		size_t statistic_num_broadcasts_sent = 0;
+		size_t statistic_num_unicasts_sent = 0;
 		size_t statistic_num_requests_sent = 0;
 		size_t statistic_num_replies_sent = 0;
 		size_t statistic_num_beacons_sent = 0;
