@@ -108,6 +108,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportCancelledLinkRequest() {
 			statistic_num_cancelled_link_requests++;
 		}
+		void statisticReportNumActiveNeighbors(size_t val) {
+			statistic_num_active_neighbors = val;
+		}
 
 	protected:
 		/**
@@ -143,6 +146,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const std::string str_statistic_num_cancelled_link_requests = "mcsotdma_statistic_num_cancelled_link_requests";
 		const std::string str_statistic_num_packet_collisions = "mcsotdma_statistic_num_packet_collisions";
 		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
+		const std::string str_statistic_num_active_neighbors = "mcsotdma_statistic_num_active_neighbors";
 		size_t statistic_num_packets_received = 0;
 		size_t statistic_num_broadcasts_received = 0;
 		size_t statistic_num_unicasts_received = 0;
@@ -160,6 +164,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		size_t statistic_num_packet_collisions = 0;
 		size_t statistic_num_packet_decoded = 0;
 		size_t statistic_num_cancelled_link_requests = 0;
+		size_t statistic_num_active_neighbors = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {
