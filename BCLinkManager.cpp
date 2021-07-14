@@ -135,7 +135,7 @@ void BCLinkManager::onSlotEnd() {
 	if (beacon_module.shouldSendBeaconThisSlot()) {
 		// Schedule next beacon slot.
 		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
-//		mac->emit(str_statistic_min_beacon_offset, (std::size_t) beacon_module.getBeaconOffset());
+		mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
 		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
 			std::stringstream ss;
 			ss << *mac << "::" << *this << "::onSlotEnd scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";

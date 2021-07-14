@@ -111,6 +111,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportNumActiveNeighbors(size_t val) {
 			statistic_num_active_neighbors = val;
 		}
+		void statisticReportMinBeaconOffset(size_t val) {
+			statistic_min_beacon_offset = val;
+		}
 
 	protected:
 		/**
@@ -147,6 +150,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const std::string str_statistic_num_packet_collisions = "mcsotdma_statistic_num_packet_collisions";
 		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
 		const std::string str_statistic_num_active_neighbors = "mcsotdma_statistic_num_active_neighbors";
+		const std::string str_statistic_min_beacon_offset = "mcsotdma_statistic_min_beacon_offset";
 		size_t statistic_num_packets_received = 0;
 		size_t statistic_num_broadcasts_received = 0;
 		size_t statistic_num_unicasts_received = 0;
@@ -165,6 +169,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		size_t statistic_num_packet_decoded = 0;
 		size_t statistic_num_cancelled_link_requests = 0;
 		size_t statistic_num_active_neighbors = 0;
+		size_t statistic_min_beacon_offset = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {
