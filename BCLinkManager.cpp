@@ -113,6 +113,8 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << (next_broadcast_scheduled ? "next broadcast in " + std::to_string(next_broadcast_slot) + " slots -> " : "");
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	// Mark reception slot if there's nothing else to do.
 	if (current_reservation_table->getReservation(0).isIdle()) {
 		coutd << "marking BC reception -> ";
@@ -281,4 +283,8 @@ void BCLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, con
 		coutd << "passing on to " << tx_id  << " -> ";
 		((P2PLinkManager*) mac->getLinkManager(tx_id))->processIncomingLinkInfo(header, payload);
 	}
+}
+
+void BCLinkManager::setTargetCollisionProb(double value) {
+	this->broadcast_target_collision_prob = value;
 }

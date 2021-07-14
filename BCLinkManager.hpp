@@ -52,6 +52,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void assign(const FrequencyChannel* channel) override;
 
+		void setTargetCollisionProb(double value);
+
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob) const;
 

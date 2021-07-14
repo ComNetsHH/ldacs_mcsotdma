@@ -64,6 +64,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		std::vector<std::pair<Reservation, const FrequencyChannel*>> getReservations(unsigned int t) const;
 
+		void setBroadcastTargetCollisionProb(double value) override;
+
 		void statisticReportBroadcastReceived() {
 			statistic_num_broadcasts_received++;
 		}

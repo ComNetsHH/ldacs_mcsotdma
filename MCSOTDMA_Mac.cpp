@@ -283,3 +283,7 @@ const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {
 std::vector<std::pair<Reservation, const FrequencyChannel*>> MCSOTDMA_Mac::getReservations(unsigned int t) const {
 	return reservation_manager->collectReservations(t);
 }
+
+void MCSOTDMA_Mac::setBroadcastTargetCollisionProb(double value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setTargetCollisionProb(value);
+}
