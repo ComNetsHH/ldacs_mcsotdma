@@ -276,6 +276,9 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	emit(str_statistic_num_cancelled_link_requests, statistic_num_cancelled_link_requests);
 	emit(str_statistic_num_active_neighbors, statistic_num_active_neighbors);
 	emit(str_statistic_min_beacon_offset, statistic_min_beacon_offset);
+	emit(str_statistic_congestion, statistic_congestion);
+	emit(str_statistic_contention, statistic_contention);
+	emit(str_statistic_broadcast_candidate_slots, statistic_broadcast_candidate_slots);
 }
 
 const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {

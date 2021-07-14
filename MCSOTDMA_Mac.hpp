@@ -114,6 +114,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportMinBeaconOffset(size_t val) {
 			statistic_min_beacon_offset = val;
 		}
+		void statisticReportContention(double val) {
+			statistic_contention = val;
+		}
+		void statisticReportCongestion(double val) {
+			statistic_congestion = val;
+		}
+		void statisticReportBroadcastCandidateSlots(size_t val) {
+			statistic_broadcast_candidate_slots = val;
+		}
 
 	protected:
 		/**
@@ -151,6 +160,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
 		const std::string str_statistic_num_active_neighbors = "mcsotdma_statistic_num_active_neighbors";
 		const std::string str_statistic_min_beacon_offset = "mcsotdma_statistic_min_beacon_offset";
+		const std::string str_statistic_contention = "mcsotdma_statistic_contention";
+		const std::string str_statistic_congestion = "mcsotdma_statistic_congestion";
+		const std::string str_statistic_broadcast_candidate_slots = "mcsotdma_statistic_broadcast_candidate_slots";
 		size_t statistic_num_packets_received = 0;
 		size_t statistic_num_broadcasts_received = 0;
 		size_t statistic_num_unicasts_received = 0;
@@ -170,6 +182,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		size_t statistic_num_cancelled_link_requests = 0;
 		size_t statistic_num_active_neighbors = 0;
 		size_t statistic_min_beacon_offset = 0;
+		double statistic_contention = 0.0;
+		double statistic_congestion = 0.0;
+		size_t statistic_broadcast_candidate_slots = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {

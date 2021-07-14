@@ -150,9 +150,8 @@ void BCLinkManager::onSlotEnd() {
 	contention_estimator.onSlotEnd();
 	congestion_estimator.onSlotEnd();
 	beacon_module.onSlotEnd();
-//	mac->emit(str_statistic_congestion, congestion_estimator.getCongestion());
-//	mac->emit(str_statistic_contention, contention_estimator.getAverageNonBeaconBroadcastRate());
-//	mac->emit(str_statistic_num_active_neighbors, (size_t) contention_estimator.getNumActiveNeighbors());
+	mac->statisticReportCongestion(congestion_estimator.getCongestion());
+	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());
 	mac->statisticReportNumActiveNeighbors((size_t) contention_estimator.getNumActiveNeighbors());
 
 	LinkManager::onSlotEnd();
@@ -208,8 +207,7 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
-//	statistic_num_broadcast_candidate_slots = num_candidates;
-//	mac->emit(str_statistic_num_broadcast_candidate_slots, statistic_num_broadcast_candidate_slots);
+	mac->statisticReportBroadcastCandidateSlots((size_t) num_candidates);
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, 1, 1, 1, 1, 0, false);
 	if (candidate_slots.empty())
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
