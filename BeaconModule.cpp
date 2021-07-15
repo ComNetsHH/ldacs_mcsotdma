@@ -96,16 +96,17 @@ void BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&pay
 			const uint64_t center_freq = pair.first;
 			const FrequencyChannel* channel = manager->getFreqChannelByCenterFreq(center_freq);
 			ReservationTable* table = manager->getReservationTable(channel);
-			coutd << "f=" << *channel << ": ";
+			coutd << "beacon indicates next transmission on f=" << *channel << " at ";
 			// ... for every time slot ...
 			for (auto slot : pair.second) {
 				int t = (int) slot;
+				coutd << "t=" << t << " ";
 				const Reservation& res = table->getReservation(t);
 				// ... mark it as BUSY if it's locally idle
 				if (res.isIdle()) {
-					table->mark(t, Reservation(sender_id, Reservation::BUSY));
-					coutd << "marked t=" << t << " as busy -> ";
-				} else if (!res.isBusy()) // print error if it's neither IDLE nor BUSY
+					table->mark(t, Reservation(sender_id, Reservation::RX_BEACON));
+					coutd << "marked t=" << t << " as " << Reservation::RX_BEACON << " -> ";
+				} else
 					coutd << "won't mark t=" << t << " which is already reserved for: " << res << " -> ";
 			}
 		}

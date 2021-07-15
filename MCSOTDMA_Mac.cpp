@@ -143,8 +143,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 			}
 			case Reservation::RX_BEACON: {
 				num_rxs++;
-				if (num_rxs > num_transmitters)
-					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
+				if (num_rxs > num_receivers)
+					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onReceptionBurstStart(reservation.getNumRemainingSlots());
 			}
 		}
