@@ -35,11 +35,26 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	packet->addMessage(base_header, nullptr);
 	unsigned long capacity = mac->getCurrentDatarate();
 
-	// Put highest priority on beacons.
+	// Beacon slots are exclusive to beacons.
 	if (beacon_module.shouldSendBeaconThisSlot()) {
 		coutd << "broadcasting beacon -> ";
+		// Schedule next beacon slot.
+		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
+		mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
+		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::onTransmissionBurstStart scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";
+			throw std::runtime_error(ss.str());
+		}
+		current_reservation_table->mark(next_beacon_slot, Reservation(mac->getMacId(), Reservation::TX_BEACON));
+		coutd << *mac << "::" << *this << "::onTransmissionBurstStart scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
+		// Reset congestion estimator with new beacon interval.
+		congestion_estimator.reset(beacon_module.getBeaconOffset());
+
+		// Generate beacon message.
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
 		mac->statisticReportBeaconSent();
+	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
 		coutd << "broadcasting data -> ";
 		mac->statisticReportBroadcastSent();
@@ -142,6 +157,7 @@ void BCLinkManager::onSlotEnd() {
 		// Reset congestion estimator with new beacon interval.
 		congestion_estimator.reset(beacon_module.getBeaconOffset());
 	}
+
 	// Update estimators.
 	contention_estimator.onSlotEnd();
 	congestion_estimator.onSlotEnd();
