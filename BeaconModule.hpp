@@ -75,9 +75,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param sender_id
 		 * @param payload
 		 * @param manager
-		 * @return Whether this user's beacon transmission should re-schedule as it would collide with a parsed beacon owner's transmission.
+		 * @return <must reschedule beacon, must reschedule broadcast>
 		 */
-		bool parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager *manager) const;
+		std::pair<bool, bool> parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager *manager) const;
 
 	protected:
 		/**

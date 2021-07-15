@@ -97,8 +97,9 @@ std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const st
 	return {new L2HeaderBeacon(), payload};
 }
 
-bool BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {
+std::pair<bool, bool> BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {
 	bool must_reschedule_beacon = false;
+	bool must_reschedule_broadcast = false;
 	if (payload != nullptr) {
 		// Go through all indicated reservations...
 		for (const auto& item : payload->local_reservations) {
@@ -125,13 +126,18 @@ bool BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&pay
 						coutd << "re-scheduling own beacon transmission since it would collide -> ";
 						must_reschedule_beacon = true;
 					}
+					// We have to re-schedule our broadcast transmission if this beacon tells us that another transmission is going to take place.
+					if (channel->isBroadcastChannel() && res.isTx()) {
+						coutd << "re-scheduling own broadcast transmission since it would collide -> ";
+						must_reschedule_broadcast = true;
+					}
 				}
 			}
 		}
 	} else
 		coutd << "ignoring empty beacon payload -> ";
 	coutd << "done parsing beacon -> ";
-	return must_reschedule_beacon;
+	return {must_reschedule_beacon, must_reschedule_broadcast};
 }
 
 unsigned int BeaconModule::getNextBeaconOffset() const {

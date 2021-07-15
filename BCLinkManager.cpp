@@ -207,6 +207,8 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 }
 
 void BCLinkManager::scheduleBroadcastSlot() {
+	if (next_broadcast_slot > 0 && current_reservation_table->getReservation(next_broadcast_slot).isTx())
+		current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 	next_broadcast_slot = broadcastSlotSelection();
 	next_broadcast_scheduled = true;
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
@@ -214,9 +216,16 @@ void BCLinkManager::scheduleBroadcastSlot() {
 
 void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
 	coutd << "parsing incoming beacon -> ";
-	bool must_reschedule_beacon = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
-	if (must_reschedule_beacon)
+	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
+	if (pair.first) {
+		coutd << "re-scheduling beacon from t=" << beacon_module.getNextBeaconOffset() << " to ";
 		scheduleBeacon();
+		coutd << "t=" << beacon_module.getNextBeaconOffset() << " -> ";
+	} if (pair.second) {
+		coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to ";
+		scheduleBroadcastSlot();
+		coutd << "t=" << next_broadcast_slot << " -> ";
+	}
 	mac->statisticReportBeaconReceived();
 }
 
