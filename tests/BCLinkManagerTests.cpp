@@ -307,6 +307,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_2_me->getReservation(t));
 		}
 
+		/**
+		 * If user1 has scheduled a beacon transmission during a slot that is utilized by another user, as it learns by parsing that user's beacon, it should re-schedule its own beacon transmission.
+		 */
+		void testParseBeaconRescheduleBeacon() {
+			TestEnvironment env_you = TestEnvironment(partner_id, id);
+			ReservationTable *bc_table_you = env_you.mac_layer->reservation_manager->getBroadcastReservationTable();
+			int t = 5;
+			bc_table_you->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you);
+
+			auto* bc_lm = (BCLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			bc_lm->beacon_module.next_beacon_in = t;
+			bc_lm->current_reservation_table->mark(t, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+			CPPUNIT_ASSERT(bc_lm->beacon_module.next_beacon_in == t);
+			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(t));
+			bc_lm->processIncomingBeacon(partner_id, pair.first, pair.second);
+			CPPUNIT_ASSERT(bc_lm->beacon_module.next_beacon_in > t);
+			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), bc_lm->current_reservation_table->getReservation(t));
+			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(bc_lm->beacon_module.next_beacon_in));
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -316,6 +337,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testCongestionWithBeacon);
 		CPPUNIT_TEST(testScheduleNextBeacon);
 		CPPUNIT_TEST(testParseBeacon);
+		CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

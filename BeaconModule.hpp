@@ -20,6 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BeaconModule : public IRng {
 
 		friend class BeaconModuleTests;
+		friend class BCLinkManagerTests;
 
 	public:
 		/** Beacon interval minimum and maximum. */
@@ -51,6 +52,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table);
 
+		unsigned int getNextBeaconOffset() const;
+
 		/**
 		 * @return Current value for the minimum interval in slots that should be kept in-between beacons.
 		 * The actual beacon slot may differ from this through random selection.
@@ -68,7 +71,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table);
 
-		void parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager *manager) const;
+		/**
+		 * @param sender_id
+		 * @param payload
+		 * @param manager
+		 * @return Whether this user's beacon transmission should re-schedule as it would collide with a parsed beacon owner's transmission.
+		 */
+		bool parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager *manager) const;
 
 	protected:
 		/**

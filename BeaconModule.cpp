@@ -97,7 +97,8 @@ std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const st
 	return {new L2HeaderBeacon(), payload};
 }
 
-void BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {
+bool BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {
+	bool must_reschedule_beacon = false;
 	if (payload != nullptr) {
 		// Go through all indicated reservations...
 		for (const auto& item : payload->local_reservations) {
@@ -109,7 +110,7 @@ void BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&pay
 			// ... for every time slot ...
 			for (const auto& pair : item.second) {
 				int t = (int) pair.first;
-				// ... mark it as RX_BEACON if the sender indicated it'll transmit a beacon, or as busy otherwise.
+				// ... mark it as RX_BEACON if the sender indicated it'll transmit a beacon, or as BUSY otherwise.
 				const Reservation::Action action = pair.second == Reservation::TX_BEACON ? Reservation::RX_BEACON : Reservation::BUSY;
 				coutd << "t=" << t << " ";
 				const Reservation& res = table->getReservation(t);
@@ -117,13 +118,24 @@ void BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&pay
 				if (res.isIdle()) {
 					table->mark(t, Reservation(sender_id, action));
 					coutd << "marked t=" << t << " as " << action << " -> ";
-				} else
+				} else {
 					coutd << "won't mark t=" << t << " which is already reserved for: " << res << " -> ";
+					// We have to re-schedule our beacon transmission if this beacon tells us that another transmission is going to take place.
+					if (channel->isBroadcastChannel() && res.getAction() == Reservation::TX_BEACON) {
+						coutd << "re-scheduling own beacon transmission since it would collide -> ";
+						must_reschedule_beacon = true;
+					}
+				}
 			}
 		}
 	} else
 		coutd << "ignoring empty beacon payload -> ";
 	coutd << "done parsing beacon -> ";
+	return must_reschedule_beacon;
+}
+
+unsigned int BeaconModule::getNextBeaconOffset() const {
+	return next_beacon_in;
 }
 
 

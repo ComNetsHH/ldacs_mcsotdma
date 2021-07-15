@@ -67,6 +67,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void scheduleBroadcastSlot();
 
+		void scheduleBeacon();
+
 	public:
 		void onPacketReception(L2Packet*& packet) override;
 
