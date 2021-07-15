@@ -18,7 +18,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class BeaconPayload : public L2Packet::Payload {
 	public:
-		static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8, BITS_PER_ACTION = 3;
+		static constexpr unsigned int BITS_PER_SLOT = 9, BITS_PER_CHANNEL = 9, BITS_PER_ACTION = 3;
 
 		BeaconPayload() = default;
 
