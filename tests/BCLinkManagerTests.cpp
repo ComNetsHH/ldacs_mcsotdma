@@ -302,9 +302,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->processIncomingBeacon(partner_id, beacon_msg.first, beacon_msg.second);
 
 			for (auto t : slots_1)
-				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX_BEACON), table_1_me->getReservation(t));
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_1_me->getReservation(t));
 			for (auto t : slots_2)
-				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX_BEACON), table_2_me->getReservation(t));
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_2_me->getReservation(t));
 		}
 
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);

@@ -90,12 +90,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const auto &bc_vec = payload.local_reservations[bc_freq];
 			CPPUNIT_ASSERT_EQUAL(bc_table->countReservedTxSlots(SYMBOLIC_LINK_ID_BROADCAST), bc_vec.size());
 			for (size_t i = 0; i < marked_bc_slots.size(); i++)
-				CPPUNIT_ASSERT_EQUAL(marked_bc_slots.at(i), bc_vec.at(i));
+				CPPUNIT_ASSERT_EQUAL(marked_bc_slots.at(i), bc_vec.at(i).first);
 
 			const auto &p2p_vec = payload.local_reservations[p2p_freq];
 			CPPUNIT_ASSERT_EQUAL(p2p_table.countReservedTxSlots(MacId(12)), p2p_vec.size());
 			for (size_t i = 0; i < marked_p2p_slots.size(); i++)
-				CPPUNIT_ASSERT_EQUAL(marked_p2p_slots.at(i), p2p_vec.at(i));
+				CPPUNIT_ASSERT_EQUAL(marked_p2p_slots.at(i), p2p_vec.at(i).first);
 		}
 
 		CPPUNIT_TEST_SUITE(BeaconModuleTests);

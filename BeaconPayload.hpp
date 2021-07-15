@@ -18,7 +18,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class BeaconPayload : public L2Packet::Payload {
 	public:
-		static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8;
+		static constexpr unsigned int BITS_PER_SLOT = 8, BITS_PER_CHANNEL = 8, BITS_PER_ACTION = 3;
 
 		BeaconPayload() = default;
 
@@ -35,9 +35,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		BeaconPayload(const BeaconPayload& other) : BeaconPayload() {
-			for (const auto& pair : other.local_reservations)
-				for (unsigned int t : pair.second)
-					local_reservations[pair.first].push_back(t);
+			for (const auto& item : other.local_reservations)
+				for (const auto& pair : item.second)
+					local_reservations[item.first].push_back(pair);
 		}
 
 		Payload* copy() const override {
@@ -48,7 +48,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int bits = 0;
 			for (auto pair : local_reservations) {
 				bits += BITS_PER_CHANNEL;
-				bits += pair.second.size() * BITS_PER_SLOT;
+				bits += pair.second.size() * (BITS_PER_SLOT + BITS_PER_ACTION);
 			}
 			return bits;
 		}
@@ -58,11 +58,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (int t = 1; t < table->getPlanningHorizon(); t++) {
 				const Reservation &res = table->getReservation(t);
 				if (res.isBeaconTx() || res.isTx() || res.isTxCont())
-					vec.push_back(t);
+					vec.push_back({t, res.getAction()});
 			}
 		}
 
-		std::map<uint64_t, std::vector<unsigned int>> local_reservations;
+		std::map<uint64_t, std::vector<std::pair<unsigned int, Reservation::Action>>> local_reservations;
 	};
 
 }

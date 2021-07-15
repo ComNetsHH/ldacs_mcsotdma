@@ -91,21 +91,23 @@ std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const st
 void BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {
 	if (payload != nullptr) {
 		// Go through all indicated reservations...
-		for (const auto& pair : payload->local_reservations) {
+		for (const auto& item : payload->local_reservations) {
 			// ... fetch frequency channel ...
-			const uint64_t center_freq = pair.first;
+			const uint64_t center_freq = item.first;
 			const FrequencyChannel* channel = manager->getFreqChannelByCenterFreq(center_freq);
 			ReservationTable* table = manager->getReservationTable(channel);
 			coutd << "beacon indicates next transmission on f=" << *channel << " at ";
 			// ... for every time slot ...
-			for (auto slot : pair.second) {
-				int t = (int) slot;
+			for (const auto& pair : item.second) {
+				int t = (int) pair.first;
+				// ... mark it as RX_BEACON if the sender indicated it'll transmit a beacon, or as busy otherwise.
+				const Reservation::Action action = pair.second == Reservation::TX_BEACON ? Reservation::RX_BEACON : Reservation::BUSY;
 				coutd << "t=" << t << " ";
 				const Reservation& res = table->getReservation(t);
 				// ... mark it as BUSY if it's locally idle
 				if (res.isIdle()) {
-					table->mark(t, Reservation(sender_id, Reservation::RX_BEACON));
-					coutd << "marked t=" << t << " as " << Reservation::RX_BEACON << " -> ";
+					table->mark(t, Reservation(sender_id, action));
+					coutd << "marked t=" << t << " as " << action << " -> ";
 				} else
 					coutd << "won't mark t=" << t << " which is already reserved for: " << res << " -> ";
 			}
