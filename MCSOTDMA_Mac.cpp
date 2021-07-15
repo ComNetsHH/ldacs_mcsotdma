@@ -156,12 +156,13 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 }
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
-	if (packet->getOrigin() == id) {
+	const MacId& origin_id = packet->getOrigin();
+	const MacId& dest_id = packet->getDestination();
+	coutd << *this << "::onPacketReception(from=" << origin_id << ", to=" << dest_id << ", f=" << center_frequency << "kHz)... ";
+	if (origin_id == id) {
 		delete packet;
 		return;
 	}
-	const MacId& dest_id = packet->getDestination();
-	coutd << *this << "::onPacketReception(from=" << packet->getOrigin() << ", to=" << dest_id << ", f=" << center_frequency << "kHz)... ";
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");
 	statistic_num_packets_received++;

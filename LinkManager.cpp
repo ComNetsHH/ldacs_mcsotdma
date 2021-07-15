@@ -56,7 +56,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 //				header = nullptr;
 //				delete payload;
 //				payload = nullptr;
-				mac->statisticReportBeaconReceived();
 				break;
 			}
 			case L2Header::broadcast: {
@@ -93,7 +92,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::link_info: {
 				coutd << "processing link info -> ";
 				processIncomingLinkInfo((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);
-				mac->statisticReportLinkReplyReceived();
 				break;
 			}
 			default: {
