@@ -66,7 +66,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param reservation_tables
 		 * @return A new beacon message.
 		 */
-		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table) const;
+		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table);
 
 		void parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager *manager) const;
 
@@ -101,6 +101,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool is_connected = false;
 		/** Target collision probability for beacon broadcasts. */
 		double beacon_coll_prob = .01;
+		bool flip_p2p_table_encoding = false;
 	};
 }
 
