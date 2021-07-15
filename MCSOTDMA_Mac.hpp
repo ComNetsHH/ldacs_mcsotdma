@@ -21,8 +21,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MCSOTDMA_Mac : public IMac, public IOmnetPluggable {
 	public:
 		friend class MCSOTDMA_MacTests;
-
 		friend class MCSOTDMA_PhyTests;
+		friend class ThreeUsersTests;
 
 		MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);
 
@@ -105,8 +105,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportLinkInfoSent() {
 			statistic_num_link_infos_sent++;
 		}
-		void statisticReportCancelledLinkRequest() {
-			statistic_num_cancelled_link_requests++;
+		void statisticReportCancelledLinkRequest(size_t num_cancelled_requests) {
+			statistic_num_cancelled_link_requests += num_cancelled_requests;
 		}
 		void statisticReportNumActiveNeighbors(size_t val) {
 			statistic_num_active_neighbors = val;

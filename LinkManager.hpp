@@ -83,18 +83,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		};
 
 		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
-		                                                                                                link_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */,
-		                                                                                                str_statistic_num_received_packets("MCSOTDMA:statistic_num_received_packets(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_received_beacons("MCSOTDMA:statistic_num_received_beacons(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_received_requests("MCSOTDMA:statistic_num_received_requests(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_cancelled_requests("MCSOTDMA:statistic_num_cancelled_requests(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_received_replies("MCSOTDMA:statistic_num_received_replies(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_received_link_infos("MCSOTDMA:statistic_num_received_link_infos(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_sent_packets("MCSOTDMA:statistic_num_sent_packets(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_sent_beacons("MCSOTDMA:statistic_num_sent_beacons(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_sent_requests("MCSOTDMA:statistic_num_sent_requests(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_sent_replies("MCSOTDMA:statistic_num_sent_replies(" + std::to_string(link_id.getId()) + ")"),
-		                                                                                                str_statistic_num_sent_link_infos("MCSOTDMA:statistic_num_sent_link_infos(" + std::to_string(link_id.getId()) + ")") {
+		                                                                                                link_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */ {
 		                                                                                                }
 
 	    virtual ~LinkManager() = default;
@@ -181,30 +170,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<ReservationTable*> rx_tables;
 		/** Link establishment status. */
 		Status link_status;
-
-		const std::string str_statistic_num_received_packets,
-			str_statistic_num_received_beacons,
-			str_statistic_num_received_requests,
-			str_statistic_num_cancelled_requests,
-			str_statistic_num_received_replies,
-			str_statistic_num_received_link_infos,
-			str_statistic_num_sent_packets,
-			str_statistic_num_sent_beacons,
-			str_statistic_num_sent_requests,
-			str_statistic_num_sent_replies,
-			str_statistic_num_sent_link_infos;
-
-		unsigned long statistic_num_received_packets = 0,
-			statistic_num_received_beacons = 0,
-			statistic_num_received_requests = 0,
-			statistic_num_cancelled_requests = 0,
-			statistic_num_received_replies = 0,
-			statistic_num_received_link_infos = 0,
-			statistic_num_sent_packets = 0,
-			statistic_num_sent_beacons = 0,
-			statistic_num_sent_requests = 0,
-			statistic_num_sent_replies = 0,
-			statistic_num_sent_link_infos = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {

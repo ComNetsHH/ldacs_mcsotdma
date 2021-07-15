@@ -33,7 +33,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 		else
 			coutd << "' -> ";
 	}
-	statistic_num_received_packets++;
 
 	assert(!packet->getHeaders().empty() && "LinkManager::onPacketReception(empty packet)");
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
@@ -57,7 +56,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 //				header = nullptr;
 //				delete payload;
 //				payload = nullptr;
-				statistic_num_received_beacons++;
 				mac->statisticReportBeaconReceived();
 				break;
 			}
@@ -95,7 +93,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::link_info: {
 				coutd << "processing link info -> ";
 				processIncomingLinkInfo((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);
-				statistic_num_received_link_infos++;
 				mac->statisticReportLinkReplyReceived();
 				break;
 			}
@@ -150,16 +147,4 @@ void LinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::onSlotEnd() {
-	mac->emit(str_statistic_num_received_packets, statistic_num_received_packets);
-	mac->emit(str_statistic_num_received_beacons, statistic_num_received_beacons);
-	mac->emit(str_statistic_num_received_requests, statistic_num_received_requests);
-	mac->emit(str_statistic_num_cancelled_requests, statistic_num_cancelled_requests);
-	mac->emit(str_statistic_num_received_replies, statistic_num_received_replies);
-	mac->emit(str_statistic_num_received_link_infos, statistic_num_received_link_infos);
-	mac->emit(str_statistic_num_sent_packets, statistic_num_sent_packets);
-	mac->emit(str_statistic_num_sent_beacons, statistic_num_sent_beacons);
-	mac->emit(str_statistic_num_sent_requests, statistic_num_sent_requests);
-	mac->emit(str_statistic_num_sent_replies, statistic_num_sent_replies);
-	mac->emit(str_statistic_num_sent_link_infos, statistic_num_sent_link_infos);
-}
+void LinkManager::onSlotEnd() {}

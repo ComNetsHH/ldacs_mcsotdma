@@ -39,7 +39,6 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	if (beacon_module.shouldSendBeaconThisSlot()) {
 		coutd << "broadcasting beacon -> ";
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
-		statistic_num_sent_beacons++;
 		mac->statisticReportBeaconSent();
 	} else {
 		coutd << "broadcasting data -> ";
@@ -58,7 +57,6 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				packet->addMessage(pair.first, pair.second);
 				link_requests.erase(link_requests.begin());
 				coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
-				statistic_num_sent_requests++;
 				mac->statisticReportLinkRequestSent();
 			} else
 				break; // Stop if it doesn't fit anymore.
@@ -72,7 +70,6 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
 					packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
 				if (upper_layer_data->getHeaders().at(i)->frame_type == L2Header::link_info) {
-					statistic_num_sent_link_infos++;
 					mac->statisticReportLinkInfoSent();
 				}
 			}
@@ -93,7 +90,6 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		}
 	}
 
-	statistic_num_sent_packets++;
 	mac->statisticReportPacketSent();
 	return packet;
 }
@@ -242,7 +238,6 @@ void BCLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link request to P2PLinkManager -> ";
 		// do NOT report the received request to the MAC, as the P2PLinkManager will do that (otherwise it'll be counted twice)
-		statistic_num_received_requests++;
 		((P2PLinkManager*) mac->getLinkManager(origin))->processIncomingLinkRequest(header, payload, origin);
 	} else
 		coutd << "discarding link request that is not destined to us -> ";

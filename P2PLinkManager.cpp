@@ -269,7 +269,6 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 						current_link_state->scheduled_link_replies.erase(it);
 						it--;
 						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to init link on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
-						statistic_num_sent_replies++;
 						mac->statisticReportLinkReplySent();
 					} else // Link replies must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
 						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link reply into packet because it wouldn't fit. This should never happen?!");
@@ -281,7 +280,6 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 	unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
 	coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
 	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
-	statistic_num_sent_packets++;
 	mac->statisticReportPacketSent();
 	mac->statisticReportUnicastSent();
 	for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
@@ -305,7 +303,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "link not established, changing status to '" << link_status << "', triggering link establishment -> ";
 		auto link_request_msg = prepareRequestMessage();
 		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);
-		statistic_num_sent_requests++;
+		mac->statisticReportLinkRequestSent();
 	} else
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
@@ -453,7 +451,6 @@ bool P2PLinkManager::isProposalViable(const ReservationTable* table, unsigned in
 
 void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
 	coutd << *mac << "::" << *this << "::processIncomingLinkRequest -> ";
-	statistic_num_received_requests++;
 	mac->statisticReportLinkRequestReceived();
 	// If currently the link is unestablished, then this request must be an initial request.
 	if (link_status == link_not_established) {
@@ -464,9 +461,7 @@ void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L
 		// Cancel buffered and unsent local link requests.
 		size_t num_cancelled_requests = ((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
 		coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
-		statistic_num_cancelled_requests += num_cancelled_requests;
-		for (size_t i = 0; i < num_cancelled_requests; i++)
-			mac->statisticReportCancelledLinkRequest();
+		mac->statisticReportCancelledLinkRequest(num_cancelled_requests);
 		// Reset link.
 		terminateLink();
 		// Process request.
@@ -575,7 +570,6 @@ P2PLinkManager::LinkState* P2PLinkManager::selectResourceFromRequest(const L2Hea
 
 void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload_ptr) {
 	coutd << *this << "::processIncomingLinkReply -> ";
-	statistic_num_received_replies++;
 	mac->statisticReportLinkReplyReceived();
 	if (link_status != awaiting_reply) {
 		coutd << "not awaiting reply; discarding -> ";

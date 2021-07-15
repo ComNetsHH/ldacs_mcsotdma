@@ -156,6 +156,10 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 }
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
+	if (packet->getOrigin() == id) {
+		delete packet;
+		return;
+	}
 	const MacId& dest_id = packet->getDestination();
 	coutd << *this << "::onPacketReception(from=" << packet->getOrigin() << ", to=" << dest_id << ", f=" << center_frequency << "kHz)... ";
 	if (dest_id == SYMBOLIC_ID_UNSET)
@@ -166,8 +170,10 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 		received_packets[center_frequency].push_back(packet);
 		coutd << "stored until slot end.";
 	// ... or discard.
-	} else
+	} else {
 		coutd << "packet not intended for us; discarding." << std::endl;
+		delete packet;
+	}
 }
 
 LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
@@ -234,18 +240,18 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			statistic_num_packet_collisions += packets.size();
 
             for (auto *packet : packets) {
-                auto payloads = packet->getPayloads();
-                auto headers = packet->getHeaders();
-                for (int i = 0; i< headers.size(); i++) {
-                    if(payloads[i]) {
-                        if(headers[i]->frame_type == L2Header::FrameType::broadcast || headers[i]->frame_type == L2Header::FrameType::unicast) {
-                            if(((InetPacketPayload*)payloads[i])->original != nullptr) {
-                                //delete ((InetPacketPayload*)payloads[i])->original;
-                                //((InetPacketPayload*)payloads[i])->original = nullptr;
-                            }
-                        }
-                    }
-                }
+//                auto payloads = packet->getPayloads();
+//                auto headers = packet->getHeaders();
+//                for (int i = 0; i< headers.size(); i++) {
+//                    if(payloads[i]) {
+//                        if(headers[i]->frame_type == L2Header::FrameType::broadcast || headers[i]->frame_type == L2Header::FrameType::unicast) {
+//                            if(((InetPacketPayload*)payloads[i])->original != nullptr) {
+//                                //delete ((InetPacketPayload*)payloads[i])->original;
+//                                //((InetPacketPayload*)payloads[i])->original = nullptr;
+//                            }
+//                        }
+//                    }
+//                }
                 delete packet;
             }
 

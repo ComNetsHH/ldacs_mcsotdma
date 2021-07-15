@@ -77,8 +77,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// New data for communication partner.
 			mac_layer_me->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_slots = 20;
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac_layer_you->statistic_num_packets_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac_layer_me->statistic_num_packets_received);
 			while (((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_scheduled && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -92,10 +92,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Link request should've been sent, so we're 'awaiting_reply', and they're awaiting the first data transmission.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, lm_you->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets); // forwarded by the BCLinkManager
-			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_requests);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), ((BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->statistic_num_received_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), ((BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->statistic_num_sent_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_you->statistic_num_requests_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_you->statistic_num_packets_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_me->statistic_num_packets_sent);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
 			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout, lm_you->current_link_state->timeout);
@@ -130,7 +129,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			// Link reply should've arrived, so *our* link should be established...
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(partner_id)->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_me->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_me->statistic_num_packets_received);
 			// ... and *their* link should indicate that the reply has been sent.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_status);
 			// Reservation timeout should still be default.
@@ -152,7 +151,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isLocked());
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets); // just the request which had been forwarded by the BCLinkManager
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_you->statistic_num_packets_received); // just the request which had been forwarded by the BCLinkManager
 			// Jump in time to the next transmission.
 			for (size_t t = 0; t < lm_you->burst_offset; t++) {
 				mac_layer_me->update(1);
@@ -169,7 +168,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(lm_you->default_timeout - 1, lm_you->current_link_state->timeout);
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
 			CPPUNIT_ASSERT_EQUAL(size_t(3), rlc_layer_you->receptions.size());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_you->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), mac_layer_you->statistic_num_packets_received);
 			// Ensure reservations now match: one side has TX, other side has RX.
 			for (size_t offset = lm_me->burst_offset; offset < lm_me->current_link_state->timeout * lm_me->burst_offset; offset += lm_me->burst_offset) {
 				const Reservation& reservation_tx = table_me->getReservation(offset);
@@ -254,8 +253,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isLocked());
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_you->statistic_num_packets_received);
 			// Wait until the next transmission.
 //			coutd.setVerbose(true);
 			for (size_t t = 0; t < lm_you->burst_offset + lm_you->current_link_state->burst_length; t++) {
@@ -442,7 +440,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			testLinkEstablishment();
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_you->should_there_be_more_p2p_data = false;
-			const long packets_so_far = lm_you->statistic_num_received_packets;
+			const long packets_so_far = mac_layer_you->statistic_num_packets_received;
 			CPPUNIT_ASSERT(packets_so_far > 0);
 
 //			coutd.setVerbose(true);
@@ -460,7 +458,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), lm_me->statistic_num_links_established);
 			CPPUNIT_ASSERT( lm_me->link_status != LinkManager::link_not_established);
-			CPPUNIT_ASSERT(lm_you->statistic_num_received_packets > packets_so_far);
+			CPPUNIT_ASSERT(mac_layer_you->statistic_num_packets_received > packets_so_far);
 		}
 
 		/** Before introducing the onSlotEnd() function, success depended on the order of the execute() calls (which is of course terrible),
@@ -657,8 +655,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testReestablishmentAfterDrop() {
 			mac_layer_me->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_slots = 200;
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), lm_you->statistic_num_received_packets);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac_layer_you->statistic_num_packets_received);
 
 			// Sever connection.
 			env_me->phy_layer->connected_phys.clear();
@@ -709,8 +706,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), lm_me->statistic_num_received_requests + lm_you->statistic_num_received_requests);
-			CPPUNIT_ASSERT(lm_me->statistic_num_sent_requests + lm_you->statistic_num_sent_requests >= 1); // due to collisions, several attempts may be required
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_me->statistic_num_requests_received + mac_layer_you->statistic_num_requests_received);
+			CPPUNIT_ASSERT(mac_layer_me->statistic_num_requests_sent + mac_layer_you->statistic_num_requests_sent >= 1); // due to collisions, several attempts may be required
 		}
 
 		/**
@@ -829,7 +826,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReestablishmentAfterDrop);
 			CPPUNIT_TEST(testSimultaneousRequests);
 			CPPUNIT_TEST(testTimeout);
-//			CPPUNIT_TEST(testManyReestablishments);
+			CPPUNIT_TEST(testManyReestablishments);
 
 	CPPUNIT_TEST_SUITE_END();
 	};

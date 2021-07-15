@@ -254,7 +254,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), p2p_2->statistic_num_links_established);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), p2p_3->statistic_num_links_established);
 
-			unsigned long packets_so_far_1 = p2p_1->statistic_num_sent_packets, packets_so_far_2 = p2p_2->statistic_num_sent_packets;
+			unsigned long packets_so_far_1 = mac_1->statistic_num_packets_sent, packets_so_far_2 = mac_2->statistic_num_packets_sent;
 			num_slots = 0;
 			while ((p2p_1->statistic_num_links_established < 2 || p2p_2->statistic_num_links_established < 2  || p2p_3->statistic_num_links_established < 2 ) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
@@ -270,8 +270,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(2), p2p_1->statistic_num_links_established);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), p2p_2->statistic_num_links_established);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), p2p_3->statistic_num_links_established);
-			CPPUNIT_ASSERT(p2p_1->statistic_num_sent_packets > packets_so_far_1);
-			CPPUNIT_ASSERT(p2p_2->statistic_num_sent_packets > packets_so_far_2);
+			CPPUNIT_ASSERT(mac_1->statistic_num_packets_sent > packets_so_far_1);
+			CPPUNIT_ASSERT(mac_2->statistic_num_packets_sent > packets_so_far_2);
 			unsigned int num_renewals = 10;
 			for (unsigned int n = 3; n < num_renewals; n++) {
 				num_slots = 0;
@@ -292,10 +292,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT(p2p_1->statistic_num_links_established >= n);
 				CPPUNIT_ASSERT(p2p_2->statistic_num_links_established >= n);
 				CPPUNIT_ASSERT(p2p_3->statistic_num_links_established >= n);
-				CPPUNIT_ASSERT(p2p_1->statistic_num_sent_packets > packets_so_far_1);
-				CPPUNIT_ASSERT(p2p_2->statistic_num_sent_packets > packets_so_far_2);
-				packets_so_far_1 = p2p_1->statistic_num_sent_packets;
-				packets_so_far_2 = p2p_2->statistic_num_sent_packets;
+				CPPUNIT_ASSERT(mac_1->statistic_num_packets_sent > packets_so_far_1);
+				CPPUNIT_ASSERT(mac_2->statistic_num_packets_sent > packets_so_far_2);
+				packets_so_far_1 = mac_1->statistic_num_packets_sent;
+				packets_so_far_2 = mac_2->statistic_num_packets_sent;
 			}
 		}
 
