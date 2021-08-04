@@ -79,6 +79,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		std::pair<bool, bool> parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager *manager) const;
 
+		void setEnabled(bool val);
+
+		bool isEnabled() const;
+
 	protected:
 		/**
 		 * @param random_choice Whether to choose randomly from a number of viable candidates.
@@ -111,6 +115,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Target collision probability for beacon broadcasts. */
 		double beacon_coll_prob = .01;
 		bool flip_p2p_table_encoding = false;
+		bool enabled = true;
 	};
 }
 

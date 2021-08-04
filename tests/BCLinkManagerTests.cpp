@@ -118,6 +118,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testCongestionWithBeacon() {
+			// If it's enabled, it'll schedule its own initial beacon, messing up the hand-crafted tests.
+			link_manager->beacon_module.setEnabled(false);
 			auto *beacon_packet = new L2Packet();
 			beacon_packet->addMessage(new L2HeaderBase(MacId(42), 0, 0, 0, 0), nullptr);
 			beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
@@ -320,6 +322,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto* bc_lm = (BCLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_lm->beacon_module.next_beacon_in = t;
 			bc_lm->current_reservation_table->mark(t, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+			bc_lm->next_beacon_scheduled = true;
 			CPPUNIT_ASSERT(bc_lm->beacon_module.next_beacon_in == t);
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(t));
 			bc_lm->processIncomingBeacon(partner_id, pair.first, pair.second);

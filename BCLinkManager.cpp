@@ -36,10 +36,11 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	unsigned long capacity = mac->getCurrentDatarate();
 
 	// Beacon slots are exclusive to beacons.
-	if (beacon_module.shouldSendBeaconThisSlot()) {
+	if (beacon_module.isEnabled() && beacon_module.shouldSendBeaconThisSlot()) {
 		coutd << "broadcasting beacon -> ";
 		// Schedule next beacon slot.
-		scheduleBeacon();
+		scheduleBeacon(); // prints when the next beacon slot is scheduled
+		coutd << "while non-beacon broadcast is " << (next_broadcast_scheduled ? "scheduled in " + std::to_string(next_broadcast_slot) + " slots -> " : "not scheduled -> ");
 
 		// Generate beacon message.
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
@@ -133,7 +134,7 @@ void BCLinkManager::onSlotEnd() {
 			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
 		next_broadcast_slot -= 1;
 	}
-	if (beacon_module.shouldSendBeaconThisSlot()) {
+	if (beacon_module.shouldSendBeaconThisSlot() || !next_beacon_scheduled) {
 		// Schedule next beacon slot.
 		scheduleBeacon();
 	}
@@ -292,19 +293,22 @@ void BCLinkManager::setTargetCollisionProb(double value) {
 }
 
 void BCLinkManager::scheduleBeacon() {
-	if (beacon_module.getNextBeaconOffset() != 0) {
-		assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconOffset()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-		current_reservation_table->mark(beacon_module.getNextBeaconOffset(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+	if (beacon_module.isEnabled()) {
+		if (beacon_module.getNextBeaconOffset() != 0 && next_beacon_scheduled) {
+			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconOffset()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+			current_reservation_table->mark(beacon_module.getNextBeaconOffset(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+		}
+		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
+		mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
+		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::scheduleBeacon scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";
+			throw std::runtime_error(ss.str());
+		}
+		current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+		coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
+		// Reset congestion estimator with new beacon interval.
+		congestion_estimator.reset(beacon_module.getBeaconOffset());
+		next_beacon_scheduled = true;
 	}
-	int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
-	mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
-	if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
-		std::stringstream ss;
-		ss << *mac << "::" << *this << "::scheduleBeacon scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";
-		throw std::runtime_error(ss.str());
-	}
-	current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-	coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
-	// Reset congestion estimator with new beacon interval.
-	congestion_estimator.reset(beacon_module.getBeaconOffset());
 }

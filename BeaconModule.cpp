@@ -144,4 +144,12 @@ unsigned int BeaconModule::getNextBeaconOffset() const {
 	return next_beacon_in;
 }
 
+void BeaconModule::setEnabled(bool val) {
+	this->enabled = val;
+}
+
+bool BeaconModule::isEnabled() const {
+	return this->enabled;
+}
+
 

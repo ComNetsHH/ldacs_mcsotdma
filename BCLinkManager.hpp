@@ -99,6 +99,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		double broadcast_target_collision_prob = .05;
 		/** Whether the next broadcast slot has been scheduled. */
 		bool next_broadcast_scheduled = false;
+		bool next_beacon_scheduled = false;
 		unsigned int next_broadcast_slot = 0;
 		BeaconModule beacon_module;
 		/** Minimum number of slots to consider during slot selection. */
