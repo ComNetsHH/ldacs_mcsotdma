@@ -129,7 +129,8 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	// Mark reception slot if there's nothing else to do.
-	if (current_reservation_table->getReservation(0).isIdle()) {
+	const auto& current_reservation = current_reservation_table->getReservation(0);
+	if (current_reservation.isIdle() || current_reservation.isBusy()) {
 		coutd << "marking BC reception -> ";
 		try {
 			current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
