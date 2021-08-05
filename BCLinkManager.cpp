@@ -26,7 +26,7 @@ void BCLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
-	coutd << *this << "::onTransmissionBurstStart -> ";
+	coutd << *mac << "::" << *this << "::onTransmissionBurstStart -> ";
 	if (remaining_burst_length != 0)
 		throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart for burst_length!=0.");
 
@@ -72,12 +72,23 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		if (remaining_bits > 0) {
 			coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
 			L2Packet* upper_layer_data = mac->requestSegment(remaining_bits, link_id);
+			size_t num_bits_added = 0;
 			for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
-				if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
-					packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
+				if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base) {
+					L2Header *header = upper_layer_data->getHeaders().at(i)->copy();
+					L2Packet::Payload *payload = upper_layer_data->getPayloads().at(i)->copy();
+					packet->addMessage(header, payload);
+					num_bits_added += header->getBits() + payload->getBits();
+				}
 				if (upper_layer_data->getHeaders().at(i)->frame_type == L2Header::link_info) {
 					mac->statisticReportLinkInfoSent();
 				}
+			}
+			coutd << "added " << num_bits_added << " bits -> ";
+			if (num_bits_added > remaining_bits) {
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::onTransmissionBurstStart error: " << num_bits_added << " bits were returned by upper sublayer instead of requested " << remaining_bits << "!";
+				throw std::runtime_error(ss.str());
 			}
 			delete upper_layer_data;
 		}
@@ -97,6 +108,10 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	}
 
 	mac->statisticReportPacketSent();
+	coutd << "generated packet with " << packet->getHeaders().size() << " messages: ";
+	for (const auto* header : packet->getHeaders())
+		coutd << header->frame_type << ", ";
+	coutd << "-> ";
 	return packet;
 }
 
