@@ -108,10 +108,6 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	}
 
 	mac->statisticReportPacketSent();
-	coutd << "generated packet with " << packet->getHeaders().size() << " messages: ";
-	for (const auto* header : packet->getHeaders())
-		coutd << header->frame_type << ", ";
-	coutd << "-> ";
 	return packet;
 }
 

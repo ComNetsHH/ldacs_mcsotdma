@@ -68,7 +68,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void statisticReportBroadcastMessageDecoded() {
 			statistic_num_broadcast_message_decoded++;
-			coutd << "DECODED BROADCAST MESSAGE: " << statistic_num_broadcast_message_decoded << " so far";
 		}
 		void statisticReportBroadcastReceived() {
 			statistic_num_broadcasts_received++;

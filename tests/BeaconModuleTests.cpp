@@ -102,6 +102,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testBeaconInterval);
 			CPPUNIT_TEST(testChooseNextBeaconSlot);
 			CPPUNIT_TEST(testKeepGapPattern);
+			CPPUNIT_TEST(testBeaconMessage);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

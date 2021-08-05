@@ -352,6 +352,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(bc_lm->next_broadcast_slot));
 		}
 
+		void testBeaconDestination() {
+			auto *packet = new L2Packet();
+			auto *base_header = new L2HeaderBase(MacId(42), 0, 1, 1, 0);
+			packet->addMessage(base_header, nullptr);
+			packet->addMessage(link_manager->beacon_module.generateBeacon(link_manager->reservation_manager->getP2PReservationTables(), link_manager->reservation_manager->getBroadcastReservationTable()));
+			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BEACON, packet->getDestination());
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -363,6 +371,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testParseBeacon);
 		CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
 		CPPUNIT_TEST(testParseBeaconRescheduleBroadcast);
+		CPPUNIT_TEST(testBeaconDestination);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
