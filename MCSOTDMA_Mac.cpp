@@ -165,7 +165,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	}
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");
-	statistic_num_packets_received++;
+	stat_num_packets_rcvd.increment();
 	// Store,
 	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON || dest_id == id) {
 		received_packets[center_frequency].push_back(packet);
@@ -234,11 +234,11 @@ void MCSOTDMA_Mac::onSlotEnd() {
 				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
 			else
 				getLinkManager(packet->getOrigin())->onPacketReception(packet);
-			statistic_num_packet_decoded++;
+			stat_num_packets_decoded.increment();
 		// We cannot receive several packets on this channel simultaneously - drop it due to a collision.
 		} else if (packets.size() > 1) {
 			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
-			statistic_num_packet_collisions += packets.size();
+			stat_num_packet_collisions.incrementBy(packets.size());
 
             for (auto *packet : packets) {
 //                auto payloads = packet->getPayloads();
@@ -264,30 +264,8 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		item.second->onSlotEnd();
 
 	// Statistics reporting.
-	emit(str_statistic_num_packets_received, statistic_num_packets_received);
-	emit(str_statistic_num_broadcast_message_decoded, statistic_num_broadcast_message_decoded);
-	emit(str_statistic_num_broadcasts_received, statistic_num_broadcasts_received);
-	emit(str_statistic_num_unicast_message_decoded, statistic_num_unicast_message_decoded);
-	emit(str_statistic_num_unicasts_received, statistic_num_unicasts_received);
-	emit(str_statistic_num_packet_collisions, statistic_num_packet_collisions);
-	emit(str_statistic_num_packet_decoded, statistic_num_packet_decoded);
-	emit(str_statistic_num_requests_received, statistic_num_requests_received);
-	emit(str_statistic_num_replies_received, statistic_num_replies_received);
-	emit(str_statistic_num_beacons_received, statistic_num_beacons_received);
-	emit(str_statistic_num_link_infos_received, statistic_num_link_infos_received);
-	emit(str_statistic_num_packets_sent, statistic_num_packets_sent);
-	emit(str_statistic_num_broadcasts_sent, statistic_num_broadcasts_sent);
-	emit(str_statistic_num_unicasts_sent, statistic_num_unicasts_sent);
-	emit(str_statistic_num_requests_sent, statistic_num_requests_sent);
-	emit(str_statistic_num_replies_sent, statistic_num_replies_sent);
-	emit(str_statistic_num_beacons_sent, statistic_num_beacons_sent);
-	emit(str_statistic_num_link_infos_sent, statistic_num_link_infos_sent);
-	emit(str_statistic_num_cancelled_link_requests, statistic_num_cancelled_link_requests);
-	emit(str_statistic_num_active_neighbors, statistic_num_active_neighbors);
-	emit(str_statistic_min_beacon_offset, statistic_min_beacon_offset);
-	emit(str_statistic_congestion, statistic_congestion);
-	emit(str_statistic_contention, statistic_contention);
-	emit(str_statistic_broadcast_candidate_slots, statistic_broadcast_candidate_slots);
+	for (auto* stat : statistics)
+		stat->update();
 }
 
 const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {

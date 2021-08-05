@@ -9,6 +9,7 @@
 #include <L2Packet.hpp>
 #include <IArq.hpp>
 #include <IOmnetPluggable.hpp>
+#include <Statistic.hpp>
 #include "ReservationManager.hpp"
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Phy.hpp"
@@ -67,67 +68,67 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setBroadcastTargetCollisionProb(double value) override;
 
 		void statisticReportBroadcastMessageDecoded() {
-			statistic_num_broadcast_message_decoded++;
+			stat_num_broadcast_msgs_decoded.increment();
 		}
 		void statisticReportBroadcastReceived() {
-			statistic_num_broadcasts_received++;
+			stat_num_broadcasts_rcvd.increment();
 		}
 		void statisticReportUnicastMessageDecoded() {
-			statistic_num_unicast_message_decoded++;
+			stat_num_unicast_msgs_decoded.increment();
 		}
 		void statisticReportUnicastReceived() {
-			statistic_num_unicasts_received++;
+			stat_num_unicasts_rcvd.increment();
 		}
 		void statisticReportLinkRequestReceived() {
-			statistic_num_requests_received++;
+			stat_num_requests_rcvd.increment();
 		}
 		void statisticReportLinkReplyReceived() {
-			statistic_num_replies_received++;
+			stat_num_replies_rcvd.increment();
 		}
 		void statisticReportBeaconReceived() {
-			statistic_num_beacons_received++;
+			stat_num_beacons_rcvd.increment();
 		}
 		void statisticReportLinkInfoReceived() {
-			statistic_num_link_infos_received++;
+			stat_num_link_infos_rcvd.increment();
 		}
 		void statisticReportPacketSent() {
-			statistic_num_packets_sent++;
+			stat_num_packets_sent.increment();
 		}
 		void statisticReportBroadcastSent() {
-			statistic_num_broadcasts_sent++;
+			stat_num_broadcasts_sent.increment();
 		}
 		void statisticReportUnicastSent() {
-			statistic_num_unicasts_sent++;
+			stat_num_unicasts_sent.increment();
 		}
 		void statisticReportLinkRequestSent() {
-			statistic_num_requests_sent++;
+			stat_num_requests_sent.increment();
 		}
 		void statisticReportLinkReplySent() {
-			statistic_num_replies_sent++;
+			stat_num_replies_sent.increment();
 		}
 		void statisticReportBeaconSent() {
-			statistic_num_beacons_sent++;
+			stat_num_beacons_sent.increment();
 		}
 		void statisticReportLinkInfoSent() {
-			statistic_num_link_infos_sent++;
+			stat_num_link_infos_sent.increment();
 		}
 		void statisticReportCancelledLinkRequest(size_t num_cancelled_requests) {
-			statistic_num_cancelled_link_requests += num_cancelled_requests;
+			stat_num_requests_cancelled.incrementBy(num_cancelled_requests);
 		}
 		void statisticReportNumActiveNeighbors(size_t val) {
-			statistic_num_active_neighbors = val;
+			stat_num_active_neighbors.capture(val);
 		}
 		void statisticReportMinBeaconOffset(size_t val) {
-			statistic_min_beacon_offset = val;
+			stat_min_beacon_offset.capture(val);
 		}
 		void statisticReportContention(double val) {
-			statistic_contention = val;
+			stat_contention.capture(val);
 		}
 		void statisticReportCongestion(double val) {
-			statistic_congestion = val;
+			stat_congestion.capture(val);
 		}
 		void statisticReportBroadcastCandidateSlots(size_t val) {
-			statistic_broadcast_candidate_slots = val;
+			stat_broadcast_candidate_slots.capture(val);
 		}
 
 	protected:
@@ -147,54 +148,104 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
 
 		// Statistics
-		const std::string str_statistic_num_packets_received = "mcsotdma_statistic_num_packets_received";
-		const std::string str_statistic_num_broadcasts_received = "mcsotdma_statistic_num_broadcasts_received";
-		const std::string str_statistic_num_broadcast_message_decoded = "mcsotdma_statistic_num_broadcast_message_decoded";
-		const std::string str_statistic_num_unicasts_received = "mcsotdma_statistic_num_unicasts_received";
-		const std::string str_statistic_num_unicast_message_decoded = "mcsotdma_statistic_num_unicast_message_decoded";
-		const std::string str_statistic_num_requests_received = "mcsotdma_statistic_num_link_requests_received";
-		const std::string str_statistic_num_replies_received = "mcsotdma_statistic_num_link_replies_received";
-		const std::string str_statistic_num_beacons_received = "mcsotdma_statistic_num_beacons_received";
-		const std::string str_statistic_num_link_infos_received = "mcsotdma_statistic_num_link_infos_received";
-		const std::string str_statistic_num_packets_sent = "mcsotdma_statistic_num_packets_sent";
-		const std::string str_statistic_num_requests_sent = "mcsotdma_statistic_num_link_requests_sent";
-		const std::string str_statistic_num_broadcasts_sent = "mcsotdma_statistic_num_broadcasts_sent";
-		const std::string str_statistic_num_unicasts_sent = "mcsotdma_statistic_num_unicasts_sent";
-		const std::string str_statistic_num_replies_sent = "mcsotdma_statistic_num_link_replies_sent";
-		const std::string str_statistic_num_beacons_sent = "mcsotdma_statistic_num_beacons_sent";
-		const std::string str_statistic_num_link_infos_sent = "mcsotdma_statistic_num_link_infos_sent";
-		const std::string str_statistic_num_cancelled_link_requests = "mcsotdma_statistic_num_cancelled_link_requests";
-		const std::string str_statistic_num_packet_collisions = "mcsotdma_statistic_num_packet_collisions";
-		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
-		const std::string str_statistic_num_active_neighbors = "mcsotdma_statistic_num_active_neighbors";
-		const std::string str_statistic_min_beacon_offset = "mcsotdma_statistic_min_beacon_offset";
-		const std::string str_statistic_contention = "mcsotdma_statistic_contention";
-		const std::string str_statistic_congestion = "mcsotdma_statistic_congestion";
-		const std::string str_statistic_broadcast_candidate_slots = "mcsotdma_statistic_broadcast_candidate_slots";
-		size_t statistic_num_packets_received = 0;
-		size_t statistic_num_broadcast_message_decoded = 0;
-		size_t statistic_num_broadcasts_received = 0;
-		size_t statistic_num_unicast_message_decoded = 0;
-		size_t statistic_num_unicasts_received = 0;
-		size_t statistic_num_requests_received = 0;
-		size_t statistic_num_replies_received = 0;
-		size_t statistic_num_beacons_received = 0;
-		size_t statistic_num_link_infos_received = 0;
-		size_t statistic_num_packets_sent = 0;
-		size_t statistic_num_broadcasts_sent = 0;
-		size_t statistic_num_unicasts_sent = 0;
-		size_t statistic_num_requests_sent = 0;
-		size_t statistic_num_replies_sent = 0;
-		size_t statistic_num_beacons_sent = 0;
-		size_t statistic_num_link_infos_sent = 0;
-		size_t statistic_num_packet_collisions = 0;
-		size_t statistic_num_packet_decoded = 0;
-		size_t statistic_num_cancelled_link_requests = 0;
-		size_t statistic_num_active_neighbors = 0;
-		size_t statistic_min_beacon_offset = 0;
-		double statistic_contention = 0.0;
-		double statistic_congestion = 0.0;
-		size_t statistic_broadcast_candidate_slots = 0;
+		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
+		Statistic stat_num_broadcasts_rcvd = Statistic("mcsotdma_statistic_num_broadcasts_received", this);
+		Statistic stat_num_broadcast_msgs_decoded = Statistic("mcsotdma_statistic_num_broadcast_message_decoded", this);
+		Statistic stat_num_unicasts_rcvd = Statistic("mcsotdma_statistic_num_unicasts_received", this);
+		Statistic stat_num_unicast_msgs_decoded = Statistic("mcsotdma_statistic_num_unicast_message_decoded", this);
+		Statistic stat_num_requests_rcvd = Statistic("mcsotdma_statistic_num_link_requests_received", this);
+		Statistic stat_num_replies_rcvd = Statistic("mcsotdma_statistic_num_link_replies_received", this);
+		Statistic stat_num_beacons_rcvd = Statistic("mcsotdma_statistic_num_beacons_received", this);
+		Statistic stat_num_link_infos_rcvd = Statistic("mcsotdma_statistic_num_link_infos_received", this);
+		Statistic stat_num_packets_sent = Statistic("mcsotdma_statistic_num_packets_sent", this);
+		Statistic stat_num_requests_sent = Statistic("mcsotdma_statistic_num_link_requests_sent", this);
+		Statistic stat_num_broadcasts_sent = Statistic("mcsotdma_statistic_num_broadcasts_sent", this);
+		Statistic stat_num_unicasts_sent = Statistic("mcsotdma_statistic_num_unicasts_sent", this);
+		Statistic stat_num_replies_sent = Statistic("mcsotdma_statistic_num_link_replies_sent", this);
+		Statistic stat_num_beacons_sent = Statistic("mcsotdma_statistic_num_beacons_sent", this);
+		Statistic stat_num_link_infos_sent = Statistic("mcsotdma_statistic_num_link_infos_sent", this);
+		Statistic stat_num_requests_cancelled = Statistic("mcsotdma_statistic_num_cancelled_link_requests", this);
+		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);
+		Statistic stat_num_packets_decoded = Statistic("mcsotdma_statistic_num_packet_decoded", this);
+		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);
+		Statistic stat_min_beacon_offset = Statistic("mcsotdma_statistic_min_beacon_offset", this);
+		Statistic stat_contention = Statistic("mcsotdma_statistic_contention", this);
+		Statistic stat_congestion = Statistic("mcsotdma_statistic_congestion", this);
+		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
+		std::vector<Statistic*> statistics = {
+				&stat_num_packets_rcvd,
+				&stat_num_broadcasts_rcvd,
+				&stat_num_broadcast_msgs_decoded,
+				&stat_num_unicasts_rcvd,
+				&stat_num_unicast_msgs_decoded,
+				&stat_num_requests_rcvd,
+				&stat_num_replies_rcvd,
+				&stat_num_beacons_rcvd,
+				&stat_num_link_infos_rcvd,
+				&stat_num_packets_sent,
+				&stat_num_requests_sent,
+				&stat_num_broadcasts_sent,
+				&stat_num_unicasts_sent,
+				&stat_num_replies_sent,
+				&stat_num_beacons_sent,
+				&stat_num_link_infos_sent,
+				&stat_num_requests_cancelled,
+				&stat_num_packet_collisions,
+				&stat_num_packets_decoded,
+				&stat_num_active_neighbors,
+				&stat_min_beacon_offset,
+				&stat_contention,
+				&stat_congestion,
+				&stat_broadcast_candidate_slots
+		};
+//		const std::string str_statistic_num_packets_received = "mcsotdma_statistic_num_packets_received";
+//		const std::string str_statistic_num_broadcasts_received = "mcsotdma_statistic_num_broadcasts_received";
+//		const std::string str_statistic_num_broadcast_message_decoded = "mcsotdma_statistic_num_broadcast_message_decoded";
+//		const std::string str_statistic_num_unicasts_received = "mcsotdma_statistic_num_unicasts_received";
+//		const std::string str_statistic_num_unicast_message_decoded = "mcsotdma_statistic_num_unicast_message_decoded";
+//		const std::string str_statistic_num_requests_received = "mcsotdma_statistic_num_link_requests_received";
+//		const std::string str_statistic_num_replies_received = "mcsotdma_statistic_num_link_replies_received";
+//		const std::string str_statistic_num_beacons_received = "mcsotdma_statistic_num_beacons_received";
+//		const std::string str_statistic_num_link_infos_received = "mcsotdma_statistic_num_link_infos_received";
+//		const std::string str_statistic_num_packets_sent = "mcsotdma_statistic_num_packets_sent";
+//		const std::string str_statistic_num_requests_sent = "mcsotdma_statistic_num_link_requests_sent";
+//		const std::string str_statistic_num_broadcasts_sent = "mcsotdma_statistic_num_broadcasts_sent";
+//		const std::string str_statistic_num_unicasts_sent = "mcsotdma_statistic_num_unicasts_sent";
+//		const std::string str_statistic_num_replies_sent = "mcsotdma_statistic_num_link_replies_sent";
+//		const std::string str_statistic_num_beacons_sent = "mcsotdma_statistic_num_beacons_sent";
+//		const std::string str_statistic_num_link_infos_sent = "mcsotdma_statistic_num_link_infos_sent";
+//		const std::string str_statistic_num_cancelled_link_requests = "mcsotdma_statistic_num_cancelled_link_requests";
+//		const std::string str_statistic_num_packet_collisions = "mcsotdma_statistic_num_packet_collisions";
+//		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
+//		const std::string str_statistic_num_active_neighbors = "mcsotdma_statistic_num_active_neighbors";
+//		const std::string str_statistic_min_beacon_offset = "mcsotdma_statistic_min_beacon_offset";
+//		const std::string str_statistic_contention = "mcsotdma_statistic_contention";
+//		const std::string str_statistic_congestion = "mcsotdma_statistic_congestion";
+//		const std::string str_statistic_broadcast_candidate_slots = "mcsotdma_statistic_broadcast_candidate_slots";
+//		size_t statistic_num_packets_received = 0;
+//		size_t statistic_num_broadcast_message_decoded = 0;
+//		size_t statistic_num_broadcasts_received = 0;
+//		size_t statistic_num_unicast_message_decoded = 0;
+//		size_t statistic_num_unicasts_received = 0;
+//		size_t statistic_num_requests_received = 0;
+//		size_t statistic_num_replies_received = 0;
+//		size_t statistic_num_beacons_received = 0;
+//		size_t statistic_num_link_infos_received = 0;
+//		size_t statistic_num_packets_sent = 0;
+//		size_t statistic_num_broadcasts_sent = 0;
+//		size_t statistic_num_unicasts_sent = 0;
+//		size_t statistic_num_requests_sent = 0;
+//		size_t statistic_num_replies_sent = 0;
+//		size_t statistic_num_beacons_sent = 0;
+//		size_t statistic_num_link_infos_sent = 0;
+//		size_t statistic_num_packet_collisions = 0;
+//		size_t statistic_num_packet_decoded = 0;
+//		size_t statistic_num_cancelled_link_requests = 0;
+//		size_t statistic_num_active_neighbors = 0;
+//		size_t statistic_min_beacon_offset = 0;
+//		double statistic_contention = 0.0;
+//		double statistic_congestion = 0.0;
+//		size_t statistic_broadcast_candidate_slots = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {

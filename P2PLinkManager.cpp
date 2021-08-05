@@ -348,7 +348,6 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 
 void P2PLinkManager::onSlotEnd() {
 	lock_map.num_slots_since_creation++;
-	mac->emit(str_statistic_num_links_established, statistic_num_links_established);
 
 	if (current_reservation_table != nullptr && communication_during_this_slot && current_reservation_table->isBurstEnd(0, link_id)) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> ";

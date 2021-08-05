@@ -102,9 +102,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->receiveFromLower(packet1, bc_frequency);
 			mac->receiveFromLower(packet2, bc_frequency);
 			mac->onSlotEnd();
-			CPPUNIT_ASSERT_EQUAL(size_t(2), mac->statistic_num_packet_collisions);
-			CPPUNIT_ASSERT_EQUAL(size_t(2), mac->statistic_num_packets_received);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->statistic_num_packet_decoded);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packets_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_decoded.get());
 		}
 
 

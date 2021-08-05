@@ -35,7 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Should've been discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->statistic_num_received_packets);
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->statistic_num_missed_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->statistic_num_packets_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
 
 			// Now destine it to us.
 			auto* header = new L2HeaderBase(communication_partner_id, 0, 0, 0, 0);
@@ -47,7 +47,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), phy->statistic_num_received_packets);
 			// But since we're the destination, it should count towards missed packets.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->statistic_num_missed_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->statistic_num_packets_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
 
 			CPPUNIT_ASSERT_EQUAL(true, phy->rx_frequencies.empty());
 			phy->tuneReceiver(center_freq1);
@@ -56,7 +56,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy->onReception(packet, center_freq1);
 			// Should *not* have been discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->statistic_num_received_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), mac->statistic_num_packets_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_packets_rcvd.get());
 			// And so the number of missed packets doesn't increase.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->statistic_num_missed_packets);
 
@@ -67,7 +67,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Should again be discarded - no receiver is tuned *in this time slot*.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), phy->statistic_num_received_packets);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), phy->statistic_num_missed_packets);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), mac->statistic_num_packets_received);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_packets_rcvd.get());
 
 //            coutd.setVerbose(false);
 		}
