@@ -30,9 +30,9 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		void onSlotEnd() override;
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 		LinkInfo getLinkInfo() override;
-		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 		void processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
-		void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
+		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 		void assign(const FrequencyChannel* channel) override;
 
 	protected:
@@ -198,7 +198,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 */
 			std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
 
-			void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+			void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
 
 			/**
 			 * @param table
@@ -222,10 +222,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 */
 			void scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable *table, bool link_initiator);
 
-			void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
-			void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
-			void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
-			void processIncomingBase(L2HeaderBase*& header) override;
+			void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
+			void processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) override;
+			void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
+			void processBaseMessage(L2HeaderBase*& header) override;
 
 			/**
 			 * @return Whether the timeout has expired.

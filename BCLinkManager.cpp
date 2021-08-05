@@ -85,11 +85,11 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				}
 			}
 			coutd << "added " << num_bits_added << " bits -> ";
-			if (num_bits_added > remaining_bits) {
-				std::stringstream ss;
-				ss << *mac << "::" << *this << "::onTransmissionBurstStart error: " << num_bits_added << " bits were returned by upper sublayer instead of requested " << remaining_bits << "!";
-				throw std::runtime_error(ss.str());
-			}
+//			if (num_bits_added > remaining_bits) {
+//				std::stringstream ss;
+//				ss << *mac << "::" << *this << "::onTransmissionBurstStart error: " << num_bits_added << " bits were returned by upper sublayer instead of requested " << remaining_bits << "!";
+//				throw std::runtime_error(ss.str());
+//			}
 			delete upper_layer_data;
 		}
 		if (packet->getLinkInfoIndex() != -1)
@@ -230,7 +230,7 @@ void BCLinkManager::scheduleBroadcastSlot() {
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
 }
 
-void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+void BCLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
 	coutd << "parsing incoming beacon -> ";
 	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 	if (pair.first) {
@@ -242,33 +242,32 @@ void BCLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon
 		scheduleBroadcastSlot();
 		coutd << "t=" << next_broadcast_slot << " -> ";
 	}
-	mac->statisticReportBeaconReceived();
 }
 
-void BCLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
-	mac->statisticReportBroadcastReceived();
+void BCLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
+	mac->statisticReportBroadcastMessageDecoded();
 }
 
-void BCLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+void BCLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
 	// TODO compare to local ID, discard or forward resp.
-	LinkManager::processIncomingUnicast(header, payload);
+	LinkManager::processUnicastMessage(header, payload);
 }
 
-void BCLinkManager::processIncomingBase(L2HeaderBase*& header) {
+void BCLinkManager::processBaseMessage(L2HeaderBase*& header) {
 }
 
-void BCLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void BCLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
 	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link request to P2PLinkManager -> ";
 		// do NOT report the received request to the MAC, as the P2PLinkManager will do that (otherwise it'll be counted twice)
-		((P2PLinkManager*) mac->getLinkManager(origin))->processIncomingLinkRequest(header, payload, origin);
+		((P2PLinkManager*) mac->getLinkManager(origin))->processLinkRequestMessage(header, payload, origin);
 	} else
 		coutd << "discarding link request that is not destined to us -> ";
 }
 
-void BCLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
-	throw std::invalid_argument("BCLinkManager::processIncomingLinkReply called, but link replies shouldn't be received on the BC.");
+void BCLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	throw std::invalid_argument("BCLinkManager::processLinkReplyMessage called, but link replies shouldn't be received on the BC.");
 }
 
 BCLinkManager::~BCLinkManager() {
@@ -292,14 +291,14 @@ void BCLinkManager::onPacketReception(L2Packet*& packet) {
 	LinkManager::onPacketReception(packet);
 }
 
-void BCLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+void BCLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
 	const LinkInfo &info = payload->getLinkInfo();
 	const MacId &tx_id = info.getTxId(), &rx_id = info.getRxId();
 	if (tx_id == mac->getMacId() || rx_id == mac->getMacId()) {
 		coutd << "involves us; discarding -> ";
 	} else {
 		coutd << "passing on to " << tx_id  << " -> ";
-		((P2PLinkManager*) mac->getLinkManager(tx_id))->processIncomingLinkInfo(header, payload);
+		((P2PLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
 	}
 }
 

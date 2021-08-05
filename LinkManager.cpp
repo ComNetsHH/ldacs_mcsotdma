@@ -4,6 +4,7 @@
 
 #include <set>
 #include <cassert>
+#include <sstream>
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 
@@ -28,10 +29,25 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 	coutd << "a packet from '" << packet->getOrigin() << "' ";
 	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
 		coutd << "to '" << packet->getDestination() << "";
-		if (packet->getDestination() == mac->getMacId())
+		if (packet->getDestination() == mac->getMacId()) {
 			coutd << " (us)' -> ";
-		else
+			mac->statisticReportUnicastReceived();
+		} else {
 			coutd << "' -> ";
+			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST)
+				mac->statisticReportBroadcastReceived();
+			else if (packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+				mac->statisticReportBeaconReceived();
+			else {
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::onPacketReception(unsupported destination): " << packet->getDestination();
+				throw std::invalid_argument(ss.str());
+			}
+		}
+	} else {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::onPacketReception(unsupported destination): " << packet->getDestination();
+		throw std::invalid_argument(ss.str());
 	}
 
 	assert(!packet->getHeaders().empty() && "LinkManager::onPacketReception(empty packet)");
@@ -45,12 +61,12 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::base: {
 				coutd << "processing base header -> ";
 				auto*& base_header = (L2HeaderBase*&) header;
-				processIncomingBase(base_header);
+				processBaseMessage(base_header);
 				break;
 			}
 			case L2Header::beacon: {
 				coutd << "processing beacon -> ";
-				processIncomingBeacon(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
+				processBeaconMessage(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 //				delete header;
 //				header = nullptr;
@@ -60,19 +76,19 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			}
 			case L2Header::broadcast: {
 				coutd << "processing broadcast -> ";
-				processIncomingBroadcast(packet->getOrigin(), (L2HeaderBroadcast*&) header);
+				processBroadcastMessage(packet->getOrigin(), (L2HeaderBroadcast*&) header);
 				contains_data = true;
 				break;
 			}
 			case L2Header::unicast: {
 				coutd << "processing unicast -> ";
-				processIncomingUnicast((L2HeaderUnicast*&) header, payload);
+				processUnicastMessage((L2HeaderUnicast*&) header, payload);
 				contains_data = true;
 				break;
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
-				processIncomingLinkRequest((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
+				processLinkRequestMessage((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
 //				delete header;
 //				header = nullptr;
 //				delete payload;
@@ -81,7 +97,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				processIncomingLinkReply((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);
+				processLinkReplyMessage((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);
 				// Delete and set to nullptr s.t. upper layers can easily ignore them.
 //				delete header;
 //				header = nullptr;
@@ -91,7 +107,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			}
 			case L2Header::link_info: {
 				coutd << "processing link info -> ";
-				processIncomingLinkInfo((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);
+				processLinkInfoMessage((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);
 				break;
 			}
 			default: {
@@ -110,38 +126,38 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 	}
 }
 
-void LinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	coutd << *this << "::processIncomingBeacon" << std::endl;
+void LinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+	coutd << *this << "::processBeaconMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
-	coutd << *this << "::processIncomingBroadcast" << std::endl;
+void LinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
+	coutd << *this << "::processBroadcastMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
-	coutd << *this << "::processIncomingUnicast" << std::endl;
+void LinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+	coutd << *this << "::processUnicastMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processIncomingBase(L2HeaderBase*& header) {
-	coutd << *this << "::processIncomingBase" << std::endl;
+void LinkManager::processBaseMessage(L2HeaderBase*& header) {
+	coutd << *this << "::processBaseMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
-	coutd << *this << "::processIncomingLinkRequest" << std::endl;
+void LinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	coutd << *this << "::processLinkRequestMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
-	coutd << *this << "::processIncomingLinkReply" << std::endl;
+void LinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	coutd << *this << "::processLinkReplyMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
-	coutd << *this << "::processIncomingLinkInfo" << std::endl;
+void LinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+	coutd << *this << "::processLinkInfoMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 

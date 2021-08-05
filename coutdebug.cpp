@@ -24,7 +24,7 @@ void coutdebug::flush() {
 
 coutdebug coutd = coutdebug(true);
 
-#if 0
+#if 1 // 0
 std::ostream &dout = std::cout;
 #else
 std::ofstream dev_null("/dev/null");

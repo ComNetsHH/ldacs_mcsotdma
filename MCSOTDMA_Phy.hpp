@@ -37,8 +37,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<ReservationTable*> receiver_reservation_tables;
 		/** Collects the number of packets intended for this user that were missed because no receiver was tuned to the channel. */
 		size_t statistic_num_received_packets = 0, statistic_num_missed_packets = 0;
-		const std::string str_statistic_num_received_packets = "MCSOTDMA:Phy:statistic_num_received_packets",
-			str_statistic_num_missed_packets = "MCSOTDMA:Phy:statistic_num_missed_packets";
+		const std::string str_statistic_num_received_packets = "phy_statistic_num_packets_received",
+			str_statistic_num_missed_packets = "phy_statistic_num_packets_missed";
 	};
 }
 

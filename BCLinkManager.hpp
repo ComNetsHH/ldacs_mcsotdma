@@ -74,19 +74,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	protected:
 
-		void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
+		void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 
-		void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) override;
+		void processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) override;
 
-		void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
+		void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
 
-		void processIncomingBase(L2HeaderBase*& header) override;
+		void processBaseMessage(L2HeaderBase*& header) override;
 
-		void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 
-		void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
 
-		void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
+		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */

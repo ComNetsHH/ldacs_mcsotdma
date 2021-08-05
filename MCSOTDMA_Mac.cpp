@@ -265,7 +265,9 @@ void MCSOTDMA_Mac::onSlotEnd() {
 
 	// Statistics reporting.
 	emit(str_statistic_num_packets_received, statistic_num_packets_received);
+	emit(str_statistic_num_broadcast_message_decoded, statistic_num_broadcast_message_decoded);
 	emit(str_statistic_num_broadcasts_received, statistic_num_broadcasts_received);
+	emit(str_statistic_num_unicast_message_decoded, statistic_num_unicast_message_decoded);
 	emit(str_statistic_num_unicasts_received, statistic_num_unicasts_received);
 	emit(str_statistic_num_packet_collisions, statistic_num_packet_collisions);
 	emit(str_statistic_num_packet_decoded, statistic_num_packet_decoded);

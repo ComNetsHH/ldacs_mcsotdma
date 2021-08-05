@@ -66,8 +66,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setBroadcastTargetCollisionProb(double value) override;
 
+		void statisticReportBroadcastMessageDecoded() {
+			statistic_num_broadcast_message_decoded++;
+			coutd << "DECODED BROADCAST MESSAGE: " << statistic_num_broadcast_message_decoded << " so far";
+		}
 		void statisticReportBroadcastReceived() {
 			statistic_num_broadcasts_received++;
+		}
+		void statisticReportUnicastMessageDecoded() {
+			statistic_num_unicast_message_decoded++;
 		}
 		void statisticReportUnicastReceived() {
 			statistic_num_unicasts_received++;
@@ -143,7 +150,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// Statistics
 		const std::string str_statistic_num_packets_received = "mcsotdma_statistic_num_packets_received";
 		const std::string str_statistic_num_broadcasts_received = "mcsotdma_statistic_num_broadcasts_received";
+		const std::string str_statistic_num_broadcast_message_decoded = "mcsotdma_statistic_num_broadcast_message_decoded";
 		const std::string str_statistic_num_unicasts_received = "mcsotdma_statistic_num_unicasts_received";
+		const std::string str_statistic_num_unicast_message_decoded = "mcsotdma_statistic_num_unicast_message_decoded";
 		const std::string str_statistic_num_requests_received = "mcsotdma_statistic_num_link_requests_received";
 		const std::string str_statistic_num_replies_received = "mcsotdma_statistic_num_link_replies_received";
 		const std::string str_statistic_num_beacons_received = "mcsotdma_statistic_num_beacons_received";
@@ -164,7 +173,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const std::string str_statistic_congestion = "mcsotdma_statistic_congestion";
 		const std::string str_statistic_broadcast_candidate_slots = "mcsotdma_statistic_broadcast_candidate_slots";
 		size_t statistic_num_packets_received = 0;
+		size_t statistic_num_broadcast_message_decoded = 0;
 		size_t statistic_num_broadcasts_received = 0;
+		size_t statistic_num_unicast_message_decoded = 0;
 		size_t statistic_num_unicasts_received = 0;
 		size_t statistic_num_requests_received = 0;
 		size_t statistic_num_replies_received = 0;

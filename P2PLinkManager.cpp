@@ -449,8 +449,8 @@ bool P2PLinkManager::isProposalViable(const ReservationTable* table, unsigned in
 	return viable;
 }
 
-void P2PLinkManager::processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
-	coutd << *mac << "::" << *this << "::processIncomingLinkRequest -> ";
+void P2PLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
 	mac->statisticReportLinkRequestReceived();
 	// If currently the link is unestablished, then this request must be an initial request.
 	if (link_status == link_not_established) {
@@ -508,7 +508,7 @@ void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header,
 			scheduleBurst(burst_offset + current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx, origin, current_reservation_table, current_link_state->is_link_initiator);
 		} catch (const std::invalid_argument& e) {
 			std::stringstream ss;
-			ss << *mac << "::" << *this << "::processIncomingLinkRequest conflict at t=" << burst_offset + current_link_state->next_burst_start << ": " << e.what() << "!";
+			ss << *mac << "::" << *this << "::processLinkRequestMessage conflict at t=" << burst_offset + current_link_state->next_burst_start << ": " << e.what() << "!";
 			throw std::runtime_error(ss.str());
 		}
 		// and update status.
@@ -568,16 +568,16 @@ P2PLinkManager::LinkState* P2PLinkManager::selectResourceFromRequest(const L2Hea
 	}
 }
 
-void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload_ptr) {
-	coutd << *this << "::processIncomingLinkReply -> ";
+void P2PLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& message_payload) {
+	coutd << *this << "::processLinkReplyMessage -> ";
 	mac->statisticReportLinkReplyReceived();
 	if (link_status != awaiting_reply) {
 		coutd << "not awaiting reply; discarding -> ";
 		return;
 	}
-	assert(current_link_state != nullptr && "P2PLinkManager::processIncomingLinkReply for unset current state.");
+	assert(current_link_state != nullptr && "P2PLinkManager::processLinkReplyMessage for unset current state.");
 
-	const auto*& payload = (const LinkManager::LinkRequestPayload*&) payload_ptr;
+	const auto*& payload = (const LinkManager::LinkRequestPayload*&) message_payload;
 
 	current_link_state->is_link_initiator = true;
 	// Reset timeout.
@@ -606,7 +606,7 @@ void P2PLinkManager::processIncomingLinkReply(const L2HeaderLinkEstablishmentRep
 			scheduleBurst(burst * burst_offset + slot_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
 		} catch (const std::invalid_argument& e) {
 			std::stringstream ss;
-			ss << *mac << "::" << *this << "::processIncomingLinkReply conflict at t=" << burst*burst_offset + slot_offset << ": " << e.what() << "!";
+			ss << *mac << "::" << *this << "::processLinkReplyMessage conflict at t=" << burst*burst_offset + slot_offset << ": " << e.what() << "!";
 			throw std::runtime_error(ss.str());
 		}
 	// Clear RX reservations made to receive this reply.
@@ -683,21 +683,21 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 	coutd << "-> ";
 }
 
-void P2PLinkManager::processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	throw std::invalid_argument("P2PLinkManager::processIncomingBeacon called but beacons should not be received on P2P channels.");
+void P2PLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+	throw std::invalid_argument("P2PLinkManager::processBeaconMessage called but beacons should not be received on P2P channels.");
 }
 
-void P2PLinkManager::processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header) {
-	throw std::invalid_argument("P2PLinkManager::processIncomingBroadcast called but broadcasts should not be received on P2P channels.");
+void P2PLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
+	throw std::invalid_argument("P2PLinkManager::processBroadcastMessage called but broadcasts should not be received on P2P channels.");
 }
 
-void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
 	MacId dest_id = header->dest_id;
 	if (dest_id != mac->getMacId()) {
 		coutd << "discarding unicast message not intended for us -> ";
 		return;
 	} else {
-		mac->statisticReportUnicastReceived();
+		mac->statisticReportUnicastMessageDecoded();
 		if (link_status == awaiting_data_tx) {
 			// Link is now established.
 			link_status = link_established;
@@ -719,14 +719,14 @@ void P2PLinkManager::processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::
 					scheduleBurst(burst * burst_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
 				} catch (const std::invalid_argument& e) {
 					std::stringstream ss;
-					ss << *mac << "::" << *this << "::processIncomingUnicast conflict at t=" << burst*burst_offset << ": " << e.what() << "!";
+					ss << *mac << "::" << *this << "::processUnicastMessage conflict at t=" << burst*burst_offset << ": " << e.what() << "!";
 					throw std::runtime_error(ss.str());
 				}
 		}
 	}
 }
 
-void P2PLinkManager::processIncomingBase(L2HeaderBase*& header) {
+void P2PLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	// The communication partner informs about its *current wish* for their own burst length.
 	reported_desired_tx_slots = header->burst_length_tx;
 }
@@ -834,7 +834,7 @@ LinkInfo P2PLinkManager::getLinkInfo() {
 	return info;
 }
 
-void P2PLinkManager::processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+void P2PLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
 	mac->statisticReportLinkInfoReceived();
 	const LinkInfo &info = payload->getLinkInfo();
 	coutd << info << " -> ";

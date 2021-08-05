@@ -150,15 +150,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rx_tables.push_back(rx_table);
 		}
 
-		virtual void processIncomingLinkRequest(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
-		virtual void processIncomingLinkInfo(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);
+		virtual void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);
 
 	protected:
-		virtual void processIncomingBeacon(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
-		virtual void processIncomingBroadcast(const MacId& origin, L2HeaderBroadcast*& header);
-		virtual void processIncomingUnicast(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
-		virtual void processIncomingBase(L2HeaderBase*& header);
-		virtual void processIncomingLinkReply(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
+		virtual void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
+		virtual void processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header);
+		virtual void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
+		virtual void processBaseMessage(L2HeaderBase*& header);
+		virtual void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
 
 	protected:
 		MacId link_id;

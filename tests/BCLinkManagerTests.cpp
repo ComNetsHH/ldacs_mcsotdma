@@ -301,7 +301,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			ReservationManager *manager = env_you.mac_layer->reservation_manager;
 			auto beacon_msg = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon(manager->getP2PReservationTables(), manager->getBroadcastReservationTable());
-			link_manager->processIncomingBeacon(partner_id, beacon_msg.first, beacon_msg.second);
+			link_manager->processBeaconMessage(partner_id, beacon_msg.first, beacon_msg.second);
 
 			for (auto t : slots_1)
 				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_1_me->getReservation(t));
@@ -325,7 +325,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			bc_lm->next_beacon_scheduled = true;
 			CPPUNIT_ASSERT(bc_lm->beacon_module.next_beacon_in == t);
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(t));
-			bc_lm->processIncomingBeacon(partner_id, pair.first, pair.second);
+			bc_lm->processBeaconMessage(partner_id, pair.first, pair.second);
 			CPPUNIT_ASSERT(bc_lm->beacon_module.next_beacon_in > t);
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(bc_lm->beacon_module.next_beacon_in));
@@ -346,7 +346,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you);
 
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(t));
-			bc_lm->processIncomingBeacon(partner_id, pair.first, pair.second);
+			bc_lm->processBeaconMessage(partner_id, pair.first, pair.second);
 			CPPUNIT_ASSERT(bc_lm->next_broadcast_slot != t);
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(bc_lm->next_broadcast_slot));
