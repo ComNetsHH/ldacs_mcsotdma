@@ -279,3 +279,7 @@ std::vector<std::pair<Reservation, const FrequencyChannel*>> MCSOTDMA_Mac::getRe
 void MCSOTDMA_Mac::setBroadcastTargetCollisionProb(double value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setTargetCollisionProb(value);
 }
+
+void MCSOTDMA_Mac::setBcSlotSelectionMinNumCandidateSlots(int value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinNumCandidateSlots(value);
+}

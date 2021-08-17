@@ -67,6 +67,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setBroadcastTargetCollisionProb(double value) override;
 
+		void setBcSlotSelectionMinNumCandidateSlots(int value) override;
+
 		void statisticReportBroadcastMessageDecoded() {
 			stat_num_broadcast_msgs_decoded.increment();
 		}
@@ -198,54 +200,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_congestion,
 				&stat_broadcast_candidate_slots
 		};
-//		const std::string str_statistic_num_packets_received = "mcsotdma_statistic_num_packets_received";
-//		const std::string str_statistic_num_broadcasts_received = "mcsotdma_statistic_num_broadcasts_received";
-//		const std::string str_statistic_num_broadcast_message_decoded = "mcsotdma_statistic_num_broadcast_message_decoded";
-//		const std::string str_statistic_num_unicasts_received = "mcsotdma_statistic_num_unicasts_received";
-//		const std::string str_statistic_num_unicast_message_decoded = "mcsotdma_statistic_num_unicast_message_decoded";
-//		const std::string str_statistic_num_requests_received = "mcsotdma_statistic_num_link_requests_received";
-//		const std::string str_statistic_num_replies_received = "mcsotdma_statistic_num_link_replies_received";
-//		const std::string str_statistic_num_beacons_received = "mcsotdma_statistic_num_beacons_received";
-//		const std::string str_statistic_num_link_infos_received = "mcsotdma_statistic_num_link_infos_received";
-//		const std::string str_statistic_num_packets_sent = "mcsotdma_statistic_num_packets_sent";
-//		const std::string str_statistic_num_requests_sent = "mcsotdma_statistic_num_link_requests_sent";
-//		const std::string str_statistic_num_broadcasts_sent = "mcsotdma_statistic_num_broadcasts_sent";
-//		const std::string str_statistic_num_unicasts_sent = "mcsotdma_statistic_num_unicasts_sent";
-//		const std::string str_statistic_num_replies_sent = "mcsotdma_statistic_num_link_replies_sent";
-//		const std::string str_statistic_num_beacons_sent = "mcsotdma_statistic_num_beacons_sent";
-//		const std::string str_statistic_num_link_infos_sent = "mcsotdma_statistic_num_link_infos_sent";
-//		const std::string str_statistic_num_cancelled_link_requests = "mcsotdma_statistic_num_cancelled_link_requests";
-//		const std::string str_statistic_num_packet_collisions = "mcsotdma_statistic_num_packet_collisions";
-//		const std::string str_statistic_num_packet_decoded = "mcsotdma_statistic_num_packet_decoded";
-//		const std::string str_statistic_num_active_neighbors = "mcsotdma_statistic_num_active_neighbors";
-//		const std::string str_statistic_min_beacon_offset = "mcsotdma_statistic_min_beacon_offset";
-//		const std::string str_statistic_contention = "mcsotdma_statistic_contention";
-//		const std::string str_statistic_congestion = "mcsotdma_statistic_congestion";
-//		const std::string str_statistic_broadcast_candidate_slots = "mcsotdma_statistic_broadcast_candidate_slots";
-//		size_t statistic_num_packets_received = 0;
-//		size_t statistic_num_broadcast_message_decoded = 0;
-//		size_t statistic_num_broadcasts_received = 0;
-//		size_t statistic_num_unicast_message_decoded = 0;
-//		size_t statistic_num_unicasts_received = 0;
-//		size_t statistic_num_requests_received = 0;
-//		size_t statistic_num_replies_received = 0;
-//		size_t statistic_num_beacons_received = 0;
-//		size_t statistic_num_link_infos_received = 0;
-//		size_t statistic_num_packets_sent = 0;
-//		size_t statistic_num_broadcasts_sent = 0;
-//		size_t statistic_num_unicasts_sent = 0;
-//		size_t statistic_num_requests_sent = 0;
-//		size_t statistic_num_replies_sent = 0;
-//		size_t statistic_num_beacons_sent = 0;
-//		size_t statistic_num_link_infos_sent = 0;
-//		size_t statistic_num_packet_collisions = 0;
-//		size_t statistic_num_packet_decoded = 0;
-//		size_t statistic_num_cancelled_link_requests = 0;
-//		size_t statistic_num_active_neighbors = 0;
-//		size_t statistic_min_beacon_offset = 0;
-//		double statistic_contention = 0.0;
-//		double statistic_congestion = 0.0;
-//		size_t statistic_broadcast_candidate_slots = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const MCSOTDMA_Mac& mac) {

@@ -323,3 +323,7 @@ void BCLinkManager::scheduleBeacon() {
 		next_beacon_scheduled = true;
 	}
 }
+
+void BCLinkManager::setMinNumCandidateSlots(int value) {
+	MIN_CANDIDATES = value;
+}
