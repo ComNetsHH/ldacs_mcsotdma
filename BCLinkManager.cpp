@@ -251,6 +251,28 @@ void BCLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Pa
 }
 
 void BCLinkManager::processBaseMessage(L2HeaderBase*& header) {
+	// Check indicated next broadcast slot.
+	int next_broadcast = (int) header->burst_offset;
+	if (next_broadcast > 0) { // If it has been set ...
+		// ... check local reservation
+		const Reservation& res = current_reservation_table->getReservation(next_broadcast);
+		if (res.isIdle()) {
+			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::BUSY));
+			coutd << "marked next broadcast in " << next_broadcast << " slots as BUSY -> ";
+		} else if (res.isTx() || res.isTxCont()) {
+			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
+			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::BUSY));
+			coutd << "marked next broadcast in " << next_broadcast << " slots as BUSY -> ";
+			scheduleBroadcastSlot();
+			coutd << "re-scheduled own broadcast in " << next_broadcast_slot << " slots -> ";
+		} else if (res.isBeaconTx()) {
+			coutd << "detected collision with own beacon in " << next_broadcast << " slots -> ";
+			scheduleBeacon();
+			coutd << "re-scheduled own beacon in " << beacon_module.getNextBeaconOffset() << " slots -> ";
+		} else {
+			coutd << "indicated next broadcast in " << next_broadcast << " slots is locally reserved for " << res << " (not doing anything) -> ";
+		}
+	}
 }
 
 void BCLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
