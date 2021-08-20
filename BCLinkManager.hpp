@@ -54,6 +54,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setTargetCollisionProb(double value);
 		void setMinNumCandidateSlots(int value);
+		/**
+		 * If 'true': estimate the number of contending channel accesses from a Binomial distribution over 0..all recently active neighbors.
+		 * If 'false': assume that all recently active neighbors (within the contention window) will be active again.
+		 * @param value
+		 */
+		void setUseBinomialContentionEstimation(bool value);
 
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob) const;
@@ -101,6 +107,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Whether the next broadcast slot has been scheduled. */
 		bool next_broadcast_scheduled = false;
 		bool next_beacon_scheduled = false;
+		bool use_binomial_contention_estimation = false;
 		unsigned int next_broadcast_slot = 0;
 		BeaconModule beacon_module;
 		/** Minimum number of slots to consider during slot selection. */

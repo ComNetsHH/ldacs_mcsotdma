@@ -69,6 +69,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setBcSlotSelectionMinNumCandidateSlots(int value) override;
 
+		void setUseBinomialContentionEstimation(bool value) override;
+
 		void statisticReportBroadcastMessageDecoded() {
 			stat_num_broadcast_msgs_decoded.increment();
 		}

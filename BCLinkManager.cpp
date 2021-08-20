@@ -187,16 +187,24 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	double r = contention_estimator.getAverageNonBeaconBroadcastRate();
 	// Number of active neighbors.
 	unsigned int m = contention_estimator.getNumActiveNeighbors();
-	double num_candidates = 0;
-	// For every number n of channel accesses from 0 to all neighbors...
-	for (auto n = 0; n <= m; n++) {
-		// Probability P(X=n) of n accesses.
-		double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
-		// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
-		unsigned int k = n == 0 ? 1 : std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
-		num_candidates += p * k;
+	unsigned int k;
+	// Estimate number of channel accesses from Binomial distribution.
+	if (use_binomial_contention_estimation) {
+		double num_candidates = 0;
+		// For every number n of channel accesses from 0 to all neighbors...
+		for (auto n = 0; n <= m; n++) {
+			// Probability P(X=n) of n accesses.
+			double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
+			// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
+			unsigned int local_k = n == 0 ? 1 : std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			num_candidates += p * local_k;
+		}
+		k = (unsigned int) std::ceil(num_candidates);
+	// Assume that every neighbor that has been active within the contention window will again be active.
+	} else {
+		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
 	}
-	unsigned int final_candidates = std::max(MIN_CANDIDATES, (unsigned int) std::ceil(num_candidates));
+	unsigned int final_candidates = std::max(MIN_CANDIDATES, k);
 	coutd << "avg_broadcast_rate=" << r << " num_active_neighbors=" << m << " -> num_candidates=" << final_candidates << " -> ";
 	return final_candidates;
 }
@@ -348,4 +356,8 @@ void BCLinkManager::scheduleBeacon() {
 
 void BCLinkManager::setMinNumCandidateSlots(int value) {
 	MIN_CANDIDATES = value;
+}
+
+void BCLinkManager::setUseBinomialContentionEstimation(bool value) {
+	this->use_binomial_contention_estimation = value;
 }
