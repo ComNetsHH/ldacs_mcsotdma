@@ -160,6 +160,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	const MacId& dest_id = packet->getDestination();
 	coutd << *this << "::onPacketReception(from=" << origin_id << ", to=" << dest_id << ", f=" << center_frequency << "kHz)... ";
 	if (origin_id == id) {
+		this->deletePacket(packet);
 		delete packet;
 		return;
 	}
@@ -173,6 +174,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	// ... or discard.
 	} else {
 		coutd << "packet not intended for us; discarding." << std::endl;
+		this->deletePacket(packet);
 		delete packet;
 	}
 }
@@ -241,18 +243,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			stat_num_packet_collisions.incrementBy(packets.size());
 
             for (auto *packet : packets) {
-//                auto payloads = packet->getPayloads();
-//                auto headers = packet->getHeaders();
-//                for (int i = 0; i< headers.size(); i++) {
-//                    if(payloads[i]) {
-//                        if(headers[i]->frame_type == L2Header::FrameType::broadcast || headers[i]->frame_type == L2Header::FrameType::unicast) {
-//                            if(((InetPacketPayload*)payloads[i])->original != nullptr) {
-//                                //delete ((InetPacketPayload*)payloads[i])->original;
-//                                //((InetPacketPayload*)payloads[i])->original = nullptr;
-//                            }
-//                        }
-//                    }
-//                }
+                this->deletePacket(packet);
                 delete packet;
             }
 
