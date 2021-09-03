@@ -287,3 +287,7 @@ void MCSOTDMA_Mac::setBcSlotSelectionMinNumCandidateSlots(int value) {
 void MCSOTDMA_Mac::setUseBinomialContentionEstimation(bool value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setUseBinomialContentionEstimation(value);
 }
+
+void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
+}

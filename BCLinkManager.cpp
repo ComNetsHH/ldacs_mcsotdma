@@ -10,7 +10,7 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
-	: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac),
+: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100),
 		contention_estimator(),
 		congestion_estimator(BeaconModule::INITIAL_BEACON_OFFSET),
 		beacon_module() {
@@ -94,16 +94,25 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		}
 		if (packet->getLinkInfoIndex() != -1)
 			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
-		// Schedule next broadcast if there's more data to send.
-		if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
+
+		if (!always_schedule_next_slot) {
+			// Schedule next broadcast if there's more data to send.
+			if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
+				coutd << "scheduling next slot in ";
+				scheduleBroadcastSlot();
+				coutd << next_broadcast_slot << " slots -> ";
+				// Put it into the header.
+				base_header->burst_offset = next_broadcast_slot;
+			} else {
+				next_broadcast_scheduled = false;
+				coutd << "no more broadcast data, not scheduling a next slot -> ";
+			}
+		} else {
+			// Schedule next broadcast.
 			coutd << "scheduling next slot in ";
 			scheduleBroadcastSlot();
 			coutd << next_broadcast_slot << " slots -> ";
-			// Put it into the header.
 			base_header->burst_offset = next_broadcast_slot;
-		} else {
-			next_broadcast_scheduled = false;
-			coutd << "no more broadcast data, not scheduling a next slot -> ";
 		}
 	}
 
@@ -117,6 +126,7 @@ void BCLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
 
 void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << *this << "::notifyOutgoing(" << num_bits << ") -> ";
+	packet_generated_this_slot = true;
 	if (!next_broadcast_scheduled) {
 		coutd << "scheduling next broadcast -> ";
 		scheduleBroadcastSlot();
@@ -141,6 +151,13 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void BCLinkManager::onSlotEnd() {
+	if (packet_generated_this_slot) {
+		packet_generated_this_slot = false;
+		avg_num_slots_inbetween_packet_generations.put(num_slots_since_last_packet_generation);
+		num_slots_since_last_packet_generation = 0;
+	} else
+		num_slots_since_last_packet_generation++;
+
 	if (next_broadcast_scheduled) {
 		if (next_broadcast_slot == 0)
 			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
@@ -215,13 +232,13 @@ unsigned long long BCLinkManager::nchoosek(unsigned long n, unsigned long k) con
 	return (n * nchoosek(n - 1, k - 1)) / k;
 }
 
-unsigned int BCLinkManager::broadcastSlotSelection() {
+unsigned int BCLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	coutd << *this << "::broadcastSlotSelection -> ";
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
 	mac->statisticReportBroadcastCandidateSlots((size_t) num_candidates);
-	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, 1, 1, 1, 1, 0, false);
+	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, min_offset, 1, 1, 1, 0, false);
 	if (candidate_slots.empty())
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
 	return candidate_slots.at(getRandomInt(0, candidate_slots.size()));
@@ -230,7 +247,8 @@ unsigned int BCLinkManager::broadcastSlotSelection() {
 void BCLinkManager::scheduleBroadcastSlot() {
 	if (next_broadcast_slot > 0 && current_reservation_table->getReservation(next_broadcast_slot).isTx())
 		current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-	next_broadcast_slot = broadcastSlotSelection();
+	unsigned int min_offset = 1; //std::max(uint(1), (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get()));
+	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
 }
@@ -360,4 +378,8 @@ void BCLinkManager::setMinNumCandidateSlots(int value) {
 
 void BCLinkManager::setUseBinomialContentionEstimation(bool value) {
 	this->use_binomial_contention_estimation = value;
+}
+
+void BCLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {
+	this->always_schedule_next_slot = value;
 }

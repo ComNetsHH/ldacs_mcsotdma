@@ -71,6 +71,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setUseBinomialContentionEstimation(bool value) override;
 
+		void setAlwaysScheduleNextBroadcastSlot(bool value) override;
+
 		void statisticReportBroadcastMessageDecoded() {
 			stat_num_broadcast_msgs_decoded.increment();
 		}

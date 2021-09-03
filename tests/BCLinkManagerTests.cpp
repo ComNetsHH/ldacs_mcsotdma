@@ -34,7 +34,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testBroadcastSlotSelection() {
 			// No active neighbors -> just take next slot.
-			unsigned int chosen_slot = link_manager->broadcastSlotSelection();
+			unsigned int chosen_slot = link_manager->broadcastSlotSelection(1);
 			CPPUNIT_ASSERT(chosen_slot >= uint32_t(1) && chosen_slot <= link_manager->MIN_CANDIDATES);
 		}
 
@@ -47,7 +47,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->notifyOutgoing(512);
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
 			size_t num_slots = 0, max_num_slots = 100;
-			while (link_manager->next_broadcast_scheduled && num_slots++ < max_num_slots) {
+			while (mac->stat_num_broadcasts_sent.get() < 1 && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac->execute();
 				mac->onSlotEnd();
@@ -61,7 +61,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			mac->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_num_slots = 100;
-			while (link_manager->next_broadcast_scheduled && num_slots++ < max_num_slots) {
+			while (mac->stat_num_broadcasts_sent.get() < 1 && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac->execute();
 				mac->onSlotEnd();

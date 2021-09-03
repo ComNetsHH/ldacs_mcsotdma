@@ -61,6 +61,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void setUseBinomialContentionEstimation(bool value);
 
+		/**
+		 * If 'true': always schedule the next broadcast slot and advertise it in the header.
+		 * If 'false: only schedule the next broadcast slot if there's more data queued up.
+		 * @param value
+		 */
+		void setAlwaysScheduleNextBroadcastSlot(bool value);
+
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob) const;
 
@@ -68,9 +75,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/**
 		 * Applies Broadcast slot selection.
+		 * @param min_offset: Minimum number of slots before the next reservation.
 		 * @return Slot offset of the chosen slot.
 		 */
-		unsigned int broadcastSlotSelection();
+		unsigned int broadcastSlotSelection(unsigned int min_offset);
 
 		void scheduleBroadcastSlot();
 
@@ -107,11 +115,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Whether the next broadcast slot has been scheduled. */
 		bool next_broadcast_scheduled = false;
 		bool next_beacon_scheduled = false;
+		/** If true, apply binomial contention estimation. If false, assume all recently-active neighbors will be active again. */
 		bool use_binomial_contention_estimation = false;
+		/** If true, always schedule the next broadcast slot and advertise it in the header. If false, only do so if there's more data to send. */
+		bool always_schedule_next_slot = false;
 		unsigned int next_broadcast_slot = 0;
 		BeaconModule beacon_module;
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
+		MovingAverage avg_num_slots_inbetween_packet_generations;
+		unsigned int num_slots_since_last_packet_generation = 0;
+		bool packet_generated_this_slot = false;
 	};
 }
 
