@@ -54,8 +54,8 @@ std::vector<ReservationTable*>& MCSOTDMA_Phy::getReceiverReservationTables() {
 void MCSOTDMA_Phy::onReception(L2Packet* packet, uint64_t center_frequency) {
 	// Make sure a receiver is tuned to this channel at the moment.
 	if (std::any_of(rx_frequencies.begin(), rx_frequencies.end(), [center_frequency](uint64_t rx_freq) {
-		return center_frequency == rx_freq;
-	})) {
+			return center_frequency == rx_freq;
+		})) {
 		coutd << "PHY receives packet -> ";
 		stat_num_packets_rcvd.increment();
 		IPhy::onReception(packet, center_frequency);
