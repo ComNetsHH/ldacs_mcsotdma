@@ -7,6 +7,7 @@
 
 #include <IPhy.hpp>
 #include <IOmnetPluggable.hpp>
+#include <Statistic.hpp>
 #include "ReservationTable.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -35,10 +36,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Is notified by MAC ReservationTables of their reservations. */
 		ReservationTable* transmitter_reservation_table = nullptr;
 		std::vector<ReservationTable*> receiver_reservation_tables;
+		Statistic stat_num_packets_rcvd = Statistic("phy_statistic_num_packets_received", this);
 		/** Collects the number of packets intended for this user that were missed because no receiver was tuned to the channel. */
-		size_t statistic_num_received_packets = 0, statistic_num_missed_packets = 0;
-		const std::string str_statistic_num_received_packets = "phy_statistic_num_packets_received",
-			str_statistic_num_missed_packets = "phy_statistic_num_packets_missed";
+		Statistic stat_num_packets_missed = Statistic("phy_statistic_num_packets_missed", this);
+		std::vector<Statistic*> statistics = {
+				&stat_num_packets_rcvd,
+				&stat_num_packets_missed
+		};
 	};
 }
 

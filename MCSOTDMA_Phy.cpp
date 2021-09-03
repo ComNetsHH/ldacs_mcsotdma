@@ -38,6 +38,9 @@ void MCSOTDMA_Phy::update(uint64_t num_slots) {
 	transmitter_reservation_table->update(num_slots);
 	for (auto* rx_table : receiver_reservation_tables)
 		rx_table->update(num_slots);
+	// Statistics reporting.
+	for (auto* stat : statistics)
+		stat->update();
 }
 
 ReservationTable* MCSOTDMA_Phy::getTransmitterReservationTable() {
@@ -54,15 +57,12 @@ void MCSOTDMA_Phy::onReception(L2Packet* packet, uint64_t center_frequency) {
 		return center_frequency == rx_freq;
 	})) {
 		coutd << "PHY receives packet -> ";
-		statistic_num_received_packets++;
-		emit(str_statistic_num_received_packets, statistic_num_received_packets);
-
+		stat_num_packets_rcvd.increment();
 		IPhy::onReception(packet, center_frequency);
 	} else {
 		coutd << "PHY doesn't receive packet (no RX tuned to frequency '" << center_frequency << "kHz').";
 		if (packet->getDestination() == SYMBOLIC_LINK_ID_BEACON || packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == ((MCSOTDMA_Mac*) upper_layer)->getMacId()) {
-			statistic_num_missed_packets++;
-			emit(str_statistic_num_missed_packets, statistic_num_missed_packets);
+			stat_num_packets_missed.increment();
 			coutd << " (this was destined to us, so I'm counting it as a missed packet).";
 			auto payloads = packet->getPayloads();
             auto headers = packet->getHeaders();
