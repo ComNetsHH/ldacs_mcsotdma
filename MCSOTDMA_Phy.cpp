@@ -64,18 +64,8 @@ void MCSOTDMA_Phy::onReception(L2Packet* packet, uint64_t center_frequency) {
 		if (packet->getDestination() == SYMBOLIC_LINK_ID_BEACON || packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == ((MCSOTDMA_Mac*) upper_layer)->getMacId()) {
 			stat_num_packets_missed.increment();
 			coutd << " (this was destined to us, so I'm counting it as a missed packet).";
-			auto payloads = packet->getPayloads();
-            auto headers = packet->getHeaders();
-            for (int i = 0; i< headers.size(); i++) {
-                if(payloads[i]) {
-                    if(headers[i]->frame_type == L2Header::FrameType::broadcast || headers[i]->frame_type == L2Header::FrameType::unicast) {
-                        if(((InetPacketPayload*)payloads[i])->original != nullptr) {
-                            //delete ((InetPacketPayload*)payloads[i])->original;
-                            //((InetPacketPayload*)payloads[i])->original = nullptr;
-                        }
-                    }
-                }
-            }
+			this->deletePacket(packet);
+			delete packet;
         }
 		coutd << std::endl;
 	}
