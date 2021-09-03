@@ -247,7 +247,11 @@ unsigned int BCLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 void BCLinkManager::scheduleBroadcastSlot() {
 	if (next_broadcast_slot > 0 && current_reservation_table->getReservation(next_broadcast_slot).isTx())
 		current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-	unsigned int min_offset = 1; //std::max(uint(1), (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get()));
+	// By default, even the next slot could be chosen.
+	unsigned int min_offset = 1;
+	// Unless there's currently no data to send; then, schedule one when on average the next data packet should've been generated.
+	if (!mac->isThereMoreData(link_id))
+		min_offset = std::max(uint(1), (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get()));
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
