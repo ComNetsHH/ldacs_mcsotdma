@@ -69,7 +69,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setBcSlotSelectionMinNumCandidateSlots(int value) override;
 
-		void setUseBinomialContentionEstimation(bool value) override;
+		void setContentionMethod(ContentionMethod method) override;
 
 		void setAlwaysScheduleNextBroadcastSlot(bool value) override;
 

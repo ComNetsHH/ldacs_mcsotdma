@@ -819,7 +819,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkRenewal);
 			CPPUNIT_TEST(testCommunicateInOtherDirection);
 			CPPUNIT_TEST(testCommunicateReverseOrder);
-			CPPUNIT_TEST(testPacketSize);
+//			CPPUNIT_TEST(testPacketSize);
 			CPPUNIT_TEST(testReportedTxSlotDesire);
 			CPPUNIT_TEST(testLinkInfoBroadcast);
 			CPPUNIT_TEST(testReestablishmentAfterDrop);

@@ -5,6 +5,7 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_BCLINKMANAGER_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_BCLINKMANAGER_HPP
 
+#include <ContentionMethod.hpp>
 #include "LinkManager.hpp"
 #include "ContentionEstimator.hpp"
 #include "CongestionEstimator.hpp"
@@ -54,12 +55,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setTargetCollisionProb(double value);
 		void setMinNumCandidateSlots(int value);
+
 		/**
-		 * If 'true': estimate the number of contending channel accesses from a Binomial distribution over 0..all recently active neighbors.
-		 * If 'false': assume that all recently active neighbors (within the contention window) will be active again.
-		 * @param value
+		 * Specify contention method used to find number of candidate slots.
+		 * @param method
 		 */
-		void setUseBinomialContentionEstimation(bool value);
+		void setUseContentionMethod(ContentionMethod method);
 
 		/**
 		 * If 'true': always schedule the next broadcast slot and advertise it in the header.
@@ -115,8 +116,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Whether the next broadcast slot has been scheduled. */
 		bool next_broadcast_scheduled = false;
 		bool next_beacon_scheduled = false;
-		/** If true, apply binomial contention estimation. If false, assume all recently-active neighbors will be active again. */
-		bool use_binomial_contention_estimation = false;
 		/** If true, always schedule the next broadcast slot and advertise it in the header. If false, only do so if there's more data to send. */
 		bool always_schedule_next_slot = false;
 		unsigned int next_broadcast_slot = 0;
@@ -126,6 +125,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MovingAverage avg_num_slots_inbetween_packet_generations;
 		unsigned int num_slots_since_last_packet_generation = 0;
 		bool packet_generated_this_slot = false;
+		ContentionMethod contention_method = binomial_estimate;
 	};
 }
 
