@@ -104,7 +104,7 @@ double ContentionEstimator::getChannelAccessProbability(const MacId& id, unsigne
 	// If it has, then estimate its channel access probability linearly with the number of slots since its last broadcast and the last-observed broadcast interval.
 	auto broadcast_interval = (double) broadcast_interval_per_id.at(id).get();
 	auto last_broadcast = (double) last_broadcast_per_id.at(id);
-	return std::min(1.0, (current_slot - last_broadcast) / broadcast_interval);
+	return std::min(1.0, std::max(0.0, (current_slot - last_broadcast) / broadcast_interval));
 }
 
 
