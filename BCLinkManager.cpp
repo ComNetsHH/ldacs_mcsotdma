@@ -45,6 +45,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		// Generate beacon message.
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
 		mac->statisticReportBeaconSent();
+		base_header->burst_offset = beacon_module.getNextBeaconOffset();
 	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
 		coutd << "broadcasting data -> ";
@@ -98,7 +99,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		if (!always_schedule_next_slot) {
 			// Schedule next broadcast if there's more data to send.
 			if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
-				coutd << "scheduling next slot in ";
+				coutd << "there's more data, so scheduling next slot in ";
 				scheduleBroadcastSlot();
 				coutd << next_broadcast_slot << " slots -> ";
 				// Put it into the header.
@@ -246,7 +247,6 @@ unsigned long long BCLinkManager::nchoosek(unsigned long n, unsigned long k) con
 }
 
 unsigned int BCLinkManager::broadcastSlotSelection(unsigned int min_offset) {
-	coutd << *this << "::broadcastSlotSelection -> ";
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);

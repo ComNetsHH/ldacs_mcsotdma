@@ -360,6 +360,134 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BEACON, packet->getDestination());
 		}
 
+		void testDontScheduleNextBroadcastSlot() {
+			// don't auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			// don't generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and *not* schedule a next one
+			size_t num_slots = 0, max_slots = 100;
+			while (link_manager->next_broadcast_scheduled && num_slots++ < max_slots) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// check that the single sent packet carries no info about the next broadcast slot
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
+			L2Packet *broadcast_packet = env->phy_layer->outgoing_packets.at(0);
+			bool found_base_header = false;
+			for (const auto *header : broadcast_packet->getHeaders()) {
+				if (header->frame_type == L2Header::base) {
+					found_base_header = true;
+					auto *base_header = (L2HeaderBase*) header;
+					CPPUNIT_ASSERT_EQUAL(uint32_t(0), base_header->burst_offset);
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+		}
+
+		void testScheduleNextBroadcastSlotIfTheresData() {
+			// don't auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			// do generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and *not* schedule a next one
+			for (size_t t = 0; t < 100; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// check that every sent packet carries some info about the next broadcast slot
+			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
+				bool found_base_header = false;
+				for (const auto *header : broadcast_packet->getHeaders()) {
+					if (header->frame_type == L2Header::base) {
+						found_base_header = true;
+						auto *base_header = (L2HeaderBase*) header;
+						CPPUNIT_ASSERT( base_header->burst_offset > 0);
+					}
+				}
+				CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+			}
+		}
+
+		void testAutoScheduleBroadcastSlotIfTheresNoData() {
+			// do auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			// don't generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and schedule a next one
+			for (size_t t = 0; t < 100; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// check that every sent packet carries some info about the next broadcast slot
+			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
+				bool found_base_header = false;
+				for (const auto *header : broadcast_packet->getHeaders()) {
+					if (header->frame_type == L2Header::base) {
+						found_base_header = true;
+						auto *base_header = (L2HeaderBase*) header;
+						CPPUNIT_ASSERT( base_header->burst_offset > 0);
+					}
+				}
+				CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+			}
+		}
+
+		void testAutoScheduleBroadcastSlotIfTheresData() {
+			// do auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			// don't generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and schedule a next one
+			for (size_t t = 0; t < 100; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// check that every sent packet carries some info about the next broadcast slot
+			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
+				bool found_base_header = false;
+				for (const auto *header : broadcast_packet->getHeaders()) {
+					if (header->frame_type == L2Header::base) {
+						found_base_header = true;
+						auto *base_header = (L2HeaderBase*) header;
+						CPPUNIT_ASSERT( base_header->burst_offset > 0);
+					}
+				}
+				CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+			}
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -372,6 +500,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
 		CPPUNIT_TEST(testParseBeaconRescheduleBroadcast);
 		CPPUNIT_TEST(testBeaconDestination);
+		CPPUNIT_TEST(testDontScheduleNextBroadcastSlot);
+		CPPUNIT_TEST(testScheduleNextBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
