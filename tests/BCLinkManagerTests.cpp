@@ -512,7 +512,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					sum += link_manager->current_reservation_table->getReservation(t).isIdle() ? 0 : 1;
 				CPPUNIT_ASSERT_EQUAL(size_t(1), sum);
 			}
+		}
 
+		void testContentionMethodAllNeighborsActive() {
+			link_manager->setUseContentionMethod(ContentionMethod::all_active_again_assumption);
+			int current_slot = 12;
+			const size_t max_num_neighbors = 100;
+			int previous_num_candidate_slots = 0, first_num_candidate_slots = 0;
+			for (size_t n = 0; n < max_num_neighbors; n++) {
+				// report the activity of another neighbor
+				link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(n+100), current_slot);
+				// fake that there's nothing scheduled yet
+				link_manager->next_broadcast_scheduled = false;
+				// notify of new data, triggering the scheduling of a next broadcast slot
+				link_manager->notifyOutgoing(128);
+				// the number of candidate slots should be monotonously increasing
+				CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(.95) >= previous_num_candidate_slots);
+				previous_num_candidate_slots = link_manager->getNumCandidateSlots(.95);
+				if (n == 0)
+					first_num_candidate_slots = previous_num_candidate_slots;
+			}
+			// and in the end, more than 10 times as many slots should've been proposed (ensures that the candidate slots don't just stay the same)
+			CPPUNIT_ASSERT(previous_num_candidate_slots > 10*first_num_candidate_slots);
 		}
 
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
@@ -532,6 +553,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
 		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
 		CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
+		CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
