@@ -335,20 +335,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * If user1 has scheduled a broadcast transmission during a slot that is utilized by another user, as it learns by parsing that user's beacon, it should re-schedule its own broadcast transmission.
 		 */
 		void testParseBeaconRescheduleBroadcast() {
+			// schedule some broadcast slot
 			auto* bc_lm = (BCLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_lm->scheduleBroadcastSlot();
+			// which turned out to be 't'
 			int t = (int) bc_lm->next_broadcast_slot;
 			CPPUNIT_ASSERT(t > 0);
 
 			TestEnvironment env_you = TestEnvironment(partner_id, id);
 			ReservationTable *bc_table_you = env_you.mac_layer->reservation_manager->getBroadcastReservationTable();
+			// now have another user schedule its broadcast also at 't'
 			bc_table_you->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+			// which will be notified to the first user through a beacon
 			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you);
 
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(t));
+			// which is processed
 			bc_lm->processBeaconMessage(partner_id, pair.first, pair.second);
+			// and now the first user should've moved away from 't'
 			CPPUNIT_ASSERT(bc_lm->next_broadcast_slot != t);
-			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), bc_lm->current_reservation_table->getReservation(t));
+			// and marked the slot as BUSY
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(bc_lm->next_broadcast_slot));
 		}
 
@@ -488,6 +495,26 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		void testContentionMethodNaiveRandomAccess() {
+			link_manager->setUseContentionMethod(ContentionMethod::naive_random_access);
+			const size_t num_trials = 1000;
+			for (size_t i = 0; i < num_trials; i++) {
+				// fake that there's nothing scheduled yet
+				link_manager->next_broadcast_scheduled = false;
+				// notify of new data, triggering the scheduling of a next broadcast slot
+				link_manager->notifyOutgoing(128);
+				// naive random access picks a random slot from a hard-coded 100 next idle slots
+				CPPUNIT_ASSERT(0 < link_manager->next_broadcast_slot);
+				CPPUNIT_ASSERT(103 >= link_manager->next_broadcast_slot);
+				// make sure that there's just a single broadcast slot scheduled (i.e. the previously scheduled one should've been unscheduled)
+				size_t sum = 0;
+				for (size_t t = 0; t < planning_horizon; t++)
+					sum += link_manager->current_reservation_table->getReservation(t).isIdle() ? 0 : 1;
+				CPPUNIT_ASSERT_EQUAL(size_t(1), sum);
+			}
+
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -504,6 +531,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testScheduleNextBroadcastSlotIfTheresData);
 		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
 		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

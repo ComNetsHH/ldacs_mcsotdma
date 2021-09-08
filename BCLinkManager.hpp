@@ -69,6 +69,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void setAlwaysScheduleNextBroadcastSlot(bool value);
 
+		void onPacketReception(L2Packet*& packet) override;
+
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob) const;
 
@@ -83,12 +85,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void scheduleBroadcastSlot();
 
+		void unscheduleBroadcastSlot();
+
 		void scheduleBeacon();
-
-	public:
-		void onPacketReception(L2Packet*& packet) override;
-
-	protected:
 
 		void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 

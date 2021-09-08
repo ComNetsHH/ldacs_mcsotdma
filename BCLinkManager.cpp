@@ -264,8 +264,7 @@ unsigned int BCLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 }
 
 void BCLinkManager::scheduleBroadcastSlot() {
-	if (next_broadcast_slot > 0 && current_reservation_table->getReservation(next_broadcast_slot).isTx())
-		current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+	unscheduleBroadcastSlot();
 	// By default, even the next slot could be chosen.
 	unsigned int min_offset = 1;
 	// Unless there's currently no data to send; then, schedule one when on average the next data packet should've been generated.
@@ -274,6 +273,11 @@ void BCLinkManager::scheduleBroadcastSlot() {
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+}
+
+void BCLinkManager::unscheduleBroadcastSlot() {
+	if (next_broadcast_slot > 0 && current_reservation_table->getReservation(next_broadcast_slot).isTx())
+		current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 }
 
 void BCLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
@@ -285,6 +289,13 @@ void BCLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 		coutd << "t=" << beacon_module.getNextBeaconOffset() << " -> ";
 	} if (pair.second) {
 		coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to ";
+		// remember current broadcast slot
+		auto current_broadcast_slot = next_broadcast_slot;
+		// unschedule it
+		unscheduleBroadcastSlot();
+		// mark it as BUSY so it won't be scheduled again
+		current_reservation_table->mark(current_broadcast_slot, Reservation(origin_id, Reservation::BUSY));
+		// find a new slot
 		scheduleBroadcastSlot();
 		coutd << "t=" << next_broadcast_slot << " -> ";
 	}
