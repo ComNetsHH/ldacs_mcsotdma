@@ -68,7 +68,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int DEFAULT_CONTENTION_WINDOW_SIZE = 5000;
 		std::map<MacId, MovingAverage> avg_broadcast_rate_per_id;
 		std::map<MacId, unsigned int> last_broadcast_per_id;
-		std::map<MacId, unsigned int> broadcast_interval_per_id;
+		const unsigned int BROADCAST_INTERVAL_WINDOW_SIZE = 5;
+		std::map<MacId, MovingAverage> broadcast_interval_per_id;
 		MacId id_of_broadcast_this_slot = SYMBOLIC_ID_UNSET;
 		size_t horizon;
 	};

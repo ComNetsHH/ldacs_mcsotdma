@@ -69,29 +69,38 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(.5, estimator->getAverageNonBeaconBroadcastRate());
 		}
 
+		void testBroadcastIntervalOneReport() {
+			unsigned int beacon_interval = 3;
+			MacId other_id = MacId(43);
+			// Initial report => number of slots since 'beginning of time' used as beacon interval (which is here the beacon interval).
+			estimator->reportNonBeaconBroadcast(other_id, beacon_interval);
+			estimator->onSlotEnd(beacon_interval);
+			CPPUNIT_ASSERT_EQUAL(beacon_interval, (unsigned int)estimator->broadcast_interval_per_id.find(other_id)->second.get());
+		}
+
 		void testBroadcastInterval() {
 			unsigned int beacon_interval = 3;
 			MacId other_id = MacId(43);
-			for (unsigned int t = 0; t < 3*beacon_interval; t++) {
-				if (t % beacon_interval == 0)
+			for (unsigned int t = 0; t < 10*estimator->BROADCAST_INTERVAL_WINDOW_SIZE*beacon_interval; t++) {
+				if (t > 0 && t % beacon_interval == 0)
 					estimator->reportNonBeaconBroadcast(other_id, t);
 				estimator->onSlotEnd(t);
+				if (t >= beacon_interval)
+					CPPUNIT_ASSERT_EQUAL(beacon_interval, (unsigned int)estimator->broadcast_interval_per_id.find(other_id)->second.get());
 			}
-			CPPUNIT_ASSERT_EQUAL(beacon_interval, estimator->broadcast_interval_per_id.find(other_id)->second);
+			CPPUNIT_ASSERT_EQUAL(beacon_interval, (unsigned int)estimator->broadcast_interval_per_id.find(other_id)->second.get());
 		}
 
 		void testChannelAccessProb() {
 			// Observe an active neighbor.
 			unsigned int beacon_interval = 3;
 			MacId other_id = MacId(43);
-			estimator->reportNonBeaconBroadcast(other_id, 0);
-			for (unsigned int t = 0; t < beacon_interval - 1; t++)
-				estimator->onSlotEnd(t);
 			estimator->reportNonBeaconBroadcast(other_id, beacon_interval);
-			CPPUNIT_ASSERT_EQUAL(beacon_interval, estimator->broadcast_interval_per_id.find(other_id)->second);
+			estimator->reportNonBeaconBroadcast(other_id, 2*beacon_interval);
+			CPPUNIT_ASSERT_EQUAL(beacon_interval, (unsigned int) estimator->broadcast_interval_per_id.find(other_id)->second.get());
 			// Now progress in time and check the channel access probabilities.
 			for (unsigned int t = 0; t <= beacon_interval; t++) {
-				unsigned int current_slot = beacon_interval + t;
+				unsigned int current_slot = 2*beacon_interval + t;
 				double expected_prob;
 				if (t == 0)
 					expected_prob = 0.0;
@@ -108,7 +117,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				estimator->onSlotEnd(current_slot);
 			}
 			// Cap out at 100%.
-			for (unsigned int current_slot = 2*beacon_interval + 1; current_slot < 3*beacon_interval; current_slot++) {
+			for (unsigned int current_slot = 3*beacon_interval + 1; current_slot < 3*beacon_interval; current_slot++) {
 				estimator->onSlotEnd(current_slot);
 				CPPUNIT_ASSERT_EQUAL(1.0, estimator->getChannelAccessProbability(other_id, current_slot));
 			}
@@ -118,7 +127,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Observe an active neighbor.
 			unsigned int beacon_interval = 3;
 			MacId other_id = MacId(43);
-			unsigned int current_slot = 0;
+			unsigned int current_slot = beacon_interval;
 			estimator->reportNonBeaconBroadcast(other_id, current_slot);
 			estimator->onSlotEnd(current_slot);
 			for (unsigned int t = 1; t <= beacon_interval; t++) {
@@ -127,10 +136,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					estimator->reportNonBeaconBroadcast(other_id, current_slot);
 				estimator->onSlotEnd(current_slot);
 			}
-			CPPUNIT_ASSERT_EQUAL(beacon_interval, estimator->broadcast_interval_per_id.find(other_id)->second);
+			CPPUNIT_ASSERT_EQUAL(beacon_interval, (unsigned int) estimator->broadcast_interval_per_id.find(other_id)->second.get());
 
 			// Now progress past the contention window.
-			for (unsigned int t = 0; current_slot < horizon + beacon_interval; t++) {
+			for (unsigned int t = 0; current_slot < horizon + 2*beacon_interval; t++) {
 				current_slot++;
 				estimator->onSlotEnd(current_slot);
 				CPPUNIT_ASSERT(estimator->broadcast_interval_per_id.find(other_id) != estimator->broadcast_interval_per_id.end());
@@ -146,6 +155,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testEstimator);
 		CPPUNIT_TEST(testGetNumActiveNeighbors);
 		CPPUNIT_TEST(getGetAverageBroadcastRate);
+		CPPUNIT_TEST(testBroadcastIntervalOneReport);
 		CPPUNIT_TEST(testBroadcastInterval);
 		CPPUNIT_TEST(testChannelAccessProb);
 		CPPUNIT_TEST(testEraseInactiveNeighbors);

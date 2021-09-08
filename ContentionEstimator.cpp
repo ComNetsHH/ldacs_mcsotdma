@@ -31,7 +31,15 @@ void ContentionEstimator::reportNonBeaconBroadcast(const MacId& id, unsigned int
 	}
 	avg_broadcast_rate_per_id.at(id).put(1);
 	last_broadcast_per_id[id] = current_slot;
-	broadcast_interval_per_id[id] = beacon_interval;
+	// Add a broadcast interval average if necessary.
+	auto it = broadcast_interval_per_id.find(id);
+	if (it == broadcast_interval_per_id.end()) {
+		auto pair = broadcast_interval_per_id.emplace(id, MovingAverage(BROADCAST_INTERVAL_WINDOW_SIZE));
+		if (!pair.second)
+			throw std::runtime_error("ContentionEstimator::reportNonBeaconBroadcast couldn't insert broadcast interval average.");
+		it = pair.first;
+	}
+	it->second.put(beacon_interval);
 	id_of_broadcast_this_slot = id;
 }
 
@@ -94,7 +102,7 @@ double ContentionEstimator::getChannelAccessProbability(const MacId& id, unsigne
 	if (broadcast_interval_per_id.find(id) == broadcast_interval_per_id.end() || last_broadcast_per_id.find(id) == last_broadcast_per_id.end())
 		return 0.0;
 	// If it has, then estimate its channel access probability linearly with the number of slots since its last broadcast and the last-observed broadcast interval.
-	auto broadcast_interval = (double) broadcast_interval_per_id.at(id);
+	auto broadcast_interval = (double) broadcast_interval_per_id.at(id).get();
 	auto last_broadcast = (double) last_broadcast_per_id.at(id);
 	return std::min(1.0, (current_slot - last_broadcast) / broadcast_interval);
 }

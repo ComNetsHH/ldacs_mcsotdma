@@ -2,6 +2,7 @@
 // Created by Sebastian Lindner on 10.12.20.
 //
 
+#include <iostream>
 #include "MovingAverage.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
@@ -16,9 +17,8 @@ void MovingAverage::put(unsigned long value) {
 		index++;
 		// If it has, kick out an old value.
 	} else {
-		for (std::size_t i = 1; i < values.size(); i++) {
+		for (std::size_t i = 1; i < values.size(); i++)
 			values.at(i - 1) = values.at(i);
-		}
 		values.at(values.size() - 1) = value;
 	}
 }
