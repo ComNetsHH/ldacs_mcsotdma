@@ -578,7 +578,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_3, t);
 				else
 					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_4, t);
-				link_manager->contention_estimator.onSlotEnd(t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > link_manager->MIN_CANDIDATES);
 		}
@@ -663,7 +665,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
 		CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
 		CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
-//		CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
+		CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
 		CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
