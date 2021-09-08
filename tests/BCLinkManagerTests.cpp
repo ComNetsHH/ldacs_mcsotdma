@@ -15,7 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		BCLinkManager *link_manager;
 		MacId id, partner_id;
 		uint32_t planning_horizon;
-		MACLayer* mac;
+		MACLayer *mac;
 		TestEnvironment *env;
 
 	public:
@@ -536,6 +536,114 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(previous_num_candidate_slots > 10*first_num_candidate_slots);
 		}
 
+		/** Tests binomial estimate which should increase the candidate slots when more neighbors are present. */
+		void testContentionMethodBinomialEstimateNoNeighbors() {
+			link_manager->setUseContentionMethod(ContentionMethod::binomial_estimate);
+			int current_slot = 12;
+			const size_t max_num_neighbors = 100;
+			int previous_num_candidate_slots = 0, first_num_candidate_slots = 0;
+			for (size_t n = 0; n < max_num_neighbors; n++) {
+				// report the activity of another neighbor
+				link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(n+100), current_slot);
+				// fake that there's nothing scheduled yet
+				link_manager->next_broadcast_scheduled = false;
+				// notify of new data, triggering the scheduling of a next broadcast slot
+				link_manager->notifyOutgoing(128);
+				// the number of candidate slots should be monotonously increasing
+				CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(.95) >= previous_num_candidate_slots);
+				previous_num_candidate_slots = link_manager->getNumCandidateSlots(.95);
+				if (n == 0)
+					first_num_candidate_slots = previous_num_candidate_slots;
+			}
+			// and in the end, more than 10 times as many slots should've been proposed (ensures that the candidate slots don't just stay the same)
+			CPPUNIT_ASSERT(previous_num_candidate_slots > 10*first_num_candidate_slots);
+		}
+
+		void testContentionMethodBinomialEstimateIncreasingActivity() {
+			link_manager->setUseContentionMethod(ContentionMethod::binomial_estimate);
+			int current_slot = 12;
+			MacId neighbor_id_1 = MacId(1),
+				  neighbor_id_2 = MacId(2),
+				  neighbor_id_3 = MacId(3),
+				  neighbor_id_4 = MacId(4);
+			// No neighbor activity yet, so we expect the minimum no. of candidate slots.
+			CPPUNIT_ASSERT_EQUAL(link_manager->MIN_CANDIDATES, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
+			// One neighbor broadcasts every slot for 100 slots.
+			for (size_t t = 0; t < 100; t++) {
+				if (t % 4 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else if (t % 4 == 1)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				else if (t % 4 == 2)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_3, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_4, t);
+				link_manager->contention_estimator.onSlotEnd(t);
+			}
+			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > link_manager->MIN_CANDIDATES);
+		}
+
+		void testContentionMethodPoissonBinomialEstimateIncreasingActivity() {
+			link_manager->setUseContentionMethod(ContentionMethod::poisson_binomial_estimate);
+			MacId neighbor_id_1 = MacId(1),
+			neighbor_id_2 = MacId(2),
+			neighbor_id_3 = MacId(3),
+			neighbor_id_4 = MacId(4);
+			// No neighbor activity yet, so we expect the minimum no. of candidate slots.
+			CPPUNIT_ASSERT_EQUAL(link_manager->MIN_CANDIDATES, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
+			// Add one active neighbor.
+			int current_slot = 0;
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			int previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
+			CPPUNIT_ASSERT(previous_num_candidate_slots > link_manager->MIN_CANDIDATES);
+			// And another
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				if (t % 2 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > previous_num_candidate_slots);
+			previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
+			// And another
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				if (t % 3 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else if (t % 3 == 1)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_3, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > previous_num_candidate_slots);
+			previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
+			// And another
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				if (t % 4 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else if (t % 4 == 1)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				else if (t % 4 == 2)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_3, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_4, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > previous_num_candidate_slots);
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -554,6 +662,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
 		CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
 		CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
+		CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
+//		CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
+		CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

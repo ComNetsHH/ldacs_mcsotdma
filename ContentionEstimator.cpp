@@ -16,18 +16,18 @@ ContentionEstimator::ContentionEstimator(const ContentionEstimator& other) : Con
 }
 
 void ContentionEstimator::reportNonBeaconBroadcast(const MacId& id, unsigned int current_slot) {
-	// Have to compute the beacon interval.
-	unsigned int beacon_interval;
+	// Have to compute the broadcast interval.
+	unsigned int broadcast_interval;
 	// If the user has not been observed before...
 	if (avg_broadcast_rate_per_id.find(id) == avg_broadcast_rate_per_id.end()) {
 		// ... add a new moving average for its broadcast rate
 		avg_broadcast_rate_per_id.emplace(id, MovingAverage(this->horizon));
 		// ... and use the no. of slots since the beginning of time as its beacon interval
-		beacon_interval = current_slot;
+		broadcast_interval = current_slot;
 	// If it has ...
 	} else {
-		// ... then compute the beacon interval
-		beacon_interval = current_slot - last_broadcast_per_id.find(id)->second;
+		// ... then compute the broadcast interval
+		broadcast_interval = current_slot - last_broadcast_per_id.find(id)->second;
 	}
 	avg_broadcast_rate_per_id.at(id).put(1);
 	last_broadcast_per_id[id] = current_slot;
@@ -39,7 +39,7 @@ void ContentionEstimator::reportNonBeaconBroadcast(const MacId& id, unsigned int
 			throw std::runtime_error("ContentionEstimator::reportNonBeaconBroadcast couldn't insert broadcast interval average.");
 		it = pair.first;
 	}
-	it->second.put(beacon_interval);
+	it->second.put(broadcast_interval);
 	id_of_broadcast_this_slot = id;
 }
 
