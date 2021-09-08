@@ -234,6 +234,12 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		unsigned int m = contention_estimator.getNumActiveNeighbors();
 		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
 		coutd << "contention method: assume all " << m << " active neighbors are active again -> ";
+	// Don't make use of contention estimation in any way. Just select something out of the next 100 idle slots.
+	} else if (contention_method == ContentionMethod::naive_random_access) {
+		k = 100;
+		coutd << "contention method: naive random access -> ";
+	} else {
+		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
 	}
 	unsigned int final_candidates = std::max(MIN_CANDIDATES, k);
 	coutd << "num_candidates=" << final_candidates << " -> ";
