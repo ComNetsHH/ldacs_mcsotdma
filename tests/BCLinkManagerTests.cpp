@@ -689,6 +689,34 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), base_header->burst_offset);
 		}
 
+		/** Ensures that when slot advertisement is off, the next broadcast slot is scheduled and advertised if there more data to send. */
+		void testSlotAdvertisementWhenTheresData() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot + 1;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT( link_manager->next_broadcast_slot > 0);
+			// make sure the header flag has been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT(base_header->burst_offset > 0);
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -712,6 +740,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
 		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
 		CPPUNIT_TEST(testNoSlotAdvertisement);
+		CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
