@@ -670,11 +670,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->notifyOutgoing(1);
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			// broadcast this data
-			size_t max_t = link_manager->next_broadcast_slot + 1;
+			size_t max_t = link_manager->next_broadcast_slot;
 			for (size_t t = 0; t < max_t; t++) {
 				mac->update(1);
 				mac->execute();
-				mac->onSlotEnd();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
 			}
 			// no new broadcast slot should've been scheduled
 			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
@@ -698,11 +699,70 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->notifyOutgoing(1);
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			// broadcast this data
-			size_t max_t = link_manager->next_broadcast_slot + 1;
+			size_t max_t = link_manager->next_broadcast_slot;
 			for (size_t t = 0; t < max_t; t++) {
 				mac->update(1);
 				mac->execute();
-				mac->onSlotEnd();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT( link_manager->next_broadcast_slot > 0);
+			// make sure the header flag has been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT(base_header->burst_offset > 0);
+		}
+
+		/** Ensures that when slot advertisement is on, the next broadcast slot is scheduled and advertised if there's no more data to send. */
+		void testSlotAdvertisementWhenAutoAdvertisementIsOn() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT( link_manager->next_broadcast_slot > 0);
+			// make sure the header flag has been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT(base_header->burst_offset > 0);
+		}
+
+		/** Ensures that when slot advertisement is on, the next broadcast slot is scheduled and advertised if there's more data to send. */
+		void testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
 			}
 			// no new broadcast slot should've been scheduled
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
@@ -741,6 +801,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
 		CPPUNIT_TEST(testNoSlotAdvertisement);
 		CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

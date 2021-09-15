@@ -107,13 +107,14 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		if (!always_schedule_next_slot) {
 			// Schedule next broadcast if there's more data to send.
 			if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
-				coutd << "there's more data, so scheduling next slot in ";
+				coutd << "there's more data, so scheduling next slot -> ";
 				scheduleBroadcastSlot();
 				coutd << next_broadcast_slot << " slots -> ";
 				// Put it into the header.
 				base_header->burst_offset = next_broadcast_slot;
 			} else {
 				next_broadcast_scheduled = false;
+				next_broadcast_slot = 0;
 				coutd << "no more broadcast data, not scheduling a next slot -> ";
 			}
 		} else {
