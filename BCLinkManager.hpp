@@ -103,6 +103,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 
+		/**
+		 * @return Average number of slots inbetween broadcast packet generations as measured.
+		 */
+		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;
+
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;

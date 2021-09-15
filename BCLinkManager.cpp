@@ -154,7 +154,7 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 void BCLinkManager::onSlotEnd() {
 	if (packet_generated_this_slot) {
 		packet_generated_this_slot = false;
-		avg_num_slots_inbetween_packet_generations.put(num_slots_since_last_packet_generation);
+		avg_num_slots_inbetween_packet_generations.put(num_slots_since_last_packet_generation + 1);
 		num_slots_since_last_packet_generation = 0;
 	} else
 		num_slots_since_last_packet_generation++;
@@ -269,7 +269,8 @@ void BCLinkManager::scheduleBroadcastSlot() {
 	unsigned int min_offset = 1;
 	// Unless there's currently no data to send; then, schedule one when on average the next data packet should've been generated.
 	if (!mac->isThereMoreData(link_id))
-		min_offset = std::max(uint(1), (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get()));
+		min_offset = std::max(uint(1), getAvgNumSlotsInbetweenPacketGeneration());
+	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
@@ -416,4 +417,8 @@ void BCLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {
 
 void BCLinkManager::setUseContentionMethod(ContentionMethod method) {
 	contention_method = method;
+}
+
+unsigned int BCLinkManager::getAvgNumSlotsInbetweenPacketGeneration() const {
+	return (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get());
 }
