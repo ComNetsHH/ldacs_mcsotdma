@@ -148,6 +148,13 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << (next_broadcast_scheduled ? "next broadcast in " + std::to_string(next_broadcast_slot) + " slots -> " : "");
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
+	// decrement next broadcast slot counter
+	if (next_broadcast_scheduled) {
+		if (next_broadcast_slot == 0)
+			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
+		next_broadcast_slot -= 1;
+	} else
+		next_broadcast_slot = 0;
 	// Mark reception slot if there's nothing else to do.
 	const auto& current_reservation = current_reservation_table->getReservation(0);
 	if (current_reservation.isIdle() || current_reservation.isBusy()) {
@@ -167,13 +174,6 @@ void BCLinkManager::onSlotEnd() {
 		num_slots_since_last_packet_generation = 0;
 	} else
 		num_slots_since_last_packet_generation++;
-
-	if (next_broadcast_scheduled) {
-		if (next_broadcast_slot == 0)
-			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
-		next_broadcast_slot -= 1;
-	} else
-		next_broadcast_slot = 0;
 
 	if (beacon_module.shouldSendBeaconThisSlot() || !next_beacon_scheduled) {
 		// Schedule next beacon slot.
@@ -329,12 +329,12 @@ void BCLinkManager::processBaseMessage(L2HeaderBase*& header) {
 		// ... check local reservation
 		const Reservation& res = current_reservation_table->getReservation(next_broadcast);
 		if (res.isIdle()) {
-			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::BUSY));
-			coutd << "marked next broadcast in " << next_broadcast << " slots as BUSY -> ";
+			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
+			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
 		} else if (res.isTx() || res.isTxCont()) {
 			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
-			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::BUSY));
-			coutd << "marked next broadcast in " << next_broadcast << " slots as BUSY -> ";
+			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
+			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
 			scheduleBroadcastSlot();
 			coutd << "re-scheduled own broadcast in " << next_broadcast_slot << " slots -> ";
 		} else if (res.isBeaconTx()) {
