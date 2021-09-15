@@ -371,8 +371,10 @@ void P2PLinkManager::onSlotEnd() {
 				current_link_state->latest_agreement_opportunity -= 1;
 		}
 	}
+	// if the link has been established in this slot
 	if (established_link_this_slot) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> passing link info broadcast into broadcast queue -> ";
+		// inject a LinkInfo into the upper layer
 		auto *packet = new L2Packet();
 		packet->addMessage(new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0), nullptr);
 		packet->addMessage(new L2HeaderLinkInfo(), new LinkInfoPayload(this));
@@ -834,7 +836,6 @@ LinkInfo P2PLinkManager::getLinkInfo() {
 }
 
 void P2PLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
-	mac->statisticReportLinkInfoReceived();
 	const LinkInfo &info = payload->getLinkInfo();
 	coutd << info << " -> ";
 	const FrequencyChannel *channel = reservation_manager->getFreqChannelByCenterFreq(info.getP2PChannelCenterFreq());

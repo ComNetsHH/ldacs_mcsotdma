@@ -50,8 +50,8 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	} else {
 		coutd << "broadcasting data -> ";
 		mac->statisticReportBroadcastSent();
-		packet->addMessage(new L2HeaderBroadcast(), nullptr);
 		// Put a priority on link requests.
+		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*>> requests_to_add;
 		while (!link_requests.empty()) {
 			// Fetch next link request.
 			auto &pair = link_requests.at(0);
@@ -60,29 +60,35 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
 			pair.second->callback->populateLinkRequest(pair.first, pair.second);
 			// Add to the packet if it fits.
-			if (packet->getBits() + pair.first->getBits() + pair.second->getBits() <= capacity) {
-				packet->addMessage(pair.first, pair.second);
+			if (pair.first->getBits() + pair.second->getBits() <= capacity) {
+				requests_to_add.push_back(pair);
 				link_requests.erase(link_requests.begin());
+				capacity -= pair.first->getBits() + pair.second->getBits();
 				coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
 				mac->statisticReportLinkRequestSent();
 			} else
 				break; // Stop if it doesn't fit anymore.
 		}
 		// Add broadcast data.
-		int remaining_bits = ((int) capacity) - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
+		int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
 		if (remaining_bits > 0) {
 			coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
 			L2Packet* upper_layer_data = mac->requestSegment(remaining_bits, link_id);
 			size_t num_bits_added = 0;
 			for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
-				if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base) {
-					L2Header *header = upper_layer_data->getHeaders().at(i)->copy();
+				const auto &upper_layer_header = upper_layer_data->getHeaders().at(i);
+				if (upper_layer_header->frame_type != L2Header::base) {
+					// copy
+					L2Header *header = upper_layer_header->copy();
 					L2Packet::Payload *payload = upper_layer_data->getPayloads().at(i)->copy();
+					// add
 					packet->addMessage(header, payload);
 					num_bits_added += header->getBits() + payload->getBits();
-				}
-				if (upper_layer_data->getHeaders().at(i)->frame_type == L2Header::link_info) {
-					mac->statisticReportLinkInfoSent();
+					coutd << "added '" << header->frame_type << "' message -> ";
+					// report link info
+					if (upper_layer_header->frame_type == L2Header::link_info) {
+						mac->statisticReportLinkInfoSent();
+					}
 				}
 			}
 			coutd << "added " << num_bits_added << " bits -> ";
@@ -93,6 +99,8 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 //			}
 			delete upper_layer_data;
 		}
+		for (const auto &pair : requests_to_add)
+			packet->addMessage(pair.first, pair.second);
 		if (packet->getLinkInfoIndex() != -1)
 			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
 
@@ -165,6 +173,7 @@ void BCLinkManager::onSlotEnd() {
 		next_broadcast_slot -= 1;
 	} else
 		next_broadcast_slot = 0;
+
 	if (beacon_module.shouldSendBeaconThisSlot() || !next_beacon_scheduled) {
 		// Schedule next beacon slot.
 		scheduleBeacon();
@@ -219,7 +228,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 			num_candidates += p * local_k;
 		}
 		k = (unsigned int) std::ceil(num_candidates);
-		coutd << "contention method: binomial estimate for " << m << " active neighbors with average broadcast rate " << r << " -> ";
+		coutd << "channel access method: binomial estimate for " << m << " active neighbors with average broadcast rate " << r << " -> ";
 	// Estimate number of channel accesses from Poisson Binomial distribution (each neighbor's channel access is an independent Bernoulli trial with its own probability)
 	} else if (contention_method == ContentionMethod::poisson_binomial_estimate) {
 		std::vector<MacId> active_neighbors = contention_estimator.getActiveNeighbors();
@@ -228,17 +237,17 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		for (const MacId& id : active_neighbors)
 			expected_active_neighbors += contention_estimator.getChannelAccessProbability(id, mac->getCurrentSlot());
 		k = (unsigned int) std::round(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / expected_active_neighbors)));
-		coutd << "contention method: poisson binomial estimate for " << expected_active_neighbors << " expected active neighbors (out of " << active_neighbors.size() << " recently active) with individual broadcast probabilities -> ";
+		coutd << "channel access method: poisson binomial estimate for " << expected_active_neighbors << " expected active neighbors (out of " << active_neighbors.size() << " recently active) with individual broadcast probabilities -> ";
 	// Assume that every neighbor that has been active within the contention window will again be active.
 	} else if (contention_method == ContentionMethod::all_active_again_assumption) {
 		// Number of active neighbors.
 		unsigned int m = contention_estimator.getNumActiveNeighbors();
 		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
-		coutd << "contention method: assume all " << m << " active neighbors are active again -> ";
+		coutd << "channel access method: assume all " << m << " active neighbors are active again -> ";
 	// Don't make use of contention estimation in any way. Just select something out of the next 100 idle slots.
 	} else if (contention_method == ContentionMethod::naive_random_access) {
 		k = 100;
-		coutd << "contention method: naive random access -> ";
+		coutd << "channel access method: naive random access -> ";
 	} else {
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
 	}
@@ -373,6 +382,7 @@ void BCLinkManager::onPacketReception(L2Packet*& packet) {
 }
 
 void BCLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+	mac->statisticReportLinkInfoReceived();
 	const LinkInfo &info = payload->getLinkInfo();
 	const MacId &tx_id = info.getTxId(), &rx_id = info.getRxId();
 	if (tx_id == mac->getMacId() || rx_id == mac->getMacId()) {

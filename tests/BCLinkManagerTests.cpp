@@ -646,6 +646,46 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > previous_num_candidate_slots);
 		}
 
+		/** Ensures that the average number of slots inbetween broadcast packet generation is measured correctly. */
+		void testAverageBroadcastSlotGenerationMeasurement() {
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), link_manager->getAvgNumSlotsInbetweenPacketGeneration());
+			unsigned int sending_interval = 5;
+			size_t max_t = 100;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				if (t % sending_interval == 0)
+					link_manager->notifyOutgoing(512);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(sending_interval, link_manager->getAvgNumSlotsInbetweenPacketGeneration());
+		}
+
+		/** Ensures that when slot advertisement is off, the next broadcast slot is only scheduled and advertised if there's more data to send. */
+		void testNoSlotAdvertisement() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot + 1;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), link_manager->next_broadcast_slot);
+			// make sure the header flag hasn't been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -667,6 +707,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
 		CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
 		CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
+		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
+		CPPUNIT_TEST(testNoSlotAdvertisement);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
