@@ -163,7 +163,8 @@ void BCLinkManager::onSlotEnd() {
 		if (next_broadcast_slot == 0)
 			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
 		next_broadcast_slot -= 1;
-	}
+	} else
+		next_broadcast_slot = 0;
 	if (beacon_module.shouldSendBeaconThisSlot() || !next_beacon_scheduled) {
 		// Schedule next beacon slot.
 		scheduleBeacon();
