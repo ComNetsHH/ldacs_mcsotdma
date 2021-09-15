@@ -86,6 +86,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void scheduleBroadcastSlot();
 
 		void unscheduleBroadcastSlot();
+		void unscheduleBeaconSlot();
 
 		void scheduleBeacon();
 

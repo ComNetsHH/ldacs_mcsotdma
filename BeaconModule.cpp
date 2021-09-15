@@ -61,11 +61,12 @@ unsigned int BeaconModule::computeBeaconInterval(double target_congestion, doubl
 }
 
 bool BeaconModule::shouldSendBeaconThisSlot() const {
-	return next_beacon_in == 0;
+	return isEnabled() && next_beacon_in == 0;
 }
 
 void BeaconModule::onSlotEnd() {
-	next_beacon_in -= 1;
+	if (next_beacon_in > 0)
+		next_beacon_in--;
 }
 
 unsigned int BeaconModule::scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table) {
@@ -150,6 +151,10 @@ void BeaconModule::setEnabled(bool val) {
 
 bool BeaconModule::isEnabled() const {
 	return this->enabled;
+}
+
+void BeaconModule::reset() {
+	next_beacon_in = 0;
 }
 
 

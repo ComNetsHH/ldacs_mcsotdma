@@ -119,7 +119,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			}
 		} else {
 			// Schedule next broadcast.
-			coutd << "scheduling next slot in ";
+			coutd << "auto-schedule is on, scheduling next slot -> ";
 			scheduleBroadcastSlot();
 			coutd << next_broadcast_slot << " slots -> ";
 			base_header->burst_offset = next_broadcast_slot;
@@ -145,9 +145,6 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {
-	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << (next_broadcast_scheduled ? "next broadcast in " + std::to_string(next_broadcast_slot) + " slots -> " : "");
-	if (current_reservation_table == nullptr)
-		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	// decrement next broadcast slot counter
 	if (next_broadcast_scheduled) {
 		if (next_broadcast_slot == 0)
@@ -155,7 +152,14 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 		next_broadcast_slot -= 1;
 	} else
 		next_broadcast_slot = 0;
-	// Mark reception slot if there's nothing else to do.
+
+	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << (next_broadcast_scheduled ? "next broadcast in " + std::to_string(next_broadcast_slot) + " slots -> " : "");
+
+	// broadcast link manager should always have a ReservationTable assigned
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
+
+	// mark reception slot if there's nothing else to do
 	const auto& current_reservation = current_reservation_table->getReservation(0);
 	if (current_reservation.isIdle() || current_reservation.isBusy()) {
 		coutd << "marking BC reception -> ";
@@ -328,17 +332,29 @@ void BCLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	if (next_broadcast > 0) { // If it has been set ...
 		// ... check local reservation
 		const Reservation& res = current_reservation_table->getReservation(next_broadcast);
+		// if locally the slot is IDLE, then schedule listening to this broadcast
 		if (res.isIdle()) {
 			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
 			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
+		// if locally, one's own transmission is scheduled...
 		} else if (res.isTx() || res.isTxCont()) {
 			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
+			// ... unschedule one's own transmission
+			unscheduleBroadcastSlot();
+			// ... mark the reception of the other broadcast
 			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
 			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
+			// ... and re-schedule one's own broadcast transmission
 			scheduleBroadcastSlot();
 			coutd << "re-scheduled own broadcast in " << next_broadcast_slot << " slots -> ";
+		// if locally, one's own beacon is scheduled...
 		} else if (res.isBeaconTx()) {
 			coutd << "detected collision with own beacon in " << next_broadcast << " slots -> ";
+			// ... unschedule one's own beacon
+			unscheduleBeaconSlot();
+			// ... mark the reception of the other broadcast
+			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
+			// ... and re-schedule one's own beacon
 			scheduleBeacon();
 			coutd << "re-scheduled own beacon in " << beacon_module.getNextBeaconOffset() << " slots -> ";
 		} else {
@@ -400,10 +416,9 @@ void BCLinkManager::setTargetCollisionProb(double value) {
 
 void BCLinkManager::scheduleBeacon() {
 	if (beacon_module.isEnabled()) {
-		if (beacon_module.getNextBeaconOffset() != 0 && next_beacon_scheduled) {
-			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconOffset()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-			current_reservation_table->mark(beacon_module.getNextBeaconOffset(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-		}
+		// un-schedule current beacon slot
+		unscheduleBeaconSlot();
+		// and schedule a new one
 		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
 		mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
 		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
@@ -412,10 +427,21 @@ void BCLinkManager::scheduleBeacon() {
 			throw std::runtime_error(ss.str());
 		}
 		current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+		next_beacon_scheduled = true;
 		coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots -> ";
 		// Reset congestion estimator with new beacon interval.
 		congestion_estimator.reset(beacon_module.getBeaconOffset());
-		next_beacon_scheduled = true;
+	}
+}
+
+void BCLinkManager::unscheduleBeaconSlot() {
+	if (beacon_module.isEnabled()) {
+		if (beacon_module.getNextBeaconOffset() != 0 && next_beacon_scheduled) {
+			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconOffset()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+			current_reservation_table->mark(beacon_module.getNextBeaconOffset(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+		}
+		next_beacon_scheduled = false;
+		beacon_module.reset();
 	}
 }
 

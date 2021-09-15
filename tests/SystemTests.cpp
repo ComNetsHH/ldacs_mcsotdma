@@ -822,6 +822,43 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_reestablishments, lm_you->statistic_num_links_established);
 		}
 
+		/** Ensure that the communication partner correctly sets slot reservations based on the advertised next broadcast slot. */
+		void testSlotAdvertisement() {
+			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(true);
+			rlc_layer_me->should_there_be_more_broadcast_data = true;
+			auto *bc_link_manager_me = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_link_manager_you = (BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			bc_link_manager_me->notifyOutgoing(1);
+			// proceed until the first broadcast's been received
+			while (rlc_layer_you->receptions.empty()) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			// next broadcast should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(true, bc_link_manager_me->next_broadcast_scheduled);
+			// and reservations should match between both communication partners
+			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_link_manager_me->current_reservation_table->getReservation(bc_link_manager_me->next_broadcast_slot));
+			CPPUNIT_ASSERT_EQUAL(Reservation(mac_layer_me->getMacId(), Reservation::RX), bc_link_manager_you->current_reservation_table->getReservation(bc_link_manager_me->next_broadcast_slot));
+			size_t max_t = 1000;
+			for (size_t t = 0; t < max_t; t++) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+				// next broadcast slot should've been scheduled
+				CPPUNIT_ASSERT_EQUAL(true, bc_link_manager_me->next_broadcast_scheduled);
+				// and reservations should match between both communication partners
+				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_link_manager_me->current_reservation_table->getReservation(bc_link_manager_me->next_broadcast_slot));
+				CPPUNIT_ASSERT_EQUAL(Reservation(mac_layer_me->getMacId(), Reservation::RX), bc_link_manager_you->current_reservation_table->getReservation(bc_link_manager_me->next_broadcast_slot));
+			}
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -839,6 +876,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testSimultaneousRequests);
 			CPPUNIT_TEST(testTimeout);
 			CPPUNIT_TEST(testManyReestablishments);
+			CPPUNIT_TEST(testSlotAdvertisement);
 
 	CPPUNIT_TEST_SUITE_END();
 	};

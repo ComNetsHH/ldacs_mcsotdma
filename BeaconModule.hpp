@@ -54,6 +54,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getNextBeaconOffset() const;
 
+		/** Resets next_beacon_in slot counter. */
+		void reset();
+
 		/**
 		 * @return Current value for the minimum interval in slots that should be kept in-between beacons.
 		 * The actual beacon slot may differ from this through random selection.
