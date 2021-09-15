@@ -48,7 +48,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			arq->setLowerLayer(mac);
 			mac->setUpperLayer(arq);
 			// RLC
-			rlc = new RLCLayer(own_id);
+			rlc = new RLCLayer(128);
 			arq->setUpperLayer(rlc);
 			rlc->setLowerLayer(arq);
 		}

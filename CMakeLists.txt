@@ -4,6 +4,8 @@ project(tuhh_intairnet_mc-sotdma)
 set(CMAKE_CXX_STANDARD 14)
 add_subdirectory(glue-lib-headers) # Gives access to the library's CMakeLists.txt's variables.
 include_directories(glue-lib-headers) # Includes the library header files, i.e. -I <dir>
+add_subdirectory(avionic-rlc-headers)
+include_directories(avionic-rlc-headers)
 
 # MC-SOTDMA source files.
 set(MCSOTDMA_SRC ReservationTable.cpp ReservationTable.hpp ReservationManager.cpp ReservationManager.hpp FrequencyChannel.cpp FrequencyChannel.hpp Reservation.cpp Reservation.hpp CPRPosition.hpp coutdebug.cpp coutdebug.hpp MCSOTDMA_Mac.cpp MCSOTDMA_Mac.hpp BeaconPayload.hpp MCSOTDMA_Phy.cpp MCSOTDMA_Phy.hpp MovingAverage.cpp MovingAverage.hpp ContentionEstimator.cpp ContentionEstimator.hpp P2PLinkManager.cpp P2PLinkManager.hpp LinkManager.hpp LinkManager.cpp BCLinkManager.cpp BCLinkManager.hpp BeaconModule.cpp BeaconModule.hpp CongestionEstimator.cpp CongestionEstimator.hpp LinkInfoPayload.hpp LinkInfo.cpp LinkInfo.hpp glue-lib-headers/Statistic.hpp glue-lib-headers/Statistic.cpp)
@@ -22,4 +24,5 @@ target_link_libraries(tuhh_intairnet_mc-sotdma LINK_PUBLIC intairnet_linklayer_g
 
 # Unittest target.
 add_executable(mcsotdma-unittests ${MCSOTDMA_SRC} ${MCSOTDMA_TEST_SRC} ${GLUE_SRC_HPP})
-target_link_libraries(mcsotdma-unittests cppunit tuhh_intairnet_mc-sotdma) # Link in cppunit and MC-SOTDMA libraries.
+target_include_directories(mcsotdma-unittests PUBLIC glue-lib-headers avionic-rlc-headers)
+target_link_libraries(mcsotdma-unittests cppunit tuhh_intairnet_mc-sotdma tuhh_intairnet_rlc) # Link in cppunit and MC-SOTDMA libraries.

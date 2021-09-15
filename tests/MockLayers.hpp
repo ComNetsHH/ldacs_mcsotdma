@@ -13,6 +13,7 @@
 #include "../ReservationManager.hpp"
 #include "../MCSOTDMA_Mac.hpp"
 #include "../MCSOTDMA_Phy.hpp"
+#include <Rlc.hpp>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -99,9 +100,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 	};
 
-	class RLCLayer : public IRlc {
+class RLCLayer : public TUHH_INTAIRNET_RLC::Rlc {
 	public:
-
 		class RLCPayload : public L2Packet::Payload {
 		public:
 			explicit RLCPayload(unsigned int num_bits) : num_bits(num_bits) {}
@@ -120,7 +120,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int num_bits;
 		};
 
-		explicit RLCLayer(const MacId& own_id) : own_id(own_id) {}
+		RLCLayer(int min_packet_size) : TUHH_INTAIRNET_RLC::Rlc(min_packet_size) {}
 
 		virtual ~RLCLayer() {
 			for (auto it = control_message_injections.begin(); it != control_message_injections.end(); it++)
@@ -135,57 +135,73 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void receiveFromLower(L2Packet* packet) override {
-			coutd << "RLC received packet... ";
-			receptions.push_back(packet);
+			if (use_actual_implementation)
+				TUHH_INTAIRNET_RLC::Rlc::receiveFromLower(packet);
+			else {
+				coutd << "RLC received packet... ";
+				receptions.push_back(packet);
+			}
 		}
 
 		void receiveInjectionFromLower(L2Packet* packet, PacketPriority priority) override {
-			coutd << "RLC received injection for '" << packet->getDestination() << "'... ";
-			auto it = control_message_injections.find(packet->getDestination());
-			if (it == control_message_injections.end()) {
-				control_message_injections[packet->getDestination()] = std::vector<L2Packet*>();
-				control_message_injections[packet->getDestination()].push_back(packet);
-			} else
-				it->second.push_back(packet);
-			lower_layer->notifyOutgoing(packet->getBits(), packet->getDestination());
+			if (use_actual_implementation)
+				TUHH_INTAIRNET_RLC::Rlc::receiveInjectionFromLower(packet, priority);
+			else {
+				coutd << "RLC received injection for '" << packet->getDestination() << "'... ";
+				auto it = control_message_injections.find(packet->getDestination());
+				if (it == control_message_injections.end()) {
+					control_message_injections[packet->getDestination()] = std::vector<L2Packet*>();
+					control_message_injections[packet->getDestination()].push_back(packet);
+				} else
+					it->second.push_back(packet);
+				lower_layer->notifyOutgoing(packet->getBits(), packet->getDestination());
+			}
 		}
 
 		L2Packet* requestSegment(unsigned int num_bits, const MacId& mac_id) override {
-			coutd << "RLC::requestSegment -> ";
-			L2Packet* segment;
-			if (control_message_injections.find(mac_id) == control_message_injections.end() || control_message_injections.at(mac_id).empty()) {
-				// Broadcast...
-				if (mac_id == SYMBOLIC_LINK_ID_BROADCAST) {
-					coutd << "returning new broadcast -> ";
-					segment = new L2Packet();
-					auto* base_header = new L2HeaderBase();
-					auto* broadcast_header = new L2HeaderBroadcast();
-					segment->addMessage(base_header, nullptr);
-					segment->addMessage(broadcast_header, new RLCPayload(num_bits));
+			L2Packet *segment;
+			if (use_actual_implementation)
+				segment = TUHH_INTAIRNET_RLC::Rlc::requestSegment(num_bits, mac_id);
+			else {
+				coutd << "RLC::requestSegment -> ";
+				if (control_message_injections.find(mac_id) == control_message_injections.end() || control_message_injections.at(mac_id).empty()) {
+					// Broadcast...
+					if (mac_id == SYMBOLIC_LINK_ID_BROADCAST) {
+						coutd << "returning new broadcast -> ";
+						segment = new L2Packet();
+						auto* base_header = new L2HeaderBase();
+						auto* broadcast_header = new L2HeaderBroadcast();
+						segment->addMessage(base_header, nullptr);
+						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
+					} else {
+						coutd << "returning new unicast -> ";
+						segment = new L2Packet();
+						auto* base_header = new L2HeaderBase(own_id, 0, 0, 0, 0);
+						auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0), 0);
+						segment->addMessage(base_header, new RLCPayload(0));
+						segment->addMessage(unicast_header, new RLCPayload(num_bits - base_header->getBits() - unicast_header->getBits()));
+					}
 				} else {
-					coutd << "returning new unicast -> ";
-					segment = new L2Packet();
-					auto* base_header = new L2HeaderBase(own_id, 0, 0, 0, 0);
-					auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0), 0);
-					segment->addMessage(base_header, new RLCPayload(0));
-					segment->addMessage(unicast_header, new RLCPayload(num_bits - base_header->getBits() - unicast_header->getBits()));
+					coutd << "returning injection -> ";
+					segment = control_message_injections.at(mac_id).at(control_message_injections.at(mac_id).size() - 1);
+					control_message_injections.at(mac_id).pop_back();
 				}
-			} else {
-				coutd << "returning injection -> ";
-				segment = control_message_injections.at(mac_id).at(control_message_injections.at(mac_id).size() - 1);
-				control_message_injections.at(mac_id).pop_back();
 			}
 			return segment;
 		}
 
 		bool isThereMoreData(const MacId& mac_id) const override {
-			if (mac_id == SYMBOLIC_LINK_ID_BROADCAST)
-				return should_there_be_more_broadcast_data;
-			else {
-				if (should_there_be_more_p2p_data_map.find(mac_id) != should_there_be_more_p2p_data_map.end())
-					return should_there_be_more_p2p_data_map.at(mac_id);
-				else
-					return should_there_be_more_p2p_data;
+			if (use_actual_implementation) {
+				return TUHH_INTAIRNET_RLC::Rlc::isThereMoreData(mac_id);
+			} else {
+				if (mac_id == SYMBOLIC_LINK_ID_BROADCAST)
+					return should_there_be_more_broadcast_data;
+				else {
+					if (should_there_be_more_p2p_data_map.find(mac_id) != should_there_be_more_p2p_data_map.end())
+						return should_there_be_more_p2p_data_map.at(mac_id);
+					else
+						return should_there_be_more_p2p_data;
+				}
 			}
 		}
 
@@ -193,6 +209,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<L2Packet*> receptions;
 		bool should_there_be_more_p2p_data = true, should_there_be_more_broadcast_data = false;
 		std::map<MacId, bool> should_there_be_more_p2p_data_map;
+		/** This mock implementation stems from times where the actual RLC layer had not been implemented yet. Its functionality can be enabled through this boolean flag. */
+		bool use_actual_implementation = false;
 	protected:
 		MacId own_id;
 	};
@@ -242,7 +260,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer->setUpperLayer(arq_layer);
 			arq_layer->setLowerLayer(mac_layer);
 			net_layer = new NetworkLayer();
-			rlc_layer = new RLCLayer(own_id);
+			rlc_layer = new RLCLayer(128);
 			net_layer->setLowerLayer(rlc_layer);
 			rlc_layer->setUpperLayer(net_layer);
 			rlc_layer->setLowerLayer(arq_layer);
