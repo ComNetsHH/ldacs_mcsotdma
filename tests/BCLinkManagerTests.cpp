@@ -661,7 +661,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(sending_interval, link_manager->getAvgNumSlotsInbetweenPacketGeneration());
 		}
 
-		/** Ensures that when slot advertisement is off, the next broadcast slot is only scheduled and advertised if there's more data to send. */
+		/** Ensures that when slot advertisement is off, the next broadcast slot is not scheduled or advertised if there's no more data to send. */
 		void testNoSlotAdvertisement() {
 			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
@@ -684,6 +684,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
 			auto &packet = outgoing_packets.at(0);
 			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), base_header->burst_offset);
 		}
 
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
