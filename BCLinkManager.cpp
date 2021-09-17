@@ -190,7 +190,7 @@ void BCLinkManager::onSlotEnd() {
 	beacon_module.onSlotEnd();
 	mac->statisticReportCongestion(congestion_estimator.getCongestion());
 	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());
-	mac->statisticReportNumActiveNeighbors((size_t) contention_estimator.getNumActiveNeighbors());
+	mac->statisticReportNumActiveNeighbors((size_t) congestion_estimator.getNumActiveNeighbors());
 
 	LinkManager::onSlotEnd();
 }
