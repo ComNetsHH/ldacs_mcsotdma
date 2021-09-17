@@ -86,6 +86,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool isEnabled() const;
 
+		void setMinBeaconCandidateSlots(unsigned int value);
+
 	protected:
 		/**
 		 * @param random_choice Whether to choose randomly from a number of viable candidates.
@@ -106,7 +108,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** When scheduling beacon slots, aim to keep this percentage of slots idle in-between two beacon broadcasts. */
 		const double BC_CONGESTION_GOAL;
 		/** Number of candidate slots that should be considered when an initial beacon slot is chosen. */
-		const unsigned int N_BEACON_SLOT_CANDIDATES = 3;
+		unsigned int N_BEACON_SLOT_CANDIDATES = 3;
 		/** Minimum number of time slots to next beacon slot of any user. */
 		unsigned int min_beacon_gap;
 

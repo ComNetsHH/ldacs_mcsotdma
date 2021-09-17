@@ -157,4 +157,8 @@ void BeaconModule::reset() {
 	next_beacon_in = 0;
 }
 
+void BeaconModule::setMinBeaconCandidateSlots(unsigned int value) {
+	this->N_BEACON_SLOT_CANDIDATES = value;
+}
+
 

@@ -447,6 +447,7 @@ void BCLinkManager::unscheduleBeaconSlot() {
 
 void BCLinkManager::setMinNumCandidateSlots(int value) {
 	MIN_CANDIDATES = value;
+	beacon_module.setMinBeaconCandidateSlots(value);
 }
 
 void BCLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {
