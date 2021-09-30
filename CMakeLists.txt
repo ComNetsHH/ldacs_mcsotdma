@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 project(tuhh_intairnet_mc-sotdma)
 
 set(CMAKE_CXX_STANDARD 14)
-#add_subdirectory(glue-lib-headers) # Gives access to the library's CMakeLists.txt's variables.
+add_subdirectory(glue-lib-headers) # Gives access to the library's CMakeLists.txt's variables.
 include_directories(glue-lib-headers) # Includes the library header files, i.e. -I <dir>
 #add_subdirectory(avionic-rlc-headers)
 include_directories(avionic-rlc-headers)

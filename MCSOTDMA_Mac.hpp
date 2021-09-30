@@ -10,6 +10,7 @@
 #include <IArq.hpp>
 #include <IOmnetPluggable.hpp>
 #include <Statistic.hpp>
+#include <ContentionMethod.hpp>
 #include "ReservationManager.hpp"
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Phy.hpp"
