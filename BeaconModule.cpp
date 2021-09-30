@@ -161,4 +161,8 @@ void BeaconModule::setMinBeaconCandidateSlots(unsigned int value) {
 	this->N_BEACON_SLOT_CANDIDATES = value;
 }
 
+unsigned int BeaconModule::getMinBeaconCandidateSlots() const {
+	return this->N_BEACON_SLOT_CANDIDATES;
+}
+
 

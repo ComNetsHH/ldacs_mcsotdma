@@ -87,6 +87,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool isEnabled() const;
 
 		void setMinBeaconCandidateSlots(unsigned int value);
+		unsigned int getMinBeaconCandidateSlots() const;
 
 	protected:
 		/**
