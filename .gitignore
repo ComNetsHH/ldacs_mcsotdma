@@ -3,7 +3,7 @@
 cmake-build-debug/
 *.autosave.xopp
 *.xopp~
-glue-lib
 glue-lib-headers
+avionic-rlc-headers
 docs/non_working_output.txt
 
