@@ -144,11 +144,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
 				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
 				CPPUNIT_ASSERT_EQUAL(partner_id, reservation_tx.getTarget());
-				// and one RX where the first data transmission is expected is marked on their side.
-				if (offset == lm_me->burst_offset)
-					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
-				else
-					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isLocked());
+				// and as RX on their side.				
+				CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));				
 			}
 			CPPUNIT_ASSERT(mac_layer_you->stat_num_packets_rcvd.get() > 0.0);
 			// Jump in time to the next transmission.
@@ -243,11 +240,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
 				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
 				CPPUNIT_ASSERT_EQUAL(partner_id, reservation_tx.getTarget());
-				// and one RX where the first data transmission is expected is marked on their side.
-				if (offset == lm_me->burst_offset)
-					CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));
-				else
-					CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isLocked());
+				// and as RX on their side.				
+				CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));				
 			}
 			CPPUNIT_ASSERT(rlc_layer_you->receptions.size() > 0);
 			CPPUNIT_ASSERT( mac_layer_you->stat_num_packets_rcvd.get() > 0.0);
@@ -859,6 +853,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		/** When a link reply is sent, the sender should schedule *all* reservations of the P2P link s.t. a possibly-lost first packet doesn't prevent the link from being properly set up. */
+		void testScheduleAllReservationsWhenLinkReplyIsSent() {
+			coutd.setVerbose(true);						
+			auto *p2p_lm_me = mac_layer_me->getLinkManager(partner_id), *p2p_lm_you = mac_layer_you->getLinkManager(own_id);			
+			// have comm. partner establish a link
+			p2p_lm_you->notifyOutgoing(512);
+			size_t max_t = 100, t = 0;
+			// wait until *we* have transmitted a reply
+			for (;t < max_t && ((size_t) mac_layer_me->stat_num_replies_sent.get()) < 1; t++) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_t, t);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_replies_sent.get());
+			// now make sure that for the entire P2P link, all reservations are scheduled
+			const auto *table_me = p2p_lm_me->current_reservation_table, *table_you = p2p_lm_you->current_reservation_table;
+			CPPUNIT_ASSERT_EQUAL(table_me->getLinkedChannel()->getCenterFrequency(), table_you->getLinkedChannel()->getCenterFrequency());			
+			for (size_t i = 0; i < table_me->getPlanningHorizon(); i++) {
+				const auto res_me = table_me->getReservation(i), res_you = table_you->getReservation(i);
+				if (res_you.isAnyTx() || res_you.isAnyRx()) {
+					// std::cout << "t=" << i << ": " << res_me << " vs " << res_you << std::endl;
+					// any communication resource that *you* have scheduled should likewise be scheduled for me
+					CPPUNIT_ASSERT_EQUAL(true, res_me.isTx() || res_me.isRx());
+				}
+			}
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -877,6 +902,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testTimeout);
 			CPPUNIT_TEST(testManyReestablishments);
 			CPPUNIT_TEST(testSlotAdvertisement);
+			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
 
 	CPPUNIT_TEST_SUITE_END();
 	};
