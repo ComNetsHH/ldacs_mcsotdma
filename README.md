@@ -21,3 +21,19 @@ The `mcsotdma-unittests` exectuable must be linked against both the [Glue Librar
 - Please create a symbolic link `avionic-rlc-headers` that points to the top directory of that repository, i.e. `ln -s <path/to/rlc/lib> avionic-rlc-headers`.  
 - Please create a symbolic link `avionic-rlc` that points to the build directory of the repository, i.e. `ln -s <path/to/rlc/lib/cmake-build-debug> avionic-rlc`.  
 
+### Using `cmake`
+Once the prerequisities are provided, you can build the two targets using `cmake`.  
+
+#### Release build
+- Create a directory for the release-type build: `mkdir cmake-build-release`.  
+- Change to that directory: `cd cmake-build-release`
+- Call `cmake` to generate a `Makefile`: `cmake -DCMAKE_BUILD_TYPE=Release ..`
+- Build the library: `make tuhh_intairnet_mc-sotdma`
+- Build the executable: `make mcsotdma-unittests`
+
+#### Debug build
+- Create a directory for the release-type build: `mkdir cmake-build-debug`.  
+- Change to that directory: `cd cmake-build-debug`
+- Call `cmake` to generate a `Makefile`: `cmake -DCMAKE_BUILD_TYPE=Debug ..`
+- Build the library: `make tuhh_intairnet_mc-sotdma`
+- Build the executable: `make mcsotdma-unittests`
