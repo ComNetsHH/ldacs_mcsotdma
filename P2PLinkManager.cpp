@@ -226,6 +226,8 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 
 void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 	communication_during_this_slot = true;
+	if (this->current_link_state != nullptr && link_status == Status::awaiting_data_tx) 
+		this->current_link_state->num_failed_receptions_before_link_establishment++;
 }
 
 void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
@@ -385,6 +387,15 @@ void P2PLinkManager::onSlotEnd() {
 					notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 			} else
 				current_link_state->latest_agreement_opportunity -= 1;
+		}
+		// If we're awaiting the first data transmission for too many slots, then terminate the link.
+		if (link_status == Status::awaiting_data_tx && current_link_state->num_failed_receptions_before_link_establishment > mac->getUpperLayer()->getMaxNumRtxAttempts()) {
+			coutd << *mac << "::" << *this << " has not received the first data transmission within too many slots, resetting link -> ";
+			mac->statisticReportLinkClosedEarly();
+			terminateLink();
+			// Check if there's more data,
+			if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
+				notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 		}
 	}
 	// if the link has been established in this slot
