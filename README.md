@@ -4,7 +4,7 @@ Implements the MCSOTDMA protocol.
 
 ## Building
 The protocol is made available as a shared library.
-Unit-tests it through an executable.
+It is unit-tested through an executable that loads this library.
 
 Both targets must be linked against other LDACS libraries.
 The `CMakeLists.txt` expects these to be available through folders, which should be provided using symbolic links.
