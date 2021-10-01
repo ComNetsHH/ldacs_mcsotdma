@@ -75,6 +75,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setAlwaysScheduleNextBroadcastSlot(bool value) override;
 
+		void setCloseP2PLinksEarly(bool flag) override;
+
 		void statisticReportBroadcastMessageDecoded() {
 			stat_num_broadcast_msgs_decoded.increment();
 		}
@@ -158,6 +160,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
+		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
+		bool close_link_early_if_no_first_data_packet_comes_in = true;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
