@@ -201,6 +201,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
 			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
+			((P2PLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
 			// Receiver tables are only set for P2PLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
@@ -281,4 +282,14 @@ void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
 
 void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
+}
+
+void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {
+	close_link_early_if_no_first_data_packet_comes_in = flag;
+	for (auto pair : link_managers) {
+		const MacId id = pair.first;
+		auto *manager = (P2PLinkManager*) pair.second;
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) 
+			manager->setShouldTerminateLinksEarly(flag);
+	}
 }

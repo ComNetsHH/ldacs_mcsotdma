@@ -61,17 +61,12 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::base: {
 				coutd << "processing base header -> ";
 				auto*& base_header = (L2HeaderBase*&) header;
-				processBaseMessage(base_header);
+				processBaseMessage(base_header);						
 				break;
 			}
 			case L2Header::beacon: {
 				coutd << "processing beacon -> ";
-				processBeaconMessage(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);
-				// Delete and set to nullptr s.t. upper layers can easily ignore them.
-//				delete header;
-//				header = nullptr;
-//				delete payload;
-//				payload = nullptr;
+				processBeaconMessage(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);				
 				break;
 			}
 			case L2Header::broadcast: {
@@ -88,26 +83,17 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
-				processLinkRequestMessage((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());
-//				delete header;
-//				header = nullptr;
-//				delete payload;
-//				payload = nullptr;
+				processLinkRequestMessage((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());				
 				break;
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				processLinkReplyMessage((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);
-				// Delete and set to nullptr s.t. upper layers can easily ignore them.
-//				delete header;
-//				header = nullptr;
-//				delete payload;
-//				payload = nullptr;
+				processLinkReplyMessage((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);				
 				break;
 			}
 			case L2Header::link_info: {
 				coutd << "processing link info -> ";
-				processLinkInfoMessage((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);
+				processLinkInfoMessage((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);				
 				break;
 			}
 			default: {

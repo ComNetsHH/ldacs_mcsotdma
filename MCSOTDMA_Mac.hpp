@@ -75,6 +75,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setAlwaysScheduleNextBroadcastSlot(bool value) override;
 
+		void setCloseP2PLinksEarly(bool flag) override;
+
 		void statisticReportBroadcastMessageDecoded() {
 			stat_num_broadcast_msgs_decoded.increment();
 		}
@@ -138,6 +140,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportBroadcastCandidateSlots(size_t val) {
 			stat_broadcast_candidate_slots.capture(val);
 		}
+		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early. This counts the number of times this has happened. */
+		void statisticReportLinkClosedEarly() {
+			stat_num_links_closed_early.increment();
+		}
 
 	protected:
 		/**
@@ -154,6 +160,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
+		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
+		bool close_link_early_if_no_first_data_packet_comes_in = true;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
@@ -180,6 +188,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_contention = Statistic("mcsotdma_statistic_contention", this);
 		Statistic stat_congestion = Statistic("mcsotdma_statistic_congestion", this);
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
+		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -204,7 +213,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_min_beacon_offset,
 				&stat_contention,
 				&stat_congestion,
-				&stat_broadcast_candidate_slots
+				&stat_broadcast_candidate_slots,
+				&stat_num_links_closed_early
 		};
 	};
 

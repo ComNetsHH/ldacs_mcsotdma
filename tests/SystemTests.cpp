@@ -854,8 +854,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		/** When a link reply is sent, the sender should schedule *all* reservations of the P2P link s.t. a possibly-lost first packet doesn't prevent the link from being properly set up. */
-		void testScheduleAllReservationsWhenLinkReplyIsSent() {
-			coutd.setVerbose(true);						
+		void testScheduleAllReservationsWhenLinkReplyIsSent() {			
 			auto *p2p_lm_me = mac_layer_me->getLinkManager(partner_id), *p2p_lm_you = mac_layer_you->getLinkManager(own_id);			
 			// have comm. partner establish a link
 			p2p_lm_you->notifyOutgoing(512);
@@ -884,6 +883,42 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link. */
+		void testGiveUpLinkIfFirstDataPacketDoesntComeThrough() {
+			auto *p2p_lm_me = mac_layer_me->getLinkManager(partner_id), *p2p_lm_you = mac_layer_you->getLinkManager(own_id);			
+			// have comm. partner establish a link
+			p2p_lm_you->notifyOutgoing(512);
+			env_me->rlc_layer->should_there_be_more_p2p_data = false;
+			env_you->rlc_layer->should_there_be_more_p2p_data = false;
+			size_t max_t = 1000, t = 0;
+			// wait until *we* have transmitted a reply
+			for (;t < max_t && ((size_t) mac_layer_me->stat_num_replies_sent.get()) < 1; t++) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_t, t);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_replies_sent.get());
+			// drop all packets from now on
+			env_me->phy_layer->connected_phys.clear();
+			env_you->phy_layer->connected_phys.clear();
+			t = 0;
+			for (;t < max_t && p2p_lm_me->link_status != LinkManager::Status::link_not_established; t++) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_t, t);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, p2p_lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_links_closed_early.get());
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -903,6 +938,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testManyReestablishments);
 			CPPUNIT_TEST(testSlotAdvertisement);
 			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
+			CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
 
 	CPPUNIT_TEST_SUITE_END();
 	};
