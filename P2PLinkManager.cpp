@@ -270,6 +270,23 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 						it--;
 						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to init link on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
 						mac->statisticReportLinkReplySent();
+						// schedule all link resources
+						// Clear locked resources.
+						if (lock_map.anyLocks()) {
+							clearLockedResources(lock_map);
+							lock_map = LockMap();
+						}
+						// Mark reservations.
+						coutd << "reserving bursts: ";
+						assert(current_link_state != nullptr);
+						for (unsigned int burst = 1; burst < current_link_state->timeout + 1; burst++)
+							try {
+								scheduleBurst(burst * burst_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
+							} catch (const std::invalid_argument& e) {
+								std::stringstream ss;
+								ss << *mac << "::" << *this << "::processUnicastMessage conflict at t=" << burst*burst_offset << ": " << e.what() << "!";
+								throw std::runtime_error(ss.str());
+							}
 					} else // Link replies must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
 						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link reply into packet because it wouldn't fit. This should never happen?!");
 				}
@@ -705,23 +722,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 			established_link_this_slot = true;
 			coutd << "this transmission establishes the link, setting status to '" << link_status << "' -> informing upper layers -> ";
 			// Inform upper sublayers.
-			mac->notifyAboutNewLink(link_id);
-			// Clear locked resources.
-			if (lock_map.anyLocks()) {
-				clearLockedResources(lock_map);
-				lock_map = LockMap();
-			}
-			// Mark reservations.
-			coutd << "reserving bursts: ";
-			assert(current_link_state != nullptr);
-			for (unsigned int burst = 1; burst < current_link_state->timeout; burst++)
-				try {
-					scheduleBurst(burst * burst_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
-				} catch (const std::invalid_argument& e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << "::processUnicastMessage conflict at t=" << burst*burst_offset << ": " << e.what() << "!";
-					throw std::runtime_error(ss.str());
-				}
+			mac->notifyAboutNewLink(link_id);			
 		}
 	}
 }
