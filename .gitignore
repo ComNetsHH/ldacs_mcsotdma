@@ -1,6 +1,7 @@
 .idea/
 .project
 cmake-build-debug/
+cmake-build-release/
 *.autosave.xopp
 *.xopp~
 glue-lib-headers
