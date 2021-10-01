@@ -302,8 +302,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		link_status = awaiting_reply;
 		coutd << "link not established, changing status to '" << link_status << "', triggering link establishment -> ";
 		auto link_request_msg = prepareRequestMessage();
-		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);
-		mac->statisticReportLinkRequestSent();
+		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);		
 	} else
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
