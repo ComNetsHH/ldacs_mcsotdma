@@ -14,6 +14,7 @@
 #include "ReservationManager.hpp"
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Phy.hpp"
+#include "NeighborObserver.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -76,6 +77,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setAlwaysScheduleNextBroadcastSlot(bool value) override;
 
 		void setCloseP2PLinksEarly(bool flag) override;
+
+		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
+		void reportNeighborActivity(const MacId& id);
+		const NeighborObserver& getNeighborObserver() const;
 
 		void statisticReportBroadcastMessageDecoded() {
 			stat_num_broadcast_msgs_decoded.increment();
@@ -162,6 +167,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
 		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
 		bool close_link_early_if_no_first_data_packet_comes_in = true;
+		
+		/** Keeps a list of active neighbors, which have demonstrated activity within the last 50.000 slots (10min if slot duration is 12ms). */
+		NeighborObserver active_neighbor_observer; 
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

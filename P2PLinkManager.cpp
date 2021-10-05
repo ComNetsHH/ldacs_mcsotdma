@@ -726,6 +726,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 		return;
 	} else {
 		mac->statisticReportUnicastMessageDecoded();
+		
 		if (link_status == awaiting_data_tx) {
 			// Link is now established.
 			link_status = link_established;
@@ -741,6 +742,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 void P2PLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	// The communication partner informs about its *current wish* for their own burst length.
 	reported_desired_tx_slots = header->burst_length_tx;
+	mac->reportNeighborActivity(header->src_id);
 }
 
 bool P2PLinkManager::decrementTimeout() {

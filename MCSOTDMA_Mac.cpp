@@ -12,7 +12,7 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)) {}
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000) {}
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 	for (auto& pair : link_managers)
@@ -252,8 +252,13 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	}
 	received_packets.clear();
 
+	// update link managers
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
+
+	// update active neighbors list
+	active_neighbor_observer.onSlotEnd();
+	statisticReportNumActiveNeighbors(active_neighbor_observer.getNumActiveNeighbors());
 
 	// Statistics reporting.
 	for (auto* stat : statistics)
@@ -292,4 +297,12 @@ void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {
 		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) 
 			manager->setShouldTerminateLinksEarly(flag);
 	}
+}
+
+void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
+	active_neighbor_observer.reportActivity(id);
+}
+
+const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
+	return this->active_neighbor_observer;
 }
