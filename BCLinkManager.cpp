@@ -189,8 +189,7 @@ void BCLinkManager::onSlotEnd() {
 	congestion_estimator.onSlotEnd();
 	beacon_module.onSlotEnd();
 	mac->statisticReportCongestion(congestion_estimator.getCongestion());
-	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());
-	mac->statisticReportNumActiveNeighbors((size_t) congestion_estimator.getNumActiveNeighbors());
+	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());	
 
 	LinkManager::onSlotEnd();
 }
@@ -389,11 +388,14 @@ void BCLinkManager::assign(const FrequencyChannel* channel) {
 }
 
 void BCLinkManager::onPacketReception(L2Packet*& packet) {
-	// Congestion is concerned with *any* received broadcast
-	congestion_estimator.reportBroadcast(packet->getOrigin());
-	// Contention is only concerned with non-beacon broadcasts
+	const MacId& id = packet->getOrigin();
+	// report any activity to the MAC
+	mac->reportNeighborActivity(id);
+	// congestion is concerned with *any* received broadcast	
+	congestion_estimator.reportBroadcast(id);		
+	// contention is only concerned with non-beacon broadcasts
 	if (packet->getBeaconIndex() == -1)
-		contention_estimator.reportNonBeaconBroadcast(packet->getOrigin(), mac->getCurrentSlot());
+		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());
 
 	LinkManager::onPacketReception(packet);
 }
