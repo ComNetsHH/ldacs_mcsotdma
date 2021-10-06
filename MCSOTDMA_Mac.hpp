@@ -149,6 +149,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportLinkClosedEarly() {
 			stat_num_links_closed_early.increment();
 		}
+		/**
+		 * @param mac_delay: In slots.
+		 */
+		void statisticReportBroadcastMacDelay(unsigned int mac_delay) {			
+			stat_broadcast_mac_delay.capture((double) mac_delay);
+		}
 
 	protected:
 		/**
@@ -197,6 +203,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_congestion = Statistic("mcsotdma_statistic_congestion", this);
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
+		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -222,7 +229,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_contention,
 				&stat_congestion,
 				&stat_broadcast_candidate_slots,
-				&stat_num_links_closed_early
+				&stat_num_links_closed_early,
+				&stat_broadcast_mac_delay
 		};
 	};
 

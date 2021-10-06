@@ -50,6 +50,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	} else {
 		coutd << "broadcasting data -> ";
 		mac->statisticReportBroadcastSent();
+		mac->statisticReportBroadcastMacDelay(measureMacDelay());
 		// Put a priority on link requests.
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*>> requests_to_add;
 		while (!link_requests.empty()) {
@@ -126,7 +127,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		}
 	}
 
-	mac->statisticReportPacketSent();
+	mac->statisticReportPacketSent();	
 	return packet;
 }
 
