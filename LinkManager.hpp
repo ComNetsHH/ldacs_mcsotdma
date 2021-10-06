@@ -159,6 +159,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		virtual void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
 		virtual void processBaseMessage(L2HeaderBase*& header);
 		virtual void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
+		/** 
+		 * Called whenever a channel access is performed. Measures the number of slots since the last channel access and reports it to the MAC.
+		 * @return Number of slots since the last channel access, i.e. the current MAC delay.
+		 */
+		unsigned int measureMacDelay();
 
 	protected:
 		MacId link_id;
@@ -170,6 +175,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<ReservationTable*> rx_tables;
 		/** Link establishment status. */
 		Status link_status;
+		/** To measure the MAC delay, keep track of the number of slots in-between channel accesses. */
+		unsigned int time_since_last_channel_access = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {

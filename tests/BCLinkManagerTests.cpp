@@ -777,6 +777,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(base_header->burst_offset > 0);
 		}
 
+		void testMacDelay() {
+			// give it some data to send
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			link_manager->notifyOutgoing(512);						
+			std::vector<double> delays;
+			size_t num_slots = 0, max_num_slots = 100, num_tx = 10;
+			while (env->mac_layer->stat_num_broadcasts_sent.get() < num_tx && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac->execute();
+				if (env->mac_layer->stat_broadcast_mac_delay.wasUpdated())
+					delays.push_back(env->mac_layer->stat_broadcast_mac_delay.get());
+				mac->onSlotEnd();				
+			}			
+			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(num_tx, delays.size());
+			for (const double &d : delays) {
+				CPPUNIT_ASSERT_GREATEREQUAL(1.0, d);
+				CPPUNIT_ASSERT_LESSEQUAL((double) link_manager->MIN_CANDIDATES, d);
+			}
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -803,6 +824,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
 		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
 		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
+		CPPUNIT_TEST(testMacDelay);
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
