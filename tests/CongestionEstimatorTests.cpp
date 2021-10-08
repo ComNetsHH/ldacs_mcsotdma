@@ -35,7 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(true, estimator->isActive(MacId(t)));
 			CPPUNIT_ASSERT_EQUAL(false, estimator->isActive(MacId(horizon)));
 			estimator->reset(horizon);
-			CPPUNIT_ASSERT_EQUAL(0.0, estimator->getCongestion());
+			CPPUNIT_ASSERT_EQUAL(1.0, estimator->getCongestion());
 
 			// Now there'll be broadcasts only half the time.
 			CPPUNIT_ASSERT_EQUAL(true, horizon % 2 == 0);
@@ -69,8 +69,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), estimator->getNumActiveNeighbors());
 		}
 
+		void testReset() {
+			CPPUNIT_ASSERT_EQUAL(0.0, estimator->getCongestion());
+			for (unsigned int t = 0; t < horizon; t++) {
+				estimator->reportBroadcast(MacId(t));
+				estimator->onSlotEnd();
+			}
+			for (unsigned int t = 0; t < horizon/2; t++) 				
+				estimator->onSlotEnd();			
+			CPPUNIT_ASSERT_EQUAL(0.5, estimator->getCongestion());
+
+			estimator->reset(horizon*2);
+			CPPUNIT_ASSERT_EQUAL(0.5, estimator->getCongestion());
+		}
+
 		CPPUNIT_TEST_SUITE(CongestionEstimatorTests);
 			CPPUNIT_TEST(testEstimator);
+			CPPUNIT_TEST(testReset);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

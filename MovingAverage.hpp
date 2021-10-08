@@ -15,6 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	public:
 		explicit MovingAverage(unsigned int num_values);
+		MovingAverage(const MovingAverage& old, unsigned int num_values);
 
 		void put(unsigned long value);
 

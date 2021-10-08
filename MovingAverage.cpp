@@ -8,6 +8,14 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 MovingAverage::MovingAverage(unsigned int num_values) : values(num_values), index(0) {}
+MovingAverage::MovingAverage(const MovingAverage& old, unsigned int num_values) : values(num_values), index(0) {
+	// copy as many values as fit
+	for (size_t t = 0; t < std::min((size_t) num_values, (size_t) old.index); t++) {
+		values.at(t) = old.values.at(t);
+		index++;
+	}
+}
+
 
 void MovingAverage::put(unsigned long value) {
 	has_been_updated = true;
