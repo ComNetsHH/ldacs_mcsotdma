@@ -145,6 +145,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportBroadcastCandidateSlots(size_t val) {
 			stat_broadcast_candidate_slots.capture(val);
 		}
+		void statisticReportSelectedBroadcastCandidateSlots(size_t val) {
+			stat_broadcast_selected_candidate_slots.capture(val);
+		}
 		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early. This counts the number of times this has happened. */
 		void statisticReportLinkClosedEarly() {
 			stat_num_links_closed_early.increment();
@@ -202,6 +205,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_contention = Statistic("mcsotdma_statistic_contention", this);
 		Statistic stat_congestion = Statistic("mcsotdma_statistic_congestion", this);
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
+		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
 		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);
 		std::vector<Statistic*> statistics = {
@@ -229,6 +233,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_contention,
 				&stat_congestion,
 				&stat_broadcast_candidate_slots,
+				&stat_broadcast_selected_candidate_slots,
 				&stat_num_links_closed_early,
 				&stat_broadcast_mac_delay
 		};

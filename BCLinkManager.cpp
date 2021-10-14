@@ -275,7 +275,9 @@ unsigned int BCLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, min_offset, 1, 1, 1, 0, false);
 	if (candidate_slots.empty())
 		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
-	return candidate_slots.at(getRandomInt(0, candidate_slots.size()));
+	unsigned int selected_slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
+	mac->statisticReportSelectedBroadcastCandidateSlots(selected_slot);
+	return selected_slot;
 }
 
 void BCLinkManager::scheduleBroadcastSlot() {
