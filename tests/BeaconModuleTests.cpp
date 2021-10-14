@@ -36,10 +36,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			for (unsigned int min_beacon_gap = 0; min_beacon_gap < 10; min_beacon_gap++) {
 				BeaconModule mod = BeaconModule(min_beacon_gap, .45);
-				for (unsigned int num_active_neighbors = 1; num_active_neighbors < 1000; num_active_neighbors++) {
-					unsigned int beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+				unsigned int last_beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, 1); 
+				for (unsigned int num_active_neighbors = 4; num_active_neighbors < 1000; num_active_neighbors++) {
+					unsigned int beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);										
 					CPPUNIT_ASSERT(beacon_offset >= mod.MIN_BEACON_OFFSET);
 					CPPUNIT_ASSERT(beacon_offset <= mod.MAX_BEACON_OFFSET);
+					if (beacon_offset != mod.MIN_BEACON_OFFSET && beacon_offset != mod.MAX_BEACON_OFFSET)
+						CPPUNIT_ASSERT(beacon_offset > last_beacon_offset);					
+					last_beacon_offset = beacon_offset;
 				}
 			}
 		}
