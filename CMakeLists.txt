@@ -19,8 +19,6 @@ target_link_libraries(tuhh_intairnet_mc-sotdma LINK_PUBLIC intairnet_linklayer_g
 
 # Unittest target.
 add_executable(mcsotdma-unittests ${MCSOTDMA_SRC} ${MCSOTDMA_TEST_SRC} ${GLUE_SRC_HPP})
-add_library(tuhh_intairnet_rlc SHARED IMPORTED)
-set_property(TARGET tuhh_intairnet_rlc PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/avionic-rlc/libtuhh_intairnet_rlc.so")
-target_include_directories(mcsotdma-unittests PUBLIC glue-lib-headers avionic-rlc-headers)
+target_include_directories(mcsotdma-unittests PUBLIC glue-lib-headers)
 # Link unittests exectutable against RLC library
-target_link_libraries(mcsotdma-unittests PRIVATE cppunit tuhh_intairnet_mc-sotdma tuhh_intairnet_rlc) # Link in cppunit and MC-SOTDMA libraries.
+target_link_libraries(mcsotdma-unittests PRIVATE cppunit tuhh_intairnet_mc-sotdma) # Link in cppunit and MC-SOTDMA libraries.
