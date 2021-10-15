@@ -424,7 +424,7 @@ void BCLinkManager::scheduleBeacon() {
 		// un-schedule current beacon slot
 		unscheduleBeaconSlot();
 		// and schedule a new one
-		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(contention_estimator.getAverageNonBeaconBroadcastRate(), contention_estimator.getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
+		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(congestion_estimator.getCongestion(), mac->getNeighborObserver().getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
 		mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
 		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
 			std::stringstream ss;

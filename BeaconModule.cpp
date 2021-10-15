@@ -51,11 +51,11 @@ unsigned int BeaconModule::chooseNextBeaconSlot(unsigned int min_beacon_offset, 
 	return viable_slots.at(getRandomInt(0, viable_slots.size()));
 }
 
-unsigned int BeaconModule::computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const {
+unsigned int BeaconModule::computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const {	
 	// Use same variable names as in the specification.
 	double &n = target_congestion, &r = avg_broadcast_rate, m = (double) num_active_neighbors;
 	// Find offset that meets congestion target.
-	auto tau = (unsigned int) (std::ceil(m*(1 + r) / n));
+	auto tau = (unsigned int) (std::ceil(m*(1 + r) / n));	
 	// Return within allowed bounds.
 	return std::min(MAX_BEACON_OFFSET, std::max(MIN_BEACON_OFFSET, tau));
 }

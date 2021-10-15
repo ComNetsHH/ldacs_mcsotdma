@@ -798,33 +798,56 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		void testBeaconInterval() {
+			link_manager->beacon_module.setEnabled(false);
+
+			size_t target_num_neighbors = 19;
+			for (size_t n = 0; n < target_num_neighbors; n++) {
+				link_manager->onSlotStart(1);
+				auto *beacon_packet = new L2Packet();
+				beacon_packet->addMessage(new L2HeaderBase(MacId(100 + n), 0, 0, 0, 0), nullptr);
+				beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
+				link_manager->onPacketReception(beacon_packet);			
+				link_manager->onSlotEnd();			
+				CPPUNIT_ASSERT_EQUAL(n+1, mac->getNeighborObserver().getNumActiveNeighbors());
+			}		
+
+			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.MIN_BEACON_OFFSET, link_manager->beacon_module.getBeaconOffset());
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_beacon_scheduled);
+			link_manager->beacon_module.setEnabled(true);
+			link_manager->scheduleBeacon();
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_beacon_scheduled);			
+			CPPUNIT_ASSERT_GREATER(link_manager->beacon_module.MIN_BEACON_OFFSET, link_manager->beacon_module.getBeaconOffset());
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
-		CPPUNIT_TEST(testBroadcastSlotSelection);
-		CPPUNIT_TEST(testScheduleBroadcastSlot);
-		CPPUNIT_TEST(testBroadcast);
-		CPPUNIT_TEST(testSendLinkRequestOnBC);
-		CPPUNIT_TEST(testContention);
-		CPPUNIT_TEST(testCongestionWithBeacon);
-		CPPUNIT_TEST(testScheduleNextBeacon);
-		CPPUNIT_TEST(testParseBeacon);
-		CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
-		CPPUNIT_TEST(testParseBeaconRescheduleBroadcast);
-		CPPUNIT_TEST(testBeaconDestination);
-		CPPUNIT_TEST(testDontScheduleNextBroadcastSlot);
-		CPPUNIT_TEST(testScheduleNextBroadcastSlotIfTheresData);
-		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
-		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
-		CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
-		CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
-		CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
-		CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
-		CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
-		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
-		CPPUNIT_TEST(testNoSlotAdvertisement);
-		CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
-		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
-		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
-		CPPUNIT_TEST(testMacDelay);
+		// CPPUNIT_TEST(testBroadcastSlotSelection);
+		// CPPUNIT_TEST(testScheduleBroadcastSlot);
+		// CPPUNIT_TEST(testBroadcast);
+		// CPPUNIT_TEST(testSendLinkRequestOnBC);
+		// CPPUNIT_TEST(testContention);
+		// CPPUNIT_TEST(testCongestionWithBeacon);
+		// CPPUNIT_TEST(testScheduleNextBeacon);
+		// CPPUNIT_TEST(testParseBeacon);
+		// CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
+		// CPPUNIT_TEST(testParseBeaconRescheduleBroadcast);
+		// CPPUNIT_TEST(testBeaconDestination);
+		// CPPUNIT_TEST(testDontScheduleNextBroadcastSlot);
+		// CPPUNIT_TEST(testScheduleNextBroadcastSlotIfTheresData);
+		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
+		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
+		// CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
+		// CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
+		// CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
+		// CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
+		// CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
+		// CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
+		// CPPUNIT_TEST(testNoSlotAdvertisement);
+		// CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
+		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
+		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
+		// CPPUNIT_TEST(testMacDelay);
+		CPPUNIT_TEST(testBeaconInterval);		
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
