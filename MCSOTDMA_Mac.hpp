@@ -78,6 +78,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setCloseP2PLinksEarly(bool flag) override;
 
+		void setMinBeaconOffset(unsigned int value) override;
+		void setMaxBeaconOffset(unsigned int value) override;
+
 		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
 		void reportNeighborActivity(const MacId& id);
 		const NeighborObserver& getNeighborObserver() const;

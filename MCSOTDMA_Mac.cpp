@@ -308,3 +308,10 @@ void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
 const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
 	return this->active_neighbor_observer;
 }
+
+void MCSOTDMA_Mac::setMinBeaconOffset(unsigned int value) {
+	BeaconModule::MIN_BEACON_OFFSET = value;
+}
+void MCSOTDMA_Mac::setMaxBeaconOffset(unsigned int value) {
+	BeaconModule::MAX_BEACON_OFFSET = value;
+}

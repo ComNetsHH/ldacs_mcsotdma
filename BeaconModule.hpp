@@ -24,10 +24,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	public:
 		/** Beacon interval minimum and maximum. */
-		static const unsigned int MIN_BEACON_OFFSET,
-								  MAX_BEACON_OFFSET;
-	    /** Initial beacon offset at power-on. */
-		static const unsigned int INITIAL_BEACON_OFFSET;
+		static unsigned int MIN_BEACON_OFFSET,
+							MAX_BEACON_OFFSET;	    
 
 	public:
 		BeaconModule(unsigned int min_beacon_gap, double congestion_goal);
