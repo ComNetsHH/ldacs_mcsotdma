@@ -12,8 +12,9 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
 : LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100),
 		contention_estimator(5000),
-		congestion_estimator(BeaconModule::MIN_BEACON_OFFSET),
-		beacon_module() {
+		beacon_module(),
+		congestion_estimator(beacon_module.getMinBeaconInterval())
+		{
 	beacon_module.setMinBeaconGap(min_beacon_gap);
 }
 
@@ -465,4 +466,12 @@ void BCLinkManager::setUseContentionMethod(ContentionMethod method) {
 
 unsigned int BCLinkManager::getAvgNumSlotsInbetweenPacketGeneration() const {
 	return (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get());
+}
+
+void BCLinkManager::setMinBeaconInterval(unsigned int value) {
+	this->beacon_module.setMinBeaconInterval(value);
+}
+
+void BCLinkManager::setMaxBeaconInterval(unsigned int value) {
+	this->beacon_module.setMaxBeaconInterval(value);
 }

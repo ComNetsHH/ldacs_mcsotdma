@@ -9,9 +9,6 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-unsigned int BeaconModule::MIN_BEACON_OFFSET = 80; /* 80*12ms=960ms */
-unsigned int BeaconModule::MAX_BEACON_OFFSET = 25000; /* 25000*12ms=5min */
-
 BeaconModule::BeaconModule(unsigned int min_beacon_gap, double congestion_goal) : min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal) {}
 
 BeaconModule::BeaconModule() : BeaconModule(1, .45) {}
@@ -56,7 +53,7 @@ unsigned int BeaconModule::computeBeaconInterval(double target_congestion, doubl
 	// Find offset that meets congestion target.
 	auto tau = (unsigned int) (std::ceil(m*(1 + r) / n));	
 	// Return within allowed bounds.
-	return std::min(MAX_BEACON_OFFSET, std::max(MIN_BEACON_OFFSET, tau));
+	return std::min(max_beacon_offset, std::max(min_beacon_offset, tau));
 }
 
 bool BeaconModule::shouldSendBeaconThisSlot() const {
@@ -70,7 +67,7 @@ void BeaconModule::onSlotEnd() {
 
 unsigned int BeaconModule::scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table) {
 	this->beacon_offset = computeBeaconInterval(BC_CONGESTION_GOAL, avg_broadcast_rate, num_active_neighbors);
-	next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->N_BEACON_SLOT_CANDIDATES, min_beacon_gap, bc_table, tx_table);
+	next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->b_beacon_slot_candidates, min_beacon_gap, bc_table, tx_table);
 	return next_beacon_in;
 }
 
@@ -157,11 +154,25 @@ void BeaconModule::reset() {
 }
 
 void BeaconModule::setMinBeaconCandidateSlots(unsigned int value) {
-	this->N_BEACON_SLOT_CANDIDATES = value;
+	this->b_beacon_slot_candidates = value;
 }
 
 unsigned int BeaconModule::getMinBeaconCandidateSlots() const {
-	return this->N_BEACON_SLOT_CANDIDATES;
+	return this->b_beacon_slot_candidates;
 }
 
+void BeaconModule::setMinBeaconInterval(unsigned int value) {
+	this->min_beacon_offset = value;
+}
 
+void BeaconModule::setMaxBeaconInterval(unsigned int value) {
+	this->max_beacon_offset = value;
+}
+
+unsigned int BeaconModule::getMinBeaconInterval() const {
+	return this->min_beacon_offset;
+}
+
+unsigned int BeaconModule::getMaxBeaconInterval() const {
+	return this->max_beacon_offset;
+}

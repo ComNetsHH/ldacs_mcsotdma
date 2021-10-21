@@ -268,7 +268,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testScheduleNextBeacon() {
 			size_t num_beacons_sent = 0;
-			for (size_t t = 0; t < BeaconModule::MIN_BEACON_OFFSET*2.5; t++) {
+			for (size_t t = 0; t < link_manager->beacon_module.min_beacon_offset*2.5; t++) {
 				link_manager->onSlotStart(1);
 				if (link_manager->beacon_module.shouldSendBeaconThisSlot()) {
 					link_manager->onTransmissionBurstStart(0);
@@ -812,41 +812,41 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(n+1, mac->getNeighborObserver().getNumActiveNeighbors());
 			}		
 
-			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.MIN_BEACON_OFFSET, link_manager->beacon_module.getBeaconOffset());
+			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
 			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_beacon_scheduled);
 			link_manager->beacon_module.setEnabled(true);
 			link_manager->scheduleBeacon();
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_beacon_scheduled);			
-			CPPUNIT_ASSERT_GREATER(link_manager->beacon_module.MIN_BEACON_OFFSET, link_manager->beacon_module.getBeaconOffset());
+			CPPUNIT_ASSERT_GREATER(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
 		}
 
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
-		// CPPUNIT_TEST(testBroadcastSlotSelection);
-		// CPPUNIT_TEST(testScheduleBroadcastSlot);
-		// CPPUNIT_TEST(testBroadcast);
-		// CPPUNIT_TEST(testSendLinkRequestOnBC);
-		// CPPUNIT_TEST(testContention);
-		// CPPUNIT_TEST(testCongestionWithBeacon);
-		// CPPUNIT_TEST(testScheduleNextBeacon);
-		// CPPUNIT_TEST(testParseBeacon);
-		// CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
-		// CPPUNIT_TEST(testParseBeaconRescheduleBroadcast);
-		// CPPUNIT_TEST(testBeaconDestination);
-		// CPPUNIT_TEST(testDontScheduleNextBroadcastSlot);
-		// CPPUNIT_TEST(testScheduleNextBroadcastSlotIfTheresData);
-		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
-		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
-		// CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
-		// CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
-		// CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
-		// CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
-		// CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
-		// CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
-		// CPPUNIT_TEST(testNoSlotAdvertisement);
-		// CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
-		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
-		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
-		// CPPUNIT_TEST(testMacDelay);
+		CPPUNIT_TEST(testBroadcastSlotSelection);
+		CPPUNIT_TEST(testScheduleBroadcastSlot);
+		CPPUNIT_TEST(testBroadcast);
+		CPPUNIT_TEST(testSendLinkRequestOnBC);
+		CPPUNIT_TEST(testContention);
+		CPPUNIT_TEST(testCongestionWithBeacon);
+		CPPUNIT_TEST(testScheduleNextBeacon);
+		CPPUNIT_TEST(testParseBeacon);
+		CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
+		CPPUNIT_TEST(testParseBeaconRescheduleBroadcast);
+		CPPUNIT_TEST(testBeaconDestination);
+		CPPUNIT_TEST(testDontScheduleNextBroadcastSlot);
+		CPPUNIT_TEST(testScheduleNextBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
+		CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
+		CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
+		CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
+		CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
+		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
+		CPPUNIT_TEST(testNoSlotAdvertisement);
+		CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
+		CPPUNIT_TEST(testMacDelay);
 		CPPUNIT_TEST(testBeaconInterval);		
 
 //			CPPUNIT_TEST(testSetBeaconHeader);

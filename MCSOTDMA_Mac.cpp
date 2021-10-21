@@ -310,8 +310,9 @@ const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
 }
 
 void MCSOTDMA_Mac::setMinBeaconOffset(unsigned int value) {
-	BeaconModule::MIN_BEACON_OFFSET = value;
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinBeaconInterval(value);
 }
+
 void MCSOTDMA_Mac::setMaxBeaconOffset(unsigned int value) {
-	BeaconModule::MAX_BEACON_OFFSET = value;
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxBeaconInterval(value);
 }

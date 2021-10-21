@@ -69,6 +69,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void setAlwaysScheduleNextBroadcastSlot(bool value);
 
+		void setMinBeaconInterval(unsigned int value);
+		void setMaxBeaconInterval(unsigned int value);
+
 		void onPacketReception(L2Packet*& packet) override;
 
 	protected:
@@ -114,6 +117,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;
 		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
 		ContentionEstimator contention_estimator;
+		BeaconModule beacon_module;
 		/** Congestion estimation is neighbor activity regarding all broadcasts. */
 		CongestionEstimator congestion_estimator;
 		/** Target collision probability for non-beacon broadcasts. */
@@ -123,8 +127,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool next_beacon_scheduled = false;
 		/** If true, always schedule the next broadcast slot and advertise it in the header. If false, only do so if there's more data to send. */
 		bool always_schedule_next_slot = false;
-		unsigned int next_broadcast_slot = 0;
-		BeaconModule beacon_module;
+		unsigned int next_broadcast_slot = 0;		
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
 		MovingAverage avg_num_slots_inbetween_packet_generations;
