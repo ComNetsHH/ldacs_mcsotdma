@@ -919,6 +919,44 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_links_closed_early.get());
 		}
 
+		void testMACDelays() {
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			auto *bc_link_manager_me = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_link_manager_you = (BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			bc_link_manager_me->notifyOutgoing(1);
+			// proceed until the first broadcast's been received
+			size_t num_broadcasts = 1;
+			while (rlc_layer_you->receptions.size() < num_broadcasts) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();				
+			}
+			// check statistics
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get());			
+			CPPUNIT_ASSERT_EQUAL(mac_layer_me->stat_broadcast_selected_candidate_slots.get(), mac_layer_me->stat_broadcast_mac_delay.get());
+			// proceed further
+			num_broadcasts = 3;
+			size_t num_slots = 0, max_slots = 1000;			
+			while (num_slots++ < max_slots && rlc_layer_you->receptions.size() < num_broadcasts) {
+				bc_link_manager_me->notifyOutgoing(1);
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();				
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			// check statistics
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get());			
+			CPPUNIT_ASSERT_EQUAL(mac_layer_me->stat_broadcast_selected_candidate_slots.get(), mac_layer_me->stat_broadcast_mac_delay.get());
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -939,6 +977,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testSlotAdvertisement);
 			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
 			CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
+			CPPUNIT_TEST(testMACDelays);			
 
 	CPPUNIT_TEST_SUITE_END();
 	};
