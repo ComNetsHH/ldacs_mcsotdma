@@ -210,7 +210,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
 		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
-		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);
+		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -238,7 +238,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_candidate_slots,
 				&stat_broadcast_selected_candidate_slots,
 				&stat_num_links_closed_early,
-				&stat_broadcast_mac_delay
+				&stat_broadcast_mac_delay				
 		};
 	};
 
