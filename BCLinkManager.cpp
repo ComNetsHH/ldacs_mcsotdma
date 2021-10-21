@@ -318,6 +318,8 @@ void BCLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 		scheduleBroadcastSlot();
 		coutd << "t=" << next_broadcast_slot << " -> ";
 	}
+	// pass it to the MAC layer
+	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));
 }
 
 void BCLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
