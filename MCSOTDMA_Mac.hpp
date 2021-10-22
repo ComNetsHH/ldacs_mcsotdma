@@ -162,6 +162,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_broadcast_mac_delay.capture((double) mac_delay);
 		}
 
+		void statisticReportBroadcastNeighborTransmissionRate(double rate) {
+			stat_broadcast_avg_neighbor_transmission_rate.capture(rate);
+		}
+
 	protected:
 		/**
 		 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.
@@ -211,6 +215,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
 		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);		
+		Statistic stat_broadcast_avg_neighbor_transmission_rate = Statistic("mcsotdma_statistic_broadcast_avg_neighbor_transmission_rate", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -238,7 +243,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_candidate_slots,
 				&stat_broadcast_selected_candidate_slots,
 				&stat_num_links_closed_early,
-				&stat_broadcast_mac_delay				
+				&stat_broadcast_mac_delay,
+				&stat_broadcast_avg_neighbor_transmission_rate
 		};
 	};
 

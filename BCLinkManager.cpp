@@ -218,6 +218,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	unsigned int k;
+	mac->statisticReportBroadcastNeighborTransmissionRate(contention_estimator.getAverageNonBeaconBroadcastRate());
 	// Estimate number of channel accesses from Binomial distribution.
 	if (contention_method == ContentionMethod::binomial_estimate) {
 		// Average broadcast rate.
