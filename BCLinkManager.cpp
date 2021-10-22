@@ -221,18 +221,24 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	mac->statisticReportBroadcastNeighborTransmissionRate(contention_estimator.getAverageNonBeaconBroadcastRate());
 	// Estimate number of channel accesses from Binomial distribution.
 	if (contention_method == ContentionMethod::binomial_estimate) {
-		// Average broadcast rate.
+		// get average broadcast rate
 		double r = contention_estimator.getAverageNonBeaconBroadcastRate();
-		// Number of active neighbors.
+		// get no of active neighbors
 		unsigned int m = contention_estimator.getNumActiveNeighbors();
 		double num_candidates = 0;
-		// For every number n of channel accesses from 0 to all neighbors...
-		for (auto n = 0; n <= m; n++) {
-			// Probability P(X=n) of n accesses.
-			double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
-			// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
-			unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
-			num_candidates += p * local_k;
+		// if the broadcast rate is 100%, then assume that all m neighbors are active
+		if (r == 1.0)
+			num_candidates = (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
+		// else find through Binomial distribution
+		else {
+			// For every number n of channel accesses from 0 to all neighbors...
+			for (auto n = 0; n <= m; n++) {
+				// Probability P(X=n) of n accesses.			
+				double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
+				// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
+				unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+				num_candidates += p * local_k;
+			}
 		}
 		k = (unsigned int) std::ceil(num_candidates);
 		coutd << "channel access method: binomial estimate for " << m << " active neighbors with average broadcast rate " << r << " -> ";

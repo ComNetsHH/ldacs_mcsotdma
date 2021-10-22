@@ -988,7 +988,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p);
 				CPPUNIT_ASSERT_GREATER(bc_link_manager_me->MIN_CANDIDATES, num_candidate_slots);
 				double num_neighbors = 1.0;
-				unsigned int expected_candidate_slots = (unsigned int) std::ceil(1.0 / (1.0 - pow(1.0 - p, (1/num_neighbors))));								
+				unsigned int expected_candidate_slots = (unsigned int) std::ceil(1.0 / (1.0 - pow(1.0 - p, (1/num_neighbors))));												
 				CPPUNIT_ASSERT_EQUAL(expected_candidate_slots, num_candidate_slots);
 			}			
 		}
