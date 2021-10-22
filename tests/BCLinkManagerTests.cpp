@@ -601,8 +601,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->execute();
 				mac->onSlotEnd();
 			}
-			int previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
-			CPPUNIT_ASSERT(previous_num_candidate_slots > link_manager->MIN_CANDIDATES);
+			unsigned int previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
+			CPPUNIT_ASSERT_GREATER(link_manager->MIN_CANDIDATES, previous_num_candidate_slots);
 			// And another
 			for (size_t t = 0; t < 100; t++, current_slot++) {
 				if (t % 2 == 0)
@@ -613,7 +613,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->execute();
 				mac->onSlotEnd();
 			}
-			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > previous_num_candidate_slots);
+			CPPUNIT_ASSERT_GREATER(previous_num_candidate_slots, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
 			previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
 			// And another
 			for (size_t t = 0; t < 100; t++, current_slot++) {
@@ -627,7 +627,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->execute();
 				mac->onSlotEnd();
 			}
-			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > previous_num_candidate_slots);
+			CPPUNIT_ASSERT_GREATER(previous_num_candidate_slots, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
 			previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
 			// And another
 			for (size_t t = 0; t < 100; t++, current_slot++) {
@@ -643,7 +643,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->execute();
 				mac->onSlotEnd();
 			}
-			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > previous_num_candidate_slots);
+			CPPUNIT_ASSERT_GREATER(previous_num_candidate_slots, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
 		}
 
 		/** Ensures that the average number of slots inbetween broadcast packet generation is measured correctly. */
