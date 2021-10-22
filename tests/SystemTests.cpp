@@ -993,6 +993,32 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}			
 		}
 
+		void testLinkRequestIsCancelledWhenAnotherIsReceived() {
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
+			// both want to establish a link exactly at the same time			
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			mac_layer_you->notifyOutgoing(512, own_id);			
+			size_t num_slots = 0, max_slots = 1000;			
+			while ((((size_t) mac_layer_me->stat_num_requests_rcvd.get()) < 1 && ((size_t) mac_layer_you->stat_num_requests_rcvd.get()) < 1) && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+				mac_layer_me->notifyOutgoing(512, partner_id);
+				mac_layer_you->notifyOutgoing(512, own_id);
+			}			
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
+			CPPUNIT_ASSERT(((size_t) mac_layer_me->stat_num_requests_rcvd.get()) < 1 || ((size_t) mac_layer_you->stat_num_requests_rcvd.get()) < 1);		
+			// there should be exactly *one* link request that made it through
+			if ((size_t) mac_layer_me->stat_num_requests_rcvd.get() == 1) 
+				CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_you->stat_num_requests_rcvd.get());				
+			else 
+				CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_requests_rcvd.get());							
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1015,6 +1041,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
 			CPPUNIT_TEST(testMACDelays);			
 			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
+			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);			
 
 	CPPUNIT_TEST_SUITE_END();
 	};

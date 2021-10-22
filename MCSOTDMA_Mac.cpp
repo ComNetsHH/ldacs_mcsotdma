@@ -30,6 +30,11 @@ void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
 
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {
 	assert(lower_layer && "MCSOTDMA_Mac's lower layer is unset.");
+	// check that the packet is not empty
+	if (packet->getDestination() == SYMBOLIC_ID_UNSET) {
+		delete packet;
+		return;
+	}
 	lower_layer->receiveFromUpper(packet, center_frequency);
 }
 
