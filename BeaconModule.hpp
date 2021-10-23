@@ -21,14 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class BeaconModuleTests;
 		friend class BCLinkManagerTests;
-
-	public:
-		/** Beacon interval minimum and maximum. */
-		static const unsigned int MIN_BEACON_OFFSET,
-								  MAX_BEACON_OFFSET;
-	    /** Initial beacon offset at power-on. */
-		static const unsigned int INITIAL_BEACON_OFFSET;
-
+	
 	public:
 		BeaconModule(unsigned int min_beacon_gap, double congestion_goal);
 		BeaconModule();
@@ -54,6 +47,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getNextBeaconOffset() const;
 
+		/** Resets next_beacon_in slot counter. */
+		void reset();
+
 		/**
 		 * @return Current value for the minimum interval in slots that should be kept in-between beacons.
 		 * The actual beacon slot may differ from this through random selection.
@@ -64,6 +60,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param n Minimum number of non-beacon-reserved slots to keep when scheduling a new beacon slot.
 		 */
 		void setMinBeaconGap(unsigned int n);
+
+		void setMinBeaconInterval(unsigned int value);
+		void setMaxBeaconInterval(unsigned int value);
+		unsigned int getMinBeaconInterval() const;
+		unsigned int getMaxBeaconInterval() const;
 
 		/**
 		 * @param reservation_tables
@@ -82,6 +83,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setEnabled(bool val);
 
 		bool isEnabled() const;
+
+		void setMinBeaconCandidateSlots(unsigned int value);
+		unsigned int getMinBeaconCandidateSlots() const;
 
 	protected:
 		/**
@@ -103,12 +107,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** When scheduling beacon slots, aim to keep this percentage of slots idle in-between two beacon broadcasts. */
 		const double BC_CONGESTION_GOAL;
 		/** Number of candidate slots that should be considered when an initial beacon slot is chosen. */
-		const unsigned int N_BEACON_SLOT_CANDIDATES = 3;
+		unsigned int b_beacon_slot_candidates = 3;
+		unsigned int min_beacon_offset = 80; /* 80*12ms=960ms */
+		unsigned int max_beacon_offset = 25000; /* 25000*12ms=5min */
 		/** Minimum number of time slots to next beacon slot of any user. */
 		unsigned int min_beacon_gap;
 
 		/** The minimum interval in slots that should be kept in-between beacons. */
-		unsigned int beacon_offset = MIN_BEACON_OFFSET;
+		unsigned int beacon_offset = min_beacon_offset;
 		unsigned int next_beacon_in = beacon_offset;
 		/** Whether this node has performed network entry. */
 		bool is_connected = false;

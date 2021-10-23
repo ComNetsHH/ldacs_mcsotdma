@@ -26,7 +26,7 @@ void CongestionEstimator::onSlotEnd() {
 void CongestionEstimator::reset(size_t new_horizon) {
 	// Start a new average.
 	this->horizon = new_horizon;
-	congestion_average = MovingAverage(new_horizon);
+	congestion_average = MovingAverage(congestion_average, new_horizon);
 	// Copy last-active neighbors.
 	last_active_neighbors_list = active_neighbors_list;
 	// And clear the current ones.

@@ -1,9 +1,12 @@
 .idea/
+.vscode/
 .project
 cmake-build-debug/
+cmake-build-release/
 *.autosave.xopp
 *.xopp~
-glue-lib
 glue-lib-headers
+avionic-rlc-headers
+avionic-rlc
 docs/non_working_output.txt
 

@@ -34,6 +34,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		void processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 		void assign(const FrequencyChannel* channel) override;
+		/**
+		 * @param flag: My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. 
+		 */
+		void setShouldTerminateLinksEarly(bool flag);
 
 	protected:
 
@@ -113,6 +117,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				bool waiting_for_agreement = false;
 				/** Link replies may be scheduled on specific slots. */
 				std::vector<ControlMessageReservation> scheduled_link_replies;
+				/** After sending the link reply, the first data transmission establishes the link. If too many of these transmissions do *not* arrive, then cancel the link. */
+				unsigned int num_failed_receptions_before_link_establishment = 0;
 			};
 
 			/** Container class of the resources that were locked during link establishment. */
@@ -258,7 +264,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/**
 			 * Clears pending RX reservations (to listen for link replies) and resets link status.
 			 */
-			void terminateLink();
+			void terminateLink();			
 
 	private:
 		/**
@@ -298,6 +304,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			bool established_link_this_slot = false;
 			/** Saves all locked resources. */
 			LockMap lock_map;
+			/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
+			bool close_link_early_if_no_first_data_packet_comes_in = true;
 		};
 
 	}

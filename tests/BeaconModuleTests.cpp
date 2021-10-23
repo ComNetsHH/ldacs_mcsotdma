@@ -36,16 +36,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			for (unsigned int min_beacon_gap = 0; min_beacon_gap < 10; min_beacon_gap++) {
 				BeaconModule mod = BeaconModule(min_beacon_gap, .45);
-				for (unsigned int num_active_neighbors = 1; num_active_neighbors < 1000; num_active_neighbors++) {
-					unsigned int beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
-					CPPUNIT_ASSERT(beacon_offset >= mod.MIN_BEACON_OFFSET);
-					CPPUNIT_ASSERT(beacon_offset <= mod.MAX_BEACON_OFFSET);
+				unsigned int last_beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, 1); 
+				for (unsigned int num_active_neighbors = 4; num_active_neighbors < 1000; num_active_neighbors++) {
+					unsigned int beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);										
+					CPPUNIT_ASSERT(beacon_offset >= mod.min_beacon_offset);
+					CPPUNIT_ASSERT(beacon_offset <= mod.max_beacon_offset);
+					if (beacon_offset != mod.min_beacon_offset && beacon_offset != mod.max_beacon_offset)
+						CPPUNIT_ASSERT(beacon_offset > last_beacon_offset);					
+					last_beacon_offset = beacon_offset;
 				}
 			}
 		}
 
 		void testChooseNextBeaconSlot() {
-			unsigned int beacon_offset = beacon_module->MIN_BEACON_OFFSET,
+			unsigned int beacon_offset = beacon_module->min_beacon_offset,
 						 num_candidates = 1,
 						 min_gap = beacon_module->min_beacon_gap;
 			unsigned int next_slot = beacon_module->chooseNextBeaconSlot(beacon_offset, num_candidates, min_gap, bc_table, tx_table);
@@ -60,7 +64,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testKeepGapPattern() {
-			unsigned int beacon_offset = beacon_module->MIN_BEACON_OFFSET,
+			unsigned int beacon_offset = beacon_module->min_beacon_offset,
 					num_candidates = 1,
 					min_gap = 1;
 
@@ -98,11 +102,38 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(marked_p2p_slots.at(i), p2p_vec.at(i).first);
 		}
 
+		void testMinBeaconOffset() {
+			double target_congestion = .45;
+			double avg_broadcast_rate = 0.0;
+			unsigned int num_active_neighbors = 0;
+			unsigned int beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			CPPUNIT_ASSERT_EQUAL(beacon_module->min_beacon_offset, beacon_interval);
+			// change min beacon offset
+			beacon_module->setMinBeaconInterval(beacon_module->min_beacon_offset * 2);			
+			beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			CPPUNIT_ASSERT_EQUAL(beacon_module->min_beacon_offset, beacon_interval);			
+		}
+
+		void testMaxBeaconOffset() {
+			double target_congestion = .45;
+			double avg_broadcast_rate = .99;
+			unsigned int num_active_neighbors = 1000;		
+			unsigned int beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			CPPUNIT_ASSERT_GREATER(beacon_module->min_beacon_offset, beacon_interval);
+			// change max beacon offset
+			beacon_module->setMaxBeaconInterval(beacon_module->getMinBeaconInterval());
+			beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			CPPUNIT_ASSERT_EQUAL(beacon_module->min_beacon_offset, beacon_interval);			
+			CPPUNIT_ASSERT_EQUAL(beacon_module->max_beacon_offset, beacon_interval);	
+		}
+
 		CPPUNIT_TEST_SUITE(BeaconModuleTests);
 			CPPUNIT_TEST(testBeaconInterval);
 			CPPUNIT_TEST(testChooseNextBeaconSlot);
 			CPPUNIT_TEST(testKeepGapPattern);
 			CPPUNIT_TEST(testBeaconMessage);
+			CPPUNIT_TEST(testMinBeaconOffset);			
+			CPPUNIT_TEST(testMaxBeaconOffset);		
 		CPPUNIT_TEST_SUITE_END();
 	};
 

@@ -226,6 +226,8 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 
 void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 	communication_during_this_slot = true;
+	if (this->close_link_early_if_no_first_data_packet_comes_in && this->current_link_state != nullptr && link_status == Status::awaiting_data_tx) 
+		this->current_link_state->num_failed_receptions_before_link_establishment++;
 }
 
 void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
@@ -270,6 +272,23 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 						it--;
 						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to init link on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
 						mac->statisticReportLinkReplySent();
+						// schedule all link resources
+						// Clear locked resources.
+						if (lock_map.anyLocks()) {
+							clearLockedResources(lock_map);
+							lock_map = LockMap();
+						}
+						// Mark reservations.
+						coutd << "reserving bursts: ";
+						assert(current_link_state != nullptr);
+						for (unsigned int burst = 1; burst < current_link_state->timeout + 1; burst++)
+							try {
+								scheduleBurst(burst * burst_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
+							} catch (const std::invalid_argument& e) {
+								std::stringstream ss;
+								ss << *mac << "::" << *this << "::processUnicastMessage conflict at t=" << burst*burst_offset << ": " << e.what() << "!";
+								throw std::runtime_error(ss.str());
+							}
 					} else // Link replies must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
 						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link reply into packet because it wouldn't fit. This should never happen?!");
 				}
@@ -302,8 +321,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		link_status = awaiting_reply;
 		coutd << "link not established, changing status to '" << link_status << "', triggering link establishment -> ";
 		auto link_request_msg = prepareRequestMessage();
-		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);
-		mac->statisticReportLinkRequestSent();
+		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);		
 	} else
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
@@ -370,9 +388,20 @@ void P2PLinkManager::onSlotEnd() {
 			} else
 				current_link_state->latest_agreement_opportunity -= 1;
 		}
+		// If we're awaiting the first data transmission for too many slots, then terminate the link.
+		if (close_link_early_if_no_first_data_packet_comes_in && link_status == Status::awaiting_data_tx && current_link_state->num_failed_receptions_before_link_establishment > mac->getUpperLayer()->getMaxNumRtxAttempts()) {
+			coutd << *mac << "::" << *this << " has not received the first data transmission within too many slots, resetting link -> ";
+			mac->statisticReportLinkClosedEarly();
+			terminateLink();
+			// Check if there's more data,
+			if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
+				notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
+		}
 	}
+	// if the link has been established in this slot
 	if (established_link_this_slot) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> passing link info broadcast into broadcast queue -> ";
+		// inject a LinkInfo into the upper layer
 		auto *packet = new L2Packet();
 		packet->addMessage(new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0), nullptr);
 		packet->addMessage(new L2HeaderLinkInfo(), new LinkInfoPayload(this));
@@ -697,6 +726,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 		return;
 	} else {
 		mac->statisticReportUnicastMessageDecoded();
+		
 		if (link_status == awaiting_data_tx) {
 			// Link is now established.
 			link_status = link_established;
@@ -704,23 +734,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 			established_link_this_slot = true;
 			coutd << "this transmission establishes the link, setting status to '" << link_status << "' -> informing upper layers -> ";
 			// Inform upper sublayers.
-			mac->notifyAboutNewLink(link_id);
-			// Clear locked resources.
-			if (lock_map.anyLocks()) {
-				clearLockedResources(lock_map);
-				lock_map = LockMap();
-			}
-			// Mark reservations.
-			coutd << "reserving bursts: ";
-			assert(current_link_state != nullptr);
-			for (unsigned int burst = 1; burst < current_link_state->timeout; burst++)
-				try {
-					scheduleBurst(burst * burst_offset, current_link_state->burst_length, current_link_state->burst_length_tx, link_id, current_reservation_table, current_link_state->is_link_initiator);
-				} catch (const std::invalid_argument& e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << "::processUnicastMessage conflict at t=" << burst*burst_offset << ": " << e.what() << "!";
-					throw std::runtime_error(ss.str());
-				}
+			mac->notifyAboutNewLink(link_id);			
 		}
 	}
 }
@@ -728,6 +742,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 void P2PLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	// The communication partner informs about its *current wish* for their own burst length.
 	reported_desired_tx_slots = header->burst_length_tx;
+	mac->reportNeighborActivity(header->src_id);
 }
 
 bool P2PLinkManager::decrementTimeout() {
@@ -834,7 +849,6 @@ LinkInfo P2PLinkManager::getLinkInfo() {
 }
 
 void P2PLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
-	mac->statisticReportLinkInfoReceived();
 	const LinkInfo &info = payload->getLinkInfo();
 	coutd << info << " -> ";
 	const FrequencyChannel *channel = reservation_manager->getFreqChannelByCenterFreq(info.getP2PChannelCenterFreq());
@@ -900,4 +914,8 @@ void P2PLinkManager::terminateLink() {
 	delete current_link_state;
 	current_link_state = nullptr;
 	coutd << "link reset, status is " << link_status << " -> ";
+}
+
+void P2PLinkManager::setShouldTerminateLinksEarly(bool flag) {
+	this->close_link_early_if_no_first_data_packet_comes_in = flag;
 }

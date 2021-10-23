@@ -15,7 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		BCLinkManager *link_manager;
 		MacId id, partner_id;
 		uint32_t planning_horizon;
-		MACLayer* mac;
+		MACLayer *mac;
 		TestEnvironment *env;
 
 	public:
@@ -34,7 +34,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testBroadcastSlotSelection() {
 			// No active neighbors -> just take next slot.
-			unsigned int chosen_slot = link_manager->broadcastSlotSelection();
+			unsigned int chosen_slot = link_manager->broadcastSlotSelection(1);
 			CPPUNIT_ASSERT(chosen_slot >= uint32_t(1) && chosen_slot <= link_manager->MIN_CANDIDATES);
 		}
 
@@ -47,7 +47,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->notifyOutgoing(512);
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
 			size_t num_slots = 0, max_num_slots = 100;
-			while (link_manager->next_broadcast_scheduled && num_slots++ < max_num_slots) {
+			while (mac->stat_num_broadcasts_sent.get() < 1 && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac->execute();
 				mac->onSlotEnd();
@@ -61,7 +61,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			mac->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_num_slots = 100;
-			while (link_manager->next_broadcast_scheduled && num_slots++ < max_num_slots) {
+			while (mac->stat_num_broadcasts_sent.get() < 1 && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac->execute();
 				mac->onSlotEnd();
@@ -268,7 +268,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testScheduleNextBeacon() {
 			size_t num_beacons_sent = 0;
-			for (size_t t = 0; t < BeaconModule::MIN_BEACON_OFFSET*2.5; t++) {
+			for (size_t t = 0; t < link_manager->beacon_module.min_beacon_offset*2.5; t++) {
 				link_manager->onSlotStart(1);
 				if (link_manager->beacon_module.shouldSendBeaconThisSlot()) {
 					link_manager->onTransmissionBurstStart(0);
@@ -335,20 +335,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * If user1 has scheduled a broadcast transmission during a slot that is utilized by another user, as it learns by parsing that user's beacon, it should re-schedule its own broadcast transmission.
 		 */
 		void testParseBeaconRescheduleBroadcast() {
+			// schedule some broadcast slot
 			auto* bc_lm = (BCLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_lm->scheduleBroadcastSlot();
+			// which turned out to be 't'
 			int t = (int) bc_lm->next_broadcast_slot;
 			CPPUNIT_ASSERT(t > 0);
 
 			TestEnvironment env_you = TestEnvironment(partner_id, id);
 			ReservationTable *bc_table_you = env_you.mac_layer->reservation_manager->getBroadcastReservationTable();
+			// now have another user schedule its broadcast also at 't'
 			bc_table_you->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+			// which will be notified to the first user through a beacon
 			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you);
 
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(t));
+			// which is processed
 			bc_lm->processBeaconMessage(partner_id, pair.first, pair.second);
+			// and now the first user should've moved away from 't'
 			CPPUNIT_ASSERT(bc_lm->next_broadcast_slot != t);
-			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), bc_lm->current_reservation_table->getReservation(t));
+			// and marked the slot as BUSY
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(bc_lm->next_broadcast_slot));
 		}
 
@@ -358,6 +365,459 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			packet->addMessage(base_header, nullptr);
 			packet->addMessage(link_manager->beacon_module.generateBeacon(link_manager->reservation_manager->getP2PReservationTables(), link_manager->reservation_manager->getBroadcastReservationTable()));
 			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BEACON, packet->getDestination());
+		}
+
+		void testDontScheduleNextBroadcastSlot() {
+			// don't auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			// don't generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and *not* schedule a next one
+			size_t num_slots = 0, max_slots = 100;
+			while (link_manager->next_broadcast_scheduled && num_slots++ < max_slots) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// check that the single sent packet carries no info about the next broadcast slot
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
+			L2Packet *broadcast_packet = env->phy_layer->outgoing_packets.at(0);
+			bool found_base_header = false;
+			for (const auto *header : broadcast_packet->getHeaders()) {
+				if (header->frame_type == L2Header::base) {
+					found_base_header = true;
+					auto *base_header = (L2HeaderBase*) header;
+					CPPUNIT_ASSERT_EQUAL(uint32_t(0), base_header->burst_offset);
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+		}
+
+		void testScheduleNextBroadcastSlotIfTheresData() {
+			// don't auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			// do generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and *not* schedule a next one
+			for (size_t t = 0; t < 100; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// check that every sent packet carries some info about the next broadcast slot
+			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
+				bool found_base_header = false;
+				for (const auto *header : broadcast_packet->getHeaders()) {
+					if (header->frame_type == L2Header::base) {
+						found_base_header = true;
+						auto *base_header = (L2HeaderBase*) header;
+						CPPUNIT_ASSERT( base_header->burst_offset > 0);
+					}
+				}
+				CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+			}
+		}
+
+		void testAutoScheduleBroadcastSlotIfTheresNoData() {
+			// do auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			// don't generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and schedule a next one
+			for (size_t t = 0; t < 100; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// check that every sent packet carries some info about the next broadcast slot
+			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
+				bool found_base_header = false;
+				for (const auto *header : broadcast_packet->getHeaders()) {
+					if (header->frame_type == L2Header::base) {
+						found_base_header = true;
+						auto *base_header = (L2HeaderBase*) header;
+						CPPUNIT_ASSERT( base_header->burst_offset > 0);
+					}
+				}
+				CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+			}
+		}
+
+		void testAutoScheduleBroadcastSlotIfTheresData() {
+			// do auto-schedule a next slot => only do so if there's more data.
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			// don't generate new broadcast data.
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			// notify about queued, outgoing data
+			link_manager->notifyOutgoing(128);
+			// which should've scheduled a slot
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// now it should be sent whenever the slot is scheduled and schedule a next one
+			for (size_t t = 0; t < 100; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// check that every sent packet carries some info about the next broadcast slot
+			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
+				bool found_base_header = false;
+				for (const auto *header : broadcast_packet->getHeaders()) {
+					if (header->frame_type == L2Header::base) {
+						found_base_header = true;
+						auto *base_header = (L2HeaderBase*) header;
+						CPPUNIT_ASSERT( base_header->burst_offset > 0);
+					}
+				}
+				CPPUNIT_ASSERT_EQUAL(true, found_base_header);
+			}
+		}
+
+		void testContentionMethodNaiveRandomAccess() {
+			link_manager->setUseContentionMethod(ContentionMethod::naive_random_access);
+			const size_t num_trials = 1000;
+			for (size_t i = 0; i < num_trials; i++) {
+				// fake that there's nothing scheduled yet
+				link_manager->next_broadcast_scheduled = false;
+				// notify of new data, triggering the scheduling of a next broadcast slot
+				link_manager->notifyOutgoing(128);
+				// naive random access picks a random slot from a hard-coded 100 next idle slots
+				CPPUNIT_ASSERT(0 < link_manager->next_broadcast_slot);
+				CPPUNIT_ASSERT(103 >= link_manager->next_broadcast_slot);
+				// make sure that there's just a single broadcast slot scheduled (i.e. the previously scheduled one should've been unscheduled)
+				size_t sum = 0;
+				for (size_t t = 0; t < planning_horizon; t++)
+					sum += link_manager->current_reservation_table->getReservation(t).isIdle() ? 0 : 1;
+				CPPUNIT_ASSERT_EQUAL(size_t(1), sum);
+			}
+		}
+
+		void testContentionMethodAllNeighborsActive() {
+			link_manager->setUseContentionMethod(ContentionMethod::all_active_again_assumption);
+			int current_slot = 12;
+			const size_t max_num_neighbors = 100;
+			int previous_num_candidate_slots = 0, first_num_candidate_slots = 0;
+			for (size_t n = 0; n < max_num_neighbors; n++) {
+				// report the activity of another neighbor
+				link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(n+100), current_slot);
+				// fake that there's nothing scheduled yet
+				link_manager->next_broadcast_scheduled = false;
+				// notify of new data, triggering the scheduling of a next broadcast slot
+				link_manager->notifyOutgoing(128);
+				// the number of candidate slots should be monotonously increasing
+				CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(.95) >= previous_num_candidate_slots);
+				previous_num_candidate_slots = link_manager->getNumCandidateSlots(.95);
+				if (n == 0)
+					first_num_candidate_slots = previous_num_candidate_slots;
+			}
+			// and in the end, more than 10 times as many slots should've been proposed (ensures that the candidate slots don't just stay the same)
+			CPPUNIT_ASSERT(previous_num_candidate_slots > 10*first_num_candidate_slots);
+		}
+
+		/** Tests binomial estimate which should increase the candidate slots when more neighbors are present. */
+		void testContentionMethodBinomialEstimateNoNeighbors() {
+			link_manager->setUseContentionMethod(ContentionMethod::binomial_estimate);
+			int current_slot = 12;
+			const size_t max_num_neighbors = 100;
+			int previous_num_candidate_slots = 0, first_num_candidate_slots = 0;
+			for (size_t n = 0; n < max_num_neighbors; n++) {
+				// report the activity of another neighbor
+				link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(n+100), current_slot);
+				// fake that there's nothing scheduled yet
+				link_manager->next_broadcast_scheduled = false;
+				// notify of new data, triggering the scheduling of a next broadcast slot
+				link_manager->notifyOutgoing(128);
+				// the number of candidate slots should be monotonously increasing
+				CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(.95) >= previous_num_candidate_slots);
+				previous_num_candidate_slots = link_manager->getNumCandidateSlots(.95);
+				if (n == 0)
+					first_num_candidate_slots = previous_num_candidate_slots;
+			}
+			// and in the end, more than 10 times as many slots should've been proposed (ensures that the candidate slots don't just stay the same)
+			CPPUNIT_ASSERT(previous_num_candidate_slots > 10*first_num_candidate_slots);
+		}
+
+		void testContentionMethodBinomialEstimateIncreasingActivity() {
+			link_manager->setUseContentionMethod(ContentionMethod::binomial_estimate);
+			int current_slot = 12;
+			MacId neighbor_id_1 = MacId(1),
+				  neighbor_id_2 = MacId(2),
+				  neighbor_id_3 = MacId(3),
+				  neighbor_id_4 = MacId(4);
+			// No neighbor activity yet, so we expect the minimum no. of candidate slots.
+			CPPUNIT_ASSERT_EQUAL(link_manager->MIN_CANDIDATES, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
+			// One neighbor broadcasts every slot for 100 slots.
+			for (size_t t = 0; t < 100; t++) {
+				if (t % 4 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else if (t % 4 == 1)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				else if (t % 4 == 2)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_3, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_4, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob) > link_manager->MIN_CANDIDATES);
+		}
+
+		void testContentionMethodPoissonBinomialEstimateIncreasingActivity() {
+			link_manager->setUseContentionMethod(ContentionMethod::poisson_binomial_estimate);
+			MacId neighbor_id_1 = MacId(1),
+			neighbor_id_2 = MacId(2),
+			neighbor_id_3 = MacId(3),
+			neighbor_id_4 = MacId(4);
+			// No neighbor activity yet, so we expect the minimum no. of candidate slots.
+			CPPUNIT_ASSERT_EQUAL(link_manager->MIN_CANDIDATES, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
+			// Add one active neighbor.
+			int current_slot = 0;
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			unsigned int previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
+			CPPUNIT_ASSERT_GREATER(link_manager->MIN_CANDIDATES, previous_num_candidate_slots);
+			// And another
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				if (t % 2 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_GREATER(previous_num_candidate_slots, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
+			previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
+			// And another
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				if (t % 3 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else if (t % 3 == 1)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_3, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_GREATER(previous_num_candidate_slots, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
+			previous_num_candidate_slots = link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob);
+			// And another
+			for (size_t t = 0; t < 100; t++, current_slot++) {
+				if (t % 4 == 0)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_1, t);
+				else if (t % 4 == 1)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_2, t);
+				else if (t % 4 == 2)
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_3, t);
+				else
+					link_manager->contention_estimator.reportNonBeaconBroadcast(neighbor_id_4, t);
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_GREATER(previous_num_candidate_slots, link_manager->getNumCandidateSlots(link_manager->broadcast_target_collision_prob));
+		}
+
+		/** Ensures that the average number of slots inbetween broadcast packet generation is measured correctly. */
+		void testAverageBroadcastSlotGenerationMeasurement() {
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), link_manager->getAvgNumSlotsInbetweenPacketGeneration());
+			unsigned int sending_interval = 5;
+			size_t max_t = 100;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				if (t % sending_interval == 0)
+					link_manager->notifyOutgoing(512);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(sending_interval, link_manager->getAvgNumSlotsInbetweenPacketGeneration());
+		}
+
+		/** Ensures that when slot advertisement is off, the next broadcast slot is not scheduled or advertised if there's no more data to send. */
+		void testNoSlotAdvertisement() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), link_manager->next_broadcast_slot);
+			// make sure the header flag hasn't been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), base_header->burst_offset);
+		}
+
+		/** Ensures that when slot advertisement is off, the next broadcast slot is scheduled and advertised if there more data to send. */
+		void testSlotAdvertisementWhenTheresData() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT( link_manager->next_broadcast_slot > 0);
+			// make sure the header flag has been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT(base_header->burst_offset > 0);
+		}
+
+		/** Ensures that when slot advertisement is on, the next broadcast slot is scheduled and advertised if there's no more data to send. */
+		void testSlotAdvertisementWhenAutoAdvertisementIsOn() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT( link_manager->next_broadcast_slot > 0);
+			// make sure the header flag has been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT(base_header->burst_offset > 0);
+		}
+
+		/** Ensures that when slot advertisement is on, the next broadcast slot is scheduled and advertised if there's more data to send. */
+		void testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData() {
+			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
+			// notify about new data
+			link_manager->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			// broadcast this data
+			size_t max_t = link_manager->next_broadcast_slot;
+			for (size_t t = 0; t < max_t; t++) {
+				mac->update(1);
+				mac->execute();
+				if (t < max_t - 1)
+					mac->onSlotEnd(); // only end the slot *before* the transmission, otherwise 'next_broadcast_slot' may have decremented to zero already
+			}
+			// no new broadcast slot should've been scheduled
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT( link_manager->next_broadcast_slot > 0);
+			// make sure the header flag has been set in the broadcasted data packet
+			auto &outgoing_packets = env->phy_layer->outgoing_packets;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
+			auto &packet = outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			const auto &base_header = (L2HeaderBase*) packet->getHeaders().at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, base_header->frame_type);
+			CPPUNIT_ASSERT(base_header->burst_offset > 0);
+		}
+
+		void testMacDelay() {
+			// give it some data to send
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			link_manager->notifyOutgoing(512);						
+			std::vector<double> delays;
+			size_t num_slots = 0, max_num_slots = 100, num_tx = 10;
+			while (env->mac_layer->stat_num_broadcasts_sent.get() < num_tx && num_slots++ < max_num_slots) {
+				mac->update(1);
+				mac->execute();
+				if (env->mac_layer->stat_broadcast_mac_delay.wasUpdated())
+					delays.push_back(env->mac_layer->stat_broadcast_mac_delay.get());
+				mac->onSlotEnd();				
+			}			
+			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(num_tx, delays.size());
+			for (const double &d : delays) {
+				CPPUNIT_ASSERT_GREATEREQUAL(1.0, d);
+				CPPUNIT_ASSERT_LESSEQUAL((double) link_manager->MIN_CANDIDATES, d);
+			}
+		}
+
+		void testBeaconInterval() {
+			link_manager->beacon_module.setEnabled(false);
+
+			size_t target_num_neighbors = 19;
+			for (size_t n = 0; n < target_num_neighbors; n++) {
+				link_manager->onSlotStart(1);
+				auto *beacon_packet = new L2Packet();
+				beacon_packet->addMessage(new L2HeaderBase(MacId(100 + n), 0, 0, 0, 0), nullptr);
+				beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
+				link_manager->onPacketReception(beacon_packet);			
+				link_manager->onSlotEnd();			
+				CPPUNIT_ASSERT_EQUAL(n+1, mac->getNeighborObserver().getNumActiveNeighbors());
+			}		
+
+			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_beacon_scheduled);
+			link_manager->beacon_module.setEnabled(true);
+			link_manager->scheduleBeacon();
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_beacon_scheduled);			
+			CPPUNIT_ASSERT_GREATER(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
 		}
 
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
@@ -372,6 +832,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testParseBeaconRescheduleBeacon);
 		CPPUNIT_TEST(testParseBeaconRescheduleBroadcast);
 		CPPUNIT_TEST(testBeaconDestination);
+		CPPUNIT_TEST(testDontScheduleNextBroadcastSlot);
+		CPPUNIT_TEST(testScheduleNextBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testContentionMethodNaiveRandomAccess);
+		CPPUNIT_TEST(testContentionMethodAllNeighborsActive);
+		CPPUNIT_TEST(testContentionMethodBinomialEstimateNoNeighbors);
+		CPPUNIT_TEST(testContentionMethodBinomialEstimateIncreasingActivity);
+		CPPUNIT_TEST(testContentionMethodPoissonBinomialEstimateIncreasingActivity);
+		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);
+		CPPUNIT_TEST(testNoSlotAdvertisement);
+		CPPUNIT_TEST(testSlotAdvertisementWhenTheresData);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
+		CPPUNIT_TEST(testMacDelay);
+		CPPUNIT_TEST(testBeaconInterval);		
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

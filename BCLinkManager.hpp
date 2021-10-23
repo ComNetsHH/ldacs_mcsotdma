@@ -5,6 +5,7 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_BCLINKMANAGER_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_BCLINKMANAGER_HPP
 
+#include <ContentionMethod.hpp>
 #include "LinkManager.hpp"
 #include "ContentionEstimator.hpp"
 #include "CongestionEstimator.hpp"
@@ -54,12 +55,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setTargetCollisionProb(double value);
 		void setMinNumCandidateSlots(int value);
+
 		/**
-		 * If 'true': estimate the number of contending channel accesses from a Binomial distribution over 0..all recently active neighbors.
-		 * If 'false': assume that all recently active neighbors (within the contention window) will be active again.
+		 * Specify contention method used to find number of candidate slots.
+		 * @param method
+		 */
+		void setUseContentionMethod(ContentionMethod method);
+
+		/**
+		 * If 'true': always schedule the next broadcast slot and advertise it in the header.
+		 * If 'false: only schedule the next broadcast slot if there's more data queued up.
 		 * @param value
 		 */
-		void setUseBinomialContentionEstimation(bool value);
+		void setAlwaysScheduleNextBroadcastSlot(bool value);
+
+		void setMinBeaconInterval(unsigned int value);
+		void setMaxBeaconInterval(unsigned int value);
+
+		void onPacketReception(L2Packet*& packet) override;
 
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob) const;
@@ -68,18 +81,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/**
 		 * Applies Broadcast slot selection.
+		 * @param min_offset: Minimum number of slots before the next reservation.
 		 * @return Slot offset of the chosen slot.
 		 */
-		unsigned int broadcastSlotSelection();
+		unsigned int broadcastSlotSelection(unsigned int min_offset);
 
 		void scheduleBroadcastSlot();
 
+		void unscheduleBroadcastSlot();
+		void unscheduleBeaconSlot();
+
 		void scheduleBeacon();
-
-	public:
-		void onPacketReception(L2Packet*& packet) override;
-
-	protected:
 
 		void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 
@@ -95,11 +107,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 
+		/**
+		 * @return Average number of slots inbetween broadcast packet generations as measured.
+		 */
+		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;
+
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;
 		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
 		ContentionEstimator contention_estimator;
+		BeaconModule beacon_module;
 		/** Congestion estimation is neighbor activity regarding all broadcasts. */
 		CongestionEstimator congestion_estimator;
 		/** Target collision probability for non-beacon broadcasts. */
@@ -107,11 +125,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Whether the next broadcast slot has been scheduled. */
 		bool next_broadcast_scheduled = false;
 		bool next_beacon_scheduled = false;
-		bool use_binomial_contention_estimation = false;
-		unsigned int next_broadcast_slot = 0;
-		BeaconModule beacon_module;
+		/** If true, always schedule the next broadcast slot and advertise it in the header. If false, only do so if there's more data to send. */
+		bool always_schedule_next_slot = false;
+		unsigned int next_broadcast_slot = 0;		
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
+		MovingAverage avg_num_slots_inbetween_packet_generations;
+		unsigned int num_slots_since_last_packet_generation = 0;
+		bool packet_generated_this_slot = false;
+		ContentionMethod contention_method = binomial_estimate;
 	};
 }
 

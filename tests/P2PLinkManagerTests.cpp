@@ -407,7 +407,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->current_link_state = new P2PLinkManager::LinkState(10, 10, 10);
 			delete pair.first;
 			delete pair.second;
-		}
+		}		
 
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
@@ -423,7 +423,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSendScheduledReply);
 		CPPUNIT_TEST(testProcessInitialLinkReply);
 		CPPUNIT_TEST(testLinkRequestSize);
-		CPPUNIT_TEST(testPrepareRequestMessageMemoryLeak);
+		CPPUNIT_TEST(testPrepareRequestMessageMemoryLeak);		
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

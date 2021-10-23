@@ -12,7 +12,9 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)) {}
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000) {
+	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();
+}
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 	for (auto& pair : link_managers)
@@ -28,6 +30,11 @@ void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
 
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {
 	assert(lower_layer && "MCSOTDMA_Mac's lower layer is unset.");
+	// check that the packet is not empty
+	if (packet->getDestination() == SYMBOLIC_ID_UNSET) {
+		delete packet;
+		return;
+	}
 	lower_layer->receiveFromUpper(packet, center_frequency);
 }
 
@@ -201,6 +208,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
 			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
+			((P2PLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
 			// Receiver tables are only set for P2PLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
@@ -251,8 +259,13 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	}
 	received_packets.clear();
 
+	// update link managers
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
+
+	// update active neighbors list
+	active_neighbor_observer.onSlotEnd();
+	statisticReportNumActiveNeighbors(active_neighbor_observer.getNumActiveNeighbors());
 
 	// Statistics reporting.
 	for (auto* stat : statistics)
@@ -275,6 +288,36 @@ void MCSOTDMA_Mac::setBcSlotSelectionMinNumCandidateSlots(int value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinNumCandidateSlots(value);
 }
 
-void MCSOTDMA_Mac::setUseBinomialContentionEstimation(bool value) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setUseBinomialContentionEstimation(value);
+void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setUseContentionMethod(method);
+}
+
+void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
+}
+
+void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {
+	close_link_early_if_no_first_data_packet_comes_in = flag;
+	for (auto pair : link_managers) {
+		const MacId id = pair.first;
+		auto *manager = (P2PLinkManager*) pair.second;
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) 
+			manager->setShouldTerminateLinksEarly(flag);
+	}
+}
+
+void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
+	active_neighbor_observer.reportActivity(id);
+}
+
+const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
+	return this->active_neighbor_observer;
+}
+
+void MCSOTDMA_Mac::setMinBeaconOffset(unsigned int value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinBeaconInterval(value);
+}
+
+void MCSOTDMA_Mac::setMaxBeaconOffset(unsigned int value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxBeaconInterval(value);
 }
