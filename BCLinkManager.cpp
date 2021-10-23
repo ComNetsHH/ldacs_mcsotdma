@@ -192,6 +192,7 @@ void BCLinkManager::onSlotEnd() {
 	beacon_module.onSlotEnd();
 	mac->statisticReportCongestion(congestion_estimator.getCongestion());
 	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());	
+	mac->statisticReportBroadcastNeighborTransmissionRate(contention_estimator.getAverageNonBeaconBroadcastRate());
 
 	LinkManager::onSlotEnd();
 }
@@ -217,8 +218,7 @@ size_t BCLinkManager::cancelLinkRequest(const MacId& id) {
 unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
-	unsigned int k;
-	mac->statisticReportBroadcastNeighborTransmissionRate(contention_estimator.getAverageNonBeaconBroadcastRate());
+	unsigned int k;	
 	// Estimate number of channel accesses from Binomial distribution.
 	if (contention_method == ContentionMethod::binomial_estimate) {
 		// get average broadcast rate
