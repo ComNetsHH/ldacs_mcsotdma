@@ -284,8 +284,8 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 	mac->statisticReportUnicastSent();
 	for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
 		if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
-			packet->addMessage(upper_layer_data->getHeaders().at(i)->copy(), upper_layer_data->getPayloads().at(i)->copy());
-	delete upper_layer_data;
+			packet->addMessage(upper_layer_data->getHeaders().at(i), upper_layer_data->getPayloads().at(i));
+	//delete upper_layer_data;
 	return packet;
 }
 
