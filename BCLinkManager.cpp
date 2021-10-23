@@ -191,8 +191,7 @@ void BCLinkManager::onSlotEnd() {
 	congestion_estimator.onSlotEnd();
 	beacon_module.onSlotEnd();
 	mac->statisticReportCongestion(congestion_estimator.getCongestion());
-	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());	
-	mac->statisticReportBroadcastNeighborTransmissionRate(contention_estimator.getAverageNonBeaconBroadcastRate());
+	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());		
 
 	LinkManager::onSlotEnd();
 }
