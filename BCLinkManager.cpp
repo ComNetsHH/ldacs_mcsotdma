@@ -44,7 +44,8 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		coutd << "while non-beacon broadcast is " << (next_broadcast_scheduled ? "scheduled in " + std::to_string(next_broadcast_slot) + " slots -> " : "not scheduled -> ");
 
 		// Generate beacon message.
-		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
+		auto hostPosition = this->mac->getHostPosition();
+		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable(), hostPosition));
 		mac->statisticReportBeaconSent();
 		base_header->burst_offset = beacon_module.getNextBeaconOffset();
 	// Non-beacon slots can be used for any other type of broadcast.

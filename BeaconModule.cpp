@@ -79,7 +79,7 @@ void BeaconModule::setMinBeaconGap(unsigned int n) {
 	this->min_beacon_gap = n;
 }
 
-std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table) {
+std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table, const SimulatorPosition simulatorPosition) {
 	auto *payload = new BeaconPayload();
 	payload->encode(bc_table->getLinkedChannel()->getCenterFrequency(), bc_table);
 	if (flip_p2p_table_encoding) {
@@ -91,7 +91,9 @@ std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const st
 			payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
 		flip_p2p_table_encoding = true;
 	}
-	return {new L2HeaderBeacon(), payload};
+
+	auto position  = CPRPosition(simulatorPosition);
+	return {new L2HeaderBeacon(position, true, 0), payload};
 }
 
 std::pair<bool, bool> BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {
