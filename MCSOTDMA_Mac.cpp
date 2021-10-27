@@ -129,8 +129,12 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				// Tell it about the transmission slot.
 				unsigned int num_tx_slots = reservation.getNumRemainingSlots();
 				L2Packet* outgoing_packet = link_manager->onTransmissionBurstStart(num_tx_slots);
-				outgoing_packet->notifyCallbacks();
-				passToLower(outgoing_packet, channel->getCenterFrequency());
+				if (outgoing_packet != nullptr) {
+					outgoing_packet->notifyCallbacks();				
+					passToLower(outgoing_packet, channel->getCenterFrequency());
+				} else {
+					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
+				}
 				break;
 			}
 			case Reservation::TX_CONT: {
