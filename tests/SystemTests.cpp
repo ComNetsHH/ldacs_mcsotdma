@@ -1019,6 +1019,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_requests_rcvd.get());							
 		}
 
+		void testForcedBidirectionalLinks() {
+			mac_layer_me->setForceBidirectionalLinks(true);
+			mac_layer_you->setForceBidirectionalLinks(true);
+			CPPUNIT_ASSERT_EQUAL(uint(1), lm_me->reported_desired_tx_slots);
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// New data for communication partner.
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			size_t num_slots = 0, max_slots = 100;			
+			while (lm_me->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
+			size_t num_tx_reservations = 0, num_rx_reservations = 0;
+			for (size_t t = 0; t < lm_me->burst_offset*2; t++) {
+				const auto& res = lm_me->current_reservation_table->getReservation(t);				
+				if (res.isAnyTx())
+					num_tx_reservations++;
+				else if (res.isAnyRx())
+					num_rx_reservations++;
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx_reservations);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1041,7 +1072,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
 			CPPUNIT_TEST(testMACDelays);			
 			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
-			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);			
+			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
+			CPPUNIT_TEST(testForcedBidirectionalLinks);					
 
 	CPPUNIT_TEST_SUITE_END();
 	};

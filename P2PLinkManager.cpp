@@ -741,7 +741,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 
 void P2PLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	// The communication partner informs about its *current wish* for their own burst length.
-	reported_desired_tx_slots = header->burst_length_tx;
+	this->setReportedDesiredTxSlots(header->burst_length_tx);
 	mac->reportNeighborActivity(header->src_id);
 }
 
@@ -918,4 +918,21 @@ void P2PLinkManager::terminateLink() {
 
 void P2PLinkManager::setShouldTerminateLinksEarly(bool flag) {
 	this->close_link_early_if_no_first_data_packet_comes_in = flag;
+}
+
+void P2PLinkManager::setReportedDesiredTxSlots(unsigned int value) {
+	if (this->force_bidirectional_links)
+		this->reported_desired_tx_slots = std::max(uint(1), value);
+	else
+		this->reported_desired_tx_slots = value;
+}
+
+void P2PLinkManager::setForceBidirectionalLinks(bool flag) {
+	this->force_bidirectional_links = flag;	
+	this->setReportedDesiredTxSlots(this->reported_desired_tx_slots);
+}
+
+void P2PLinkManager::setInitializeBidirectionalLinks() {
+	if (this->reported_desired_tx_slots == 0)
+		this->reported_desired_tx_slots = 1;
 }

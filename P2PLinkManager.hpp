@@ -39,6 +39,16 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 */
 		void setShouldTerminateLinksEarly(bool flag);
 
+		/** 
+		 * @param flag: Always initialize links with TX reservations for both sides.
+		 * */
+		void setForceBidirectionalLinks(bool flag);
+
+		/** 
+		 * @param flag: Will initialize the next established link with TX reservations for both sides. After that, the indicated requirements of the neighbor will be used. 
+		 * */
+		void setInitializeBidirectionalLinks();
+
 	protected:
 
 			/** Allows the scheduling of control messages at specific slots. */
@@ -266,6 +276,11 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 */
 			void terminateLink();			
 
+			/**
+			 * Remembers the number of TX slots that the communication partner has indicated to require. 
+			 * */
+			void setReportedDesiredTxSlots(unsigned int value);
+
 	private:
 		/**
 		 * Helper function that clears all locks on the respective ReservationTable after normalizing by the given offset.
@@ -291,6 +306,10 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			MovingAverage outgoing_traffic_estimate;
 			/** The communication partner's report of the number of slots they desire for transmission. */
 			unsigned int reported_desired_tx_slots = 0;
+			/** If true, then initial links will be bidirectional with TX reservations for both sides. If false, only the link initiator will have TX reservations. */
+			bool initialize_bidirectional_links = false;
+			/** If ture, then all links must foresee TX reservations for both sides. */
+			bool force_bidirectional_links = false;
 
 			/** The current link's state. */
 			LinkState *current_link_state = nullptr;
