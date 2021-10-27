@@ -511,7 +511,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testReportedTxSlotDesire() {
 			// Should schedule 1 TX slot each.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			// Single message.
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			// New data for communication partner.
@@ -723,7 +723,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			rlc_layer_you->should_there_be_more_p2p_data = false;
 			// Force bidirectional link.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			lm_me->notifyOutgoing(512);
 			size_t num_slots = 0, max_slots = 1000;
 
@@ -768,7 +768,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_you->link_status);
 
 			// Now do reestablishments.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			lm_me->notifyOutgoing(512);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			size_t num_reestablishments = 10;
