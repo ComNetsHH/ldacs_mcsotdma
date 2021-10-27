@@ -160,7 +160,7 @@ class RLCLayer : public IRlc {
 					auto* base_header = new L2HeaderBase();
 					auto* broadcast_header = new L2HeaderBroadcast();
 					segment->addMessage(base_header, nullptr);
-					segment->addMessage(broadcast_header, new RLCPayload(num_bits));
+					segment->addMessage(broadcast_header, new RLCPayload(should_there_be_more_broadcast_data ? num_bits : 0));
 				} else {
 					coutd << "returning new unicast -> ";
 					segment = new L2Packet();
