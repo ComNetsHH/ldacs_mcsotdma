@@ -242,9 +242,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(partner_id, reservation_tx.getTarget());
 				// and as RX on their side.				
 				CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));				
-			}
-			CPPUNIT_ASSERT(rlc_layer_you->receptions.size() > 0);
-			CPPUNIT_ASSERT( mac_layer_you->stat_num_packets_rcvd.get() > 0.0);
+			}			
+			CPPUNIT_ASSERT_GREATER(0.0, mac_layer_you->stat_num_packets_rcvd.get());
 			// Wait until the next transmission.
 //			coutd.setVerbose(true);
 			for (size_t t = 0; t < lm_you->burst_offset + lm_you->current_link_state->burst_length; t++) {
@@ -621,8 +620,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			// link info should've been sent, none should remain
-			CPPUNIT_ASSERT_EQUAL(true, rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
+			CPPUNIT_ASSERT_EQUAL(true, rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty());			
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_link_infos_sent.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_you->stat_num_link_infos_rcvd.get());
 			// proceed until other communication partner agrees that the link's been established
@@ -921,12 +919,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testMACDelays() {
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			rlc_layer_me->num_remaining_broadcast_packets = 4;
 			auto *bc_link_manager_me = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			auto *bc_link_manager_you = (BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_link_manager_me->notifyOutgoing(1);
 			// proceed until the first broadcast's been received
 			size_t num_broadcasts = 1;
-			while (rlc_layer_you->receptions.size() < num_broadcasts) {
+			size_t num_slots = 0, max_slots = 100;
+			while (rlc_layer_you->receptions.size() < num_broadcasts && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
 				mac_layer_you->execute();
@@ -934,14 +934,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 				mac_layer_me->onSlotEnd();				
 			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 			// check statistics
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get());			
 			CPPUNIT_ASSERT_EQUAL(mac_layer_me->stat_broadcast_selected_candidate_slots.get(), mac_layer_me->stat_broadcast_mac_delay.get());
 			// proceed further
-			num_broadcasts = 3;
-			size_t num_slots = 0, max_slots = 1000;			
-			while (num_slots++ < max_slots && rlc_layer_you->receptions.size() < num_broadcasts) {
+			num_broadcasts = 3;			
+			num_slots = 0; 
+			max_slots = 1000;			
+			while (rlc_layer_you->receptions.size() < num_broadcasts && num_slots++ < max_slots) {
 				bc_link_manager_me->notifyOutgoing(1);
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
