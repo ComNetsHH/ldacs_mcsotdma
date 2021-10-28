@@ -308,7 +308,9 @@ void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
 }
 
-void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {
+void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {	
+	if (flag)
+		throw std::runtime_error("closing P2P links early is currently broken, please don't attempt this!");
 	close_link_early_if_no_first_data_packet_comes_in = flag;
 	for (auto pair : link_managers) {
 		const MacId id = pair.first;

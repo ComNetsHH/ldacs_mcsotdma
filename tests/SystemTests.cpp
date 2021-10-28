@@ -883,6 +883,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link. */
 		void testGiveUpLinkIfFirstDataPacketDoesntComeThrough() {
+			mac_layer_me->setCloseP2PLinksEarly(true);
+			mac_layer_you->setCloseP2PLinksEarly(true);
 			auto *p2p_lm_me = mac_layer_me->getLinkManager(partner_id), *p2p_lm_you = mac_layer_you->getLinkManager(own_id);			
 			// have comm. partner establish a link
 			p2p_lm_you->notifyOutgoing(512);
@@ -1095,6 +1097,76 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// no more packets should've been sent
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
 		}
+		
+		/**
+		 * When there's no broadcasts going on, link requests should only be base header + link request.
+		 * */
+		void testLinkRequestPacketsNoBroadcasts() {
+			mac_layer_me->setInitializeBidirectionalLinks(true);
+			mac_layer_you->setInitializeBidirectionalLinks(true);
+			size_t num_slots = 0, max_slots = 1000;
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			lm_me->notifyOutgoing(512);			
+			while (lm_me->statistic_num_links_established < 2 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ulong(2), lm_me->statistic_num_links_established);			
+			size_t num_requests = 0;
+			for (auto *packet : phy_layer_me->outgoing_packets) {
+				if (packet->getRequestIndex() != -1) {
+					num_requests++;
+					CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, packet->getHeaders().at(0)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(1)->frame_type);
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(2), num_requests);
+		}
+
+		/**
+		 * When there's broadcasts going on, link requests should be base header + broadcast + link request.
+		 * */
+		void testLinkRequestPacketsWithBroadcasts() {
+			mac_layer_me->setInitializeBidirectionalLinks(true);
+			mac_layer_you->setInitializeBidirectionalLinks(true);						
+			mac_layer_me->setCloseP2PLinksEarly(false);
+			mac_layer_you->setCloseP2PLinksEarly(false);
+			size_t num_slots = 0, max_slots = 1000;
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = true;
+			rlc_layer_you->should_there_be_more_broadcast_data = false;
+			lm_me->notifyOutgoing(512);
+			mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+			while (lm_me->statistic_num_links_established < 2 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ulong(2), lm_me->statistic_num_links_established);			
+			size_t num_requests = 0;
+			for (auto *packet : phy_layer_me->outgoing_packets) {
+				if (packet->getRequestIndex() != -1) {
+					num_requests++;
+					CPPUNIT_ASSERT_EQUAL(size_t(3), packet->getHeaders().size());
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, packet->getHeaders().at(0)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, packet->getHeaders().at(1)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(2)->frame_type);
+				}
+			}
+			// due to collisions, more than 2 requests may have been necessary
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), num_requests);
+		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
@@ -1115,13 +1187,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testManyReestablishments);
 			CPPUNIT_TEST(testSlotAdvertisement);
 			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
-			CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
+			// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
 			CPPUNIT_TEST(testMACDelays);			
 			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
 			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
 			CPPUNIT_TEST(testForcedBidirectionalLinks);					
 			CPPUNIT_TEST(testNoEmptyBroadcasts);			
-
+			CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
+			CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);						
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

@@ -324,7 +324,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			/** Saves all locked resources. */
 			LockMap lock_map;
 			/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
-			bool close_link_early_if_no_first_data_packet_comes_in = true;
+			bool close_link_early_if_no_first_data_packet_comes_in = false;
 		};
 
 	}
