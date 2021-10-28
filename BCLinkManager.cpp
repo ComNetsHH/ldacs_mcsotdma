@@ -79,6 +79,13 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			size_t num_bits_added = 0;
 			for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
 				const auto &upper_layer_header = upper_layer_data->getHeaders().at(i);
+				const auto &upper_layer_payload = upper_layer_data->getPayloads().at(i);
+				// ignore empty broadcasts
+				if (upper_layer_header->frame_type == L2Header::broadcast) {
+					if (upper_layer_payload == nullptr || (upper_layer_payload != nullptr && upper_layer_payload->getBits() == 0)) {						
+						continue;
+					}
+				}
 				if (upper_layer_header->frame_type != L2Header::base) {
 					// copy
 					L2Header *header = upper_layer_header->copy();
