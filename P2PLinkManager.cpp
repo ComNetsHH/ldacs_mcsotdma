@@ -298,8 +298,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 	// Fill whatever capacity remains with upper-layer data.
 	unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
 	coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
-	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
-	mac->statisticReportPacketSent();
+	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);	
 	mac->statisticReportUnicastSent();
 	for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
 		if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)

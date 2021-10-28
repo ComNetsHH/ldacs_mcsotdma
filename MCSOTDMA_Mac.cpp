@@ -123,14 +123,23 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				num_txs++;
 				if (num_txs > num_transmitters)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
-				// Find the corresponding OldLinkManager.
+				// Find the corresponding LinkManager.
 				const MacId& id = reservation.getTarget();
 				LinkManager* link_manager = getLinkManager(id);
 				// Tell it about the transmission slot.
 				unsigned int num_tx_slots = reservation.getNumRemainingSlots();
 				L2Packet* outgoing_packet = link_manager->onTransmissionBurstStart(num_tx_slots);
-				outgoing_packet->notifyCallbacks();
-				passToLower(outgoing_packet, channel->getCenterFrequency());
+				if (outgoing_packet != nullptr) {
+					outgoing_packet->notifyCallbacks();				
+					passToLower(outgoing_packet, channel->getCenterFrequency());
+					statisticReportPacketSent();	
+				} else {
+					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
+					if (id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON)
+						this->stat_broadcast_wasted_tx_opportunities.increment();
+					else
+						this->stat_unicast_wasted_tx_opportunities.increment();
+				}
 				break;
 			}
 			case Reservation::TX_CONT: {

@@ -45,7 +45,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testBroadcast() {
 			link_manager->notifyOutgoing(512);
-			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
 			size_t num_slots = 0, max_num_slots = 100;
 			while (mac->stat_num_broadcasts_sent.get() < 1 && num_slots++ < max_num_slots) {
 				mac->update(1);
@@ -372,6 +372,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
 			// don't generate new broadcast data.
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			// notify about queued, outgoing data
 			link_manager->notifyOutgoing(128);
 			// which should've scheduled a slot
@@ -438,6 +439,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
 			// notify about queued, outgoing data
 			link_manager->notifyOutgoing(128);
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			// which should've scheduled a slot
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			// now it should be sent whenever the slot is scheduled and schedule a next one
@@ -449,7 +451,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			// check that every sent packet carries some info about the next broadcast slot
-			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			CPPUNIT_ASSERT(env->phy_layer->outgoing_packets.size() > 1);
 			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
 				bool found_base_header = false;
 				for (const auto *header : broadcast_packet->getHeaders()) {
@@ -665,6 +667,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testNoSlotAdvertisement() {
 			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
 			// notify about new data
 			link_manager->notifyOutgoing(1);
@@ -723,6 +726,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testSlotAdvertisementWhenAutoAdvertisementIsOn() {
 			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
 			// notify about new data
 			link_manager->notifyOutgoing(1);

@@ -160,14 +160,23 @@ class RLCLayer : public IRlc {
 					auto* base_header = new L2HeaderBase();
 					auto* broadcast_header = new L2HeaderBroadcast();
 					segment->addMessage(base_header, nullptr);
-					segment->addMessage(broadcast_header, new RLCPayload(num_bits));
+					if (num_remaining_broadcast_packets > 0) {
+						num_remaining_broadcast_packets--;
+						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
+					} else if (should_there_be_more_broadcast_data) {
+						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
+					} else {
+						coutd << "just the header and no payload -> ";
+						segment->addMessage(broadcast_header, nullptr);
+					}
+					
 				} else {
 					coutd << "returning new unicast -> ";
 					segment = new L2Packet();
 					auto* base_header = new L2HeaderBase(own_id, 0, 0, 0, 0);
 					auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0), 0);
 					segment->addMessage(base_header, new RLCPayload(0));
-					segment->addMessage(unicast_header, new RLCPayload(num_bits - base_header->getBits() - unicast_header->getBits()));
+					segment->addMessage(unicast_header, new RLCPayload(num_bits));
 				}
 			} else {
 				coutd << "returning injection -> ";
@@ -190,7 +199,9 @@ class RLCLayer : public IRlc {
 
 		std::map<MacId, std::vector<L2Packet*>> control_message_injections;
 		std::vector<L2Packet*> receptions;
-		bool should_there_be_more_p2p_data = true, should_there_be_more_broadcast_data = false;
+		bool should_there_be_more_p2p_data = true, should_there_be_more_broadcast_data = false;		
+		/** Will be checked first: if this is zero, then 'should_there_be_more_broadcast_data' is checked to see whether there's gonna be another packed passed down upn request. */
+		size_t num_remaining_broadcast_packets = 0;
 		std::map<MacId, bool> should_there_be_more_p2p_data_map;
 		/** This mock implementation stems from times where the actual RLC layer had not been implemented yet. Its functionality can be enabled through this boolean flag. */
 		bool use_actual_implementation = false;

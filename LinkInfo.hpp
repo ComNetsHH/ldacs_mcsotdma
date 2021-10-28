@@ -65,6 +65,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getBits() const;
 
+		void setHasExpired(bool flag);
+
+		bool hasExpired() const;
+
 	protected:
 		/** Identifier of the initiator of a link. */
 		MacId tx_id;
@@ -80,6 +84,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int burst_length;
 		/** Number of slots the link initiator will transmit. */
 		unsigned int burst_length_tx;
+		/** Might be set during population to indicate that this link info is not valid anymore. */
+		bool has_expired = false;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkInfo& info) {
