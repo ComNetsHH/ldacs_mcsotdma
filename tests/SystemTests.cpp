@@ -511,7 +511,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testReportedTxSlotDesire() {
 			// Should schedule 1 TX slot each.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			// Single message.
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			// New data for communication partner.
@@ -723,7 +723,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			rlc_layer_you->should_there_be_more_p2p_data = false;
 			// Force bidirectional link.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			lm_me->notifyOutgoing(512);
 			size_t num_slots = 0, max_slots = 1000;
 
@@ -768,7 +768,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_you->link_status);
 
 			// Now do reestablishments.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			lm_me->notifyOutgoing(512);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			size_t num_reestablishments = 10;
@@ -1050,6 +1050,49 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
 		}
 
+		void testNoEmptyBroadcasts() {
+			// always schedule new slots
+			rlc_layer_me->should_there_be_more_broadcast_data = true;
+			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(true);
+			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+			size_t num_slots = 0, max_num_slots = 100;
+			// broadcast once
+			while (((size_t) mac_layer_me->stat_num_broadcasts_sent.get()) < size_t(1) && num_slots++ < max_num_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
+			// no more data
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			BCLinkManager *bc_lm = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			// but there should be another TX reservation
+			size_t num_tx_reservations = 0;
+			for (size_t t = 0; t < planning_horizon; t++) {
+				if (bc_lm->current_reservation_table->getReservation(t).isAnyTx())
+					num_tx_reservations++;
+			}
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_reservations);
+			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(false);
+			num_slots = 0;
+			while (bc_lm->next_broadcast_scheduled && num_slots++ < max_num_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
+			CPPUNIT_ASSERT(!bc_lm->next_broadcast_scheduled);
+			// no more packets should've been sent
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1074,6 +1117,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
 			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
 			CPPUNIT_TEST(testForcedBidirectionalLinks);					
+			CPPUNIT_TEST(testNoEmptyBroadcasts);			
 
 	CPPUNIT_TEST_SUITE_END();
 	};
