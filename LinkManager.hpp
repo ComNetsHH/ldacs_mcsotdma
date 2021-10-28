@@ -151,7 +151,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		virtual void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
-		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);
+		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);		
 
 	protected:
 		virtual void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);

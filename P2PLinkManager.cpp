@@ -935,3 +935,10 @@ void P2PLinkManager::setInitializeBidirectionalLinks() {
 	if (this->reported_desired_tx_slots == 0)
 		this->reported_desired_tx_slots = 1;
 }
+
+unsigned int P2PLinkManager::getNumUtilizedResources() const {
+	if (current_link_state == nullptr)
+		return 0;
+	else 
+		return current_link_state->burst_length;	
+}

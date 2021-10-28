@@ -7,6 +7,7 @@
 #include "../BeaconModule.hpp"
 #include "../BeaconPayload.hpp"
 #include "../coutdebug.hpp"
+#include <SimulatorPosition.hpp>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BeaconModuleTests : public CppUnit::TestFixture {
@@ -127,13 +128,58 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(beacon_module->max_beacon_offset, beacon_interval);	
 		}
 
+		void testCongestionLevel() {
+			auto tmp_res_table = ReservationTable(128);
+			FrequencyChannel channel = FrequencyChannel(false, 100, 500);
+			tmp_res_table.linkFrequencyChannel(&channel);
+			// no active links -> no congestion
+			auto msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 0, 20);			
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::uncongested, msg.first->congestion_level);						
+			delete msg.first;
+			delete msg.second;
+			// <25% active links -> no congestion
+			msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 4, 20);
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::uncongested, msg.first->congestion_level);
+			delete msg.first;
+			delete msg.second;
+			// 25%-49% active links -> slight congestion
+			msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 5, 20);
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::slightly_congested, msg.first->congestion_level);
+			delete msg.first;
+			delete msg.second;
+			msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 9, 20);
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::slightly_congested, msg.first->congestion_level);
+			delete msg.first;
+			delete msg.second;
+			// 50%-74% active links -> moderate congestion
+			msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 10, 20);
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::moderately_congested, msg.first->congestion_level);
+			delete msg.first;
+			delete msg.second;
+			msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 14, 20);
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::moderately_congested, msg.first->congestion_level);
+			delete msg.first;
+			delete msg.second;
+			// >75% active links -> congestion
+			msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 15, 20);
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::congested, msg.first->congestion_level);
+			delete msg.first;
+			delete msg.second;
+			msg = beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 20, 20);
+			CPPUNIT_ASSERT_EQUAL(L2HeaderBeacon::CongestionLevel::congested, msg.first->congestion_level);
+			delete msg.first;
+			delete msg.second;
+			CPPUNIT_ASSERT_THROW(beacon_module->generateBeacon({}, &tmp_res_table, SimulatorPosition(), 21, 20), std::invalid_argument);			
+		}
+
 		CPPUNIT_TEST_SUITE(BeaconModuleTests);
 			CPPUNIT_TEST(testBeaconInterval);
 			CPPUNIT_TEST(testChooseNextBeaconSlot);
 			CPPUNIT_TEST(testKeepGapPattern);
 			CPPUNIT_TEST(testBeaconMessage);
-			CPPUNIT_TEST(testMinBeaconOffset);			
-			CPPUNIT_TEST(testMaxBeaconOffset);		
+			CPPUNIT_TEST(testMinBeaconOffset);
+			CPPUNIT_TEST(testMaxBeaconOffset);
+			CPPUNIT_TEST(testCongestionLevel);			
 		CPPUNIT_TEST_SUITE_END();
 	};
 

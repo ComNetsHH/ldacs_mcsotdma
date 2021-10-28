@@ -84,6 +84,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setForceBidirectionalLinks(bool flag) override;
 		void setInitializeBidirectionalLinks(bool flag) override;
 
+		size_t getNumUtilizedP2PResources() const;
+
 		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
 		void reportNeighborActivity(const MacId& id);
 		const NeighborObserver& getNeighborObserver() const;
@@ -163,7 +165,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void statisticReportBroadcastMacDelay(unsigned int mac_delay) {			
 			stat_broadcast_mac_delay.capture((double) mac_delay);
-		}		
+		}
+
+		unsigned int getP2PBurstOffset() const;
 
 	protected:
 		/**
@@ -181,10 +185,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<MacId, CPRPosition> position_map;
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
 		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
-		bool close_link_early_if_no_first_data_packet_comes_in = false;
-		
+		bool close_link_early_if_no_first_data_packet_comes_in = false;		
 		/** Keeps a list of active neighbors, which have demonstrated activity within the last 50.000 slots (10min if slot duration is 12ms). */
 		NeighborObserver active_neighbor_observer; 
+		/** Number of transmission bursts before a P2P link expires. */
+		const unsigned int default_p2p_link_timeout = 10;
+		/** Number of slots between two transmission bursts. */
+		const unsigned int default_p2p_link_burst_offset = 20;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

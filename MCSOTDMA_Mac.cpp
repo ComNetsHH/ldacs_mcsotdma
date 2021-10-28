@@ -216,7 +216,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new BCLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
-			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
+			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
 			((P2PLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
 			((P2PLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
 			if (this->should_initialize_bidirectional_links)
@@ -356,4 +356,16 @@ void MCSOTDMA_Mac::setInitializeBidirectionalLinks(bool flag) {
 				((P2PLinkManager*) pair.second)->setInitializeBidirectionalLinks();
 		}	
 	}
+}
+
+size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
+	size_t n = 0;
+	for (const auto pair : link_managers) 
+		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
+			n += ((P2PLinkManager*) pair.second)->getNumUtilizedResources();					
+	return n;
+}
+
+unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
+	return this->default_p2p_link_burst_offset;
 }

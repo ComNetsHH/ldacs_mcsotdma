@@ -49,6 +49,11 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 		 * */
 		void setInitializeBidirectionalLinks();
 
+		/**
+		 * @return Number of resources per transmission burst that are utilized for this link.
+		 * */
+		unsigned int getNumUtilizedResources() const;
+
 	protected:
 
 			/** Allows the scheduling of control messages at specific slots. */
