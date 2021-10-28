@@ -11,6 +11,7 @@
 #include "ReservationManager.hpp"
 #include <random>
 #include <L2Header.hpp>
+#include <SimulatorPosition.hpp>
 #include <RngProvider.hpp>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -70,7 +71,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param reservation_tables
 		 * @return A new beacon message.
 		 */
-		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table);
+		std::pair<L2HeaderBeacon*, BeaconPayload*> generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table, const SimulatorPosition simulatorPosition = SimulatorPosition());
 
 		/**
 		 * @param sender_id
