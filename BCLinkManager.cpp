@@ -49,9 +49,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		base_header->burst_offset = beacon_module.getNextBeaconOffset();
 	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
-		coutd << "broadcasting data -> ";
-		mac->statisticReportBroadcastSent();
-		mac->statisticReportBroadcastMacDelay(measureMacDelay());
+		coutd << "broadcasting data -> ";		
 		// Put a priority on link requests.
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*>> requests_to_add;
 		while (!link_requests.empty()) {
@@ -83,6 +81,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				// ignore empty broadcasts
 				if (upper_layer_header->frame_type == L2Header::broadcast) {
 					if (upper_layer_payload == nullptr || (upper_layer_payload != nullptr && upper_layer_payload->getBits() == 0)) {						
+						coutd << "ignoring empty broadcast -> ";
 						continue;
 					}
 				}				
@@ -140,8 +139,14 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		}
 	}
 
-	mac->statisticReportPacketSent();	
-	return packet;
+	if (packet->getHeaders().size() == 1) {		
+		delete packet;
+		return nullptr;
+	} else {
+		mac->statisticReportBroadcastSent();
+		mac->statisticReportBroadcastMacDelay(measureMacDelay());		
+		return packet;
+	}
 }
 
 void BCLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {

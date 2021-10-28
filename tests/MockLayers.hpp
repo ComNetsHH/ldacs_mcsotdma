@@ -165,8 +165,10 @@ class RLCLayer : public IRlc {
 						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
 					} else if (should_there_be_more_broadcast_data) {
 						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
-					} else
+					} else {
+						coutd << "just the header and no payload -> ";
 						segment->addMessage(broadcast_header, nullptr);
+					}
 					
 				} else {
 					coutd << "returning new unicast -> ";

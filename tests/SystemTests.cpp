@@ -1054,7 +1054,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testNoEmptyBroadcasts() {
 			// always schedule new slots
-			rlc_layer_me->should_there_be_more_broadcast_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			rlc_layer_me->num_remaining_broadcast_packets = 1;
 			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(true);
 			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 			size_t num_slots = 0, max_num_slots = 100;
@@ -1069,8 +1070,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
-			// no more data
-			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// no more data	
+			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer_me->num_remaining_broadcast_packets);		
 			BCLinkManager *bc_lm = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			// but there should be another TX reservation
 			size_t num_tx_reservations = 0;
