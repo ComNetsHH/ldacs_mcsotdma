@@ -116,7 +116,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned long bits_per_slot = env1->phy_layer->getCurrentDatarate();
 			unsigned int expected_num_slots = 3;
 			num_outgoing_bits = expected_num_slots * bits_per_slot;
-			((P2PLinkManager*) env1->mac_layer->getLinkManager(id2))->reported_desired_tx_slots = 1;
+			((P2PLinkManager*) env1->mac_layer->getLinkManager(id2))->setInitializeBidirectionalLinks();
 			// Now do the other tests.
 			testLinkEstablishmentTwoUsers();
 		}

@@ -44,14 +44,13 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		coutd << "while non-beacon broadcast is " << (next_broadcast_scheduled ? "scheduled in " + std::to_string(next_broadcast_slot) + " slots -> " : "not scheduled -> ");
 
 		// Generate beacon message.
-		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable()));
+		auto hostPosition = this->mac->getHostPosition();
+		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable(), hostPosition, mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset()));
 		mac->statisticReportBeaconSent();
 		base_header->burst_offset = beacon_module.getNextBeaconOffset();
 	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
-		coutd << "broadcasting data -> ";
-		mac->statisticReportBroadcastSent();
-		mac->statisticReportBroadcastMacDelay(measureMacDelay());
+		coutd << "broadcasting data -> ";		
 		// Put a priority on link requests.
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*>> requests_to_add;
 		while (!link_requests.empty()) {
@@ -79,18 +78,33 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			size_t num_bits_added = 0;
 			for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
 				const auto &upper_layer_header = upper_layer_data->getHeaders().at(i);
+				const auto &upper_layer_payload = upper_layer_data->getPayloads().at(i);
+				// ignore empty broadcasts
+				if (upper_layer_header->frame_type == L2Header::broadcast) {
+					if (upper_layer_payload == nullptr || (upper_layer_payload != nullptr && upper_layer_payload->getBits() == 0)) {						
+						coutd << "ignoring empty broadcast -> ";
+						continue;
+					}
+				}				
 				if (upper_layer_header->frame_type != L2Header::base) {
+					// link info
+					if (upper_layer_header->frame_type == L2Header::link_info) {
+						// populate
+						auto link_info_payload = (LinkInfoPayload*&) upper_layer_payload;
+						link_info_payload->populate();
+						// check if still valid
+						if (link_info_payload->hasExpired())
+							continue; // don't add it if invalid
+						// otherwise, report to the MAC
+						mac->statisticReportLinkInfoSent();
+					}
 					// copy
 					L2Header *header = upper_layer_header->copy();
 					L2Packet::Payload *payload = upper_layer_data->getPayloads().at(i)->copy();
 					// add
 					packet->addMessage(header, payload);
 					num_bits_added += header->getBits() + payload->getBits();
-					coutd << "added '" << header->frame_type << "' message -> ";
-					// report link info
-					if (upper_layer_header->frame_type == L2Header::link_info) {
-						mac->statisticReportLinkInfoSent();
-					}
+					coutd << "added '" << header->frame_type << "' message -> ";					
 				}
 			}
 			coutd << "added " << num_bits_added << " bits -> ";
@@ -102,9 +116,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			delete upper_layer_data;
 		}
 		for (const auto &pair : requests_to_add)
-			packet->addMessage(pair.first, pair.second);
-		if (packet->getLinkInfoIndex() != -1)
-			((LinkInfoPayload*&) packet->getPayloads().at(packet->getLinkInfoIndex()))->populate();
+			packet->addMessage(pair.first, pair.second);		
 
 		if (!always_schedule_next_slot) {
 			// Schedule next broadcast if there's more data to send.
@@ -128,8 +140,14 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		}
 	}
 
-	mac->statisticReportPacketSent();	
-	return packet;
+	if (packet->getHeaders().size() == 1) {		
+		delete packet;
+		return nullptr;
+	} else {
+		mac->statisticReportBroadcastSent();
+		mac->statisticReportBroadcastMacDelay(measureMacDelay());		
+		return packet;
+	}
 }
 
 void BCLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
@@ -191,7 +209,7 @@ void BCLinkManager::onSlotEnd() {
 	congestion_estimator.onSlotEnd();
 	beacon_module.onSlotEnd();
 	mac->statisticReportCongestion(congestion_estimator.getCongestion());
-	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());	
+	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());		
 
 	LinkManager::onSlotEnd();
 }
@@ -217,22 +235,27 @@ size_t BCLinkManager::cancelLinkRequest(const MacId& id) {
 unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
-	unsigned int k;
-	mac->statisticReportBroadcastNeighborTransmissionRate(contention_estimator.getAverageNonBeaconBroadcastRate());
+	unsigned int k;	
 	// Estimate number of channel accesses from Binomial distribution.
 	if (contention_method == ContentionMethod::binomial_estimate) {
-		// Average broadcast rate.
+		// get average broadcast rate
 		double r = contention_estimator.getAverageNonBeaconBroadcastRate();
-		// Number of active neighbors.
+		// get no of active neighbors
 		unsigned int m = contention_estimator.getNumActiveNeighbors();
 		double num_candidates = 0;
-		// For every number n of channel accesses from 0 to all neighbors...
-		for (auto n = 0; n <= m; n++) {
-			// Probability P(X=n) of n accesses.
-			double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
-			// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
-			unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
-			num_candidates += p * local_k;
+		// if the broadcast rate is 100%, then assume that all m neighbors are active
+		if (r == 1.0)
+			num_candidates = (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
+		// else find through Binomial distribution
+		else {
+			// For every number n of channel accesses from 0 to all neighbors...
+			for (auto n = 0; n <= m; n++) {
+				// Probability P(X=n) of n accesses.			
+				double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
+				// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
+				unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+				num_candidates += p * local_k;
+			}
 		}
 		k = (unsigned int) std::ceil(num_candidates);
 		coutd << "channel access method: binomial estimate for " << m << " active neighbors with average broadcast rate " << r << " -> ";

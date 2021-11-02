@@ -27,17 +27,15 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
 	// ... until we have considered the target number of channels ...
 	coutd << "p2pSlotSelection to reserve " << burst_length << " slots -> ";
-	for (size_t num_channels_considered = 0; num_channels_considered < num_channels; num_channels_considered++) {
+	for (size_t num_channels_considered = 0; num_channels_considered < num_channels;) {
 		if (table_priority_queue.empty())
 			break;
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
 		// ... check if the channel is blocked ...
-		if (table->getLinkedChannel()->isBlocked()) {
-			num_channels_considered--;
-			continue;
-		}
+		if (table->getLinkedChannel()->isBlocked()) 			
+			continue;		
 		// ... and try to find candidate slots,
 		std::vector<unsigned int> candidate_slots = table->findCandidates(num_slots, min_offset, burst_offset, burst_length, burst_length_tx, default_timeout, true);
 
@@ -56,6 +54,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 		// Fill proposal.
 		for (unsigned int slot : candidate_slots)
 			proposal_map[table->getLinkedChannel()].push_back(slot);
+		num_channels_considered++;
 	}
 	return {proposal_map, locked_resources_map};
 }
@@ -158,7 +157,7 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 						ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable for later burst " << n_burst << "/" << timeout+1 << " at t=" << offset << ", conflict with " << conflict_res << ".";
 						throw std::range_error(ss.str());
 					}
-					unique_offsets_local.emplace(offset);
+					unique_offsets_local.emplace(offset);					
 					// Link initiators receive during the later slots
 					if (is_link_initiator) {
 						if (!std::any_of(rx_tables.begin(), rx_tables.end(), [offset](ReservationTable* rx_table) { return rx_table->canLock(offset); })) {
@@ -198,7 +197,7 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 	// 2nd: actually lock them.
 	LockMap locked_resources_map = LockMap();
 	// *All* slots should be locked in the local ReservationTable.
-	for (unsigned int offset : unique_offsets_local) {
+	for (unsigned int offset : unique_offsets_local) {		
 		table->lock(offset);
 		locked_resources_map.locks_local.push_back({table, offset});
 	}
@@ -298,8 +297,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 	// Fill whatever capacity remains with upper-layer data.
 	unsigned int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
 	coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
-	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);
-	mac->statisticReportPacketSent();
+	L2Packet *upper_layer_data = mac->requestSegment(remaining_bits, link_id);	
 	mac->statisticReportUnicastSent();
 	for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++)
 		if (upper_layer_data->getHeaders().at(i)->frame_type != L2Header::base)
@@ -333,6 +331,8 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 	established_initial_link_this_slot = false;
 	established_link_this_slot = false;
 
+	lock_map.num_slots_since_creation += num_slots;
+
 	// TODO properly test this (not sure if incrementing time by this many slots works as intended right now)
 	if (num_slots > burst_offset) {
 		std::cerr << "incrementing time by this many slots is untested; I'm not stopping, just warning." << std::endl;
@@ -365,8 +365,6 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void P2PLinkManager::onSlotEnd() {
-	lock_map.num_slots_since_creation++;
-
 	if (current_reservation_table != nullptr && communication_during_this_slot && current_reservation_table->isBurstEnd(0, link_id)) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> ";
 		if (decrementTimeout())
@@ -382,6 +380,8 @@ void P2PLinkManager::onSlotEnd() {
 				coutd << *mac << "::" << *this << " missed last link establishment opportunity, resetting link -> ";
 				// We've missed the latest opportunity. Reset the link status.
 				terminateLink();
+				// Increment statistic.
+				mac->statistcReportPPLinkMissedLastReplyOpportunity();
 				// Check if there's more data,
 				if (mac->isThereMoreData(link_id)) // and re-establish the link if there is.
 					notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
@@ -406,7 +406,7 @@ void P2PLinkManager::onSlotEnd() {
 		packet->addMessage(new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0), nullptr);
 		packet->addMessage(new L2HeaderLinkInfo(), new LinkInfoPayload(this));
 		mac->injectIntoUpper(packet);
-	}
+	}	
 	LinkManager::onSlotEnd();
 }
 
@@ -741,7 +741,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 
 void P2PLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	// The communication partner informs about its *current wish* for their own burst length.
-	reported_desired_tx_slots = header->burst_length_tx;
+	this->setReportedDesiredTxSlots(header->burst_length_tx);
 	mac->reportNeighborActivity(header->src_id);
 }
 
@@ -790,17 +790,19 @@ void P2PLinkManager::onTimeoutExpiry() {
 void P2PLinkManager::clearLocks(const std::vector<std::pair<ReservationTable*, unsigned int>>& locked_resources, unsigned int normalization_offset) {
 	for (const auto& pair : locked_resources) {
 		ReservationTable *table = pair.first;
-		unsigned int slot = pair.second;
-		if (slot < normalization_offset)
-			continue; // Skip those that have already passed.
-		unsigned int normalized_offset = slot - normalization_offset;
-		if (table->getReservation((int) normalized_offset).isLocked())
-			table->mark((int) normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+		unsigned int slot = pair.second;		
+		if (slot < normalization_offset) 			
+			continue; // Skip those that have already passed.		
+		unsigned int normalized_offset = slot - normalization_offset;		
+		if (table->getLinkedChannel() != nullptr)
+			coutd << "(t=" << normalized_offset << " f=" << table->getLinkedChannel()->getCenterFrequency() << "), ";
+		if (table->getReservation((int) normalized_offset).isLocked())			
+			table->mark((int) normalized_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));		
 	}
 }
 
 void P2PLinkManager::clearLockedResources(const LockMap& locked_resources) {
-	coutd << "freeing " << locked_resources.size_local() << " local + " << locked_resources.size_receiver() << " receiver + " << locked_resources.size_transmitter() << " transmitter locks on resources ";
+	coutd << "freeing " << locked_resources.size_local() << " local + " << locked_resources.size_receiver() << " receiver + " << locked_resources.size_transmitter() << " transmitter locks on resources ";	
 	clearLocks(locked_resources.locks_local, locked_resources.num_slots_since_creation);
 	clearLocks(locked_resources.locks_receiver, locked_resources.num_slots_since_creation);
 	clearLocks(locked_resources.locks_transmitter, locked_resources.num_slots_since_creation);
@@ -918,4 +920,28 @@ void P2PLinkManager::terminateLink() {
 
 void P2PLinkManager::setShouldTerminateLinksEarly(bool flag) {
 	this->close_link_early_if_no_first_data_packet_comes_in = flag;
+}
+
+void P2PLinkManager::setReportedDesiredTxSlots(unsigned int value) {
+	if (this->force_bidirectional_links)
+		this->reported_desired_tx_slots = std::max(uint(1), value);
+	else
+		this->reported_desired_tx_slots = value;
+}
+
+void P2PLinkManager::setForceBidirectionalLinks(bool flag) {
+	this->force_bidirectional_links = flag;	
+	this->setReportedDesiredTxSlots(this->reported_desired_tx_slots);
+}
+
+void P2PLinkManager::setInitializeBidirectionalLinks() {
+	if (this->reported_desired_tx_slots == 0)
+		this->reported_desired_tx_slots = 1;
+}
+
+unsigned int P2PLinkManager::getNumUtilizedResources() const {
+	if (current_link_state == nullptr)
+		return 0;
+	else 
+		return current_link_state->burst_length;	
 }

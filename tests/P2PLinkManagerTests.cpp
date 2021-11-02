@@ -409,6 +409,32 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			delete pair.second;
 		}		
 
+		void testFreeP2PSlotSelectionLocks() {
+			unsigned int num_channels = 2, num_slots = 3, min_offset = 1, burst_length = 3, burst_length_tx = 3;
+			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx);
+			link_manager->clearLockedResources(pair.second);
+			const std::vector<uint64_t> freqs = {env->p2p_freq_1, env->p2p_freq_2, env->p2p_freq_3};
+			for (auto freq : freqs) 
+				for (size_t t = 0; t < planning_horizon; t++) 
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(freq))->getReservation(t));				
+		}
+
+		void testFreeP2PSlotSelectionLocksAfterTime() {
+			link_manager->onSlotStart(1);
+			unsigned int num_channels = 2, num_slots = 3, min_offset = 1, burst_length = 3, burst_length_tx = 3;
+			auto pair = link_manager->p2pSlotSelection(num_channels, num_slots, min_offset, burst_length, burst_length_tx);			
+			link_manager->onSlotEnd();
+			for (size_t t = 0; t < 2; t++) {
+				link_manager->onSlotStart(1);
+				link_manager->onSlotEnd();
+			}
+			link_manager->clearLockedResources(pair.second);
+			const std::vector<uint64_t> freqs = {env->p2p_freq_1, env->p2p_freq_2, env->p2p_freq_3};
+			for (auto freq : freqs) 
+				for (size_t t = 0; t < planning_horizon; t++) 
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(freq))->getReservation(t));				
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testClearLockedResources);
@@ -424,6 +450,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testProcessInitialLinkReply);
 		CPPUNIT_TEST(testLinkRequestSize);
 		CPPUNIT_TEST(testPrepareRequestMessageMemoryLeak);		
+		CPPUNIT_TEST(testFreeP2PSlotSelectionLocks);				
+		CPPUNIT_TEST(testFreeP2PSlotSelectionLocksAfterTime);			
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

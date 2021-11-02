@@ -43,11 +43,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			coutd << "populating link info payload: ";
 			try {
 				link_info = callback->getLinkInfo();
-			} catch (const std::runtime_error& e) {
+			} catch (const std::runtime_error& e) {				
 				coutd << "link has expired by now, nothing to do";
-				// If the link has expired by now, there's nothing to do.
+				link_info.setHasExpired(true);
 			}
 			coutd << " -> ";
+		}
+
+		bool hasExpired() const {
+			return link_info.hasExpired();
 		}
 
 	protected:

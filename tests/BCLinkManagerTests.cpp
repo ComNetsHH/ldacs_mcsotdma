@@ -45,7 +45,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testBroadcast() {
 			link_manager->notifyOutgoing(512);
-			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
 			size_t num_slots = 0, max_num_slots = 100;
 			while (mac->stat_num_broadcasts_sent.get() < 1 && num_slots++ < max_num_slots) {
 				mac->update(1);
@@ -300,7 +300,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_2_me->getReservation(t));
 
 			ReservationManager *manager = env_you.mac_layer->reservation_manager;
-			auto beacon_msg = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon(manager->getP2PReservationTables(), manager->getBroadcastReservationTable());
+			auto beacon_msg = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon(manager->getP2PReservationTables(), manager->getBroadcastReservationTable(), mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
 			link_manager->processBeaconMessage(partner_id, beacon_msg.first, beacon_msg.second);
 
 			for (auto t : slots_1)
@@ -317,7 +317,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ReservationTable *bc_table_you = env_you.mac_layer->reservation_manager->getBroadcastReservationTable();
 			int t = 5;
 			bc_table_you->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
-			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you);
+			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you, mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
 
 			auto* bc_lm = (BCLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_lm->beacon_module.next_beacon_in = t;
@@ -347,7 +347,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// now have another user schedule its broadcast also at 't'
 			bc_table_you->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
 			// which will be notified to the first user through a beacon
-			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you);
+			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you, mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
 
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(t));
 			// which is processed
@@ -363,7 +363,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto *packet = new L2Packet();
 			auto *base_header = new L2HeaderBase(MacId(42), 0, 1, 1, 0);
 			packet->addMessage(base_header, nullptr);
-			packet->addMessage(link_manager->beacon_module.generateBeacon(link_manager->reservation_manager->getP2PReservationTables(), link_manager->reservation_manager->getBroadcastReservationTable()));
+			packet->addMessage(link_manager->beacon_module.generateBeacon(link_manager->reservation_manager->getP2PReservationTables(), link_manager->reservation_manager->getBroadcastReservationTable(), mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset()));
 			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BEACON, packet->getDestination());
 		}
 
@@ -372,6 +372,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
 			// don't generate new broadcast data.
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			// notify about queued, outgoing data
 			link_manager->notifyOutgoing(128);
 			// which should've scheduled a slot
@@ -438,6 +439,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
 			// notify about queued, outgoing data
 			link_manager->notifyOutgoing(128);
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			// which should've scheduled a slot
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			// now it should be sent whenever the slot is scheduled and schedule a next one
@@ -449,7 +451,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			// check that every sent packet carries some info about the next broadcast slot
-			CPPUNIT_ASSERT( env->phy_layer->outgoing_packets.size() > 1);
+			CPPUNIT_ASSERT(env->phy_layer->outgoing_packets.size() > 1);
 			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {
 				bool found_base_header = false;
 				for (const auto *header : broadcast_packet->getHeaders()) {
@@ -665,6 +667,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testNoSlotAdvertisement() {
 			link_manager->setAlwaysScheduleNextBroadcastSlot(false);
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
 			// notify about new data
 			link_manager->notifyOutgoing(1);
@@ -723,6 +726,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testSlotAdvertisementWhenAutoAdvertisementIsOn() {
 			link_manager->setAlwaysScheduleNextBroadcastSlot(true);
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			env->rlc_layer->num_remaining_broadcast_packets = 1;
 			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_broadcast_scheduled);
 			// notify about new data
 			link_manager->notifyOutgoing(1);

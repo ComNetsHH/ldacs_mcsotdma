@@ -242,9 +242,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(partner_id, reservation_tx.getTarget());
 				// and as RX on their side.				
 				CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));				
-			}
-			CPPUNIT_ASSERT(rlc_layer_you->receptions.size() > 0);
-			CPPUNIT_ASSERT( mac_layer_you->stat_num_packets_rcvd.get() > 0.0);
+			}			
+			CPPUNIT_ASSERT_GREATER(0.0, mac_layer_you->stat_num_packets_rcvd.get());
 			// Wait until the next transmission.
 //			coutd.setVerbose(true);
 			for (size_t t = 0; t < lm_you->burst_offset + lm_you->current_link_state->burst_length; t++) {
@@ -511,7 +510,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testReportedTxSlotDesire() {
 			// Should schedule 1 TX slot each.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			// Single message.
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			// New data for communication partner.
@@ -621,8 +620,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			// link info should've been sent, none should remain
-			CPPUNIT_ASSERT_EQUAL(true, rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->receptions.size());
+			CPPUNIT_ASSERT_EQUAL(true, rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty());			
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_link_infos_sent.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_you->stat_num_link_infos_rcvd.get());
 			// proceed until other communication partner agrees that the link's been established
@@ -723,7 +721,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			rlc_layer_you->should_there_be_more_p2p_data = false;
 			// Force bidirectional link.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			lm_me->notifyOutgoing(512);
 			size_t num_slots = 0, max_slots = 1000;
 
@@ -768,7 +766,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, lm_you->link_status);
 
 			// Now do reestablishments.
-			lm_me->reported_desired_tx_slots = 1;
+			lm_me->setInitializeBidirectionalLinks();
 			lm_me->notifyOutgoing(512);
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			size_t num_reestablishments = 10;
@@ -885,6 +883,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link. */
 		void testGiveUpLinkIfFirstDataPacketDoesntComeThrough() {
+			mac_layer_me->setCloseP2PLinksEarly(true);
+			mac_layer_you->setCloseP2PLinksEarly(true);
 			auto *p2p_lm_me = mac_layer_me->getLinkManager(partner_id), *p2p_lm_you = mac_layer_you->getLinkManager(own_id);			
 			// have comm. partner establish a link
 			p2p_lm_you->notifyOutgoing(512);
@@ -921,12 +921,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testMACDelays() {
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			rlc_layer_me->num_remaining_broadcast_packets = 4;
 			auto *bc_link_manager_me = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			auto *bc_link_manager_you = (BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_link_manager_me->notifyOutgoing(1);
 			// proceed until the first broadcast's been received
 			size_t num_broadcasts = 1;
-			while (rlc_layer_you->receptions.size() < num_broadcasts) {
+			size_t num_slots = 0, max_slots = 100;
+			while (rlc_layer_you->receptions.size() < num_broadcasts && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
 				mac_layer_you->execute();
@@ -934,14 +936,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 				mac_layer_me->onSlotEnd();				
 			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 			// check statistics
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get());			
 			CPPUNIT_ASSERT_EQUAL(mac_layer_me->stat_broadcast_selected_candidate_slots.get(), mac_layer_me->stat_broadcast_mac_delay.get());
 			// proceed further
-			num_broadcasts = 3;
-			size_t num_slots = 0, max_slots = 1000;			
-			while (num_slots++ < max_slots && rlc_layer_you->receptions.size() < num_broadcasts) {
+			num_broadcasts = 3;			
+			num_slots = 0; 
+			max_slots = 1000;			
+			while (rlc_layer_you->receptions.size() < num_broadcasts && num_slots++ < max_slots) {
 				bc_link_manager_me->notifyOutgoing(1);
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -988,7 +992,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p);
 				CPPUNIT_ASSERT_GREATER(bc_link_manager_me->MIN_CANDIDATES, num_candidate_slots);
 				double num_neighbors = 1.0;
-				unsigned int expected_candidate_slots = (unsigned int) std::ceil(1.0 / (1.0 - pow(1.0 - p, (1/num_neighbors))));								
+				unsigned int expected_candidate_slots = (unsigned int) std::ceil(1.0 / (1.0 - pow(1.0 - p, (1/num_neighbors))));												
 				CPPUNIT_ASSERT_EQUAL(expected_candidate_slots, num_candidate_slots);
 			}			
 		}
@@ -1019,6 +1023,250 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_requests_rcvd.get());							
 		}
 
+		void testForcedBidirectionalLinks() {
+			mac_layer_me->setForceBidirectionalLinks(true);
+			mac_layer_you->setForceBidirectionalLinks(true);
+			CPPUNIT_ASSERT_EQUAL(uint(1), lm_me->reported_desired_tx_slots);
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			// New data for communication partner.
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			size_t num_slots = 0, max_slots = 100;			
+			while (lm_me->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
+			size_t num_tx_reservations = 0, num_rx_reservations = 0;
+			for (size_t t = 0; t < lm_me->burst_offset*2; t++) {
+				const auto& res = lm_me->current_reservation_table->getReservation(t);				
+				if (res.isAnyTx())
+					num_tx_reservations++;
+				else if (res.isAnyRx())
+					num_rx_reservations++;
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx_reservations);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
+		}
+
+		void testNoEmptyBroadcasts() {
+			// always schedule new slots
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			rlc_layer_me->num_remaining_broadcast_packets = 1;
+			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(true);
+			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+			size_t num_slots = 0, max_num_slots = 100;
+			// broadcast once
+			while (((size_t) mac_layer_me->stat_num_broadcasts_sent.get()) < size_t(1) && num_slots++ < max_num_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
+			// no more data	
+			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer_me->num_remaining_broadcast_packets);		
+			BCLinkManager *bc_lm = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			// but there should be another TX reservation
+			size_t num_tx_reservations = 0;
+			for (size_t t = 0; t < planning_horizon; t++) {
+				if (bc_lm->current_reservation_table->getReservation(t).isAnyTx())
+					num_tx_reservations++;
+			}
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_reservations);
+			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(false);
+			num_slots = 0;
+			while (bc_lm->next_broadcast_scheduled && num_slots++ < max_num_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
+			CPPUNIT_ASSERT(!bc_lm->next_broadcast_scheduled);
+			// no more packets should've been sent
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
+		}
+		
+		/**
+		 * When there's no broadcasts going on, link requests should only be base header + link request.
+		 * */
+		void testLinkRequestPacketsNoBroadcasts() {
+			mac_layer_me->setInitializeBidirectionalLinks(true);
+			mac_layer_you->setInitializeBidirectionalLinks(true);
+			size_t num_slots = 0, max_slots = 1000;
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			lm_me->notifyOutgoing(512);			
+			while (lm_me->statistic_num_links_established < 2 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ulong(2), lm_me->statistic_num_links_established);			
+			size_t num_requests = 0;
+			for (auto *packet : phy_layer_me->outgoing_packets) {
+				if (packet->getRequestIndex() != -1) {
+					num_requests++;
+					CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, packet->getHeaders().at(0)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(1)->frame_type);
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(2), num_requests);
+		}
+
+		/**
+		 * When there's broadcasts going on, link requests should be base header + broadcast + link request.
+		 * */
+		void testLinkRequestPacketsWithBroadcasts() {
+			mac_layer_me->setInitializeBidirectionalLinks(true);
+			mac_layer_you->setInitializeBidirectionalLinks(true);						
+			mac_layer_me->setCloseP2PLinksEarly(false);
+			mac_layer_you->setCloseP2PLinksEarly(false);
+			size_t num_slots = 0, max_slots = 1000;
+			rlc_layer_me->should_there_be_more_p2p_data = true;
+			rlc_layer_me->should_there_be_more_broadcast_data = true;
+			rlc_layer_you->should_there_be_more_broadcast_data = false;
+			lm_me->notifyOutgoing(512);
+			mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+			while (lm_me->statistic_num_links_established < 2 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ulong(2), lm_me->statistic_num_links_established);			
+			size_t num_requests = 0;
+			for (auto *packet : phy_layer_me->outgoing_packets) {
+				if (packet->getRequestIndex() != -1) {
+					num_requests++;
+					CPPUNIT_ASSERT_EQUAL(size_t(3), packet->getHeaders().size());
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, packet->getHeaders().at(0)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, packet->getHeaders().at(1)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(2)->frame_type);
+				}
+			}
+			// due to collisions, more than 2 requests may have been necessary
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), num_requests);
+		}
+
+		/**
+		 * From issue 102: https://collaborating.tuhh.de/e-4/research-projects/intairnet-collection/mc-sotdma/-/issues/102
+		 * */
+		void testMissedLastLinkEstablishmentOpportunity() {
+			// don't attempt to re-establish
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
+			lm_me->notifyOutgoing(512);
+			size_t num_slots = 0, max_slots = 100;
+			while (mac_layer_me->stat_num_requests_sent.get() < 1 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_requests_sent.get());
+			// packet drops from now on
+			phy_layer_me->connected_phys.clear();
+			phy_layer_you->connected_phys.clear();
+			num_slots = 0;
+			while (lm_me->link_status != lm_me->link_not_established && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(lm_me->link_not_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_pp_link_missed_last_reply_opportunity.get());
+			// make sure that all PP link reservations have been cleared
+			std::vector<uint64_t> freqs = {env_me->p2p_freq_1, env_me->p2p_freq_2, env_me->p2p_freq_3};
+			for (const auto freq : freqs) {
+				const auto *res_table = mac_layer_me->getReservationManager()->getReservationTable(mac_layer_me->getReservationManager()->getFreqChannelByCenterFreq(freq));
+				for (size_t t = 0; t < planning_horizon; t++) {
+					if (res_table->getReservation(t) != Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE)) 
+						std::cout << "t=" << t << " f=" << freq << ": " << res_table->getReservation(t) << std::endl;
+					// CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_table->getReservation(t));
+				}
+			}
+		}
+
+		void testReservationsAfterLinkRequest() {
+			// don't attempt to re-establish
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
+			lm_me->notifyOutgoing(512);
+			size_t num_slots = 0, max_slots = 100;
+			while (mac_layer_me->stat_num_requests_sent.get() < 1 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_requests_sent.get());
+			// link request has been sent, so there should be some reservations set up			
+			std::vector<uint64_t> freqs = {env_me->p2p_freq_1, env_me->p2p_freq_2, env_me->p2p_freq_3};
+			size_t num_rx = 0, num_locks = 0;
+			for (const auto freq : freqs) {
+				const auto *res_table = mac_layer_me->getReservationManager()->getReservationTable(mac_layer_me->getReservationManager()->getFreqChannelByCenterFreq(freq));
+				for (size_t t = 0; t < planning_horizon; t++) {					
+					if (res_table->getReservation(t).isAnyRx())
+						num_rx++;
+					else if (res_table->getReservation(t).isLocked())
+						num_locks++;
+				}
+			}			
+			size_t expected_rxs = size_t(lm_me->num_p2p_channels_to_propose * lm_me->num_slots_per_p2p_channel_to_propose);
+			size_t expected_locks = size_t(lm_me->num_p2p_channels_to_propose * lm_me->num_slots_per_p2p_channel_to_propose * lm_me->current_link_state->burst_length * lm_me->default_timeout);
+			CPPUNIT_ASSERT_EQUAL(expected_rxs, num_rx);
+			CPPUNIT_ASSERT_EQUAL(expected_locks, num_locks);
+			// these should be identical with what is saved in the lock map
+			CPPUNIT_ASSERT_EQUAL(expected_rxs + expected_locks, lm_me->lock_map.locks_local.size());
+			// now terminating the link should free all these reservations
+			lm_me->terminateLink();			
+			num_rx = 0;
+			num_locks = 0;
+			for (const auto freq : freqs) {
+				const auto *res_table = mac_layer_me->getReservationManager()->getReservationTable(mac_layer_me->getReservationManager()->getFreqChannelByCenterFreq(freq));
+				for (size_t t = 0; t < planning_horizon; t++) {					
+					if (!res_table->getReservation(t).isIdle())
+						std::cout << "f=" << freq << " t=" << t << ": " << res_table->getReservation(t) << std::endl;
+					if (res_table->getReservation(t).isAnyRx())
+						num_rx++;
+					else if (res_table->getReservation(t).isLocked())
+						num_locks++;
+				}
+			}			
+			CPPUNIT_ASSERT_EQUAL(size_t(0), num_rx);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), num_locks);
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1038,11 +1286,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testManyReestablishments);
 			CPPUNIT_TEST(testSlotAdvertisement);
 			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
-			CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
+			// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
 			CPPUNIT_TEST(testMACDelays);			
 			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
-			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);			
-
+			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
+			CPPUNIT_TEST(testForcedBidirectionalLinks);					
+			CPPUNIT_TEST(testNoEmptyBroadcasts);			
+			CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
+			CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
+			CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);			
+			CPPUNIT_TEST(testReservationsAfterLinkRequest);						
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

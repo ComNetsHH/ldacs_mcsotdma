@@ -79,19 +79,40 @@ void BeaconModule::setMinBeaconGap(unsigned int n) {
 	this->min_beacon_gap = n;
 }
 
-std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table) {
-	auto *payload = new BeaconPayload();
+std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table, const SimulatorPosition simulatorPosition, size_t num_utilized_p2p_resources, size_t burst_offset) {
+	auto *payload = new BeaconPayload();	
 	payload->encode(bc_table->getLinkedChannel()->getCenterFrequency(), bc_table);
-	if (flip_p2p_table_encoding) {
-		for (auto it = reservation_tables.end() - 1; it != reservation_tables.begin(); it--)
-			payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
-		flip_p2p_table_encoding = false;
-	} else {
-		for (auto it = reservation_tables.begin(); it != reservation_tables.end(); it++)
-			payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
-		flip_p2p_table_encoding = true;
+	if (!reservation_tables.empty()) {
+		if (flip_p2p_table_encoding) {
+			for (auto it = reservation_tables.end() - 1; it != reservation_tables.begin(); it--)
+				payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
+			flip_p2p_table_encoding = false;
+		} else {
+			for (auto it = reservation_tables.begin(); it != reservation_tables.end(); it++)
+				payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
+			flip_p2p_table_encoding = true;
+		}
 	}
-	return {new L2HeaderBeacon(), payload};
+
+	auto position  = CPRPosition(simulatorPosition);
+	L2HeaderBeacon::CongestionLevel congestion_level;	
+	// assume bidirectional, ARQ-protected P2P links with two resources each	
+	if (num_utilized_p2p_resources > burst_offset) {
+		delete payload;
+		throw std::invalid_argument("BeaconModule::generateBeacon was told there's more utilized resources than there are available.");
+	}
+	double congestion = ((double) num_utilized_p2p_resources) / ((double) burst_offset);
+	if (congestion < .25)
+		congestion_level = L2HeaderBeacon::CongestionLevel::uncongested;
+	else if (congestion < .5)
+		congestion_level = L2HeaderBeacon::CongestionLevel::slightly_congested;
+	else if (congestion < .75)
+		congestion_level = L2HeaderBeacon::CongestionLevel::moderately_congested;
+	else
+		congestion_level = L2HeaderBeacon::CongestionLevel::congested;		
+	CPRPosition::PositionQuality pos_quality = CPRPosition::PositionQuality::low;
+	L2HeaderBeacon *header = new L2HeaderBeacon(position, position.odd, congestion_level, pos_quality);
+	return {header, payload};
 }
 
 std::pair<bool, bool> BeaconModule::parseBeacon(const MacId &sender_id, const BeaconPayload *&payload, ReservationManager* manager) const {

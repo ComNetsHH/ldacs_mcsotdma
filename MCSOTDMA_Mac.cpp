@@ -123,14 +123,23 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				num_txs++;
 				if (num_txs > num_transmitters)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
-				// Find the corresponding OldLinkManager.
+				// Find the corresponding LinkManager.
 				const MacId& id = reservation.getTarget();
 				LinkManager* link_manager = getLinkManager(id);
 				// Tell it about the transmission slot.
 				unsigned int num_tx_slots = reservation.getNumRemainingSlots();
 				L2Packet* outgoing_packet = link_manager->onTransmissionBurstStart(num_tx_slots);
-				outgoing_packet->notifyCallbacks();
-				passToLower(outgoing_packet, channel->getCenterFrequency());
+				if (outgoing_packet != nullptr) {
+					outgoing_packet->notifyCallbacks();				
+					passToLower(outgoing_packet, channel->getCenterFrequency());
+					statisticReportPacketSent();	
+				} else {
+					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
+					if (id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON)
+						this->stat_broadcast_wasted_tx_opportunities.increment();
+					else
+						this->stat_unicast_wasted_tx_opportunities.increment();
+				}
 				break;
 			}
 			case Reservation::TX_CONT: {
@@ -207,8 +216,11 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new BCLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
-			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, 10, 15);
+			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
 			((P2PLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
+			((P2PLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
+			if (this->should_initialize_bidirectional_links)
+				((P2PLinkManager*) link_manager)->setInitializeBidirectionalLinks();
 			// Receiver tables are only set for P2PLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
@@ -296,7 +308,9 @@ void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
 }
 
-void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {
+void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {	
+	if (flag)
+		throw std::runtime_error("closing P2P links early is currently broken, please don't attempt this!");
 	close_link_early_if_no_first_data_packet_comes_in = flag;
 	for (auto pair : link_managers) {
 		const MacId id = pair.first;
@@ -320,4 +334,38 @@ void MCSOTDMA_Mac::setMinBeaconOffset(unsigned int value) {
 
 void MCSOTDMA_Mac::setMaxBeaconOffset(unsigned int value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxBeaconInterval(value);
+}
+
+void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
+	// this sets the flag which treats link managers that are created in the future
+	IMac::setForceBidirectionalLinks(flag);	
+	// now also handle those that already exist
+	for (auto pair : link_managers) {
+		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
+			((P2PLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
+	}	
+}
+
+void MCSOTDMA_Mac::setInitializeBidirectionalLinks(bool flag) {
+	// this sets the flag which treats link managers that are created in the future
+	IMac::setInitializeBidirectionalLinks(flag);	
+	// now also handle those that already exist
+	if (flag) {
+		for (auto pair : link_managers) {
+			if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
+				((P2PLinkManager*) pair.second)->setInitializeBidirectionalLinks();
+		}	
+	}
+}
+
+size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
+	size_t n = 0;
+	for (const auto pair : link_managers) 
+		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
+			n += ((P2PLinkManager*) pair.second)->getNumUtilizedResources();					
+	return n;
+}
+
+unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
+	return this->default_p2p_link_burst_offset;
 }

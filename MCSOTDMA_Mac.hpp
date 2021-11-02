@@ -81,6 +81,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setMinBeaconOffset(unsigned int value) override;
 		void setMaxBeaconOffset(unsigned int value) override;
 
+		void setForceBidirectionalLinks(bool flag) override;
+		void setInitializeBidirectionalLinks(bool flag) override;
+
+		size_t getNumUtilizedP2PResources() const;
+
 		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
 		void reportNeighborActivity(const MacId& id);
 		const NeighborObserver& getNeighborObserver() const;
@@ -162,9 +167,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_broadcast_mac_delay.capture((double) mac_delay);
 		}
 
-		void statisticReportBroadcastNeighborTransmissionRate(double rate) {
-			stat_broadcast_avg_neighbor_transmission_rate.capture(rate);
+		void statistcReportPPLinkMissedLastReplyOpportunity() {
+			stat_pp_link_missed_last_reply_opportunity.increment();
 		}
+
+		unsigned int getP2PBurstOffset() const;
 
 	protected:
 		/**
@@ -182,10 +189,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<MacId, CPRPosition> position_map;
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
 		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
-		bool close_link_early_if_no_first_data_packet_comes_in = true;
-		
+		bool close_link_early_if_no_first_data_packet_comes_in = false;		
 		/** Keeps a list of active neighbors, which have demonstrated activity within the last 50.000 slots (10min if slot duration is 12ms). */
 		NeighborObserver active_neighbor_observer; 
+		/** Number of transmission bursts before a P2P link expires. */
+		const unsigned int default_p2p_link_timeout = 10;
+		/** Number of slots between two transmission bursts. */
+		const unsigned int default_p2p_link_burst_offset = 20;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
@@ -214,8 +224,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
 		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
-		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);		
-		Statistic stat_broadcast_avg_neighbor_transmission_rate = Statistic("mcsotdma_statistic_broadcast_avg_neighbor_transmission_rate", this);		
+		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);				
+		Statistic stat_broadcast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_broadcast_wasted_tx_opportunities", this);
+		Statistic stat_unicast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_unicast_wasted_tx_opportunities", this);
+		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -244,7 +256,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_selected_candidate_slots,
 				&stat_num_links_closed_early,
 				&stat_broadcast_mac_delay,
-				&stat_broadcast_avg_neighbor_transmission_rate
+				&stat_broadcast_wasted_tx_opportunities,
+				&stat_unicast_wasted_tx_opportunities,
+				&stat_pp_link_missed_last_reply_opportunity
 		};
 	};
 
