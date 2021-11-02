@@ -1168,6 +1168,105 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), num_requests);
 		}
 
+		/**
+		 * From issue 102: https://collaborating.tuhh.de/e-4/research-projects/intairnet-collection/mc-sotdma/-/issues/102
+		 * */
+		void testMissedLastLinkEstablishmentOpportunity() {
+			// don't attempt to re-establish
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
+			lm_me->notifyOutgoing(512);
+			size_t num_slots = 0, max_slots = 100;
+			while (mac_layer_me->stat_num_requests_sent.get() < 1 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_requests_sent.get());
+			// packet drops from now on
+			phy_layer_me->connected_phys.clear();
+			phy_layer_you->connected_phys.clear();
+			num_slots = 0;
+			while (lm_me->link_status != lm_me->link_not_established && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(lm_me->link_not_established, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_pp_link_missed_last_reply_opportunity.get());
+			// make sure that all PP link reservations have been cleared
+			std::vector<uint64_t> freqs = {env_me->p2p_freq_1, env_me->p2p_freq_2, env_me->p2p_freq_3};
+			for (const auto freq : freqs) {
+				const auto *res_table = mac_layer_me->getReservationManager()->getReservationTable(mac_layer_me->getReservationManager()->getFreqChannelByCenterFreq(freq));
+				for (size_t t = 0; t < planning_horizon; t++) {
+					if (res_table->getReservation(t) != Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE)) 
+						std::cout << "t=" << t << " f=" << freq << ": " << res_table->getReservation(t) << std::endl;
+					// CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res_table->getReservation(t));
+				}
+			}
+		}
+
+		void testReservationsAfterLinkRequest() {
+			// don't attempt to re-establish
+			rlc_layer_me->should_there_be_more_p2p_data = false;
+			rlc_layer_you->should_there_be_more_p2p_data = false;
+			lm_me->notifyOutgoing(512);
+			size_t num_slots = 0, max_slots = 100;
+			while (mac_layer_me->stat_num_requests_sent.get() < 1 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_requests_sent.get());
+			// link request has been sent, so there should be some reservations set up			
+			std::vector<uint64_t> freqs = {env_me->p2p_freq_1, env_me->p2p_freq_2, env_me->p2p_freq_3};
+			size_t num_rx = 0, num_locks = 0;
+			for (const auto freq : freqs) {
+				const auto *res_table = mac_layer_me->getReservationManager()->getReservationTable(mac_layer_me->getReservationManager()->getFreqChannelByCenterFreq(freq));
+				for (size_t t = 0; t < planning_horizon; t++) {					
+					if (res_table->getReservation(t).isAnyRx())
+						num_rx++;
+					else if (res_table->getReservation(t).isLocked())
+						num_locks++;
+				}
+			}			
+			size_t expected_rxs = size_t(lm_me->num_p2p_channels_to_propose * lm_me->num_slots_per_p2p_channel_to_propose);
+			size_t expected_locks = size_t(lm_me->num_p2p_channels_to_propose * lm_me->num_slots_per_p2p_channel_to_propose * lm_me->current_link_state->burst_length * lm_me->default_timeout);
+			CPPUNIT_ASSERT_EQUAL(expected_rxs, num_rx);
+			CPPUNIT_ASSERT_EQUAL(expected_locks, num_locks);
+			// these should be identical with what is saved in the lock map
+			CPPUNIT_ASSERT_EQUAL(expected_rxs + expected_locks, lm_me->lock_map.locks_local.size());
+			// now terminating the link should free all these reservations
+			lm_me->terminateLink();			
+			num_rx = 0;
+			num_locks = 0;
+			for (const auto freq : freqs) {
+				const auto *res_table = mac_layer_me->getReservationManager()->getReservationTable(mac_layer_me->getReservationManager()->getFreqChannelByCenterFreq(freq));
+				for (size_t t = 0; t < planning_horizon; t++) {					
+					if (!res_table->getReservation(t).isIdle())
+						std::cout << "f=" << freq << " t=" << t << ": " << res_table->getReservation(t) << std::endl;
+					if (res_table->getReservation(t).isAnyRx())
+						num_rx++;
+					else if (res_table->getReservation(t).isLocked())
+						num_locks++;
+				}
+			}			
+			CPPUNIT_ASSERT_EQUAL(size_t(0), num_rx);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), num_locks);
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1194,7 +1293,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testForcedBidirectionalLinks);					
 			CPPUNIT_TEST(testNoEmptyBroadcasts);			
 			CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
-			CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);						
+			CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
+			CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);			
+			CPPUNIT_TEST(testReservationsAfterLinkRequest);						
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
