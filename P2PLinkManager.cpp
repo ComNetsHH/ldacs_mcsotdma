@@ -27,16 +27,15 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 	auto table_priority_queue = reservation_manager->getSortedP2PReservationTables();
 	// ... until we have considered the target number of channels ...
 	coutd << "p2pSlotSelection to reserve " << burst_length << " slots -> ";
-	for (size_t num_channels_considered = 0; num_channels_considered < num_channels; num_channels_considered++) {
+	for (size_t num_channels_considered = 0; num_channels_considered < num_channels;) {
 		if (table_priority_queue.empty())
 			break;
 		// ... get the next reservation table ...
 		ReservationTable* table = table_priority_queue.top();
 		table_priority_queue.pop();
 		// ... check if the channel is blocked ...
-		if (table->getLinkedChannel()->isBlocked()) {
-			num_channels_considered--;
-			continue;
+		if (table->getLinkedChannel()->isBlocked()) 			
+			continue;		
 		}
 		// ... and try to find candidate slots,
 		std::vector<unsigned int> candidate_slots = table->findCandidates(num_slots, min_offset, burst_offset, burst_length, burst_length_tx, default_timeout, true);
@@ -56,6 +55,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 		// Fill proposal.
 		for (unsigned int slot : candidate_slots)
 			proposal_map[table->getLinkedChannel()].push_back(slot);
+		num_channels_considered++;
 	}
 	return {proposal_map, locked_resources_map};
 }
