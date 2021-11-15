@@ -35,6 +35,7 @@ void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) 
 		delete packet;
 		return;
 	}
+	statisticReportPacketSent();
 	lower_layer->receiveFromUpper(packet, center_frequency);
 }
 
@@ -131,9 +132,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				L2Packet* outgoing_packet = link_manager->onTransmissionBurstStart(num_tx_slots);
 				if (outgoing_packet != nullptr) {
 					outgoing_packet->notifyCallbacks();				
-					passToLower(outgoing_packet, channel->getCenterFrequency());
-					statisticReportPacketSent();	
-				} else {
+					passToLower(outgoing_packet, channel->getCenterFrequency());					
+				} else {					
 					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
 					if (id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON)
 						this->stat_broadcast_wasted_tx_opportunities.increment();
