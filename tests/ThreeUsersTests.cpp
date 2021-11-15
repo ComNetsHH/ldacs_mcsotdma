@@ -297,13 +297,103 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				packets_so_far_1 = (size_t) mac_1->stat_num_packets_sent.get();
 				packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
 			}
+		}		
+
+		void testStatPacketsSent() {
+			env1->rlc_layer->should_there_be_more_broadcast_data = false;
+			env2->rlc_layer->should_there_be_more_broadcast_data = false;
+			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
+			env1->rlc_layer->always_return_broadcast_payload = true;
+			env2->rlc_layer->always_return_broadcast_payload = true;
+			env3->rlc_layer->always_return_broadcast_payload = true;						
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
+			for (auto *mac : macs) {
+				mac->setContentionMethod(ContentionMethod::naive_random_access);
+				mac->setAlwaysScheduleNextBroadcastSlot(false);
+				mac->setBcSlotSelectionMinNumCandidateSlots(3);
+				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
+			}	
+
+			size_t num_slots = 0, max_slots = 1000;
+			// send at least t beacons
+			while (mac_1->stat_num_beacons_sent.get() < 3.0 && num_slots++ < max_slots) {
+				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), (size_t) mac_1->stat_num_beacons_sent.get());						
+			size_t num_packets_sent_1 = (size_t) mac_1->stat_num_packets_sent.get(), num_packets_sent_2 = (size_t) mac_2->stat_num_packets_sent.get(), num_packets_sent_3 = (size_t) mac_3->stat_num_packets_sent.get();
+			size_t num_broadcasts_sent_1 = (size_t) mac_1->stat_num_broadcasts_sent.get(), num_broadcasts_sent_2 = (size_t) mac_2->stat_num_broadcasts_sent.get(), num_broadcasts_sent_3 = (size_t) mac_3->stat_num_broadcasts_sent.get();
+			size_t num_beacons_sent_1 = (size_t) mac_1->stat_num_beacons_sent.get(), num_beacons_sent_2 = (size_t) mac_2->stat_num_beacons_sent.get(), num_beacons_sent_3 = (size_t) mac_3->stat_num_beacons_sent.get();			
+			// no unicast-type packets should've been sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_replies_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_unicasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
+			// now, the number of sent packets should equal the sum of broadcasts and beacons			
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_1 + num_beacons_sent_1, num_packets_sent_1);
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_2 + num_beacons_sent_2, num_packets_sent_2);
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_3 + num_beacons_sent_3, num_packets_sent_3);
+		}		
+
+		void testCollisions() {			
+			env1->rlc_layer->should_there_be_more_broadcast_data = false;
+			env2->rlc_layer->should_there_be_more_broadcast_data = false;
+			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
+			env1->rlc_layer->always_return_broadcast_payload = true;
+			env2->rlc_layer->always_return_broadcast_payload = true;
+			env3->rlc_layer->always_return_broadcast_payload = true;						
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
+			for (auto *mac : macs) {
+				mac->setContentionMethod(ContentionMethod::naive_random_access);
+				mac->setAlwaysScheduleNextBroadcastSlot(false);
+				mac->setBcSlotSelectionMinNumCandidateSlots(3);
+				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
+			}		
+			size_t max_slots = 1000;
+			for (size_t t = 0; t < max_slots; t++) {
+				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}						
+			size_t num_packets_sent_to_1 = (size_t) mac_2->stat_num_packets_sent.get() + (size_t) mac_3->stat_num_packets_sent.get();
+			size_t num_packets_rcvd = (size_t) mac_1->stat_num_packets_rcvd.get();
+			size_t num_packets_missed = (size_t) env1->phy_layer->stat_num_packets_missed.get();
+			size_t num_packet_collisions = (size_t) mac_1->stat_num_packet_collisions.get();
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_packet_collisions);
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_packets_missed);			
+			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + num_packet_collisions, num_packets_sent_to_1);
 		}
 
 
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
-			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);
+			// CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
+			CPPUNIT_TEST(testStatPacketsSent);			
+			CPPUNIT_TEST(testCollisions);
 //			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 //			CPPUNIT_TEST(threeUsersNonOverlappingTest);
 		CPPUNIT_TEST_SUITE_END();

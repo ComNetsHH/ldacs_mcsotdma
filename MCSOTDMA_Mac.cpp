@@ -181,8 +181,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 		return;
 	}
 	if (dest_id == SYMBOLIC_ID_UNSET)
-		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");
-	stat_num_packets_rcvd.increment();
+		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");	
 	// Store,
 	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON || dest_id == id) {
 		received_packets[center_frequency].push_back(packet);
@@ -257,6 +256,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			else
 				getLinkManager(packet->getOrigin())->onPacketReception(packet);
 			stat_num_packets_decoded.increment();
+			stat_num_packets_rcvd.increment();
 		// We cannot receive several packets on this channel simultaneously - drop it due to a collision.
 		} else if (packets.size() > 1) {
 			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";

@@ -14,6 +14,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MCSOTDMA_Phy : public IPhy, public IOmnetPluggable {
 
 		friend class MCSOTDMA_PhyTests;
+		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
 		friend class ThreeUsersTests;
 

@@ -58,19 +58,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			packet_destined_to_us2->addMessage(new L2HeaderUnicast(own_id, false, 0, 0, 0), nullptr);
 			phy->onReception(packet_destined_to_us2, center_freq1);
 			// Should *not* have been discarded.
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) phy->stat_num_packets_rcvd.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_packets_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) phy->stat_num_packets_rcvd.get());			
 			// And so the number of missed packets doesn't increase.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) phy->stat_num_packets_missed.get());
 
 			phy->update(1);
 			CPPUNIT_ASSERT_EQUAL(true, phy->rx_frequencies.empty());
-			phy->onReception(packet_destined_to_us2, center_freq1);
+			phy->onReception(packet_destined_to_us2, center_freq1);			
 
 			// Should again be discarded - no receiver is tuned *in this time slot*.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) phy->stat_num_packets_rcvd.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) phy->stat_num_packets_missed.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_packets_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) phy->stat_num_packets_missed.get());			
 
             coutd.setVerbose(false);
 		}
