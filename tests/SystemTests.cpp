@@ -1267,6 +1267,60 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), num_locks);
 		}
 
+		void testMissedAndReceivedPacketsMatch() {
+			// random access
+			mac_layer_me->setContentionMethod(ContentionMethod::naive_random_access);
+			mac_layer_you->setContentionMethod(ContentionMethod::naive_random_access);
+			// no slot advertising
+			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(false);
+			mac_layer_you->setAlwaysScheduleNextBroadcastSlot(false);
+			rlc_layer_me->should_there_be_more_broadcast_data = false;
+			rlc_layer_you->should_there_be_more_broadcast_data = false;
+			// make sure actual data is sent
+			rlc_layer_me->always_return_broadcast_payload = true;
+			rlc_layer_you->always_return_broadcast_payload = true;
+			// select randomly from three idle slots
+			mac_layer_me->setBcSlotSelectionMinNumCandidateSlots(3);
+			mac_layer_you->setBcSlotSelectionMinNumCandidateSlots(3);
+			mac_layer_me->setBcSlotSelectionMaxNumCandidateSlots(3);
+			mac_layer_you->setBcSlotSelectionMaxNumCandidateSlots(3);									
+			// both have stuff to send
+			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+			mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+			size_t max_slots = 100;
+			for (size_t t = 0; t < max_slots; t++) {
+				mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();				
+			}			
+			CPPUNIT_ASSERT_GREATER(size_t(0), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
+			CPPUNIT_ASSERT_GREATER(size_t(0), (size_t) mac_layer_you->stat_num_broadcasts_sent.get());
+			CPPUNIT_ASSERT_GREATER(size_t(0), (size_t) mac_layer_me->stat_num_broadcasts_rcvd.get());
+			CPPUNIT_ASSERT_GREATER(size_t(0), (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get());
+			// there should've been collisions
+			CPPUNIT_ASSERT_LESS((size_t) mac_layer_me->stat_num_broadcasts_sent.get(), (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get());
+			CPPUNIT_ASSERT_LESS((size_t) mac_layer_you->stat_num_broadcasts_sent.get(), (size_t) mac_layer_me->stat_num_broadcasts_rcvd.get());			
+			// which should be identical to sent-received
+			size_t num_broadcasts_sent_me = (size_t) mac_layer_me->stat_num_broadcasts_sent.get();
+			size_t num_beacons_sent_me = (size_t) mac_layer_me->stat_num_beacons_sent.get();
+			size_t num_broadcasts_rcvd_me = (size_t) mac_layer_me->stat_num_broadcasts_rcvd.get();
+			size_t num_beacons_rcvd_me = (size_t) mac_layer_me->stat_num_beacons_rcvd.get();
+			
+
+			size_t num_broadcasts_sent_you = (size_t) mac_layer_you->stat_num_broadcasts_sent.get();
+			size_t num_beacons_sent_you = (size_t) mac_layer_you->stat_num_beacons_sent.get();
+			size_t num_broadcasts_rcvd_you = (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get();
+			size_t num_beacons_rcvd_you = (size_t) mac_layer_you->stat_num_beacons_rcvd.get();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_you->stat_num_packet_collisions.get());
+			CPPUNIT_ASSERT_EQUAL((size_t) phy_layer_you->stat_num_packets_missed.get(), num_broadcasts_sent_me + num_beacons_sent_me - num_broadcasts_rcvd_you - num_beacons_rcvd_you);			
+			CPPUNIT_ASSERT_EQUAL((size_t) phy_layer_me->stat_num_packets_missed.get(), num_broadcasts_sent_you + num_beacons_sent_you - num_broadcasts_rcvd_me - num_beacons_rcvd_me);			
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1296,6 +1350,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
 			CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);			
 			CPPUNIT_TEST(testReservationsAfterLinkRequest);						
+			CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

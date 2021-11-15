@@ -14,6 +14,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class MCSOTDMA_Phy : public IPhy, public IOmnetPluggable {
 
 		friend class MCSOTDMA_PhyTests;
+		friend class SystemTests;
 
 	public:
 		explicit MCSOTDMA_Phy(uint32_t planning_horizon);

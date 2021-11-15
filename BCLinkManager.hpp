@@ -55,6 +55,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setTargetCollisionProb(double value);
 		void setMinNumCandidateSlots(int value);
+		void setMaxNumCandidateSlots(int value);
 
 		/**
 		 * Specify contention method used to find number of candidate slots.
@@ -130,6 +131,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int next_broadcast_slot = 0;		
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
+		/** Maximum number of slots to consider during slot selection. */
+		unsigned int MAX_CANDIDATES = 1000;
 		MovingAverage avg_num_slots_inbetween_packet_generations;
 		unsigned int num_slots_since_last_packet_generation = 0;
 		bool packet_generated_this_slot = false;

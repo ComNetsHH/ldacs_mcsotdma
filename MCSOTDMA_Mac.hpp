@@ -71,6 +71,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setBroadcastTargetCollisionProb(double value) override;
 
 		void setBcSlotSelectionMinNumCandidateSlots(int value) override;
+		void setBcSlotSelectionMaxNumCandidateSlots(int value) override;
 
 		void setContentionMethod(ContentionMethod method) override;
 
@@ -209,6 +210,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_link_infos_rcvd = Statistic("mcsotdma_statistic_num_link_infos_received", this);
 		Statistic stat_num_packets_sent = Statistic("mcsotdma_statistic_num_packets_sent", this);
 		Statistic stat_num_requests_sent = Statistic("mcsotdma_statistic_num_link_requests_sent", this);
+		/** Number of non-beacon broadcast-type packets that were sent. */
 		Statistic stat_num_broadcasts_sent = Statistic("mcsotdma_statistic_num_broadcasts_sent", this);
 		Statistic stat_num_unicasts_sent = Statistic("mcsotdma_statistic_num_unicasts_sent", this);
 		Statistic stat_num_replies_sent = Statistic("mcsotdma_statistic_num_link_replies_sent", this);

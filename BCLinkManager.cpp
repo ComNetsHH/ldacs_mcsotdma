@@ -36,6 +36,8 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	packet->addMessage(base_header, nullptr);
 	unsigned long capacity = mac->getCurrentDatarate();
 
+	bool is_beacon = false;
+
 	// Beacon slots are exclusive to beacons.
 	if (beacon_module.isEnabled() && beacon_module.shouldSendBeaconThisSlot()) {
 		coutd << "broadcasting beacon -> ";
@@ -47,6 +49,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		auto hostPosition = this->mac->getHostPosition();
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable(), hostPosition, mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset()));
 		mac->statisticReportBeaconSent();
+		is_beacon = true;
 		base_header->burst_offset = beacon_module.getNextBeaconOffset();
 	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
@@ -144,8 +147,10 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		delete packet;
 		return nullptr;
 	} else {
-		mac->statisticReportBroadcastSent();
-		mac->statisticReportBroadcastMacDelay(measureMacDelay());		
+		if (!is_beacon) {
+			mac->statisticReportBroadcastSent();
+			mac->statisticReportBroadcastMacDelay(measureMacDelay());		
+		}
 		return packet;
 	}
 }
@@ -281,7 +286,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	} else {
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
 	}
-	unsigned int final_candidates = std::max(MIN_CANDIDATES, k);
+	unsigned int final_candidates = std::min(MAX_CANDIDATES, std::max(MIN_CANDIDATES, k));
 	coutd << "num_candidates=" << final_candidates << " -> ";
 	return final_candidates;
 }
@@ -480,6 +485,10 @@ void BCLinkManager::unscheduleBeaconSlot() {
 void BCLinkManager::setMinNumCandidateSlots(int value) {
 	MIN_CANDIDATES = value;
 	beacon_module.setMinBeaconCandidateSlots(value);
+}
+
+void BCLinkManager::setMaxNumCandidateSlots(int value) {
+	MAX_CANDIDATES = value;	
 }
 
 void BCLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {

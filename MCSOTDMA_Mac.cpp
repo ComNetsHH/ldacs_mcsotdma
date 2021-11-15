@@ -266,7 +266,6 @@ void MCSOTDMA_Mac::onSlotEnd() {
                 this->deletePacket(packet);
                 delete packet;
             }
-
         }
 	}
 	received_packets.clear();
@@ -298,6 +297,10 @@ void MCSOTDMA_Mac::setBroadcastTargetCollisionProb(double value) {
 
 void MCSOTDMA_Mac::setBcSlotSelectionMinNumCandidateSlots(int value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinNumCandidateSlots(value);
+}
+
+void MCSOTDMA_Mac::setBcSlotSelectionMaxNumCandidateSlots(int value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxNumCandidateSlots(value);
 }
 
 void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
