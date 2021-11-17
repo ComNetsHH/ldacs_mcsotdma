@@ -372,3 +372,7 @@ size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
 	return this->default_p2p_link_burst_offset;
 }
+
+void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setWriteResourceUtilizationIntoBeacon(flag);
+}

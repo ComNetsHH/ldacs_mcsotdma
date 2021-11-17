@@ -88,6 +88,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setMinBeaconCandidateSlots(unsigned int value);
 		unsigned int getMinBeaconCandidateSlots() const;
 
+		void setWriteResourceUtilizationIntoBeacon(bool flag);
+
 	protected:
 		/**
 		 * @param random_choice Whether to choose randomly from a number of viable candidates.
@@ -123,6 +125,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		double beacon_coll_prob = .01;
 		bool flip_p2p_table_encoding = false;
 		bool enabled = true;
+		bool write_resource_utilization_into_beacon = true;
 	};
 }
 

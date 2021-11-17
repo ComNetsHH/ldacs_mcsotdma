@@ -27,6 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_PhyTests;
 		friend class ThreeUsersTests;
 		friend class P2PLinkManagerTests;
+		friend class BCLinkManagerTests;
 
 		MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);
 
@@ -84,6 +85,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setForceBidirectionalLinks(bool flag) override;
 		void setInitializeBidirectionalLinks(bool flag) override;
+
+		void setWriteResourceUtilizationIntoBeacon(bool flag) override;
 
 		size_t getNumUtilizedP2PResources() const;
 

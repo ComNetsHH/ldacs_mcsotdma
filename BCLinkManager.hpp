@@ -73,6 +73,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setMinBeaconInterval(unsigned int value);
 		void setMaxBeaconInterval(unsigned int value);
 
+		void setWriteResourceUtilizationIntoBeacon(bool flag);
+
 		void onPacketReception(L2Packet*& packet) override;
 
 	protected:
@@ -111,7 +113,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * @return Average number of slots inbetween broadcast packet generations as measured.
 		 */
-		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;
+		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;		
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */

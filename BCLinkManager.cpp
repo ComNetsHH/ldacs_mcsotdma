@@ -510,3 +510,7 @@ void BCLinkManager::setMinBeaconInterval(unsigned int value) {
 void BCLinkManager::setMaxBeaconInterval(unsigned int value) {
 	this->beacon_module.setMaxBeaconInterval(value);
 }
+
+void BCLinkManager::setWriteResourceUtilizationIntoBeacon(bool flag) {
+	this->beacon_module.setWriteResourceUtilizationIntoBeacon(flag);
+}

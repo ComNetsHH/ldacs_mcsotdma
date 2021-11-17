@@ -824,6 +824,46 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATER(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
 		}
 
+		void testBeaconWithResourceUtilization() {
+			// enable writing resource utilization into beacon
+			link_manager->setWriteResourceUtilizationIntoBeacon(true);
+			// transmit a beacon
+			size_t num_slots = 0, max_slots = 1000;
+			while (mac->stat_num_beacons_sent.get() < 1.0 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_beacons_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());			
+			L2Packet *beacon = env->phy_layer->outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::beacon, beacon->getHeaders().at(1)->frame_type);
+			BeaconPayload *payload = (BeaconPayload*) beacon->getPayloads().at(1);
+			CPPUNIT_ASSERT(payload != nullptr);
+			CPPUNIT_ASSERT_GREATER(size_t(0), payload->local_reservations.size());
+		}
+
+		void testBeaconWithoutResourceUtilization() {
+			// disable writing resource utilization into beacon
+			link_manager->setWriteResourceUtilizationIntoBeacon(false);
+			// transmit a beacon
+			size_t num_slots = 0, max_slots = 1000;
+			while (mac->stat_num_beacons_sent.get() < 1.0 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_beacons_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());			
+			L2Packet *beacon = env->phy_layer->outgoing_packets.at(0);
+			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::beacon, beacon->getHeaders().at(1)->frame_type);
+			BeaconPayload *payload = (BeaconPayload*) beacon->getPayloads().at(1);
+			CPPUNIT_ASSERT(payload != nullptr);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), payload->local_reservations.size());
+		}
+
 	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -851,7 +891,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
 		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
 		CPPUNIT_TEST(testMacDelay);
-		CPPUNIT_TEST(testBeaconInterval);		
+		CPPUNIT_TEST(testBeaconInterval);				
+		CPPUNIT_TEST(testBeaconWithResourceUtilization);	
+		CPPUNIT_TEST(testBeaconWithoutResourceUtilization);	
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
