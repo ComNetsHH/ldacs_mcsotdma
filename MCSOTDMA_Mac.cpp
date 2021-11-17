@@ -380,3 +380,7 @@ void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {
 void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(flag);
 }
+
+void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
+}

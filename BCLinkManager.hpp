@@ -69,12 +69,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param value
 		 */
 		void setAlwaysScheduleNextBroadcastSlot(bool value);
+		/**		 
+		 * If 'true': advertise the next broadcast slot in the current header.		 
+		 * @param flag 
+		 */
+		void setAdvertiseNextSlotInCurrentHeader(bool flag);
 
 		void setMinBeaconInterval(unsigned int value);
 		void setMaxBeaconInterval(unsigned int value);
 
 		void setWriteResourceUtilizationIntoBeacon(bool flag);
-		void setEnableBeacons(bool flag);
+		void setEnableBeacons(bool flag);		
 
 		void onPacketReception(L2Packet*& packet) override;
 
@@ -131,6 +136,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool next_beacon_scheduled = false;
 		/** If true, always schedule the next broadcast slot and advertise it in the header. If false, only do so if there's more data to send. */
 		bool always_schedule_next_slot = false;
+		/** If true, the next slot is advertised in the current header if possible. */
+		bool advertise_slot_in_header = true;
 		unsigned int next_broadcast_slot = 0;		
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;

@@ -128,7 +128,10 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				scheduleBroadcastSlot();
 				coutd << next_broadcast_slot << " slots -> ";
 				// Put it into the header.
-				base_header->burst_offset = next_broadcast_slot;
+				if (this->advertise_slot_in_header) {
+					coutd << "advertising slot in header -> ";
+					base_header->burst_offset = next_broadcast_slot;
+				}
 			} else {
 				next_broadcast_scheduled = false;
 				next_broadcast_slot = 0;
@@ -139,7 +142,10 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			coutd << "auto-schedule is on, scheduling next slot -> ";
 			scheduleBroadcastSlot();
 			coutd << next_broadcast_slot << " slots -> ";
-			base_header->burst_offset = next_broadcast_slot;
+			if (this->advertise_slot_in_header) {
+				coutd << "advertising slot in header -> ";
+				base_header->burst_offset = next_broadcast_slot;
+			}
 		}
 	}
 
@@ -517,4 +523,8 @@ void BCLinkManager::setWriteResourceUtilizationIntoBeacon(bool flag) {
 
 void BCLinkManager::setEnableBeacons(bool flag) {
 	this->beacon_module.setEnabled(flag);
+}
+
+void BCLinkManager::setAdvertiseNextSlotInCurrentHeader(bool flag) {
+	this->advertise_slot_in_header = flag;
 }
