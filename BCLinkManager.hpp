@@ -74,6 +74,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setMaxBeaconInterval(unsigned int value);
 
 		void setWriteResourceUtilizationIntoBeacon(bool flag);
+		void setEnableBeacons(bool flag);
 
 		void onPacketReception(L2Packet*& packet) override;
 

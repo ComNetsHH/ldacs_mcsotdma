@@ -376,3 +376,7 @@ unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
 void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setWriteResourceUtilizationIntoBeacon(flag);
 }
+
+void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(flag);
+}

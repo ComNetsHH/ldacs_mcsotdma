@@ -87,6 +87,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setInitializeBidirectionalLinks(bool flag) override;
 
 		void setWriteResourceUtilizationIntoBeacon(bool flag) override;
+		void setEnableBeacons(bool flag) override;
 
 		size_t getNumUtilizedP2PResources() const;
 
