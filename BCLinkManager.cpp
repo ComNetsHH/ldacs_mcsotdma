@@ -280,7 +280,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		k = expected_active_neighbors == 0 ? 1 : (unsigned int) std::round(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / expected_active_neighbors)));
 		coutd << "channel access method: poisson binomial estimate for " << expected_active_neighbors << " expected active neighbors (out of " << active_neighbors.size() << " recently active) with individual broadcast probabilities -> ";
 	// Assume that every neighbor that has been active within the contention window will again be active.
-	} else if (contention_method == ContentionMethod::all_active_again_assumption) {
+	} else if (contention_method == ContentionMethod::randomized_slotted_aloha) {
 		// Number of active neighbors.
 		unsigned int m = contention_estimator.getNumActiveNeighbors();
 		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
