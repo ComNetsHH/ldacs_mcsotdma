@@ -517,7 +517,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testContentionMethodAllNeighborsActive() {
-			link_manager->setUseContentionMethod(ContentionMethod::all_active_again_assumption);
+			link_manager->setUseContentionMethod(ContentionMethod::randomized_slotted_aloha);
 			int current_slot = 12;
 			const size_t max_num_neighbors = 100;
 			int previous_num_candidate_slots = 0, first_num_candidate_slots = 0;
