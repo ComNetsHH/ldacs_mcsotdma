@@ -264,7 +264,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 				// Probability P(X=n) of n accesses.			
 				double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
 				// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
-				unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+				unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n))) * 2;
 				num_candidates += p * local_k;
 			}
 		}
@@ -277,7 +277,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		double expected_active_neighbors = 0.0;
 		for (const MacId& id : active_neighbors)
 			expected_active_neighbors += contention_estimator.getChannelAccessProbability(id, mac->getCurrentSlot());
-		k = expected_active_neighbors == 0 ? 1 : (unsigned int) std::round(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / expected_active_neighbors)));
+		k = expected_active_neighbors == 0.0 ? 1 : (unsigned int) std::round(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / expected_active_neighbors))) * 2;
 		coutd << "channel access method: poisson binomial estimate for " << expected_active_neighbors << " expected active neighbors (out of " << active_neighbors.size() << " recently active) with individual broadcast probabilities -> ";
 	// Assume that every neighbor that has been active within the contention window will again be active.
 	} else if (contention_method == ContentionMethod::randomized_slotted_aloha) {
@@ -326,7 +326,7 @@ void BCLinkManager::scheduleBroadcastSlot() {
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
-	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));	
 }
 
 void BCLinkManager::unscheduleBroadcastSlot() {
@@ -436,8 +436,7 @@ void BCLinkManager::onPacketReception(L2Packet*& packet) {
 	congestion_estimator.reportBroadcast(id);		
 	// contention is only concerned with non-beacon broadcasts
 	if (packet->getBeaconIndex() == -1)
-		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());
-
+		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());	
 	LinkManager::onPacketReception(packet);
 }
 
