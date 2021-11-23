@@ -435,6 +435,44 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(freq))->getReservation(t));				
 		}
 
+		/** For very large data requests, the number of required slots may exceed the frame length. In such cases, a fair distribution of slots to either communication partner is required. */
+		void testFairTxRxDistribution() {
+			unsigned int tx_slots_me = link_manager->burst_offset / 2;
+			unsigned int tx_slots_you = link_manager->burst_offset / 2;
+			auto pair = link_manager->getTxRxDistribution(tx_slots_me, tx_slots_you);
+			unsigned int burst_length_tx = pair.first, burst_length = pair.second, burst_length_rx = burst_length - burst_length_tx;			
+			CPPUNIT_ASSERT_EQUAL(burst_length_tx, burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(burst_length_tx + burst_length_rx, burst_length);
+		}
+
+		void testLessBusyTxRxDistribution() {
+			unsigned int tx_slots_me = link_manager->burst_offset;
+			unsigned int tx_slots_you = 0;
+			auto pair = link_manager->getTxRxDistribution(tx_slots_me, tx_slots_you);
+			unsigned int burst_length_tx = pair.first, burst_length = pair.second, burst_length_rx = burst_length - burst_length_tx;			
+			CPPUNIT_ASSERT_EQUAL(burst_length_tx, link_manager->burst_offset);
+			CPPUNIT_ASSERT_EQUAL(burst_length_tx + burst_length_rx, burst_length);
+		}
+
+		void testEvenLessBusyTxRxDistribution() {
+			unsigned int tx_slots_me = link_manager->burst_offset - 3;
+			unsigned int tx_slots_you = 2;
+			auto pair = link_manager->getTxRxDistribution(tx_slots_me, tx_slots_you);
+			unsigned int burst_length_tx = pair.first, burst_length = pair.second, burst_length_rx = burst_length - burst_length_tx;			
+			CPPUNIT_ASSERT_EQUAL(burst_length_tx, link_manager->burst_offset - 3);
+			CPPUNIT_ASSERT_EQUAL(burst_length_rx, uint(2));
+			CPPUNIT_ASSERT_EQUAL(burst_length_tx + burst_length_rx, link_manager->burst_offset - 3 + 2);
+		}
+
+		void testLargeTxRxDistribution() {
+			unsigned int tx_slots_me = link_manager->burst_offset + 5;
+			unsigned int tx_slots_you = link_manager->burst_offset;
+			auto pair = link_manager->getTxRxDistribution(tx_slots_me, tx_slots_you);
+			unsigned int burst_length_tx = pair.first, burst_length = pair.second, burst_length_rx = burst_length - burst_length_tx;			
+			CPPUNIT_ASSERT_GREATER(burst_length_rx, burst_length_tx);				
+			CPPUNIT_ASSERT_EQUAL(link_manager->burst_offset, burst_length_tx + burst_length_rx);
+		}
+
 	CPPUNIT_TEST_SUITE(P2PLinkManagerTests);
 		CPPUNIT_TEST(testInitialP2PSlotSelection);
 		CPPUNIT_TEST(testClearLockedResources);
@@ -452,6 +490,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testPrepareRequestMessageMemoryLeak);		
 		CPPUNIT_TEST(testFreeP2PSlotSelectionLocks);				
 		CPPUNIT_TEST(testFreeP2PSlotSelectionLocksAfterTime);			
+		CPPUNIT_TEST(testFairTxRxDistribution);	
+		CPPUNIT_TEST(testLessBusyTxRxDistribution);	
+		CPPUNIT_TEST(testEvenLessBusyTxRxDistribution);	
+		CPPUNIT_TEST(testLargeTxRxDistribution);			
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

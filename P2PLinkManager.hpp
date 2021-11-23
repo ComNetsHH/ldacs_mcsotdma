@@ -288,6 +288,13 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * */
 			void setReportedDesiredTxSlots(unsigned int value);
 
+			/**			 
+			 * @param tx_slots_me 
+			 * @param tx_slots_you 
+			 * @return std::pair<burst_length_tx, burst_length> 
+			 */
+			std::pair<unsigned int, unsigned int> getTxRxDistribution(unsigned int tx_slots_me, unsigned int tx_slots_you);
+
 	private:
 		/**
 		 * Helper function that clears all locks on the respective ReservationTable after normalizing by the given offset.

@@ -417,12 +417,27 @@ std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager
 	return {header, payload};
 }
 
+std::pair<unsigned int, unsigned int> P2PLinkManager::getTxRxDistribution(unsigned int tx_slots_me, unsigned int tx_slots_you) {	
+	unsigned int burst_length_tx = std::max(uint32_t(1), tx_slots_me); // in slots.
+	unsigned int burst_length = burst_length_tx + tx_slots_you; // own transmission slots + those the communication partner desires
+	// for very large amounts of data, this might exceed the frame length
+	if (burst_length > burst_offset) {
+		// what's the fraction of slots that I should reserve as TX?
+		double my_tx_fraction = ((double) burst_length_tx) / ((double) burst_length);				
+		burst_length_tx = (int) (my_tx_fraction * burst_offset);				
+		burst_length = burst_offset;		
+	}
+
+	return {burst_length_tx, burst_length};
+}
+
 void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkRequestPayload*& payload) {
 	coutd << "populating link request -> ";
 	unsigned int min_offset = 2;
 
-	unsigned int burst_length_tx = std::max(uint32_t(1), estimateCurrentNumSlots()); // in slots.
-	unsigned int burst_length = burst_length_tx + reported_desired_tx_slots; // own transmission slots + those the communication partner desires
+	auto tx_rx_distribution = this->getTxRxDistribution(estimateCurrentNumSlots(), reported_desired_tx_slots);	
+	unsigned int burst_length_tx = tx_rx_distribution.first;
+	unsigned int burst_length = tx_rx_distribution.second;	
 
 	coutd << "min_offset=" << min_offset << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << " -> ";
 	// We want to populate the payload.
