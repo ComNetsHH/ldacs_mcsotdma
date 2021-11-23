@@ -177,6 +177,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_pp_link_missed_last_reply_opportunity.increment();
 		}
 
+		/**
+		 * @param num_slots Number of slots that have passed since the sending of a link request, and the final establishment of the link.
+		 */
+		void statisticReportPPLinkEstablishmentTime(unsigned int num_slots) {
+			stat_pp_link_establishment_time.capture(num_slots);
+		}
+
+		void statisticReportPPLinkEstablished() {
+			stat_num_pp_links_established.increment();
+		}
+
 		unsigned int getP2PBurstOffset() const;
 
 	protected:
@@ -235,6 +246,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_broadcast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_broadcast_wasted_tx_opportunities", this);
 		Statistic stat_unicast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_unicast_wasted_tx_opportunities", this);
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
+		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);
+		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -265,7 +278,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_mac_delay,
 				&stat_broadcast_wasted_tx_opportunities,
 				&stat_unicast_wasted_tx_opportunities,
-				&stat_pp_link_missed_last_reply_opportunity
+				&stat_pp_link_missed_last_reply_opportunity,
+				&stat_pp_link_establishment_time,
+				&stat_num_pp_links_established
 		};
 	};
 

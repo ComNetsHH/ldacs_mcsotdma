@@ -1321,6 +1321,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL((size_t) phy_layer_me->stat_num_packets_missed.get(), num_broadcasts_sent_you + num_beacons_sent_you - num_broadcasts_rcvd_me - num_beacons_rcvd_me);			
 		}
 
+		void testPPLinkEstablishmentTime() {
+			mac_layer_me->notifyOutgoing(512, partner_id);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_pp_links_established.get());
+			size_t num_slots = 0, max_slots = 512;
+			while (lm_me->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
+			CPPUNIT_ASSERT_GREATER(0.0, mac_layer_me->stat_pp_link_establishment_time.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_pp_links_established.get());			
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 			CPPUNIT_TEST(testLinkEstablishment);
 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1351,6 +1369,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);			
 			CPPUNIT_TEST(testReservationsAfterLinkRequest);						
 			CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
+			CPPUNIT_TEST(testPPLinkEstablishmentTime);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

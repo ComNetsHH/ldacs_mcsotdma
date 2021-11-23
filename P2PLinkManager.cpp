@@ -443,6 +443,7 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	current_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
 	current_link_state->is_link_initiator = true;
 	current_link_state->initial_setup = true;
+	current_link_state->time_when_request_was_sent = mac->getCurrentSlot();
 	// We need to schedule RX slots at each candidate to be able to receive a reply there.
 	for (const auto &pair : payload->proposed_resources) {
 		const FrequencyChannel *channel = pair.first;
@@ -646,7 +647,10 @@ void P2PLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRepl
 	// Link is now established.
 	coutd << "setting link status to '";
 	link_status = link_established;
+	int link_establishment_time = mac->getCurrentSlot() - current_link_state->time_when_request_was_sent;
+	mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);
 	statistic_num_links_established++;
+	mac->statisticReportPPLinkEstablished();
 	established_initial_link_this_slot = true;
 	established_link_this_slot = true;
 	coutd << link_status << "' -> ";
@@ -731,6 +735,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 			// Link is now established.
 			link_status = link_established;
 			statistic_num_links_established++;
+			mac->statisticReportPPLinkEstablished();
 			established_link_this_slot = true;
 			coutd << "this transmission establishes the link, setting status to '" << link_status << "' -> informing upper layers -> ";
 			// Inform upper sublayers.

@@ -134,6 +134,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				std::vector<ControlMessageReservation> scheduled_link_replies;
 				/** After sending the link reply, the first data transmission establishes the link. If too many of these transmissions do *not* arrive, then cancel the link. */
 				unsigned int num_failed_receptions_before_link_establishment = 0;
+				/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
+				unsigned int time_when_request_was_sent = 0;
 			};
 
 			/** Container class of the resources that were locked during link establishment. */
