@@ -99,12 +99,12 @@ std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const st
 
 	auto position  = CPRPosition(simulatorPosition);
 	L2HeaderBeacon::CongestionLevel congestion_level;	
-	// assume bidirectional, ARQ-protected P2P links with two resources each	
-	if (num_utilized_p2p_resources > burst_offset) {
+	double capacity = (double) burst_offset * std::max(size_t(1), reservation_tables.size());
+	if (num_utilized_p2p_resources > capacity) {
 		delete payload;
 		throw std::invalid_argument("BeaconModule::generateBeacon was told there's more utilized resources than there are available.");
 	}
-	double congestion = ((double) num_utilized_p2p_resources) / ((double) burst_offset);
+	double congestion = ((double) num_utilized_p2p_resources) / capacity;
 	if (congestion < .25)
 		congestion_level = L2HeaderBeacon::CongestionLevel::uncongested;
 	else if (congestion < .5)
