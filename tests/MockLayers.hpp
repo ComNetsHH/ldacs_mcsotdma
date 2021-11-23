@@ -133,6 +133,10 @@ class RLCLayer : public IRlc {
 
 		}
 
+        unsigned int getQueuedDataSize(MacId dest) override {
+            return 0;
+        }
+
 		void receiveFromLower(L2Packet* packet) override {			
 			coutd << "RLC received packet... ";
 			receptions.push_back(packet);			
