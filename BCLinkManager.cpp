@@ -36,6 +36,8 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	packet->addMessage(base_header, nullptr);
 	unsigned long capacity = mac->getCurrentDatarate();
 
+	bool is_beacon = false;
+
 	// Beacon slots are exclusive to beacons.
 	if (beacon_module.isEnabled() && beacon_module.shouldSendBeaconThisSlot()) {
 		coutd << "broadcasting beacon -> ";
@@ -47,6 +49,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		auto hostPosition = this->mac->getHostPosition();
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable(), hostPosition, mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset()));
 		mac->statisticReportBeaconSent();
+		is_beacon = true;
 		base_header->burst_offset = beacon_module.getNextBeaconOffset();
 	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
@@ -125,7 +128,10 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 				scheduleBroadcastSlot();
 				coutd << next_broadcast_slot << " slots -> ";
 				// Put it into the header.
-				base_header->burst_offset = next_broadcast_slot;
+				if (this->advertise_slot_in_header) {
+					coutd << "advertising slot in header -> ";
+					base_header->burst_offset = next_broadcast_slot;
+				}
 			} else {
 				next_broadcast_scheduled = false;
 				next_broadcast_slot = 0;
@@ -136,7 +142,10 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			coutd << "auto-schedule is on, scheduling next slot -> ";
 			scheduleBroadcastSlot();
 			coutd << next_broadcast_slot << " slots -> ";
-			base_header->burst_offset = next_broadcast_slot;
+			if (this->advertise_slot_in_header) {
+				coutd << "advertising slot in header -> ";
+				base_header->burst_offset = next_broadcast_slot;
+			}
 		}
 	}
 
@@ -144,8 +153,10 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		delete packet;
 		return nullptr;
 	} else {
-		mac->statisticReportBroadcastSent();
-		mac->statisticReportBroadcastMacDelay(measureMacDelay());		
+		if (!is_beacon) {
+			mac->statisticReportBroadcastSent();
+			mac->statisticReportBroadcastMacDelay(measureMacDelay());		
+		}
 		return packet;
 	}
 }
@@ -253,7 +264,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 				// Probability P(X=n) of n accesses.			
 				double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
 				// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
-				unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+				unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n))) * 2;
 				num_candidates += p * local_k;
 			}
 		}
@@ -266,13 +277,13 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		double expected_active_neighbors = 0.0;
 		for (const MacId& id : active_neighbors)
 			expected_active_neighbors += contention_estimator.getChannelAccessProbability(id, mac->getCurrentSlot());
-		k = expected_active_neighbors == 0 ? 1 : (unsigned int) std::round(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / expected_active_neighbors)));
+		k = expected_active_neighbors == 0.0 ? 1 : (unsigned int) std::round(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / expected_active_neighbors))) * 2;
 		coutd << "channel access method: poisson binomial estimate for " << expected_active_neighbors << " expected active neighbors (out of " << active_neighbors.size() << " recently active) with individual broadcast probabilities -> ";
 	// Assume that every neighbor that has been active within the contention window will again be active.
-	} else if (contention_method == ContentionMethod::all_active_again_assumption) {
+	} else if (contention_method == ContentionMethod::randomized_slotted_aloha) {
 		// Number of active neighbors.
 		unsigned int m = contention_estimator.getNumActiveNeighbors();
-		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
+		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m))) * 2;
 		coutd << "channel access method: assume all " << m << " active neighbors are active again -> ";
 	// Don't make use of contention estimation in any way. Just select something out of the next 100 idle slots.
 	} else if (contention_method == ContentionMethod::naive_random_access) {
@@ -281,7 +292,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	} else {
 		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
 	}
-	unsigned int final_candidates = std::max(MIN_CANDIDATES, k);
+	unsigned int final_candidates = std::min(MAX_CANDIDATES, std::max(MIN_CANDIDATES, k));
 	coutd << "num_candidates=" << final_candidates << " -> ";
 	return final_candidates;
 }
@@ -315,7 +326,7 @@ void BCLinkManager::scheduleBroadcastSlot() {
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
-	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
+	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));	
 }
 
 void BCLinkManager::unscheduleBroadcastSlot() {
@@ -425,8 +436,7 @@ void BCLinkManager::onPacketReception(L2Packet*& packet) {
 	congestion_estimator.reportBroadcast(id);		
 	// contention is only concerned with non-beacon broadcasts
 	if (packet->getBeaconIndex() == -1)
-		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());
-
+		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());	
 	LinkManager::onPacketReception(packet);
 }
 
@@ -482,6 +492,10 @@ void BCLinkManager::setMinNumCandidateSlots(int value) {
 	beacon_module.setMinBeaconCandidateSlots(value);
 }
 
+void BCLinkManager::setMaxNumCandidateSlots(int value) {
+	MAX_CANDIDATES = value;	
+}
+
 void BCLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {
 	this->always_schedule_next_slot = value;
 }
@@ -500,4 +514,16 @@ void BCLinkManager::setMinBeaconInterval(unsigned int value) {
 
 void BCLinkManager::setMaxBeaconInterval(unsigned int value) {
 	this->beacon_module.setMaxBeaconInterval(value);
+}
+
+void BCLinkManager::setWriteResourceUtilizationIntoBeacon(bool flag) {
+	this->beacon_module.setWriteResourceUtilizationIntoBeacon(flag);
+}
+
+void BCLinkManager::setEnableBeacons(bool flag) {
+	this->beacon_module.setEnabled(flag);
+}
+
+void BCLinkManager::setAdvertiseNextSlotInCurrentHeader(bool flag) {
+	this->advertise_slot_in_header = flag;
 }

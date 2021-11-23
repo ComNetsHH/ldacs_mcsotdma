@@ -81,16 +81,19 @@ void BeaconModule::setMinBeaconGap(unsigned int n) {
 
 std::pair<L2HeaderBeacon*, BeaconPayload*> BeaconModule::generateBeacon(const std::vector<ReservationTable*>& reservation_tables, const ReservationTable *bc_table, const SimulatorPosition simulatorPosition, size_t num_utilized_p2p_resources, size_t burst_offset) {
 	auto *payload = new BeaconPayload();	
-	payload->encode(bc_table->getLinkedChannel()->getCenterFrequency(), bc_table);
-	if (!reservation_tables.empty()) {
-		if (flip_p2p_table_encoding) {
-			for (auto it = reservation_tables.end() - 1; it != reservation_tables.begin(); it--)
-				payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
-			flip_p2p_table_encoding = false;
-		} else {
-			for (auto it = reservation_tables.begin(); it != reservation_tables.end(); it++)
-				payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
-			flip_p2p_table_encoding = true;
+	// write resource utilization into the beacon payload
+	if (this->write_resource_utilization_into_beacon) {
+		payload->encode(bc_table->getLinkedChannel()->getCenterFrequency(), bc_table);
+		if (!reservation_tables.empty()) {
+			if (flip_p2p_table_encoding) {
+				for (auto it = reservation_tables.end() - 1; it != reservation_tables.begin(); it--)
+					payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
+				flip_p2p_table_encoding = false;
+			} else {
+				for (auto it = reservation_tables.begin(); it != reservation_tables.end(); it++)
+					payload->encode((*it)->getLinkedChannel()->getCenterFrequency(), *it);
+				flip_p2p_table_encoding = true;
+			}
 		}
 	}
 
@@ -196,4 +199,8 @@ unsigned int BeaconModule::getMinBeaconInterval() const {
 
 unsigned int BeaconModule::getMaxBeaconInterval() const {
 	return this->max_beacon_offset;
+}
+
+void BeaconModule::setWriteResourceUtilizationIntoBeacon(bool flag) {
+	this->write_resource_utilization_into_beacon = flag;
 }

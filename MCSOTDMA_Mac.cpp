@@ -35,6 +35,7 @@ void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) 
 		delete packet;
 		return;
 	}
+	statisticReportPacketSent();
 	lower_layer->receiveFromUpper(packet, center_frequency);
 }
 
@@ -131,9 +132,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				L2Packet* outgoing_packet = link_manager->onTransmissionBurstStart(num_tx_slots);
 				if (outgoing_packet != nullptr) {
 					outgoing_packet->notifyCallbacks();				
-					passToLower(outgoing_packet, channel->getCenterFrequency());
-					statisticReportPacketSent();	
-				} else {
+					passToLower(outgoing_packet, channel->getCenterFrequency());					
+				} else {					
 					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
 					if (id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON)
 						this->stat_broadcast_wasted_tx_opportunities.increment();
@@ -181,8 +181,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 		return;
 	}
 	if (dest_id == SYMBOLIC_ID_UNSET)
-		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");
-	stat_num_packets_rcvd.increment();
+		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");	
 	// Store,
 	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON || dest_id == id) {
 		received_packets[center_frequency].push_back(packet);
@@ -257,6 +256,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			else
 				getLinkManager(packet->getOrigin())->onPacketReception(packet);
 			stat_num_packets_decoded.increment();
+			stat_num_packets_rcvd.increment();
 		// We cannot receive several packets on this channel simultaneously - drop it due to a collision.
 		} else if (packets.size() > 1) {
 			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
@@ -266,7 +266,6 @@ void MCSOTDMA_Mac::onSlotEnd() {
                 this->deletePacket(packet);
                 delete packet;
             }
-
         }
 	}
 	received_packets.clear();
@@ -298,6 +297,10 @@ void MCSOTDMA_Mac::setBroadcastTargetCollisionProb(double value) {
 
 void MCSOTDMA_Mac::setBcSlotSelectionMinNumCandidateSlots(int value) {
 	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinNumCandidateSlots(value);
+}
+
+void MCSOTDMA_Mac::setBcSlotSelectionMaxNumCandidateSlots(int value) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxNumCandidateSlots(value);
 }
 
 void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
@@ -368,4 +371,16 @@ size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 
 unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
 	return this->default_p2p_link_burst_offset;
+}
+
+void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setWriteResourceUtilizationIntoBeacon(flag);
+}
+
+void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(flag);
+}
+
+void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
+	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
 }

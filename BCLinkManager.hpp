@@ -55,6 +55,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setTargetCollisionProb(double value);
 		void setMinNumCandidateSlots(int value);
+		void setMaxNumCandidateSlots(int value);
 
 		/**
 		 * Specify contention method used to find number of candidate slots.
@@ -68,9 +69,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param value
 		 */
 		void setAlwaysScheduleNextBroadcastSlot(bool value);
+		/**		 
+		 * If 'true': advertise the next broadcast slot in the current header.		 
+		 * @param flag 
+		 */
+		void setAdvertiseNextSlotInCurrentHeader(bool flag);
 
 		void setMinBeaconInterval(unsigned int value);
 		void setMaxBeaconInterval(unsigned int value);
+
+		void setWriteResourceUtilizationIntoBeacon(bool flag);
+		void setEnableBeacons(bool flag);		
 
 		void onPacketReception(L2Packet*& packet) override;
 
@@ -110,7 +119,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * @return Average number of slots inbetween broadcast packet generations as measured.
 		 */
-		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;
+		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;		
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
@@ -127,9 +136,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool next_beacon_scheduled = false;
 		/** If true, always schedule the next broadcast slot and advertise it in the header. If false, only do so if there's more data to send. */
 		bool always_schedule_next_slot = false;
+		/** If true, the next slot is advertised in the current header if possible. */
+		bool advertise_slot_in_header = true;
 		unsigned int next_broadcast_slot = 0;		
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
+		/** Maximum number of slots to consider during slot selection. */
+		unsigned int MAX_CANDIDATES = 1000;
 		MovingAverage avg_num_slots_inbetween_packet_generations;
 		unsigned int num_slots_since_last_packet_generation = 0;
 		bool packet_generated_this_slot = false;

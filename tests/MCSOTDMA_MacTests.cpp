@@ -21,43 +21,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MACLayer* mac;
 		ARQLayer* arq;
 		RLCLayer* rlc;
-
-		uint32_t planning_horizon = 128;
-		uint64_t p2p_frequency1 = 1000, p2p_frequency2 = p2p_frequency1 + 180, p2p_frequency3 = p2p_frequency2 + 180, bc_frequency = p2p_frequency2 + 180, bandwidth = 500;
-		ReservationManager* reservation_manager;
-		MacId communication_partner_id = MacId(42);
+		TestEnvironment* env;
+		
+		MacId partner_id = MacId(42);
 		MacId own_id = MacId(41);
 
 	public:
 		void setUp() override {
-			phy = new PHYLayer(planning_horizon);
-			mac = new MACLayer(own_id, planning_horizon);
-			reservation_manager = mac->reservation_manager;
-			reservation_manager->setTransmitterReservationTable(phy->getTransmitterReservationTable());
-			for (ReservationTable* rx_table : phy->getReceiverReservationTables())
-				reservation_manager->addReceiverReservationTable(rx_table);
-			reservation_manager->addFrequencyChannel(false, bc_frequency, bandwidth);
-			reservation_manager->addFrequencyChannel(true, p2p_frequency1, bandwidth);
-			reservation_manager->addFrequencyChannel(true, p2p_frequency2, bandwidth);
-			reservation_manager->addFrequencyChannel(true, p2p_frequency3, bandwidth);
-			// PHY
-			mac->setLowerLayer(phy);
-			phy->setUpperLayer(mac);
-			// ARQ
-			arq = new ARQLayer();
-			arq->setLowerLayer(mac);
-			mac->setUpperLayer(arq);
-			// RLC
-			rlc = new RLCLayer(128);
-			arq->setUpperLayer(rlc);
-			rlc->setLowerLayer(arq);
+			env = new TestEnvironment(own_id, partner_id, true);
+			phy = env->phy_layer;
+			mac = env->mac_layer;
+			arq = env->arq_layer;
+			rlc = env->rlc_layer;						
 		}
 
 		void tearDown() override {
-			delete mac;
-			delete phy;
-			delete arq;
-			delete rlc;
+			delete env;
 		}
 
 		void testLinkManagerCreation() {
@@ -86,7 +65,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(mac->position_map[mac->id] == pos);
 			// Shouldn't be able to get some other user's position, who we've never heard of.
 			try {
-				pos = mac->getPosition(communication_partner_id);
+				pos = mac->getPosition(partner_id);
 			} catch (const std::exception& e) {
 				exception_thrown = true;
 			}
@@ -99,12 +78,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			packet1->addMessage(new L2HeaderBroadcast(), nullptr);
 			packet2->addMessage(new L2HeaderBase(MacId(11), 0, 0, 0, 0), nullptr);
 			packet2->addMessage(new L2HeaderBroadcast(), nullptr);
-			mac->receiveFromLower(packet1, bc_frequency);
-			mac->receiveFromLower(packet2, bc_frequency);
+			mac->receiveFromLower(packet1, env->bc_frequency);
+			mac->receiveFromLower(packet2, env->bc_frequency);
 			mac->onSlotEnd();
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packets_rcvd.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_decoded.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());			
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
 		}
 
 

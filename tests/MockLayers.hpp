@@ -167,7 +167,7 @@ class RLCLayer : public IRlc {
 					if (num_remaining_broadcast_packets > 0) {
 						num_remaining_broadcast_packets--;
 						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
-					} else if (should_there_be_more_broadcast_data) {
+					} else if (should_there_be_more_broadcast_data || always_return_broadcast_payload) {
 						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
 					} else {
 						coutd << "just the header and no payload -> ";
@@ -207,8 +207,8 @@ class RLCLayer : public IRlc {
 		/** Will be checked first: if this is zero, then 'should_there_be_more_broadcast_data' is checked to see whether there's gonna be another packed passed down upn request. */
 		size_t num_remaining_broadcast_packets = 0;
 		std::map<MacId, bool> should_there_be_more_p2p_data_map;
-		/** This mock implementation stems from times where the actual RLC layer had not been implemented yet. Its functionality can be enabled through this boolean flag. */
-		bool use_actual_implementation = false;
+		/** If true, then a broadcast payload is returned whenever requested, even if there shouldn't be more broadcast data. */
+		bool always_return_broadcast_payload = false;
 	protected:
 		MacId own_id;
 	};
