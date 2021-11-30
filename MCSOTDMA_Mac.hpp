@@ -96,14 +96,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void reportNeighborActivity(const MacId& id);
 		const NeighborObserver& getNeighborObserver() const;
 
-		void statisticReportBroadcastMessageDecoded() {
-			stat_num_broadcast_msgs_decoded.increment();
+		void statisticReportBroadcastMessageProcessed() {
+			stat_num_broadcast_msgs_processed.increment();
 		}
 		void statisticReportBroadcastReceived() {
 			stat_num_broadcasts_rcvd.increment();
 		}
-		void statisticReportUnicastMessageDecoded() {
-			stat_num_unicast_msgs_decoded.increment();
+		void statisticReportUnicastMessageProcessed() {
+			stat_num_unicast_msgs_processed.increment();
 		}
 		void statisticReportUnicastReceived() {
 			stat_num_unicasts_rcvd.increment();
@@ -217,9 +217,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
 		Statistic stat_num_broadcasts_rcvd = Statistic("mcsotdma_statistic_num_broadcasts_received", this);
-		Statistic stat_num_broadcast_msgs_decoded = Statistic("mcsotdma_statistic_num_broadcast_message_decoded", this);
+		Statistic stat_num_broadcast_msgs_processed = Statistic("mcsotdma_statistic_num_broadcast_message_processed", this);
 		Statistic stat_num_unicasts_rcvd = Statistic("mcsotdma_statistic_num_unicasts_received", this);
-		Statistic stat_num_unicast_msgs_decoded = Statistic("mcsotdma_statistic_num_unicast_message_decoded", this);
+		Statistic stat_num_unicast_msgs_processed = Statistic("mcsotdma_statistic_num_unicast_message_processed", this);
 		Statistic stat_num_requests_rcvd = Statistic("mcsotdma_statistic_num_link_requests_received", this);
 		Statistic stat_num_replies_rcvd = Statistic("mcsotdma_statistic_num_link_replies_received", this);
 		Statistic stat_num_beacons_rcvd = Statistic("mcsotdma_statistic_num_beacons_received", this);
@@ -233,8 +233,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_beacons_sent = Statistic("mcsotdma_statistic_num_beacons_sent", this);
 		Statistic stat_num_link_infos_sent = Statistic("mcsotdma_statistic_num_link_infos_sent", this);
 		Statistic stat_num_requests_cancelled = Statistic("mcsotdma_statistic_num_cancelled_link_requests", this);
-		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);
-		Statistic stat_num_packets_decoded = Statistic("mcsotdma_statistic_num_packet_decoded", this);
+		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);		
+		Statistic stat_num_channel_errors = Statistic("mcsotdma_statistic_num_channel_errors", this);		
 		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);
 		Statistic stat_min_beacon_offset = Statistic("mcsotdma_statistic_min_beacon_offset", this);
 		Statistic stat_contention = Statistic("mcsotdma_statistic_contention", this);
@@ -251,9 +251,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
-				&stat_num_broadcast_msgs_decoded,
+				&stat_num_broadcast_msgs_processed,
 				&stat_num_unicasts_rcvd,
-				&stat_num_unicast_msgs_decoded,
+				&stat_num_unicast_msgs_processed,
 				&stat_num_requests_rcvd,
 				&stat_num_replies_rcvd,
 				&stat_num_beacons_rcvd,
@@ -266,8 +266,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_beacons_sent,
 				&stat_num_link_infos_sent,
 				&stat_num_requests_cancelled,
-				&stat_num_packet_collisions,
-				&stat_num_packets_decoded,
+				&stat_num_packet_collisions,	
+				&stat_num_channel_errors,			
 				&stat_num_active_neighbors,
 				&stat_min_beacon_offset,
 				&stat_contention,

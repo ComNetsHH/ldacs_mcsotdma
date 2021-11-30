@@ -246,19 +246,28 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		// On this frequency channel,
 		uint64_t freq = packet_freq_pair.first;
 		// these packets were received.
-		std::vector<L2Packet*> packets = packet_freq_pair.second;
-
-		// If it's just a single packet, then it can be decoded.
+		std::vector<L2Packet*> packets = packet_freq_pair.second;		
+		
+		// single packets
 		if (packets.size() == 1) {
 			L2Packet *packet = packets.at(0);
-			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
-			else
-				getLinkManager(packet->getOrigin())->onPacketReception(packet);
-			stat_num_packets_decoded.increment();
-			stat_num_packets_rcvd.increment();
-		// We cannot receive several packets on this channel simultaneously - drop it due to a collision.
+			// might have a channel error
+			if (packet->hasChannelError) {
+				this->deletePacket(packet);
+				delete packet;
+				packets.erase(packets.begin());
+				stat_num_channel_errors.increment();
+			// otherwise they're received
+			} else {
+				if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+					getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
+				else
+					getLinkManager(packet->getOrigin())->onPacketReception(packet);				
+				stat_num_packets_rcvd.increment();
+			}			
+		// several packets are cause for a collision
 		} else if (packets.size() > 1) {
+			// TODO compare SNRs, and keep better one if it doesn't have a channel error						
 			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
 			stat_num_packet_collisions.incrementBy(packets.size());
 

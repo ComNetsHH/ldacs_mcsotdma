@@ -358,7 +358,7 @@ void BCLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 }
 
 void BCLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
-	mac->statisticReportBroadcastMessageDecoded();
+	mac->statisticReportBroadcastMessageProcessed();
 }
 
 void BCLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {

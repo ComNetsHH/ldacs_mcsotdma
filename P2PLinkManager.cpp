@@ -743,7 +743,7 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 		coutd << "discarding unicast message not intended for us -> ";
 		return;
 	} else {
-		mac->statisticReportUnicastMessageDecoded();
+		mac->statisticReportUnicastMessageProcessed();
 		
 		if (link_status == awaiting_data_tx) {
 			// Link is now established.

@@ -85,11 +85,39 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
 		}
 
+		void testChannelError() {
+			auto *packet = new L2Packet();
+			packet->addMessage(new L2HeaderBase(MacId(10), 0, 0, 0, 0), nullptr);
+			packet->addMessage(new L2HeaderBroadcast(), nullptr);
+			packet->hasChannelError = true;
+			mac->receiveFromLower(packet, env->bc_frequency);
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_channel_errors.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
+		}
+
+		void testCollisionAndChannelError() {
+			auto *packet1 = new L2Packet(), *packet2 = new L2Packet();
+			packet1->addMessage(new L2HeaderBase(MacId(10), 0, 0, 0, 0), nullptr);
+			packet1->addMessage(new L2HeaderBroadcast(), nullptr);
+			packet1->hasChannelError = true;
+			packet2->addMessage(new L2HeaderBase(MacId(11), 0, 0, 0, 0), nullptr);
+			packet2->addMessage(new L2HeaderBroadcast(), nullptr);
+			mac->receiveFromLower(packet1, env->bc_frequency);
+			mac->receiveFromLower(packet2, env->bc_frequency);
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());			
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_channel_errors.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
+		}
+
 
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testLinkManagerCreation);
 			CPPUNIT_TEST(testPositions);
 			CPPUNIT_TEST(testCollision);
+			CPPUNIT_TEST(testChannelError);			
+			CPPUNIT_TEST(testCollisionAndChannelError);			
 		CPPUNIT_TEST_SUITE_END();
 	};
 
