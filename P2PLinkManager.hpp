@@ -133,9 +133,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 				/** Link replies may be scheduled on specific slots. */
 				std::vector<ControlMessageReservation> scheduled_link_replies;
 				/** After sending the link reply, the first data transmission establishes the link. If too many of these transmissions do *not* arrive, then cancel the link. */
-				unsigned int num_failed_receptions_before_link_establishment = 0;
-				/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
-				unsigned int time_when_request_was_sent = 0;
+				unsigned int num_failed_receptions_before_link_establishment = 0;				
 			};
 
 			/** Container class of the resources that were locked during link establishment. */
@@ -339,6 +337,8 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			LockMap lock_map;
 			/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
 			bool close_link_early_if_no_first_data_packet_comes_in = false;
+			/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
+			unsigned int time_when_request_was_generated = 0;
 		};
 
 	}

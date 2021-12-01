@@ -319,6 +319,8 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "link not established, changing status to '" << link_status << "', triggering link establishment -> ";
 		auto link_request_msg = prepareRequestMessage();
 		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);		
+		// to be able to measure the link establishment time, save the current time slot
+		time_when_request_was_generated = mac->getCurrentSlot();
 	} else
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
@@ -456,8 +458,7 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	delete current_link_state;
 	current_link_state = new LinkState(default_timeout, burst_length, burst_length_tx);
 	current_link_state->is_link_initiator = true;
-	current_link_state->initial_setup = true;
-	current_link_state->time_when_request_was_sent = mac->getCurrentSlot();
+	current_link_state->initial_setup = true;	
 	// We need to schedule RX slots at each candidate to be able to receive a reply there.
 	for (const auto &pair : payload->proposed_resources) {
 		const FrequencyChannel *channel = pair.first;
@@ -661,7 +662,7 @@ void P2PLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRepl
 	// Link is now established.
 	coutd << "setting link status to '";
 	link_status = link_established;
-	int link_establishment_time = mac->getCurrentSlot() - current_link_state->time_when_request_was_sent;
+	int link_establishment_time = mac->getCurrentSlot() - this->time_when_request_was_generated;
 	mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);
 	statistic_num_links_established++;
 	mac->statisticReportPPLinkEstablished();
