@@ -284,7 +284,7 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		// Number of active neighbors.
 		unsigned int m = contention_estimator.getNumActiveNeighbors();
 		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m))) * 2;
-		coutd << "channel access method: assume all " << m << " active neighbors are active again -> ";
+		coutd << "channel access method: randomized slotted ALOHA for " << m << " active neighbors -> ";
 	// Don't make use of contention estimation in any way. Just select something out of the next 100 idle slots.
 	} else if (contention_method == ContentionMethod::naive_random_access) {
 		k = 100;
