@@ -253,12 +253,14 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			L2Packet *packet = packets.at(0);
 			// might have a channel error
 			if (packet->hasChannelError) {
+				coutd << *this << " dropping packet due to channel error -> ";
 				this->deletePacket(packet);
 				delete packet;
 				packets.erase(packets.begin());
 				stat_num_channel_errors.increment();
 			// otherwise they're received
 			} else {
+				coutd << *this << " processing packet -> ";
 				if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
 					getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
 				else
@@ -266,9 +268,8 @@ void MCSOTDMA_Mac::onSlotEnd() {
 				stat_num_packets_rcvd.increment();
 			}			
 		// several packets are cause for a collision
-		} else if (packets.size() > 1) {
-			// TODO compare SNRs, and keep better one if it doesn't have a channel error						
-			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets.";
+		} else if (packets.size() > 1) {			
+			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets -> ";
 			stat_num_packet_collisions.incrementBy(packets.size());
 
             for (auto *packet : packets) {
