@@ -14,6 +14,10 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000) {
 	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();
+	stat_min_beacon_offset.dontEmitBeforeFirstReport();
+	stat_broadcast_candidate_slots.dontEmitBeforeFirstReport();
+	stat_broadcast_selected_candidate_slots.dontEmitBeforeFirstReport();
+	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();	
 }
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {

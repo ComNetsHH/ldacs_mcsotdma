@@ -173,6 +173,10 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 		scheduleBroadcastSlot();
 	}
 	coutd << "next broadcast scheduled in " << next_broadcast_slot << " slots -> ";
+	// to account for application-layer starting times later than immediately,
+	// normalize the MAC delay measurement to the first time this function is called (instead of zero)
+	if (time_slot_of_last_channel_access == 0)
+		time_slot_of_last_channel_access = mac->getCurrentSlot();
 }
 
 void BCLinkManager::onSlotStart(uint64_t num_slots) {

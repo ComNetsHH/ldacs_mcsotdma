@@ -151,7 +151,7 @@ void LinkManager::onSlotEnd() {}
 
 unsigned int LinkManager::measureMacDelay() {	
 	unsigned int now = mac->getCurrentSlot();	
-	unsigned int mac_delay = now - time_since_last_channel_access;
-	time_since_last_channel_access = now;		
+	unsigned int mac_delay = now - time_slot_of_last_channel_access;
+	time_slot_of_last_channel_access = now;		
 	return mac_delay;
 }

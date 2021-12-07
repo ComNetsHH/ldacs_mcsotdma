@@ -176,7 +176,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Link establishment status. */
 		Status link_status;
 		/** To measure the MAC delay, keep track of the number of slots in-between channel accesses. */
-		unsigned int time_since_last_channel_access = 0;
+		unsigned int time_slot_of_last_channel_access = 0;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {
