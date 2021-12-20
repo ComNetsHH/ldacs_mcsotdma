@@ -7,7 +7,7 @@
 #include "MockLayers.hpp"
 #include "../LinkManager.hpp"
 #include "../P2PLinkManager.hpp"
-#include "../BCLinkManager.hpp"
+#include "../SHLinkManager.hpp"
 
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -593,7 +593,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			num_slots = 0;
 			// broadcast slot for link info should've been scheduled
 			ReservationTable *bc_table = mac_layer_me->reservation_manager->getBroadcastReservationTable();
-			auto *bc_manager = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_manager = (SHLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			CPPUNIT_ASSERT_EQUAL(bc_manager->next_broadcast_scheduled, true);
 			CPPUNIT_ASSERT(bc_manager->next_broadcast_slot > 0);
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_table->getReservation(bc_manager->next_broadcast_slot));
@@ -818,8 +818,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testSlotAdvertisement() {
 			mac_layer_me->setAlwaysScheduleNextBroadcastSlot(true);
 			rlc_layer_me->should_there_be_more_broadcast_data = true;
-			auto *bc_link_manager_me = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-			auto *bc_link_manager_you = (BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_link_manager_me = (SHLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_link_manager_you = (SHLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_link_manager_me->notifyOutgoing(1);
 			// proceed until the first broadcast's been received
 			while (rlc_layer_you->receptions.empty()) {
@@ -922,8 +922,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testMACDelays() {
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			rlc_layer_me->num_remaining_broadcast_packets = 4;
-			auto *bc_link_manager_me = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-			auto *bc_link_manager_you = (BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_link_manager_me = (SHLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_link_manager_you = (SHLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_link_manager_me->notifyOutgoing(1);
 			// proceed until the first broadcast's been received
 			size_t num_broadcasts = 1;
@@ -963,9 +963,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs() {
 			rlc_layer_you->should_there_be_more_broadcast_data = true;
-			auto *bc_link_manager_me = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto *bc_link_manager_me = (SHLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_link_manager_me->setUseContentionMethod(ContentionMethod::binomial_estimate);
-			auto *bc_link_manager_you = (BCLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);			
+			auto *bc_link_manager_you = (SHLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);			
 			// "you" broadcast
 			bc_link_manager_you->notifyOutgoing(1);
 			// "I" select slots
@@ -1074,7 +1074,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
 			// no more data	
 			CPPUNIT_ASSERT_EQUAL(size_t(0), rlc_layer_me->num_remaining_broadcast_packets);		
-			BCLinkManager *bc_lm = (BCLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			SHLinkManager *bc_lm = (SHLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			// but there should be another TX reservation
 			size_t num_tx_reservations = 0;
 			for (size_t t = 0; t < planning_horizon; t++) {

@@ -6,13 +6,13 @@
 #include <cppunit/extensions/HelperMacros.h>
 #include <L2Packet.hpp>
 #include "MockLayers.hpp"
-#include "../BCLinkManager.hpp"
+#include "../SHLinkManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-	class BCLinkManagerTests : public CppUnit::TestFixture {
+	class SHLinkManagerTests : public CppUnit::TestFixture {
 	private:
-		BCLinkManager *link_manager;
+		SHLinkManager *link_manager;
 		MacId id, partner_id;
 		uint32_t planning_horizon;
 		MACLayer *mac;
@@ -25,7 +25,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env = new TestEnvironment(id, partner_id, true);
 			planning_horizon = env->planning_horizon;
 			mac = env->mac_layer;
-			link_manager = (BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			link_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 		}
 
 		void tearDown() override {
@@ -56,7 +56,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
 		}
 
-		/** Tests that a P2PLinkManager forwards a link request to the BCLinkManager, which schedules a slot and transmits it. */
+		/** Tests that a P2PLinkManager forwards a link request to the SHLinkManager, which schedules a slot and transmits it. */
 		void testSendLinkRequestOnBC() {
 //			coutd.setVerbose(true);
 			mac->notifyOutgoing(512, partner_id);
@@ -300,7 +300,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table_2_me->getReservation(t));
 
 			ReservationManager *manager = env_you.mac_layer->reservation_manager;
-			auto beacon_msg = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon(manager->getP2PReservationTables(), manager->getBroadcastReservationTable(), mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
+			auto beacon_msg = ((SHLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon(manager->getP2PReservationTables(), manager->getBroadcastReservationTable(), mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
 			link_manager->processBeaconMessage(partner_id, beacon_msg.first, beacon_msg.second);
 
 			for (auto t : slots_1)
@@ -317,9 +317,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ReservationTable *bc_table_you = env_you.mac_layer->reservation_manager->getBroadcastReservationTable();
 			int t = 5;
 			bc_table_you->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
-			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you, mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
+			auto pair = ((SHLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you, mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
 
-			auto* bc_lm = (BCLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto* bc_lm = (SHLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_lm->beacon_module.next_beacon_in = t;
 			bc_lm->current_reservation_table->mark(t, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
 			bc_lm->next_beacon_scheduled = true;
@@ -336,7 +336,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void testParseBeaconRescheduleBroadcast() {
 			// schedule some broadcast slot
-			auto* bc_lm = (BCLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			auto* bc_lm = (SHLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			bc_lm->scheduleBroadcastSlot();
 			// which turned out to be 't'
 			int t = (int) bc_lm->next_broadcast_slot;
@@ -347,7 +347,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// now have another user schedule its broadcast also at 't'
 			bc_table_you->mark(t, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));
 			// which will be notified to the first user through a beacon
-			auto pair = ((BCLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you, mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
+			auto pair = ((SHLinkManager*) env_you.mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.generateBeacon({}, bc_table_you, mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
 
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(t));
 			// which is processed
@@ -864,7 +864,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), payload->local_reservations.size());
 		}
 
-	CPPUNIT_TEST_SUITE(BCLinkManagerTests);
+	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
 		CPPUNIT_TEST(testBroadcast);

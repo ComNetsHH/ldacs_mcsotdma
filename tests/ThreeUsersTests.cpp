@@ -6,7 +6,7 @@
 #include <cppunit/extensions/HelperMacros.h>
 #include "MockLayers.hpp"
 #include "../P2PLinkManager.hpp"
-#include "../BCLinkManager.hpp"
+#include "../SHLinkManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class ThreeUsersTests : public CppUnit::TestFixture {
@@ -165,8 +165,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
 			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
-			((BCLinkManager*) env1->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
-			((BCLinkManager*) env2->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
+			((SHLinkManager*) env1->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
+			((SHLinkManager*) env2->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
 			auto* p2p_1_tx = (P2PLinkManager*) mac_1->getLinkManager(id2), *p2p_1_rx = (P2PLinkManager*) mac_2->getLinkManager(id1),
 				  *p2p_2_tx = (P2PLinkManager*) mac_2->getLinkManager(id3), *p2p_2_rx = (P2PLinkManager*) mac_3->getLinkManager(id2);
 

@@ -10,7 +10,7 @@
 #include "ReservationTableTests.cpp"
 #include "ReservationManagerTests.cpp"
 #include "FrequencyChannelTests.cpp"
-#include "BCLinkManagerTests.cpp"
+#include "SHLinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
 #include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
@@ -35,7 +35,7 @@ int main() {
 	runner.addTest(BeaconModuleTests::suite());
 	runner.addTest(CongestionEstimatorTests::suite());
 	runner.addTest(ContentionEstimatorTests::suite());
-	runner.addTest(BCLinkManagerTests::suite());
+	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
 	runner.addTest(ThreeUsersTests::suite());
 

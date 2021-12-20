@@ -12,15 +12,15 @@
 #include "BeaconModule.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
-	class BCLinkManager : public LinkManager {
+	class SHLinkManager : public LinkManager {
 
-		friend class BCLinkManagerTests;
+		friend class SHLinkManagerTests;
 		friend class SystemTests;
 		friend class ThreeUsersTests;
 
 	public:
-		BCLinkManager(ReservationManager *reservation_manager, MCSOTDMA_Mac *mac, unsigned int min_beacon_gap);
-		virtual ~BCLinkManager();
+		SHLinkManager(ReservationManager *reservation_manager, MCSOTDMA_Mac *mac, unsigned int min_beacon_gap);
+		virtual ~SHLinkManager();
 
 		void onReceptionBurstStart(unsigned int burst_length) override;
 

@@ -21,7 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class BeaconModule : public IRng {
 
 		friend class BeaconModuleTests;
-		friend class BCLinkManagerTests;
+		friend class SHLinkManagerTests;
 	
 	public:
 		BeaconModule(unsigned int min_beacon_gap, double congestion_goal);

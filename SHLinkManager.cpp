@@ -3,13 +3,13 @@
 //
 
 #include <sstream>
-#include "BCLinkManager.hpp"
+#include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "P2PLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
+SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
 : LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100),
 		contention_estimator(5000),
 		beacon_module(),
@@ -18,18 +18,18 @@ BCLinkManager::BCLinkManager(ReservationManager* reservation_manager, MCSOTDMA_M
 	beacon_module.setMinBeaconGap(min_beacon_gap);
 }
 
-void BCLinkManager::onReceptionBurstStart(unsigned int burst_length) {
+void SHLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 
 }
 
-void BCLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
+void SHLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 
 }
 
-L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
+L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
 	coutd << *mac << "::" << *this << "::onTransmissionBurstStart -> ";
 	if (remaining_burst_length != 0)
-		throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart for burst_length!=0.");
+		throw std::invalid_argument("SHLinkManager::onTransmissionBurstStart for burst_length!=0.");
 
 	auto *packet = new L2Packet();
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);
@@ -61,7 +61,7 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			auto &pair = link_requests.at(0);
 			// Compute payload.
 			if (pair.second->callback == nullptr)
-				throw std::invalid_argument("BCLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
+				throw std::invalid_argument("SHLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
 			pair.second->callback->populateLinkRequest(pair.first, pair.second);
 			// Add to the packet if it fits.
 			if (pair.first->getBits() + pair.second->getBits() <= capacity) {
@@ -161,11 +161,11 @@ L2Packet* BCLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	}
 }
 
-void BCLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
-	throw std::runtime_error("BCLinkManager::onTransmissionBurst, but the BCLinkManager should never have multi-slot transmissions.");
+void SHLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
+	throw std::runtime_error("SHLinkManager::onTransmissionBurst, but the SHLinkManager should never have multi-slot transmissions.");
 }
 
-void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
+void SHLinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << *this << "::notifyOutgoing(" << num_bits << ") -> ";
 	packet_generated_this_slot = true;
 	if (!next_broadcast_scheduled) {
@@ -179,11 +179,11 @@ void BCLinkManager::notifyOutgoing(unsigned long num_bits) {
 		time_slot_of_last_channel_access = mac->getCurrentSlot();
 }
 
-void BCLinkManager::onSlotStart(uint64_t num_slots) {
+void SHLinkManager::onSlotStart(uint64_t num_slots) {
 	// decrement next broadcast slot counter
 	if (next_broadcast_scheduled) {
 		if (next_broadcast_slot == 0)
-			throw std::runtime_error("BCLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
+			throw std::runtime_error("SHLinkManager(" + std::to_string(mac->getMacId().getId()) + ")::onSlotEnd would underflow next_broadcast_slot (was this transmission missed?)");
 		next_broadcast_slot -= 1;
 	} else
 		next_broadcast_slot = 0;
@@ -192,7 +192,7 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 
 	// broadcast link manager should always have a ReservationTable assigned
 	if (current_reservation_table == nullptr)
-		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
+		throw std::runtime_error("SHLinkManager::broadcastSlotSelection for unset ReservationTable.");
 
 	// mark reception slot if there's nothing else to do
 	const auto& current_reservation = current_reservation_table->getReservation(0);
@@ -201,12 +201,12 @@ void BCLinkManager::onSlotStart(uint64_t num_slots) {
 		try {
 			current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 		} catch (const std::exception& e) {
-			throw std::runtime_error("BCLinkManager::onSlotStart(" + std::to_string(num_slots) + ") error trying to mark BC reception slot: " + e.what());
+			throw std::runtime_error("SHLinkManager::onSlotStart(" + std::to_string(num_slots) + ") error trying to mark BC reception slot: " + e.what());
 		}
 	}
 }
 
-void BCLinkManager::onSlotEnd() {
+void SHLinkManager::onSlotEnd() {
 	if (packet_generated_this_slot) {
 		packet_generated_this_slot = false;
 		avg_num_slots_inbetween_packet_generations.put(num_slots_since_last_packet_generation + 1);
@@ -229,13 +229,13 @@ void BCLinkManager::onSlotEnd() {
 	LinkManager::onSlotEnd();
 }
 
-void BCLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {
+void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {
 	link_requests.emplace_back(header, payload);
 	// Notify about outgoing data, which may schedule the next broadcast slot.
 	notifyOutgoing(header->getBits() + payload->getBits());
 }
 
-size_t BCLinkManager::cancelLinkRequest(const MacId& id) {
+size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 	size_t num_removed = 0;
 	for (auto it = link_requests.begin(); it != link_requests.end(); it++) {
 		const auto* header = it->first;
@@ -247,9 +247,9 @@ size_t BCLinkManager::cancelLinkRequest(const MacId& id) {
 	return num_removed;
 }
 
-unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) const {
+unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob) const {
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
-		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
+		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	unsigned int k;	
 	// Estimate number of channel accesses from Binomial distribution.
 	if (contention_method == ContentionMethod::binomial_estimate) {
@@ -294,33 +294,33 @@ unsigned int BCLinkManager::getNumCandidateSlots(double target_collision_prob) c
 		k = 100;
 		coutd << "channel access method: naive random access -> ";
 	} else {
-		throw std::invalid_argument("BCLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
+		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
 	}
 	unsigned int final_candidates = std::min(MAX_CANDIDATES, std::max(MIN_CANDIDATES, k));
 	coutd << "num_candidates=" << final_candidates << " -> ";
 	return final_candidates;
 }
 
-unsigned long long BCLinkManager::nchoosek(unsigned long n, unsigned long k) const {
+unsigned long long SHLinkManager::nchoosek(unsigned long n, unsigned long k) const {
 	if (k == 0)
 		return 1;
 	return (n * nchoosek(n - 1, k - 1)) / k;
 }
 
-unsigned int BCLinkManager::broadcastSlotSelection(unsigned int min_offset) {
+unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	if (current_reservation_table == nullptr)
-		throw std::runtime_error("BCLinkManager::broadcastSlotSelection for unset ReservationTable.");
+		throw std::runtime_error("SHLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
 	mac->statisticReportBroadcastCandidateSlots((size_t) num_candidates);
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, min_offset, 1, 1, 1, 0, false);
 	if (candidate_slots.empty())
-		throw std::runtime_error("BCLinkManager::broadcastSlotSelection found zero candidate slots.");
+		throw std::runtime_error("SHLinkManager::broadcastSlotSelection found zero candidate slots.");
 	unsigned int selected_slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
 	mac->statisticReportSelectedBroadcastCandidateSlots(selected_slot);
 	return selected_slot;
 }
 
-void BCLinkManager::scheduleBroadcastSlot() {
+void SHLinkManager::scheduleBroadcastSlot() {
 	unscheduleBroadcastSlot();
 	// By default, even the next slot could be chosen.
 	unsigned int min_offset = 1;
@@ -333,12 +333,12 @@ void BCLinkManager::scheduleBroadcastSlot() {
 	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));	
 }
 
-void BCLinkManager::unscheduleBroadcastSlot() {
+void SHLinkManager::unscheduleBroadcastSlot() {
 	if (next_broadcast_slot > 0 && current_reservation_table->getReservation(next_broadcast_slot).isTx())
 		current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 }
 
-void BCLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
 	coutd << "parsing incoming beacon -> ";
 	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 	if (pair.first) {
@@ -361,16 +361,16 @@ void BCLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));
 }
 
-void BCLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
+void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
 	mac->statisticReportBroadcastMessageProcessed();
 }
 
-void BCLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
 	// TODO compare to local ID, discard or forward resp.
 	LinkManager::processUnicastMessage(header, payload);
 }
 
-void BCLinkManager::processBaseMessage(L2HeaderBase*& header) {
+void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	// Check indicated next broadcast slot.
 	int next_broadcast = (int) header->burst_offset;
 	if (next_broadcast > 0) { // If it has been set ...
@@ -407,7 +407,7 @@ void BCLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	}
 }
 
-void BCLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
 	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link request to P2PLinkManager -> ";
@@ -417,22 +417,22 @@ void BCLinkManager::processLinkRequestMessage(const L2Header*& header, const L2P
 		coutd << "discarding link request that is not destined to us -> ";
 }
 
-void BCLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
-	throw std::invalid_argument("BCLinkManager::processLinkReplyMessage called, but link replies shouldn't be received on the BC.");
+void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+	throw std::invalid_argument("SHLinkManager::processLinkReplyMessage called, but link replies shouldn't be received on the BC.");
 }
 
-BCLinkManager::~BCLinkManager() {
+SHLinkManager::~SHLinkManager() {
 	for (auto pair : link_requests) {
 		delete pair.first;
 		delete pair.second;
 	}
 }
 
-void BCLinkManager::assign(const FrequencyChannel* channel) {
+void SHLinkManager::assign(const FrequencyChannel* channel) {
 	LinkManager::assign(channel);
 }
 
-void BCLinkManager::onPacketReception(L2Packet*& packet) {
+void SHLinkManager::onPacketReception(L2Packet*& packet) {
 	const MacId& id = packet->getOrigin();
 	// report any activity to the MAC
 	mac->reportNeighborActivity(id);
@@ -444,7 +444,7 @@ void BCLinkManager::onPacketReception(L2Packet*& packet) {
 	LinkManager::onPacketReception(packet);
 }
 
-void BCLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+void SHLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
 	mac->statisticReportLinkInfoReceived();
 	const LinkInfo &info = payload->getLinkInfo();
 	const MacId &tx_id = info.getTxId(), &rx_id = info.getRxId();
@@ -456,11 +456,11 @@ void BCLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, cons
 	}
 }
 
-void BCLinkManager::setTargetCollisionProb(double value) {
+void SHLinkManager::setTargetCollisionProb(double value) {
 	this->broadcast_target_collision_prob = value;
 }
 
-void BCLinkManager::scheduleBeacon() {
+void SHLinkManager::scheduleBeacon() {
 	if (beacon_module.isEnabled()) {
 		// un-schedule current beacon slot
 		unscheduleBeaconSlot();
@@ -480,7 +480,7 @@ void BCLinkManager::scheduleBeacon() {
 	}
 }
 
-void BCLinkManager::unscheduleBeaconSlot() {
+void SHLinkManager::unscheduleBeaconSlot() {
 	if (beacon_module.isEnabled()) {
 		if (beacon_module.getNextBeaconOffset() != 0 && next_beacon_scheduled) {
 			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconOffset()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
@@ -491,43 +491,43 @@ void BCLinkManager::unscheduleBeaconSlot() {
 	}
 }
 
-void BCLinkManager::setMinNumCandidateSlots(int value) {
+void SHLinkManager::setMinNumCandidateSlots(int value) {
 	MIN_CANDIDATES = value;
 	beacon_module.setMinBeaconCandidateSlots(value);
 }
 
-void BCLinkManager::setMaxNumCandidateSlots(int value) {
+void SHLinkManager::setMaxNumCandidateSlots(int value) {
 	MAX_CANDIDATES = value;	
 }
 
-void BCLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {
+void SHLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {
 	this->always_schedule_next_slot = value;
 }
 
-void BCLinkManager::setUseContentionMethod(ContentionMethod method) {
+void SHLinkManager::setUseContentionMethod(ContentionMethod method) {
 	contention_method = method;
 }
 
-unsigned int BCLinkManager::getAvgNumSlotsInbetweenPacketGeneration() const {
+unsigned int SHLinkManager::getAvgNumSlotsInbetweenPacketGeneration() const {
 	return (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get());
 }
 
-void BCLinkManager::setMinBeaconInterval(unsigned int value) {
+void SHLinkManager::setMinBeaconInterval(unsigned int value) {
 	this->beacon_module.setMinBeaconInterval(value);
 }
 
-void BCLinkManager::setMaxBeaconInterval(unsigned int value) {
+void SHLinkManager::setMaxBeaconInterval(unsigned int value) {
 	this->beacon_module.setMaxBeaconInterval(value);
 }
 
-void BCLinkManager::setWriteResourceUtilizationIntoBeacon(bool flag) {
+void SHLinkManager::setWriteResourceUtilizationIntoBeacon(bool flag) {
 	this->beacon_module.setWriteResourceUtilizationIntoBeacon(flag);
 }
 
-void BCLinkManager::setEnableBeacons(bool flag) {
+void SHLinkManager::setEnableBeacons(bool flag) {
 	this->beacon_module.setEnabled(flag);
 }
 
-void BCLinkManager::setAdvertiseNextSlotInCurrentHeader(bool flag) {
+void SHLinkManager::setAdvertiseNextSlotInCurrentHeader(bool flag) {
 	this->advertise_slot_in_header = flag;
 }

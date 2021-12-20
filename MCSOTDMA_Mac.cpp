@@ -6,7 +6,7 @@
 #include "coutdebug.hpp"
 #include "InetPacketPayload.hpp"
 #include "P2PLinkManager.hpp"
-#include "BCLinkManager.hpp"
+#include "SHLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
 
@@ -216,7 +216,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	} else {
 		// Auto-assign broadcast channel
 		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
-			link_manager = new BCLinkManager(reservation_manager, this, 1);
+			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
 			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
@@ -306,23 +306,23 @@ std::vector<std::pair<Reservation, const FrequencyChannel*>> MCSOTDMA_Mac::getRe
 }
 
 void MCSOTDMA_Mac::setBroadcastTargetCollisionProb(double value) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setTargetCollisionProb(value);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setTargetCollisionProb(value);
 }
 
 void MCSOTDMA_Mac::setBcSlotSelectionMinNumCandidateSlots(int value) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinNumCandidateSlots(value);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinNumCandidateSlots(value);
 }
 
 void MCSOTDMA_Mac::setBcSlotSelectionMaxNumCandidateSlots(int value) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxNumCandidateSlots(value);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxNumCandidateSlots(value);
 }
 
 void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setUseContentionMethod(method);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setUseContentionMethod(method);
 }
 
 void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
 }
 
 void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {	
@@ -346,11 +346,11 @@ const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
 }
 
 void MCSOTDMA_Mac::setMinBeaconOffset(unsigned int value) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinBeaconInterval(value);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinBeaconInterval(value);
 }
 
 void MCSOTDMA_Mac::setMaxBeaconOffset(unsigned int value) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxBeaconInterval(value);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxBeaconInterval(value);
 }
 
 void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
@@ -388,13 +388,13 @@ unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
 }
 
 void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setWriteResourceUtilizationIntoBeacon(flag);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setWriteResourceUtilizationIntoBeacon(flag);
 }
 
 void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(flag);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(flag);
 }
 
 void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
-	((BCLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
+	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
 }

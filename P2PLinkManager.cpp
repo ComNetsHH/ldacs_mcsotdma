@@ -7,7 +7,7 @@
 #include <sstream>
 #include "P2PLinkManager.hpp"
 #include "coutdebug.hpp"
-#include "BCLinkManager.hpp"
+#include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
@@ -318,7 +318,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		link_status = awaiting_reply;
 		coutd << "link not established, changing status to '" << link_status << "', triggering link establishment -> ";
 		auto link_request_msg = prepareRequestMessage();
-		((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);		
+		((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(link_request_msg.first, link_request_msg.second);		
 		// to be able to measure the link establishment time, save the current time slot
 		time_when_request_was_generated = mac->getCurrentSlot();
 	} else
@@ -503,7 +503,7 @@ void P2PLinkManager::processLinkRequestMessage(const L2Header*& header, const L2
 	// then reset the link, stop trying to send the local request, and process the remote request.
 	} else if (link_status == awaiting_reply) {
 		// Cancel buffered and unsent local link requests.
-		size_t num_cancelled_requests = ((BCLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
+		size_t num_cancelled_requests = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
 		coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
 		mac->statisticReportCancelledLinkRequest(num_cancelled_requests);
 		// Reset link.
