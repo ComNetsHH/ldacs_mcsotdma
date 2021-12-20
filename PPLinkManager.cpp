@@ -5,22 +5,22 @@
 #include <set>
 #include <cassert>
 #include <sstream>
-#include "P2PLinkManager.hpp"
+#include "PPLinkManager.hpp"
 #include "coutdebug.hpp"
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-P2PLinkManager::P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset)
+PPLinkManager::PPLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset)
 	: LinkManager(link_id, reservation_manager, mac), default_timeout(default_timeout), burst_offset(burst_offset), outgoing_traffic_estimate(burst_offset),
 	str_statistic_num_links_established("MCSOTDMA:statistic_num_links_established(" + std::to_string(link_id.getId()) + ")") {}
 
-P2PLinkManager::~P2PLinkManager() {
+PPLinkManager::~PPLinkManager() {
 	delete current_link_state;
 }
 
-std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkManager::LockMap> P2PLinkManager::p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx) {
+std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, PPLinkManager::LockMap> PPLinkManager::p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx) {
 	auto proposal_map = std::map<const FrequencyChannel*, std::vector<unsigned int>>();
 	auto locked_resources_map = LockMap();
 	// ... get the P2P reservation tables sorted by their numbers of idle slots ...
@@ -59,7 +59,7 @@ std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkM
 	return {proposal_map, locked_resources_map};
 }
 
-P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table) {
+PPLinkManager::LockMap PPLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table) {
 	coutd << "locking: ";
 	// Bursts can be overlapping, so while we check that we *can* lock them, save the unique slots to save some processing steps.
 	std::set<unsigned int> unique_offsets_tx, unique_offsets_rx, unique_offsets_local;
@@ -223,23 +223,23 @@ P2PLinkManager::LockMap P2PLinkManager::lock_bursts(const std::vector<unsigned i
 	return locked_resources_map;
 }
 
-void P2PLinkManager::onReceptionBurstStart(unsigned int burst_length) {
+void PPLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 	communication_during_this_slot = true;
 	if (this->close_link_early_if_no_first_data_packet_comes_in && this->current_link_state != nullptr && link_status == Status::awaiting_data_tx) 
 		this->current_link_state->num_failed_receptions_before_link_establishment++;
 }
 
-void P2PLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
+void PPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 	communication_during_this_slot = true;
 }
 
-L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
+L2Packet* PPLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
 	communication_during_this_slot = true;
 	const unsigned int total_burst_length = remaining_burst_length + 1;
 
 	coutd << *this << "::onTransmissionBurstStart(" << total_burst_length << " slots) -> ";
 	if (link_status == link_not_established)
-		throw std::runtime_error("P2PLinkManager::onTransmissionBurst for unestablished link.");
+		throw std::runtime_error("PPLinkManager::onTransmissionBurst for unestablished link.");
 
 	auto *packet = new L2Packet();
 	size_t capacity = mac->getCurrentDatarate() * total_burst_length;
@@ -289,7 +289,7 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 								throw std::runtime_error(ss.str());
 							}
 					} else // Link replies must fit into single slots & have highest priority, so they should always fit. Throw an error if the unexpected happens.
-						throw std::runtime_error("P2PLinkManager::onTransmissionBurstStart can't put link reply into packet because it wouldn't fit. This should never happen?!");
+						throw std::runtime_error("PPLinkManager::onTransmissionBurstStart can't put link reply into packet because it wouldn't fit. This should never happen?!");
 				}
 			}
 		}
@@ -305,11 +305,11 @@ L2Packet* P2PLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_
 	return packet;
 }
 
-void P2PLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
+void PPLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
 	communication_during_this_slot = true;
 }
 
-void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
+void PPLinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << *mac << "::" << *this << "::notifyOutgoing(" << num_bits << ") -> ";
 	// Update outgoing traffic estimate.
 	outgoing_traffic_estimate.put(num_bits);
@@ -325,7 +325,7 @@ void P2PLinkManager::notifyOutgoing(unsigned long num_bits) {
 		coutd << "link status is '" << link_status << "'; nothing to do." << std::endl;
 }
 
-void P2PLinkManager::onSlotStart(uint64_t num_slots) {
+void PPLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";
 	communication_during_this_slot = false;
 	updated_timeout_this_slot = false;
@@ -365,7 +365,7 @@ void P2PLinkManager::onSlotStart(uint64_t num_slots) {
 	}
 }
 
-void P2PLinkManager::onSlotEnd() {
+void PPLinkManager::onSlotEnd() {
 	if (current_reservation_table != nullptr && communication_during_this_slot && current_reservation_table->isBurstEnd(0, link_id)) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> ";
 		if (decrementTimeout())
@@ -411,7 +411,7 @@ void P2PLinkManager::onSlotEnd() {
 	LinkManager::onSlotEnd();
 }
 
-std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareRequestMessage() {
+std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> PPLinkManager::prepareRequestMessage() {
 	auto *header = new L2HeaderLinkRequest(link_id);
 	auto *payload = new LinkRequestPayload();
 	// Set this as the callback s.t. the payload can be populated just-in-time.
@@ -419,7 +419,7 @@ std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> P2PLinkManager
 	return {header, payload};
 }
 
-std::pair<unsigned int, unsigned int> P2PLinkManager::getTxRxDistribution(unsigned int tx_slots_me, unsigned int tx_slots_you) {	
+std::pair<unsigned int, unsigned int> PPLinkManager::getTxRxDistribution(unsigned int tx_slots_me, unsigned int tx_slots_you) {	
 	unsigned int burst_length_tx = std::max(uint32_t(1), tx_slots_me); // in slots.
 	unsigned int burst_length = burst_length_tx + tx_slots_you; // own transmission slots + those the communication partner desires
 	// for very large amounts of data, this might exceed the frame length
@@ -433,7 +433,7 @@ std::pair<unsigned int, unsigned int> P2PLinkManager::getTxRxDistribution(unsign
 	return {burst_length_tx, burst_length};
 }
 
-void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkRequestPayload*& payload) {
+void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkRequestPayload*& payload) {
 	coutd << "populating link request -> ";
 	unsigned int min_offset = 2;
 
@@ -477,7 +477,7 @@ void P2PLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManag
 	coutd << "request populated -> ";
 }
 
-bool P2PLinkManager::isProposalViable(const ReservationTable* table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
+bool PPLinkManager::isProposalViable(const ReservationTable* table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
 	// Should be able to transmit reply at initial slot.
 	bool viable = table->isIdle((int) burst_start, 1) && mac->isTransmitterIdle(burst_start, 1);
 	// Then for each communication burst...
@@ -493,7 +493,7 @@ bool P2PLinkManager::isProposalViable(const ReservationTable* table, unsigned in
 	return viable;
 }
 
-void P2PLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void PPLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
 	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
 	mac->statisticReportLinkRequestReceived();
 	// If currently the link is unestablished, then this request must be an initial request.
@@ -516,7 +516,7 @@ void P2PLinkManager::processLinkRequestMessage(const L2Header*& header, const L2
 	}
 }
 
-void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void PPLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
 	// Unlock any previously-locked resources, as a new link request re-starts this procedure.
 	if (lock_map.anyLocks()) {
 		clearLockedResources(lock_map);
@@ -524,7 +524,7 @@ void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header,
 	}
 	try {
 		// Pick a random resource from those proposed.
-		LinkState* state = selectResourceFromRequest((const L2HeaderLinkRequest*&) header, (const P2PLinkManager::LinkRequestPayload*&) payload);
+		LinkState* state = selectResourceFromRequest((const L2HeaderLinkRequest*&) header, (const PPLinkManager::LinkRequestPayload*&) payload);
 		state->initial_setup = true;
 		// remember the choice,
 		delete current_link_state;
@@ -563,7 +563,7 @@ void P2PLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header,
 	}
 }
 
-std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx) {
+std::pair<const FrequencyChannel*, unsigned int> PPLinkManager::chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx) {
 	std::vector<const FrequencyChannel*> viable_resource_channel;
 	std::vector<unsigned int> viable_resource_slot;
 	// For each resource...
@@ -593,7 +593,7 @@ std::pair<const FrequencyChannel*, unsigned int> P2PLinkManager::chooseRandomRes
 	}
 }
 
-P2PLinkManager::LinkState* P2PLinkManager::selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
 	// Parse header fields.
 	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
 	// Since this user is processing the request, they have not initiated the link.
@@ -612,14 +612,14 @@ P2PLinkManager::LinkState* P2PLinkManager::selectResourceFromRequest(const L2Hea
 	}
 }
 
-void P2PLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& message_payload) {
+void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& message_payload) {
 	coutd << *this << "::processLinkReplyMessage -> ";
 	mac->statisticReportLinkReplyReceived();
 	if (link_status != awaiting_reply) {
 		coutd << "not awaiting reply; discarding -> ";
 		return;
 	}
-	assert(current_link_state != nullptr && "P2PLinkManager::processLinkReplyMessage for unset current state.");
+	assert(current_link_state != nullptr && "PPLinkManager::processLinkReplyMessage for unset current state.");
 
 	const auto*& payload = (const LinkManager::LinkRequestPayload*&) message_payload;
 
@@ -628,12 +628,12 @@ void P2PLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRepl
 	current_link_state->timeout = default_timeout;
 	// Parse resource.
 	if (payload->proposed_resources.size() != 1)
-		throw std::invalid_argument("P2PLinkManager::processInitialReply for payload with " + std::to_string(payload->proposed_resources.size()) + " resources.");
+		throw std::invalid_argument("PPLinkManager::processInitialReply for payload with " + std::to_string(payload->proposed_resources.size()) + " resources.");
 	const auto &resource = *payload->proposed_resources.begin();
 	const auto *channel = resource.first;
 	const auto &slots = resource.second;
 	if (slots.size() != 1)
-		throw std::invalid_argument("P2PLinkManager::processInitialReply for " + std::to_string(slots.size()) + " slots.");
+		throw std::invalid_argument("PPLinkManager::processInitialReply for " + std::to_string(slots.size()) + " slots.");
 	unsigned int slot_offset = slots.at(0);
 	coutd << "received on " << *channel << "@" << slot_offset << " -> ";
 	// Assign channel.
@@ -672,7 +672,7 @@ void P2PLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRepl
 	current_link_state->waiting_for_agreement = false;
 }
 
-std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {
+std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> PPLinkManager::prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {
 	// The reply header.
 	auto *header = new L2HeaderLinkReply(dest_id);
 	header->timeout = default_timeout;
@@ -685,7 +685,7 @@ std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> P2PLinkManager::
 	return {header, payload};
 }
 
-void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable* table, bool link_initiator) {
+void PPLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int burst_length, unsigned int burst_length_tx, const MacId &dest_id, ReservationTable* table, bool link_initiator) {
 	assert(table != nullptr);
 	for (unsigned int t = 0; t < burst_length_tx; t++) {
 		Reservation::Action action = t==0 ? (link_initiator ? Reservation::Action::TX : Reservation::Action::RX) : (link_initiator ? Reservation::Action::TX_CONT : Reservation::Action::RX_CONT);
@@ -730,15 +730,15 @@ void P2PLinkManager::scheduleBurst(unsigned int burst_start_offset, unsigned int
 	coutd << "-> ";
 }
 
-void P2PLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	throw std::invalid_argument("P2PLinkManager::processBeaconMessage called but beacons should not be received on P2P channels.");
+void PPLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+	throw std::invalid_argument("PPLinkManager::processBeaconMessage called but beacons should not be received on P2P channels.");
 }
 
-void P2PLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
-	throw std::invalid_argument("P2PLinkManager::processBroadcastMessage called but broadcasts should not be received on P2P channels.");
+void PPLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
+	throw std::invalid_argument("PPLinkManager::processBroadcastMessage called but broadcasts should not be received on P2P channels.");
 }
 
-void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+void PPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
 	MacId dest_id = header->dest_id;
 	if (dest_id != mac->getMacId()) {
 		coutd << "discarding unicast message not intended for us -> ";
@@ -759,13 +759,13 @@ void P2PLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::P
 	}
 }
 
-void P2PLinkManager::processBaseMessage(L2HeaderBase*& header) {
+void PPLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	// The communication partner informs about its *current wish* for their own burst length.
 	this->setReportedDesiredTxSlots(header->burst_length_tx);
 	mac->reportNeighborActivity(header->src_id);
 }
 
-bool P2PLinkManager::decrementTimeout() {
+bool PPLinkManager::decrementTimeout() {
 	// Don't decrement timeout if,
 	// (1) the link is not established right now
 	if (link_status == LinkManager::link_not_established || current_link_state == nullptr) {
@@ -791,14 +791,14 @@ bool P2PLinkManager::decrementTimeout() {
 	updated_timeout_this_slot = true;
 
 	if (current_link_state->timeout == 0)
-		throw std::runtime_error("P2PLinkManager::decrementTimeout attempted to decrement timeout past zero.");
+		throw std::runtime_error("PPLinkManager::decrementTimeout attempted to decrement timeout past zero.");
 	coutd << "timeout " << current_link_state->timeout << "->";
 	current_link_state->timeout--;
 	coutd << current_link_state->timeout << " -> ";
 	return current_link_state->timeout == 0;
 }
 
-void P2PLinkManager::onTimeoutExpiry() {
+void PPLinkManager::onTimeoutExpiry() {
 	coutd << "timeout reached -> ";
 	coutd << "updating status: " << link_status << "->" << LinkManager::link_not_established << " -> cleared associated channel at " << *current_channel << " -> ";
 	terminateLink();
@@ -807,7 +807,7 @@ void P2PLinkManager::onTimeoutExpiry() {
 		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 }
 
-void P2PLinkManager::clearLocks(const std::vector<std::pair<ReservationTable*, unsigned int>>& locked_resources, unsigned int normalization_offset) {
+void PPLinkManager::clearLocks(const std::vector<std::pair<ReservationTable*, unsigned int>>& locked_resources, unsigned int normalization_offset) {
 	for (const auto& pair : locked_resources) {
 		ReservationTable *table = pair.first;
 		unsigned int slot = pair.second;		
@@ -821,7 +821,7 @@ void P2PLinkManager::clearLocks(const std::vector<std::pair<ReservationTable*, u
 	}
 }
 
-void P2PLinkManager::clearLockedResources(const LockMap& locked_resources) {
+void PPLinkManager::clearLockedResources(const LockMap& locked_resources) {
 	coutd << "freeing " << locked_resources.size_local() << " local + " << locked_resources.size_receiver() << " receiver + " << locked_resources.size_transmitter() << " transmitter locks on resources ";	
 	clearLocks(locked_resources.locks_local, locked_resources.num_slots_since_creation);
 	clearLocks(locked_resources.locks_receiver, locked_resources.num_slots_since_creation);
@@ -829,14 +829,14 @@ void P2PLinkManager::clearLockedResources(const LockMap& locked_resources) {
 	coutd << "-> ";
 }
 
-void P2PLinkManager::assign(const FrequencyChannel* channel) {
+void PPLinkManager::assign(const FrequencyChannel* channel) {
 	// Base class call might set current_channel, but only if it's nullptr, so we do the same.
 	if (current_channel == nullptr && current_link_state != nullptr)
 		current_link_state->channel = channel;
 	LinkManager::assign(channel);
 }
 
-unsigned int P2PLinkManager::estimateCurrentNumSlots() const {
+unsigned int PPLinkManager::estimateCurrentNumSlots() const {
 	if (!mac->isThereMoreData(link_id))
 		return 0;
 	unsigned int traffic_estimate = (unsigned int) outgoing_traffic_estimate.get(); // in bits.
@@ -844,23 +844,23 @@ unsigned int P2PLinkManager::estimateCurrentNumSlots() const {
 	return std::max(uint32_t(0), traffic_estimate / datarate); // in slots.
 }
 
-unsigned int P2PLinkManager::getExpiryOffset() const {
+unsigned int PPLinkManager::getExpiryOffset() const {
 	if (current_link_state == nullptr)
 		return 0;
 	else
 		return (current_link_state->timeout - 1)*burst_offset + current_link_state->burst_length;
 }
 
-LinkInfo P2PLinkManager::getLinkInfo() {
+LinkInfo PPLinkManager::getLinkInfo() {
 	if (current_link_state == nullptr)
-		throw std::runtime_error("P2PLinkManager::getLinkInfo for current_link_state == nullptr");
+		throw std::runtime_error("PPLinkManager::getLinkInfo for current_link_state == nullptr");
 	MacId tx_id = current_link_state->is_link_initiator ? mac->getMacId() : link_id;
 	MacId rx_id = current_link_state->is_link_initiator ? link_id : mac->getMacId();
 	int offset;
 	try {
 		offset = getNumSlotsUntilNextBurst();
 	} catch (const std::exception& e) {
-		throw std::runtime_error("P2PLinkManager::getLinkInfo error: " + std::string(e.what()));
+		throw std::runtime_error("PPLinkManager::getLinkInfo error: " + std::string(e.what()));
 	}
 	unsigned int timeout = current_link_state->timeout;
 	if (isSlotPartOfBurst(0))
@@ -870,7 +870,7 @@ LinkInfo P2PLinkManager::getLinkInfo() {
 	return info;
 }
 
-void P2PLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
+void PPLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
 	const LinkInfo &info = payload->getLinkInfo();
 	coutd << info << " -> ";
 	const FrequencyChannel *channel = reservation_manager->getFreqChannelByCenterFreq(info.getP2PChannelCenterFreq());
@@ -890,16 +890,16 @@ void P2PLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, con
 	}
 }
 
-bool P2PLinkManager::isSlotPartOfBurst(int t) const {
+bool PPLinkManager::isSlotPartOfBurst(int t) const {
 	if (current_reservation_table == nullptr)
-		throw std::runtime_error("P2PLinkManager::isSlotPartOfBurst for nullptr ReservationTable");
+		throw std::runtime_error("PPLinkManager::isSlotPartOfBurst for nullptr ReservationTable");
 	const Reservation &res = current_reservation_table->getReservation(t);
 	return res.getTarget() == link_id && (current_link_state->is_link_initiator ? (res.isTx() || res.isTxCont()) : (res.isRx() || res.isRxCont()));
 }
 
-int P2PLinkManager::getNumSlotsUntilNextBurst() const {
+int PPLinkManager::getNumSlotsUntilNextBurst() const {
 	if (current_reservation_table == nullptr || current_link_state == nullptr)
-		throw std::runtime_error("P2PLinkManager::getNumSlotsUntilNextBurst for nullptr ReservationTable or LinkState.");
+		throw std::runtime_error("PPLinkManager::getNumSlotsUntilNextBurst for nullptr ReservationTable or LinkState.");
 	else {
 		// Proceed to after a potential current burst.
 		int t = 1;
@@ -912,10 +912,10 @@ int P2PLinkManager::getNumSlotsUntilNextBurst() const {
 				return t;
 		}
 	}
-	throw std::range_error("P2PLinkManager::getNumSlotsUntilNextBurst can't find next burst.");
+	throw std::range_error("PPLinkManager::getNumSlotsUntilNextBurst can't find next burst.");
 }
 
-void P2PLinkManager::terminateLink() {
+void PPLinkManager::terminateLink() {
 	// Clear any locks that may have been put.
 	if (lock_map.anyLocks()) {
 		clearLockedResources(this->lock_map);
@@ -938,28 +938,28 @@ void P2PLinkManager::terminateLink() {
 	coutd << "link reset, status is " << link_status << " -> ";
 }
 
-void P2PLinkManager::setShouldTerminateLinksEarly(bool flag) {
+void PPLinkManager::setShouldTerminateLinksEarly(bool flag) {
 	this->close_link_early_if_no_first_data_packet_comes_in = flag;
 }
 
-void P2PLinkManager::setReportedDesiredTxSlots(unsigned int value) {
+void PPLinkManager::setReportedDesiredTxSlots(unsigned int value) {
 	if (this->force_bidirectional_links)
 		this->reported_desired_tx_slots = std::max(uint(1), value);
 	else
 		this->reported_desired_tx_slots = value;
 }
 
-void P2PLinkManager::setForceBidirectionalLinks(bool flag) {
+void PPLinkManager::setForceBidirectionalLinks(bool flag) {
 	this->force_bidirectional_links = flag;	
 	this->setReportedDesiredTxSlots(this->reported_desired_tx_slots);
 }
 
-void P2PLinkManager::setInitializeBidirectionalLinks() {
+void PPLinkManager::setInitializeBidirectionalLinks() {
 	if (this->reported_desired_tx_slots == 0)
 		this->reported_desired_tx_slots = 1;
 }
 
-unsigned int P2PLinkManager::getNumUtilizedResources() const {
+unsigned int PPLinkManager::getNumUtilizedResources() const {
 	if (current_link_state == nullptr)
 		return 0;
 	else 

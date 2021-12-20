@@ -15,7 +15,7 @@
 #include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
-#include "P2PLinkManagerTests.cpp"
+#include "PPLinkManagerTests.cpp"
 #include "BeaconModuleTests.cpp"
 #include "CongestionEstimatorTests.cpp"
 #include "ThreeUsersTests.cpp"
@@ -29,7 +29,7 @@ int main() {
 	runner.addTest(ReservationTableTests::suite());
 	runner.addTest(ReservationManagerTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());
-	runner.addTest(P2PLinkManagerTests::suite());
+	runner.addTest(PPLinkManagerTests::suite());
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(MCSOTDMA_PhyTests::suite());
 	runner.addTest(BeaconModuleTests::suite());

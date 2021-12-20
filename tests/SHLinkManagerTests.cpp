@@ -56,7 +56,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
 		}
 
-		/** Tests that a P2PLinkManager forwards a link request to the SHLinkManager, which schedules a slot and transmits it. */
+		/** Tests that a PPLinkManager forwards a link request to the SHLinkManager, which schedules a slot and transmits it. */
 		void testSendLinkRequestOnBC() {
 //			coutd.setVerbose(true);
 			mac->notifyOutgoing(512, partner_id);

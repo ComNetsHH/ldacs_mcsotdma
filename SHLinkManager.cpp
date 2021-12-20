@@ -5,7 +5,7 @@
 #include <sstream>
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
-#include "P2PLinkManager.hpp"
+#include "PPLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -410,9 +410,9 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
 	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
 	if (dest_id == mac->getMacId()) {
-		coutd << "forwarding link request to P2PLinkManager -> ";
-		// do NOT report the received request to the MAC, as the P2PLinkManager will do that (otherwise it'll be counted twice)
-		((P2PLinkManager*) mac->getLinkManager(origin))->processLinkRequestMessage(header, payload, origin);
+		coutd << "forwarding link request to PPLinkManager -> ";
+		// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
+		((PPLinkManager*) mac->getLinkManager(origin))->processLinkRequestMessage(header, payload, origin);
 	} else
 		coutd << "discarding link request that is not destined to us -> ";
 }
@@ -452,7 +452,7 @@ void SHLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, cons
 		coutd << "involves us; discarding -> ";
 	} else {
 		coutd << "passing on to " << tx_id  << " -> ";
-		((P2PLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
+		((PPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
 	}
 }
 

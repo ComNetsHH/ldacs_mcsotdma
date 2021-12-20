@@ -11,15 +11,15 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback, public LinkInfoPayload::Callback {
+class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback, public LinkInfoPayload::Callback {
 
-		friend class P2PLinkManagerTests;
+		friend class PPLinkManagerTests;
 		friend class SystemTests;
 		friend class ThreeUsersTests;
 
 	public:
-		P2PLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
-		~P2PLinkManager() override;
+		PPLinkManager(const MacId& link_id, ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int default_timeout, unsigned int burst_offset);
+		~PPLinkManager() override;
 
 		void onReceptionBurstStart(unsigned int burst_length) override;
 		void onReceptionBurst(unsigned int remaining_burst_length) override;
@@ -195,7 +195,7 @@ class P2PLinkManager : public LinkManager, public LinkManager::LinkRequestPayloa
 			 * @param is_init Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
 			 * @return <Proposal map, locked map>
 			 */
-			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, P2PLinkManager::LockMap> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx);
+			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, PPLinkManager::LockMap> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx);
 
 			std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage();
 			std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;

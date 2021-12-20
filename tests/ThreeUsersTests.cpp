@@ -5,7 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "MockLayers.hpp"
-#include "../P2PLinkManager.hpp"
+#include "../PPLinkManager.hpp"
 #include "../SHLinkManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -57,7 +57,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkEstablishmentTwoUsers() {
 //			coutd.setVerbose(true);
 			MACLayer* mac_tx = env1->mac_layer, *mac_rx = env2->mac_layer, *mac_3 = env3->mac_layer;
-			auto* p2p_tx = (P2PLinkManager*) mac_tx->getLinkManager(id2), *p2p_rx = (P2PLinkManager*) mac_rx->getLinkManager(id1);
+			auto* p2p_tx = (PPLinkManager*) mac_tx->getLinkManager(id2), *p2p_rx = (PPLinkManager*) mac_rx->getLinkManager(id1);
 			p2p_tx->notifyOutgoing(num_outgoing_bits);
 			size_t num_slots = 0, max_num_slots = 100;
 			while (p2p_rx->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
@@ -116,7 +116,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned long bits_per_slot = env1->phy_layer->getCurrentDatarate();
 			unsigned int expected_num_slots = 3;
 			num_outgoing_bits = expected_num_slots * bits_per_slot;
-			((P2PLinkManager*) env1->mac_layer->getLinkManager(id2))->setInitializeBidirectionalLinks();
+			((PPLinkManager*) env1->mac_layer->getLinkManager(id2))->setInitializeBidirectionalLinks();
 			// Now do the other tests.
 			testLinkEstablishmentTwoUsers();
 		}
@@ -131,7 +131,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
 			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
-			auto* p2p_1 = (P2PLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (P2PLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (P2PLinkManager*) mac_3->getLinkManager(id2);
+			auto* p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
 
 			// Trigger establishment.
 			p2p_1->notifyOutgoing(num_outgoing_bits);
@@ -167,8 +167,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
 			((SHLinkManager*) env1->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
 			((SHLinkManager*) env2->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
-			auto* p2p_1_tx = (P2PLinkManager*) mac_1->getLinkManager(id2), *p2p_1_rx = (P2PLinkManager*) mac_2->getLinkManager(id1),
-				  *p2p_2_tx = (P2PLinkManager*) mac_2->getLinkManager(id3), *p2p_2_rx = (P2PLinkManager*) mac_3->getLinkManager(id2);
+			auto* p2p_1_tx = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_1_rx = (PPLinkManager*) mac_2->getLinkManager(id1),
+				  *p2p_2_tx = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_2_rx = (PPLinkManager*) mac_3->getLinkManager(id2);
 
 			// Trigger establishment.
 			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
@@ -230,7 +230,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
 			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
-			auto* p2p_1 = (P2PLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (P2PLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (P2PLinkManager*) mac_3->getLinkManager(id2);
+			auto* p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
 			p2p_1->notifyOutgoing(num_outgoing_bits);
 			p2p_2->notifyOutgoing(num_outgoing_bits);
 

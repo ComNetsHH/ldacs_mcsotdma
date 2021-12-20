@@ -6,7 +6,7 @@
 #include <cppunit/extensions/HelperMacros.h>
 #include "MockLayers.hpp"
 #include "../LinkManager.hpp"
-#include "../P2PLinkManager.hpp"
+#include "../PPLinkManager.hpp"
 #include "../SHLinkManager.hpp"
 
 
@@ -29,7 +29,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		PHYLayer* phy_layer_me, * phy_layer_you;
 		size_t num_outgoing_bits;
 
-		P2PLinkManager *lm_me, *lm_you;
+		PPLinkManager *lm_me, *lm_you;
 
 	public:
 		void setUp() override {
@@ -60,8 +60,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer_you->connected_phys.push_back(phy_layer_me);
 
 			num_outgoing_bits = 512;
-			lm_me = (P2PLinkManager*) mac_layer_me->getLinkManager(partner_id);
-			lm_you = (P2PLinkManager*) mac_layer_you->getLinkManager(own_id);
+			lm_me = (PPLinkManager*) mac_layer_me->getLinkManager(partner_id);
+			lm_you = (PPLinkManager*) mac_layer_you->getLinkManager(own_id);
 		}
 
 		void tearDown() override {
@@ -212,11 +212,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			required_slots = lm_me->estimateCurrentNumSlots();
 			CPPUNIT_ASSERT(required_slots > 1);
 			// Link request should've been sent, so we're 'awaiting_reply'.
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::awaiting_reply, lm_me->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::awaiting_reply, lm_me->link_status);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
 			// Increment time until status is 'link_established'.
-			while (mac_layer_me->getLinkManager(partner_id)->link_status != P2PLinkManager::link_established) {
+			while (mac_layer_me->getLinkManager(partner_id)->link_status != PPLinkManager::link_established) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -225,9 +225,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 			// Link reply should've arrived, so *our* link should be established...
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, mac_layer_me->getLinkManager(partner_id)->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::link_established, mac_layer_me->getLinkManager(partner_id)->link_status);
 			// ... and *their* link should indicate that the reply has been sent.
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_status);
 			// Reservation timeout should still be default.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout, lm_me->current_link_state->timeout);
 
@@ -255,7 +255,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 			// *Their* status should now show an established link.
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_status);
 			// Reservation timeout should be 1 less now.
 			CPPUNIT_ASSERT_EQUAL(lm_me->default_timeout - 1, lm_me->current_link_state->timeout);
 			CPPUNIT_ASSERT_EQUAL(rlc_layer_you->receptions.empty(), false);
@@ -459,11 +459,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// Do link establishment.
 			size_t num_slots = 0, max_num_slots = 100;
-			auto *lm_tx = (P2PLinkManager*) mac_layer_me->getLinkManager(partner_id),
-					*lm_rx = (P2PLinkManager*) mac_layer_you->getLinkManager(own_id);
+			auto *lm_tx = (PPLinkManager*) mac_layer_me->getLinkManager(partner_id),
+					*lm_rx = (PPLinkManager*) mac_layer_you->getLinkManager(own_id);
 			// Other guy tries to communicate with us.
 			mac_layer_you->notifyOutgoing(512, own_id);
-			while (lm_tx->link_status != P2PLinkManager::Status::link_established && num_slots++ < max_num_slots) {
+			while (lm_tx->link_status != PPLinkManager::Status::link_established && num_slots++ < max_num_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -472,8 +472,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_rx->link_status);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::link_established, lm_rx->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::link_established, lm_tx->link_status);
 		}
 
 		/** Before introducing the onSlotEnd() function, success depended on the order of the execute() calls (which is of course terrible),
@@ -484,10 +484,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// Do link establishment.
 			size_t num_slots = 0, max_num_slots = 100;
-			auto *lm_tx = (P2PLinkManager*) mac_layer_me->getLinkManager(partner_id),
-					*lm_rx = (P2PLinkManager*) mac_layer_you->getLinkManager(own_id);
+			auto *lm_tx = (PPLinkManager*) mac_layer_me->getLinkManager(partner_id),
+					*lm_rx = (PPLinkManager*) mac_layer_you->getLinkManager(own_id);
 			mac_layer_me->notifyOutgoing(512, partner_id);
-			while (lm_rx->link_status != P2PLinkManager::Status::link_established && num_slots++ < max_num_slots) {
+			while (lm_rx->link_status != PPLinkManager::Status::link_established && num_slots++ < max_num_slots) {
 				// you first, then me
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -497,8 +497,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_rx->link_status);
-			CPPUNIT_ASSERT_EQUAL(P2PLinkManager::Status::link_established, lm_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::link_established, lm_rx->link_status);
+			CPPUNIT_ASSERT_EQUAL(PPLinkManager::Status::link_established, lm_tx->link_status);
 		}
 
 		void testPacketSize() {

@@ -5,7 +5,7 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "InetPacketPayload.hpp"
-#include "P2PLinkManager.hpp"
+#include "PPLinkManager.hpp"
 #include "SHLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
@@ -219,11 +219,11 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
-			link_manager = new P2PLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
-			((P2PLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
-			((P2PLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
+			link_manager = new PPLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
+			((PPLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
+			((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
 			if (this->should_initialize_bidirectional_links)
-				((P2PLinkManager*) link_manager)->setInitializeBidirectionalLinks();
+				((PPLinkManager*) link_manager)->setInitializeBidirectionalLinks();
 			// Receiver tables are only set for P2PLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
@@ -331,7 +331,7 @@ void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {
 	close_link_early_if_no_first_data_packet_comes_in = flag;
 	for (auto pair : link_managers) {
 		const MacId id = pair.first;
-		auto *manager = (P2PLinkManager*) pair.second;
+		auto *manager = (PPLinkManager*) pair.second;
 		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) 
 			manager->setShouldTerminateLinksEarly(flag);
 	}
@@ -359,7 +359,7 @@ void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
 	// now also handle those that already exist
 	for (auto pair : link_managers) {
 		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-			((P2PLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
+			((PPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
 	}	
 }
 
@@ -370,7 +370,7 @@ void MCSOTDMA_Mac::setInitializeBidirectionalLinks(bool flag) {
 	if (flag) {
 		for (auto pair : link_managers) {
 			if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-				((P2PLinkManager*) pair.second)->setInitializeBidirectionalLinks();
+				((PPLinkManager*) pair.second)->setInitializeBidirectionalLinks();
 		}	
 	}
 }
@@ -379,7 +379,7 @@ size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 	size_t n = 0;
 	for (const auto pair : link_managers) 
 		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-			n += ((P2PLinkManager*) pair.second)->getNumUtilizedResources();					
+			n += ((PPLinkManager*) pair.second)->getNumUtilizedResources();					
 	return n;
 }
 
