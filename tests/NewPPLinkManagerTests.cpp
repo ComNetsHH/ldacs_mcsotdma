@@ -49,8 +49,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When new data is reported and the link is *not unestablished*, establishment should *not* be triggered. */
 		void testDontStartLinkEstablishmentIfNotUnestablished() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// initially no link requests and no scheduled broadcast slot
+			CPPUNIT_ASSERT_EQUAL(size_t(0), sh->link_requests.size());	
+			CPPUNIT_ASSERT_EQUAL(false, sh->next_broadcast_scheduled);		
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			// now there should be a link request
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_requests.size());
+			// and a scheduled broadcast slot
+			CPPUNIT_ASSERT_EQUAL(true, sh->next_broadcast_scheduled);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			
+			// now, notify about even more data
+			mac->notifyOutgoing(100, partner_id);
+			// which shouldn't have changed anything
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_requests.size());
+			CPPUNIT_ASSERT_EQUAL(true, sh->next_broadcast_scheduled);
+			CPPUNIT_ASSERT_EQUAL(broadcast_slot, sh->next_broadcast_slot);
 		}
 
 		/** When the link request is being transmitted, this should trigger slot selection. 

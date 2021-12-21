@@ -43,7 +43,9 @@ void NewPPLinkManager::establishLink() {
 	// set callback s.t. the payload can be populated just-in-time.
 	payload->callback = this;
 	// pass to SH link manager
-	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);		
+	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);
+	// update status
+	this->link_status = awaiting_reply;
 
 	// to be able to measure the link establishment time, save the current time slot
 	this->time_when_request_was_generated = mac->getCurrentSlot();
