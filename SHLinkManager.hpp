@@ -15,6 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class SHLinkManager : public LinkManager {
 
 		friend class SHLinkManagerTests;
+		friend class NewPPLinkManagerTests;
 		friend class SystemTests;
 		friend class ThreeUsersTests;
 

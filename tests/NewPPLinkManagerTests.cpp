@@ -5,6 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../NewPPLinkManager.hpp"
+#include "../SHLinkManager.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -12,16 +13,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	private:
 		TestEnvironment *env;
 		uint32_t planning_horizon;
-		NewPPLinkManager *link_manager;
+		NewPPLinkManager *pp;
+		SHLinkManager *sh;
 		MacId own_id, partner_id;		
 		ReservationManager *reservation_manager;
+		MCSOTDMA_Mac *mac;
 
 	public:
 		void setUp() override {
 			own_id = MacId(42);
 			partner_id = MacId(43);
 			env = new TestEnvironment(own_id, partner_id, true);
-			link_manager = (NewPPLinkManager*) env->mac_layer->getLinkManager(partner_id);
+			pp = (NewPPLinkManager*) env->mac_layer->getLinkManager(partner_id);
+			sh = (SHLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			mac = env->mac_layer;
 			reservation_manager = env->mac_layer->getReservationManager();
 		}
 
@@ -31,7 +36,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When new data is reported and the link is not established, establishment should be triggered. */
 		void testStartLinkEstablishment() {
-			link_manager->notifyOutgoing(100);
+			// initially no link requests and no scheduled broadcast slot
+			CPPUNIT_ASSERT_EQUAL(size_t(0), sh->link_requests.size());	
+			CPPUNIT_ASSERT_EQUAL(false, sh->next_broadcast_scheduled);		
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			// now there should be a link request
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_requests.size());
+			// and a scheduled broadcast slot
+			CPPUNIT_ASSERT_EQUAL(true, sh->next_broadcast_scheduled);
 		}
 
 		/** When new data is reported and the link is *not unestablished*, establishment should *not* be triggered. */

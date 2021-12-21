@@ -3,6 +3,9 @@
 //
 
 #include "NewPPLinkManager.hpp"
+#include "MCSOTDMA_Mac.hpp"
+#include "coutdebug.hpp"
+#include "SHLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -25,7 +28,25 @@ void NewPPLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) 
 }
 
 void NewPPLinkManager::notifyOutgoing(unsigned long num_bits) {
+	coutd << *mac << "::" << *this << "::notifyOutgoing(" << num_bits << ") -> ";
+	if (link_status == link_not_established) {
+		coutd << "link not established -> triggering establishment -> ";		
+		establishLink();
+	} else 
+		coutd << "link status is '" << link_status << "' -> nothing to do." << std::endl;
+}
 
+void NewPPLinkManager::establishLink() {
+	// create empty message
+	auto *header = new L2HeaderLinkRequest(link_id);
+	auto *payload = new LinkRequestPayload();
+	// set callback s.t. the payload can be populated just-in-time.
+	payload->callback = this;
+	// pass to SH link manager
+	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);		
+
+	// to be able to measure the link establishment time, save the current time slot
+	this->time_when_request_was_generated = mac->getCurrentSlot();
 }
 
 void NewPPLinkManager::onSlotStart(uint64_t num_slots) {

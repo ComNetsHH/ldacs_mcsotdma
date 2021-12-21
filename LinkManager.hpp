@@ -31,11 +31,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		enum Status {
 			/** Everything is OK. */
 			link_established,
-			/** Link has not been established yet. */
+			/** Link has not been established. */
 			link_not_established,
-			/** Link establishment request has been prepared and we're waiting for the reply. */
+			/** We're waiting for a link reply. */
 			awaiting_reply,
-			/** Link establishment reply has been prepared and we're waiting for the first message. */
+			/** We're waiting for the first transmission burst. */
 			awaiting_data_tx
 		};
 

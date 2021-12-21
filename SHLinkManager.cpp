@@ -230,8 +230,9 @@ void SHLinkManager::onSlotEnd() {
 }
 
 void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {
+	// save request
 	link_requests.emplace_back(header, payload);
-	// Notify about outgoing data, which may schedule the next broadcast slot.
+	// schedule broadcast slot if necessary
 	notifyOutgoing(header->getBits() + payload->getBits());
 }
 

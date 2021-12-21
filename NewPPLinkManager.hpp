@@ -22,6 +22,11 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		void onSlotEnd() override;
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 
+	protected:
+		void establishLink();
+
+		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
+		unsigned int time_when_request_was_generated = 0;
 };
 
 }
