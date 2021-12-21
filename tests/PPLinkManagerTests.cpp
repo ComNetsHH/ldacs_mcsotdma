@@ -20,7 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setUp() override {
 			own_id = MacId(42);
 			partner_id = MacId(43);
-			env = new TestEnvironment(own_id, partner_id, true);
+			env = new TestEnvironment(own_id, partner_id);
 			link_manager = (PPLinkManager*) env->mac_layer->getLinkManager(partner_id);
 			reservation_manager = env->mac_layer->getReservationManager();
 			planning_horizon = env->planning_horizon;
@@ -146,7 +146,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
-			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
+			TestEnvironment rx_env = TestEnvironment(partner_id, own_id);
 			PPLinkManager::LinkState *state = ((PPLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->selectResourceFromRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
 			CPPUNIT_ASSERT_EQUAL(state->timeout, link_request_msg.first->timeout);
 			CPPUNIT_ASSERT_EQUAL(state->burst_length_tx, link_request_msg.first->burst_length_tx);
@@ -209,7 +209,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testReplyToRequest() {
 //			coutd.setVerbose(true);
 			// Prepare request from another user.
-			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
+			TestEnvironment rx_env = TestEnvironment(partner_id, own_id);
 			auto link_request_msg = ((PPLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 
@@ -328,7 +328,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testProcessInitialLinkReply() {
 //			coutd.setVerbose(true);
 			// Prepare request.
-			TestEnvironment rx_env = TestEnvironment(partner_id, own_id, true);
+			TestEnvironment rx_env = TestEnvironment(partner_id, own_id);
 			link_manager->notifyOutgoing(512);
 			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);

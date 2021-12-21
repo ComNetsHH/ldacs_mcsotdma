@@ -6,30 +6,36 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-void onReceptionBurstStart(unsigned int burst_length) {
+NewPPLinkManager::NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
+
+void NewPPLinkManager::onReceptionBurstStart(unsigned int burst_length) {
 
 }
 
-void onReceptionBurst(unsigned int remaining_burst_length) {
+void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 
 }
 
-L2Packet* onTransmissionBurstStart(unsigned int burst_length) {
+L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
 	return nullptr;
 }
 
-void onTransmissionBurst(unsigned int remaining_burst_length) {
+void NewPPLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
 
 }
 
-void notifyOutgoing(unsigned long num_bits) {
+void NewPPLinkManager::notifyOutgoing(unsigned long num_bits) {
 
 }
 
-void onSlotStart(uint64_t num_slots) {
+void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 
 }
 
-void onSlotEnd() {
+void NewPPLinkManager::onSlotEnd() {
+
+}
+
+void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) {
 
 }

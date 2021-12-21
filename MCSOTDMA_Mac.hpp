@@ -213,6 +213,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int default_p2p_link_timeout = 10;
 		/** Number of slots between two transmission bursts. */
 		const unsigned int default_p2p_link_burst_offset = 20;
+		/** TODO REMOVE; while working on it, this flag creates NewPPLinkManager instances. */
+		bool use_new_pp_link_manager = false;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

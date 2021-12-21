@@ -6,6 +6,7 @@
 #include "coutdebug.hpp"
 #include "InetPacketPayload.hpp"
 #include "PPLinkManager.hpp"
+#include "NewPPLinkManager.hpp"
 #include "SHLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
@@ -219,12 +220,15 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {
-			link_manager = new PPLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
-			((PPLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
-			((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
-			if (this->should_initialize_bidirectional_links)
-				((PPLinkManager*) link_manager)->setInitializeBidirectionalLinks();
-			// Receiver tables are only set for P2PLinkManagers.
+			if (!use_new_pp_link_manager) {
+				link_manager = new PPLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
+				((PPLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
+				((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
+				if (this->should_initialize_bidirectional_links)
+					((PPLinkManager*) link_manager)->setInitializeBidirectionalLinks();
+			} else 
+				link_manager = new NewPPLinkManager(internal_id, reservation_manager, this);
+			// Receiver tables are only set for PPLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
 		}

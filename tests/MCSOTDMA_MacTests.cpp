@@ -28,7 +28,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	public:
 		void setUp() override {
-			env = new TestEnvironment(own_id, partner_id, true);
+			env = new TestEnvironment(own_id, partner_id);
 			phy = env->phy_layer;
 			mac = env->mac_layer;
 			arq = env->arq_layer;
