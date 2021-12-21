@@ -19,6 +19,7 @@
 #include "BeaconModuleTests.cpp"
 #include "CongestionEstimatorTests.cpp"
 #include "ThreeUsersTests.cpp"
+#include "NewPPLinkManagerTests.cpp"
 
 int main() {
 	coutd.setVerbose(true);
@@ -38,6 +39,7 @@ int main() {
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
 	runner.addTest(ThreeUsersTests::suite());
+	runner.addTest(NewPPLinkManagerTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;
