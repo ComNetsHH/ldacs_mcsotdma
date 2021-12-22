@@ -94,7 +94,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param p2p Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
 		 * @return Start slot offsets.
 		 */
+		[[deprecated]]
 		std::vector<unsigned int> findCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool p2p) const;
+
+		/**		 
+		 * @param num_proposal_slots 
+		 * @param min_offset 
+		 * @param burst_offset 
+		 * @param burst_length 
+		 * @param burst_length_tx 
+		 * @param timeout 		 
+		 * @return Start slot offsets that could be used to initiate a PP link.
+		 */
+		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const;		
 
 		void lock(unsigned int slot_offset);
 
@@ -229,6 +241,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		uint64_t convertOffsetToIndex(int32_t slot_offset) const;
 
 		/**
+		 * DEPRECATED please use findEarliestIdleSlotsPP now. 
+		 * The difference is that the first burst is not treated specially, where earlier the link reply had been expected.
+		 * 
 		 * @param start_offset
 		 * @param burst_length
 		 * @param burst_length_tx
@@ -238,7 +253,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @throws range_error If no suitable slot range can be found.
 		 * @throws invalid_argument If the planning horizon is exceeded.
 		 */
+		[[deprecated]]
 		unsigned int findEarliestIdleSlotsP2P(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
+
+		/**		 
+		 * @param start_offset 
+		 * @param burst_length 
+		 * @param burst_length_tx 
+		 * @param burst_offset 
+		 * @param timeout 
+		 * @return Start slot where a link with the given characteristics can be initiated.
+		 */
+		unsigned int findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
 		unsigned int findEarliestIdleSlotsBC(unsigned int start_offset) const;
 
 		/**

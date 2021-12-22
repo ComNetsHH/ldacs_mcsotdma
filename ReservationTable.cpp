@@ -215,6 +215,22 @@ unsigned int ReservationTable::findEarliestIdleSlotsP2P(unsigned int start_offse
 	throw std::range_error("No idle slot range could be found.");
 }
 
+unsigned int ReservationTable::findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
+	// start looking
+	for (int t = (int) start_offset; t < planning_horizon - burst_length; t++) {
+		// save all starting slots of each burst
+		std::vector<int> all_slots_in_burst;
+		for (int burst = 0; burst < timeout; burst++)
+			all_slots_in_burst.push_back((int) (burst*burst_offset + t));
+		// make sure that they all denote valid bursts
+		if (std::all_of(all_slots_in_burst.begin(), all_slots_in_burst.end(), [this, burst_length, burst_length_tx](int start_slot) { return this->isBurstValid(start_slot, burst_length, burst_length_tx, false); }))
+			return t; // if so, we've found the earliest starting slot that can be used to initiate a PP link
+	}
+	// if going over the entire horizon didn't find something, 
+	// then there are none -> throw an error
+	throw std::range_error("cannot find an idle slot range");
+}
+
 unsigned int ReservationTable::findEarliestIdleSlotsBC(unsigned int start_offset) const {
 	if (!isValid((int) start_offset))
 		throw std::invalid_argument("Invalid slot range!");
@@ -312,6 +328,26 @@ std::vector<unsigned int> ReservationTable::findCandidates(unsigned int num_prop
 		} // all other exceptions should still end execution
 	}
 	return start_slots;
+}
+
+std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const {
+	std::vector<unsigned int> start_slot_offsets;
+	unsigned int last_offset = min_offset;
+	for (size_t i = 0; i < num_proposal_slots; i++) {
+		// Try to find another slot range.
+		try {
+			int32_t start_slot = (int) findEarliestIdleSlotsPP(last_offset, burst_length, burst_length_tx, burst_offset, timeout);
+			start_slot_offsets.push_back(start_slot);
+			last_offset = start_slot + 1; // Next attempt, look later than current one.
+		} catch (const std::range_error& e) {
+			// This is thrown if no idle range can be found.
+			break; // Stop if no more ranges can be found.
+		} catch (const std::invalid_argument& e) {
+			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
+			break; // Stop if no more ranges can be found.
+		} // all other exceptions should still end execution
+	}
+	return start_slot_offsets;
 }
 
 void ReservationTable::lock(unsigned int slot_offset) {

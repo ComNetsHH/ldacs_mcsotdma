@@ -69,10 +69,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(broadcast_slot, sh->next_broadcast_slot);
 		}
 
+		void testSlotSelection() {
+			unsigned int burst_length = 2, burst_length_tx = 1;
+			auto proposals = pp->slotSelection(pp->proposal_num_frequency_channels, pp->proposal_num_time_slots, burst_length, burst_length_tx);
+			// proposals is a map <channel, <time slots>>
+			// so there should be as many items as channels
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposals.size());
+			for (const auto pair : proposals) {
+				const auto *channel = pair.first;
+				const auto &slots = pair.second;
+				// and per channel, as many slots as was the target
+				CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_time_slots), slots.size());
+				// and these should be starting at the minimum offset
+				// but then all the same for the different channels (don't have to be consecutive in time)
+				for (size_t t = 0; t < pp->proposal_num_time_slots; t++)
+					CPPUNIT_ASSERT_EQUAL((unsigned int) (pp->min_offset_to_allow_processing + t), slots.at(t));
+			}
+		}
+
 		/** When the link request is being transmitted, this should trigger slot selection. 
 		 * The number of proposed resources should match the settings, and these should all be idle. 
 		 * Afterwards, they should be locked. */
-		void testSlotSelection() {
+		void testSlotSelectionThroughLinkRequestTransmission() {
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
 			// trigger link establishment
 			mac->notifyOutgoing(100, partner_id);
@@ -88,8 +106,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(false, sh->next_broadcast_scheduled);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
 			// get proposed resources
-			const auto *link_request = env->phy_layer->outgoing_packets.at(0);
-			
+			auto *link_request = env->phy_layer->outgoing_packets.at(0);
+			int request_index = link_request->getRequestIndex();
+			CPPUNIT_ASSERT(request_index != -1);			
+			const auto *request_payload = (LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index);
+			const auto &proposed_resources = request_payload->proposed_resources;
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposed_resources.size());
+			// they should all be locked
+			for (auto pair : proposed_resources) {
+				const auto *frequency_channel = pair.first;
+				const auto &time_slots = pair.second;
+				CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_time_slots), time_slots.size());
+				const ReservationTable *table = reservation_manager->getReservationTable(frequency_channel);
+				for (size_t t : time_slots) 
+					CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(t).getAction());					
+			}
 		}
 
 		/** Calling notifyOutgoing should update the outgoing traffic estimate. */
@@ -215,8 +246,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	CPPUNIT_TEST_SUITE(NewPPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
-		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);
+		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
 		CPPUNIT_TEST(testSlotSelection);
+		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
 		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
 		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
 		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);

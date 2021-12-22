@@ -12,7 +12,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback {
 
-	friend class NewPPLinkManagerTests;
+	friend class NewPPLinkManagerTests;	
 
 	public:
 		NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
@@ -27,6 +27,8 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 
 	protected:
+		class LockMap;
+		
 		void establishLink();
 
 		/**		 
@@ -52,7 +54,24 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		 */
 		unsigned int getRequiredRxSlots() const;
 
+		std::map<const FrequencyChannel*, std::vector<unsigned int>> slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx) const;
+
+		/**
+		 * Locks all bursts in the respective ReservationTables.
+		 * 
+		 * @param start_slots 
+		 * @param burst_length 
+		 * @param burst_length_tx 
+		 * @param timeout 
+		 * @param is_link_initiator 
+		 * @param table 
+		 * @return Map of locked resources.
+		 */
+		LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table);
+
 	protected:
+		/** Number of transmission bursts until link expiry. */
+		unsigned int timeout_before_link_expiry = 20;
 		/** The number of slots in-between transmission bursts, often denoted as tau. */
 		unsigned int burst_offset = 20;
 		/** Number of slots in-between request and reply to give the receiver sufficient processing time. */
@@ -68,6 +87,44 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
 		unsigned int time_when_request_was_generated = 0;
 		bool force_bidirectional_links = true;
+
+	protected:
+		/** Container that saves the resources that were locked during link establishment. */
+		class LockMap {
+		public:
+			LockMap() : num_slots_since_creation(0) {};
+
+			/** Transmitter resources that were locked. */
+			std::vector<std::pair<ReservationTable*, unsigned int>> locks_transmitter;
+			/** Receiver resources that were locked. */
+			std::vector<std::pair<ReservationTable*, unsigned int>> locks_receiver;
+			/** Local resources that were locked. */
+			std::vector<std::pair<ReservationTable*, unsigned int>> locks_local;
+
+			void merge(const LockMap& other) {
+				for (const auto& pair : other.locks_local)
+					locks_local.push_back(pair);
+				for (const auto& pair : other.locks_receiver)
+					locks_receiver.push_back(pair);
+				for (const auto& pair : other.locks_transmitter)
+					locks_transmitter.push_back(pair);
+			}
+
+			size_t size_local() const {
+				return locks_local.size();
+			}
+			size_t size_receiver() const {
+				return locks_receiver.size();
+			}
+			size_t size_transmitter() const {
+				return locks_transmitter.size();
+			}
+			bool anyLocks() const {
+				return size_local() + size_receiver() + size_transmitter() > 0;
+			}
+
+			unsigned int num_slots_since_creation;
+		};
 };
 
 }
