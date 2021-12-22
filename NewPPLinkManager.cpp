@@ -82,3 +82,9 @@ std::pair<unsigned int, unsigned int> NewPPLinkManager::getTxRxSplit(unsigned in
 	}
 	return {resource_req_me, resource_req_you};
 }
+
+unsigned int NewPPLinkManager::getBurstOffset() const {
+	// TODO have upper layer set a delay target?
+	// or some other way of choosing a burst offset?
+	return 20;
+}
