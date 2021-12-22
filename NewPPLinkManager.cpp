@@ -71,6 +71,13 @@ void NewPPLinkManager::onSlotEnd() {
 
 void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) {
 	coutd << "populating link request -> ";
+
+	// determine number of slots in-between transmission bursts
+	burst_offset = getBurstOffset();
+	// determine number of TX and RX slots
+	std::pair<unsigned int, unsigned int> tx_rx_split = this->getTxRxSplit(getRequiredTxSlots(), getRequiredRxSlots(), burst_offset);
+
+	
 }
 
 std::pair<unsigned int, unsigned int> NewPPLinkManager::getTxRxSplit(unsigned int resource_req_me, unsigned int resource_req_you, unsigned int burst_offset) const {
@@ -87,4 +94,19 @@ unsigned int NewPPLinkManager::getBurstOffset() const {
 	// TODO have upper layer set a delay target?
 	// or some other way of choosing a burst offset?
 	return 20;
+}
+
+unsigned int NewPPLinkManager::getRequiredTxSlots() const {
+	if (!this->force_bidirectional_links && !mac->isThereMoreData(link_id))
+		return 0;
+	// bits
+	unsigned int num_bits_per_burst = (unsigned int) outgoing_traffic_estimate.get();
+	// bits/slot
+	unsigned int datarate = mac->getCurrentDatarate();
+	// slots
+	return std::max(this->force_bidirectional_links ? uint(1) : uint(0), num_bits_per_burst / datarate);
+}
+
+unsigned int NewPPLinkManager::getRequiredRxSlots() const {
+	return this->force_bidirectional_links ? std::max(uint(1), reported_resoure_requirement) : reported_resoure_requirement;
 }

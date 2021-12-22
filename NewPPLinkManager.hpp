@@ -42,9 +42,21 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		 */
 		unsigned int getBurstOffset() const;
 
+		/**		 
+		 * @return Number of TX slots that should be proposed for new links.
+		 */
+		unsigned int getRequiredTxSlots() const;		
+
+		/**		 
+		 * @return Number of RX slots that should be proposed for new links.
+		 */
+		unsigned int getRequiredRxSlots() const;
+
 	protected:
 		/** The number of slots in-between transmission bursts, often denoted as tau. */
 		unsigned int burst_offset = 20;
+		/** Number of slots in-between request and reply to give the receiver sufficient processing time. */
+		const unsigned int min_offset_to_allow_processing = 2;
 		/** Link requests should propose this many distinct frequency channels. */
 		unsigned int proposal_num_frequency_channels = 3;
 		/** Link requests should propose this many distinct time slot resources per frequency channel. */
@@ -55,6 +67,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		unsigned int reported_resoure_requirement = 1;
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
 		unsigned int time_when_request_was_generated = 0;
+		bool force_bidirectional_links = true;
 };
 
 }
