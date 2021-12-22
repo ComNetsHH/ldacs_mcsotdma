@@ -72,3 +72,13 @@ void NewPPLinkManager::onSlotEnd() {
 void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) {
 	coutd << "populating link request -> ";
 }
+
+std::pair<unsigned int, unsigned int> NewPPLinkManager::getTxRxSplit(unsigned int resource_req_me, unsigned int resource_req_you, unsigned int burst_offset) const {
+	unsigned int burst_length = resource_req_me + resource_req_you;
+	if (burst_length > burst_offset) {
+		double tx_fraction = ((double) resource_req_me) / ((double) burst_length);
+		resource_req_me = (unsigned int) (tx_fraction * burst_offset);
+		resource_req_you = burst_offset - resource_req_me;
+	}
+	return {resource_req_me, resource_req_you};
+}

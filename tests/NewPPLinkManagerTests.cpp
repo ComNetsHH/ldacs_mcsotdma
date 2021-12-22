@@ -121,6 +121,46 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_bits / 2, (unsigned int) pp->outgoing_traffic_estimate.get());
 		}
 
+		/** When in total, fewer resources than the burst offset are requested, then just those should be used. */
+		void testTxRxSplitSmallerThanBurstOffset() {
+			unsigned int tx_req = 5, rx_req = 5, burst_offset = 15;
+			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
+			CPPUNIT_ASSERT_EQUAL(tx_req, split.first);
+			CPPUNIT_ASSERT_EQUAL(rx_req, split.second);
+		}
+
+		/** When in total, as many resources as the burst offset are requested, then just those should be used. */
+		void testTxRxSplitEqualToBurstOffset() {
+			unsigned int tx_req = 5, rx_req = 5, burst_offset = 10;
+			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
+			CPPUNIT_ASSERT_EQUAL(tx_req, split.first);
+			CPPUNIT_ASSERT_EQUAL(rx_req, split.second);
+		}
+
+		/** When in total, more resources than the burst offset are requested, then a fair split should be used. */
+		void testTxRxSplitMoreThanBurstOffset() {
+			unsigned int tx_req = 5, rx_req = 5, burst_offset = 6;
+			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
+			CPPUNIT_ASSERT_EQUAL(burst_offset/2, split.first);
+			CPPUNIT_ASSERT_EQUAL(burst_offset/2, split.second);
+		}
+
+		/** When in total, more resources than the burst offset are requested, then a fair split should be used. */
+		void testTxRxSplitMoreThanBurstOffsetOneSided() {
+			unsigned int tx_req = 10, rx_req = 5, burst_offset = 6;
+			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
+			CPPUNIT_ASSERT_EQUAL(uint(4), split.first);
+			CPPUNIT_ASSERT_EQUAL(uint(2), split.second);
+		}
+
+		/** When in total, more resources than the burst offset are requested, then a fair split should be used. */
+		void testTxRxSplitMoreThanBurstOffsetOtherSide() {
+			unsigned int tx_req = 5, rx_req = 10, burst_offset = 6;
+			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
+			CPPUNIT_ASSERT_EQUAL(uint(2), split.first);
+			CPPUNIT_ASSERT_EQUAL(uint(4), split.second);
+		}
+
 		/** When no reply has been received in the advertised slot, link establishment should be re-triggered. */
 		void testReplySlotPassed() {
 			bool is_implemented = false;
@@ -179,6 +219,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSlotSelection);
 		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
 		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
 		// CPPUNIT_TEST(testReplySlotPassed);
 		// CPPUNIT_TEST(testReplyReceived);
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);

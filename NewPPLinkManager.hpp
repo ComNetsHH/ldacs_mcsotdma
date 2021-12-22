@@ -29,6 +29,14 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 	protected:
 		void establishLink();
 
+		/**		 
+		 * @param resource_req_me 
+		 * @param resource_req_you 
+		 * @param burst_offset
+		 * @return {no. of TX slots, no. of RX slots}
+		 */
+		std::pair<unsigned int, unsigned int> getTxRxSplit(unsigned int resource_req_me, unsigned int resource_req_you, unsigned int burst_offset) const;
+
 	protected:
 		/** The number of slots in-between transmission bursts, often denoted as tau. */
 		unsigned int burst_offset = 20;
