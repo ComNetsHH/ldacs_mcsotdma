@@ -73,8 +73,52 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * The number of proposed resources should match the settings, and these should all be idle. 
 		 * Afterwards, they should be locked. */
 		void testSlotSelection() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until request is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
+			for (size_t t = 0; t < broadcast_slot; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(false, sh->next_broadcast_scheduled);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
+			// get proposed resources
+			const auto *link_request = env->phy_layer->outgoing_packets.at(0);
+			
+		}
+
+		/** Calling notifyOutgoing should update the outgoing traffic estimate. */
+		void testOutgoingTrafficEstimateEverySlot() {
+			unsigned int num_bits = 512;
+			size_t num_slots = pp->burst_offset * 10;
+			for (size_t t = 0; t < num_slots; t++) {
+				mac->update(1);
+				pp->notifyOutgoing(num_bits);				
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(num_bits, (unsigned int) pp->outgoing_traffic_estimate.get());
+		}
+
+		/** Calling notifyOutgoing should update the outgoing traffic estimate. 
+		 * If nothing is reported during one time slot, then a zero is put instead.
+		 * */
+		void testOutgoingTrafficEstimateEverySecondSlot() {
+			unsigned int num_bits = 512;
+			size_t num_slots = pp->burst_offset * 10;
+			for (size_t t = 0; t < num_slots; t++) {
+				mac->update(1);
+				if (t % 2 == 0)
+					pp->notifyOutgoing(num_bits);				
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(num_bits / 2, (unsigned int) pp->outgoing_traffic_estimate.get());
 		}
 
 		/** When no reply has been received in the advertised slot, link establishment should be re-triggered. */
@@ -133,14 +177,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testStartLinkEstablishment);
 		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);
 		CPPUNIT_TEST(testSlotSelection);
-		CPPUNIT_TEST(testReplySlotPassed);
-		CPPUNIT_TEST(testReplyReceived);
-		CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
-		CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
-		CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		CPPUNIT_TEST(testUnscheduleOwnReplyUponReplyReception);
-		CPPUNIT_TEST(testEstablishLinkUponReplyReception);
-		CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		// CPPUNIT_TEST(testReplySlotPassed);
+		// CPPUNIT_TEST(testReplyReceived);
+		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
+		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
+		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
+		// CPPUNIT_TEST(testUnscheduleOwnReplyUponReplyReception);
+		// CPPUNIT_TEST(testEstablishLinkUponReplyReception);
+		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

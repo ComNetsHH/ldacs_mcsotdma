@@ -12,29 +12,33 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 NewPPLinkManager::NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
 void NewPPLinkManager::onReceptionBurstStart(unsigned int burst_length) {
-	throw std::runtime_error("not implemented");
+	throw std::runtime_error("onReceptionBurstStart not implemented");
 }
 
 void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
-	throw std::runtime_error("not implemented");
+	throw std::runtime_error("onReceptionBurst not implemented");
 }
 
 L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
-	throw std::runtime_error("not implemented");
+	throw std::runtime_error("onTransmissionBurstStart not implemented");
 	return nullptr;
 }
 
 void NewPPLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
-	throw std::runtime_error("not implemented");
+	throw std::runtime_error("onTransmissionBurst not implemented");
 }
 
 void NewPPLinkManager::notifyOutgoing(unsigned long num_bits) {
 	coutd << *mac << "::" << *this << "::notifyOutgoing(" << num_bits << ") -> ";
+	// trigger link establishment
 	if (link_status == link_not_established) {
 		coutd << "link not established -> triggering establishment -> ";		
 		establishLink();
+	// unless it's already underway/established
 	} else 
 		coutd << "link status is '" << link_status << "' -> nothing to do." << std::endl;
+	// update the traffic estimate	
+	outgoing_traffic_estimate.put(num_bits);
 }
 
 void NewPPLinkManager::establishLink() {
@@ -53,13 +57,18 @@ void NewPPLinkManager::establishLink() {
 }
 
 void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
-	throw std::runtime_error("not implemented");
+	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";		
 }
 
 void NewPPLinkManager::onSlotEnd() {
-	throw std::runtime_error("not implemented");
+	coutd << *mac << "::" << *this << "::onSlotEnd -> ";
+	// update the outgoing traffic estimate if it hasn't been
+	if (!outgoing_traffic_estimate.hasBeenUpdated())
+		outgoing_traffic_estimate.put(0);
+	// mark the outgoing traffic estimate as unset
+	outgoing_traffic_estimate.reset();
 }
 
 void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) {
-	throw std::runtime_error("not implemented");
+	coutd << "populating link request -> ";
 }
