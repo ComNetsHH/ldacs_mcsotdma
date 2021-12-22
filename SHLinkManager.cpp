@@ -118,6 +118,11 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 //			}
 			delete upper_layer_data;
 		}
+		
+		// if no data has been added so far, but link requests should be added
+		// add a broadcast header and no payload first
+		if (packet->getHeaders().size() == 1 && !requests_to_add.empty()) 
+			packet->addMessage(new L2HeaderBroadcast(), nullptr);
 		for (const auto &pair : requests_to_add)
 			packet->addMessage(pair.first, pair.second);		
 

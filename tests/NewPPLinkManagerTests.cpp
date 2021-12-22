@@ -123,6 +123,52 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
+		/** When two links should be established, they should propose non-overlapping resources for each. */
+		void testTwoSlotSelections() {
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(false);
+			// trigger link establishments			
+			mac->notifyOutgoing(100, partner_id);			
+			mac->notifyOutgoing(100, MacId(partner_id.getId() + 1));			
+			// proceed until both requests have been transmitted
+			size_t num_slots = 0, max_slots = 100;			
+			while (env->phy_layer->outgoing_packets.size() < 1 && num_slots++ < max_slots) {				
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();				
+			}			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			// proposals is a map <channel, <time slots>>
+			auto *link_request = env->phy_layer->outgoing_packets.at(0);			
+			int request_index_1 = -1, request_index_2 = -1;			
+			for (size_t i = 0; i < link_request->getHeaders().size(); i++) {
+				if (link_request->getHeaders().at(i)->frame_type == L2Header::FrameType::link_establishment_request) {
+					if (request_index_1 == -1)
+						request_index_1 = i;
+					else 
+						request_index_2 = i;
+				}
+			}			
+			auto &proposed_resources_1 = ((LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index_1))->proposed_resources;			 						
+			auto &proposed_resources_2 = ((LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index_2))->proposed_resources;
+			// so there should be as many items as channels
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposed_resources_1.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposed_resources_2.size());
+			for (const auto pair : proposed_resources_1) {
+				const auto *channel = pair.first;
+				const auto &slots_1 = pair.second;
+				const auto &slots_2 = proposed_resources_2[channel];
+				// and per channel, as many slots as was the target
+				CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_time_slots), slots_1.size());
+				CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_time_slots), slots_2.size());
+				// and for this channel, the time slots shouldn't overlap				
+				for (size_t i = 0; i < slots_1.size(); i++) 
+					for (size_t j = 0; j < slots_2.size(); j++) 
+						CPPUNIT_ASSERT(slots_1.at(i) != slots_2.at(j));
+			}
+		}
+
 		/** Calling notifyOutgoing should update the outgoing traffic estimate. */
 		void testOutgoingTrafficEstimateEverySlot() {
 			unsigned int num_bits = 512;
@@ -249,6 +295,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
 		CPPUNIT_TEST(testSlotSelection);
 		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
+		CPPUNIT_TEST(testTwoSlotSelections);		
 		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
 		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
 		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
