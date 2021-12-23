@@ -21,9 +21,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		uint64_t getBandwidth() const;
 
-		bool isPointToPointChannel() const;
+		/**		 
+		 * @return Whether this is a point-to-point channel.
+		 */
+		bool isPP() const;
 
-		bool isBroadcastChannel() const;
+		/**		 
+		 * @return Whether this is a shared channel.
+		 */
+		bool isSH() const;
 
 		bool isBlocked() const;
 
@@ -53,7 +59,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const FrequencyChannel& channel) {
-		if (channel.isPointToPointChannel())
+		if (channel.isPP())
 			return stream << std::to_string(channel.getCenterFrequency()) << "kHz";
 		else
 			return stream << "BC";

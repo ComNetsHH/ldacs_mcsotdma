@@ -20,17 +20,17 @@ uint64_t TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::getBandwidth() const {
 	return this->bandwidth;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isPointToPointChannel() const {
+bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isPP() const {
 	return this->is_p2p;
 }
 
-bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isBroadcastChannel() const {
-	return !this->isPointToPointChannel();
+bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::isSH() const {
+	return !this->isPP();
 }
 
 bool
 TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator==(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) const {
-	return this->isPointToPointChannel() == other.isPointToPointChannel() && this->getCenterFrequency() == other.getCenterFrequency() && this->getBandwidth() == other.getBandwidth();
+	return this->isPP() == other.isPP() && this->getCenterFrequency() == other.getCenterFrequency() && this->getBandwidth() == other.getBandwidth();
 }
 
 bool TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel::operator<(const TUHH_INTAIRNET_MCSOTDMA::FrequencyChannel& other) const {

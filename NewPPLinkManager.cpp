@@ -12,8 +12,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 NewPPLinkManager::NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
-void NewPPLinkManager::onReceptionBurstStart(unsigned int burst_length) {
-	throw std::runtime_error("onReceptionBurstStart not implemented");
+void NewPPLinkManager::onReceptionBurstStart(unsigned int burst_length) {	
 }
 
 void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
@@ -21,7 +20,6 @@ void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
-	throw std::runtime_error("onTransmissionBurstStart not implemented");
 	return nullptr;
 }
 
@@ -87,8 +85,31 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 	for (const auto pair : proposal_resources) {
 		const auto *frequency_channel = pair.first;
 		const auto &time_slots = pair.second;
-		locked_resources.merge(this->lock_bursts(time_slots, burst_length, burst_length_tx, this->timeout_before_link_expiry, true, reservation_manager->getReservationTable(frequency_channel)));
+		// for PP channels, all bursts until link expiry must be locked
+		if (frequency_channel->isPP())
+			locked_resources.merge(this->lock_bursts(time_slots, burst_length, burst_length_tx, this->timeout_before_link_expiry, true, reservation_manager->getReservationTable(frequency_channel)));
+		// for the SH, just a single slot for the reply must be reserved
+		else {			
+			if (time_slots.size() != 1)
+				throw std::runtime_error("PPLinkManager::populateLinkRequest has wrong number of reply slot(s): " + std::to_string(time_slots.size()));
+			unsigned int reply_offset = time_slots.at(0);			
+			auto *sh_table = reservation_manager->getBroadcastReservationTable();			
+			// remember, which one
+			locked_resources.locks_local.push_back({sh_table, reply_offset});
+			// mark as reception
+			Reservation reply_reservation = Reservation(link_id, Reservation::RX);
+			sh_table->mark(reply_offset, reply_reservation);			
+			// and schedule a receiver
+			for (auto *rx_table : reservation_manager->getRxTables()) {
+				if (rx_table->isIdle(reply_offset)) {
+					locked_resources.locks_receiver.push_back({rx_table, reply_offset});
+					rx_table->mark(reply_offset, reply_reservation);
+					break;
+				}
+			}						
+		}
 	}
+	
 	// populate message
 	header->timeout = this->timeout_before_link_expiry;
 	header->burst_length = burst_length;
@@ -101,6 +122,18 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx) const {
 	coutd << "slot selection -> ";
 	auto proposals = std::map<const FrequencyChannel*, std::vector<unsigned int>>();
+	// choose a reply slot
+	const ReservationTable *sh_table = reservation_manager->getBroadcastReservationTable();
+	unsigned int reply_slot = 0;
+	for (int t = this->min_offset_to_allow_processing; t < sh_table->getPlanningHorizon(); t++) {
+		if (sh_table->getReservation(t).isIdle()) {
+			reply_slot = t;
+			break;
+		}
+	}
+	if (reply_slot == 0)
+		throw std::runtime_error("PP slot selection couldn't determine a suitable slot for a link reply.");
+	proposals[sh_table->getLinkedChannel()].push_back(reply_slot);
 	// get reservation tables sorted by their numbers of idle slots
 	auto tables_queue = reservation_manager->getSortedP2PReservationTables();
 	// until we've considered a sufficient number of channels or have run out of channels
@@ -113,7 +146,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::s
 		if (table->getLinkedChannel()->isBlocked())
 			continue;
 		// find time slots to propose
-		auto candidate_slots = table->findPPCandidates(num_time_slots, this->min_offset_to_allow_processing, this->burst_offset, burst_length, burst_length_tx, this->timeout_before_link_expiry);
+		auto candidate_slots = table->findPPCandidates(num_time_slots, reply_slot + this->min_offset_to_allow_processing, this->burst_offset, burst_length, burst_length_tx, this->timeout_before_link_expiry);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
 			coutd << slot << ":" << slot + burst_length - 1 << " ";

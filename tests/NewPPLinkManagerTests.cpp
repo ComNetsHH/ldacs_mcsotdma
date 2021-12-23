@@ -74,16 +74,22 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto proposals = pp->slotSelection(pp->proposal_num_frequency_channels, pp->proposal_num_time_slots, burst_length, burst_length_tx);
 			// proposals is a map <channel, <time slots>>
 			// so there should be as many items as channels
-			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposals.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposals.size()); // +1 because of the reply slot on the SH 
 			for (const auto pair : proposals) {
-				const auto *channel = pair.first;
-				const auto &slots = pair.second;
-				// and per channel, as many slots as was the target
-				CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_time_slots), slots.size());
-				// and these should be starting at the minimum offset
-				// but then all the same for the different channels (don't have to be consecutive in time)
-				for (size_t t = 0; t < pp->proposal_num_time_slots; t++)
-					CPPUNIT_ASSERT_EQUAL((unsigned int) (pp->min_offset_to_allow_processing + t), slots.at(t));
+				const auto *channel = pair.first;				
+				const auto &slots = pair.second;								
+				if (channel->isPP()) {
+					// per channel, as many slots as was the target					
+					CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_time_slots), slots.size());
+					// and these should be starting at the minimum offset
+					// but then all the same for the different channels (don't have to be consecutive in time)
+					for (size_t t = 0; t < pp->proposal_num_time_slots; t++)
+						CPPUNIT_ASSERT_EQUAL((unsigned int) (2*pp->min_offset_to_allow_processing + t), slots.at(t)); // *2 because of link reply that in this case must be scheduled at the min_offset slot
+				// where the SH is special, as only a single slot for the link reply should've been selected
+				} else {
+					CPPUNIT_ASSERT_EQUAL(size_t(1), slots.size());
+					CPPUNIT_ASSERT_EQUAL((unsigned int) pp->min_offset_to_allow_processing, slots.at(0));
+				}
 			}
 		}
 
@@ -111,10 +117,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(request_index != -1);			
 			const auto *request_payload = (LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index);
 			const auto &proposed_resources = request_payload->proposed_resources;
-			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposed_resources.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposed_resources.size()); // +1 because of the reply slot on the SH 
 			// they should all be locked
 			for (auto pair : proposed_resources) {
 				const auto *frequency_channel = pair.first;
+				if (frequency_channel->isSH())
+					continue;
 				const auto &time_slots = pair.second;
 				CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_time_slots), time_slots.size());
 				const ReservationTable *table = reservation_manager->getReservationTable(frequency_channel);
@@ -153,10 +161,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto &proposed_resources_1 = ((LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index_1))->proposed_resources;			 						
 			auto &proposed_resources_2 = ((LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index_2))->proposed_resources;
 			// so there should be as many items as channels
-			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposed_resources_1.size());
-			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels), proposed_resources_2.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposed_resources_1.size()); // +1 because of the reply slot on the SH 
+			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposed_resources_2.size()); // +1 because of the reply slot on the SH 
 			for (const auto pair : proposed_resources_1) {
 				const auto *channel = pair.first;
+				if (channel->isSH())
+					continue;
 				const auto &slots_1 = pair.second;
 				const auto &slots_2 = proposed_resources_2[channel];
 				// and per channel, as many slots as was the target
@@ -236,6 +246,41 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
 			CPPUNIT_ASSERT_EQUAL(uint(2), split.first);
 			CPPUNIT_ASSERT_EQUAL(uint(4), split.second);
+		}
+
+		/** At transmission of the link request, the reply reception should be reserved on the SH and for the receiver. */
+		void testReplySlotReserved() {
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until request is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
+			for (size_t t = 0; t < broadcast_slot; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(false, sh->next_broadcast_scheduled);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
+			// now the reply slot should be awaited on the SH
+			auto *sh_table = reservation_manager->getBroadcastReservationTable();
+			int reply_slot = 0;
+			for (int t = 0; t < planning_horizon; t++) {
+				if (sh_table->isUtilized(t)) {
+					reply_slot = t;
+					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), sh_table->getReservation(t));
+					break;
+				}
+			}
+			CPPUNIT_ASSERT_GREATER(0, reply_slot);
+			size_t num_rx_reservations = 0;
+			for (auto *rx_table : reservation_manager->getRxTables()) {
+				if (!rx_table->isIdle(reply_slot))
+					num_rx_reservations++;
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
 		}
 
 		/** When no reply has been received in the advertised slot, link establishment should be re-triggered. */
