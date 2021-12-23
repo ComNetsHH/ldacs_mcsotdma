@@ -92,10 +92,10 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 		// for the SH, just a single slot for the reply must be reserved
 		else {			
 			if (time_slots.size() != 1)
-				throw std::runtime_error("PPLinkManager::populateLinkRequest has wrong number of reply slot(s): " + std::to_string(time_slots.size()));
+				throw std::runtime_error("PPLinkManager::populateLinkRequest not 1 reply slot but " + std::to_string(time_slots.size()));
 			reply_offset = time_slots.at(0);			
 			auto *sh_table = reservation_manager->getBroadcastReservationTable();			
-			// remember, which one
+			// remember which one
 			locked_resources.locks_local.push_back({sh_table, reply_offset});
 			// mark as reception
 			Reservation reply_reservation = Reservation(link_id, Reservation::RX);
