@@ -82,6 +82,7 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 	auto proposal_resources = this->slotSelection(this->proposal_num_frequency_channels, this->proposal_num_time_slots, burst_length, burst_length_tx);
 	// lock them
 	auto locked_resources = LockMap();
+	unsigned int reply_offset = 0;
 	for (const auto pair : proposal_resources) {
 		const auto *frequency_channel = pair.first;
 		const auto &time_slots = pair.second;
@@ -92,7 +93,7 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 		else {			
 			if (time_slots.size() != 1)
 				throw std::runtime_error("PPLinkManager::populateLinkRequest has wrong number of reply slot(s): " + std::to_string(time_slots.size()));
-			unsigned int reply_offset = time_slots.at(0);			
+			reply_offset = time_slots.at(0);			
 			auto *sh_table = reservation_manager->getBroadcastReservationTable();			
 			// remember, which one
 			locked_resources.locks_local.push_back({sh_table, reply_offset});
@@ -115,6 +116,7 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 	header->burst_length = burst_length;
 	header->burst_length_tx = burst_length_tx;
 	header->burst_offset = burst_offset;
+	header->reply_offset = reply_offset;
 	payload->proposed_resources = proposal_resources;
 	coutd << "request populated -> ";
 }
