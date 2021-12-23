@@ -279,6 +279,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (auto *rx_table : reservation_manager->getRxTables()) {
 				if (!rx_table->isIdle(reply_slot))
 					num_rx_reservations++;
+				for (int t = 0; t < planning_horizon; t++) {
+					if (t == reply_slot)
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), rx_table->getReservation(t));
+					else
+						CPPUNIT_ASSERT_EQUAL(true, rx_table->isIdle(t));
+				}
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
 		}
