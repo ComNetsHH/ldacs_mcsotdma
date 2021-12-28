@@ -143,10 +143,11 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 	header->burst_offset = burst_offset;
 	header->reply_offset = reply_offset;
 	payload->proposed_resources = proposal_resources;
-	coutd << "request populated -> ";
+	coutd << "request populated -> expecting reply in " << reply_offset << " slots, changing link status '" << this->link_status << "->";
 	// remember when the reply is expected
 	this->time_slots_until_reply = reply_offset;
-	this->link_status = awaiting_reply;
+	this->link_status = awaiting_reply;	
+	coutd << this->link_status << "' -> ";
 }
 
 std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx) const {

@@ -24,7 +24,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			own_id = MacId(42);
 			partner_id = MacId(43);
 			env = new TestEnvironment(own_id, partner_id, true);
-			env_you = new TestEnvironment(partner_id, own_id, false);
+			env_you = new TestEnvironment(partner_id, own_id, true);
 			env->phy_layer->connected_phys.push_back(env_you->phy_layer);
 			env_you->phy_layer->connected_phys.push_back(env->phy_layer);
 			mac = env->mac_layer;
