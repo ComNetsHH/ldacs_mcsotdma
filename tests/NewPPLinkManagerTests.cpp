@@ -13,11 +13,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	private:
 		TestEnvironment* env, * env_you;
 		uint32_t planning_horizon;
-		NewPPLinkManager *pp;
-		SHLinkManager *sh;
+		NewPPLinkManager *pp, *pp_you;
+		SHLinkManager *sh, *sh_you;
 		MacId own_id, partner_id;		
 		ReservationManager *reservation_manager;
-		MCSOTDMA_Mac *mac;
+		MCSOTDMA_Mac *mac, *mac_you;
 
 	public:
 		void setUp() override {
@@ -27,10 +27,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env_you = new TestEnvironment(partner_id, own_id, false);
 			env->phy_layer->connected_phys.push_back(env_you->phy_layer);
 			env_you->phy_layer->connected_phys.push_back(env->phy_layer);
-			pp = (NewPPLinkManager*) env->mac_layer->getLinkManager(partner_id);
-			sh = (SHLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			mac = env->mac_layer;
-			reservation_manager = env->mac_layer->getReservationManager();
+			mac_you = env_you->mac_layer;
+			pp = (NewPPLinkManager*) mac->getLinkManager(partner_id);
+			pp_you = (NewPPLinkManager*) mac_you->getLinkManager(own_id);
+			sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);			
+			sh_you = (SHLinkManager*) mac_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);						
+			reservation_manager = mac->getReservationManager();
 		}
 
 		void tearDown() override {
@@ -325,8 +328,34 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When an expected reply has been received, the link status should reflect that. */
 		void testReplyReceived() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until request is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
+			for (size_t t = 0; t < broadcast_slot; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);
+			// proceed until link reply slot
+			unsigned int reply_slot = pp->time_slots_until_reply;
+			CPPUNIT_ASSERT_GREATER(uint(0), reply_slot);
+			for (size_t t = 0; t < reply_slot; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+
 		}
 
 		/** When a link request is received, but the indicated reply slot is not suitable, this should trigger link establishment. */
@@ -370,20 +399,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 	CPPUNIT_TEST_SUITE(NewPPLinkManagerTests);
-		CPPUNIT_TEST(testStartLinkEstablishment);
-		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
-		CPPUNIT_TEST(testSlotSelection);
-		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
-		CPPUNIT_TEST(testTwoSlotSelections);		
-		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
-		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
-		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
-		CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		CPPUNIT_TEST(testReplySlotPassed);
-		// CPPUNIT_TEST(testReplyReceived);
+		// CPPUNIT_TEST(testStartLinkEstablishment);
+		// CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
+		// CPPUNIT_TEST(testSlotSelection);
+		// CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
+		// CPPUNIT_TEST(testTwoSlotSelections);		
+		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
+		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		// CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
+		// CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
+		// CPPUNIT_TEST(testReplySlotPassed);
+		CPPUNIT_TEST(testReplyReceived);
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
