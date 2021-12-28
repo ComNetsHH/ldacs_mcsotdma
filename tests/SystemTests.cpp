@@ -1099,7 +1099,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 		
 		/**
-		 * When there's no broadcasts going on, link requests should only be base header + link request.
+		 * When there's no broadcasts going on, link requests should be base header + broadcast header + link request.
 		 * */
 		void testLinkRequestPacketsNoBroadcasts() {
 			mac_layer_me->setInitializeBidirectionalLinks(true);
@@ -1128,7 +1128,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(2)->frame_type);
 				}
 			}
-			CPPUNIT_ASSERT_EQUAL(size_t(2), num_requests);
+			CPPUNIT_ASSERT(num_requests == 2 || num_requests == 1);
 		}
 
 		/**
