@@ -308,6 +308,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->onSlotEnd();
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);
+			// proceed until link reply slot
+			unsigned int reply_slot = pp->time_slots_until_reply;
+			CPPUNIT_ASSERT_GREATER(uint(0), reply_slot);
+			for (size_t t = 0; t < reply_slot; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			// we're not updating the neighbor, so the reply is certainly not received			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_pp_link_missed_last_reply_opportunity.get());
+			// which brings us back to the state where we're awaiting the request generation (since link establishment should've been re-triggered)
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp->link_status);
 		}
 
 		/** When an expected reply has been received, the link status should reflect that. */
@@ -369,7 +382,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
 		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
 		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		// CPPUNIT_TEST(testReplySlotPassed);
+		CPPUNIT_TEST(testReplySlotPassed);
 		// CPPUNIT_TEST(testReplyReceived);
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
