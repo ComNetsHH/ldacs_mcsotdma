@@ -40,7 +40,12 @@ void NewPPLinkManager::notifyOutgoing(unsigned long num_bits) {
 	outgoing_traffic_estimate.put(num_bits);
 }
 
-void NewPPLinkManager::establishLink() {
+void NewPPLinkManager::establishLink() {	
+	coutd << "starting link establishment -> ";
+	if (this->link_status == link_established) {
+		coutd << "status is '" << this->link_status << "' -> no need to establish -> ";
+		return;
+	}
 	// create empty message
 	auto *header = new L2HeaderLinkRequest(link_id);
 	auto *payload = new LinkRequestPayload();
@@ -49,7 +54,8 @@ void NewPPLinkManager::establishLink() {
 	// pass to SH link manager
 	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);
 	// update status
-	this->link_status = awaiting_reply;
+	coutd << "changing link status '" << this->link_status << "->" << awaiting_request_generation << "' -> ";
+	this->link_status = awaiting_request_generation;	
 
 	// to be able to measure the link establishment time, save the current time slot
 	this->time_when_request_was_generated = mac->getCurrentSlot();
@@ -57,6 +63,14 @@ void NewPPLinkManager::establishLink() {
 
 void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";		
+	// decrement time until the expected reply
+	if (this->time_slots_until_reply > 0)
+		this->time_slots_until_reply--;
+	if (this->attempt_link_establishment_again) {
+		coutd << "re-attempting link establishment -> ";
+		establishLink();
+		this->attempt_link_establishment_again = false;
+	}
 }
 
 void NewPPLinkManager::onSlotEnd() {
@@ -66,11 +80,17 @@ void NewPPLinkManager::onSlotEnd() {
 		outgoing_traffic_estimate.put(0);
 	// mark the outgoing traffic estimate as unset
 	outgoing_traffic_estimate.reset();
+	// has an expected reply not arrived?
+	if (link_status == awaiting_reply && this->time_slots_until_reply == 0) {
+		coutd << "expected reply hasn't arrived -> trying to establish a new link -> ";
+		mac->statistcReportPPLinkMissedLastReplyOpportunity();
+		link_status = link_not_established;
+		establishLink();
+	}
 }
 
 void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) {
 	coutd << "populating link request -> ";
-
 	// determine number of slots in-between transmission bursts
 	burst_offset = getBurstOffset();
 	// determine number of TX and RX slots
@@ -80,6 +100,11 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 				 burst_length = burst_length_tx + burst_length_rx;
 	// select proposal resources
 	auto proposal_resources = this->slotSelection(this->proposal_num_frequency_channels, this->proposal_num_time_slots, burst_length, burst_length_tx);
+	if (proposal_resources.size() < size_t(2)) { // 1 proposal is the link reply, so we expect at least 2
+		coutd << "couldn't determine any proposal resources -> will attempt again next slot -> ";
+		this->attempt_link_establishment_again = true;
+		throw std::invalid_argument("couldn't determine any proposal resources");
+	}		
 	// lock them
 	auto locked_resources = LockMap();
 	unsigned int reply_offset = 0;
@@ -119,6 +144,9 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkReq
 	header->reply_offset = reply_offset;
 	payload->proposed_resources = proposal_resources;
 	coutd << "request populated -> ";
+	// remember when the reply is expected
+	this->time_slots_until_reply = reply_offset;
+	this->link_status = awaiting_reply;
 }
 
 std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx) const {
@@ -158,7 +186,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::s
 			proposals[table->getLinkedChannel()].push_back(slot);
 		// increment number of channels that have been considered
 		num_channels_considered++;
-	}
+	}	
 	return proposals;
 }
 

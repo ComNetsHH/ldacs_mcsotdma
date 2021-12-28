@@ -86,7 +86,10 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		unsigned int reported_resoure_requirement = 1;
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
 		unsigned int time_when_request_was_generated = 0;
+		unsigned int time_slots_until_reply = 0;
 		bool force_bidirectional_links = true;
+		/** Set to true if link establishment should be re-attempted next slot. */
+		bool attempt_link_establishment_again = false;
 
 	protected:
 		/** Container that saves the resources that were locked during link establishment. */

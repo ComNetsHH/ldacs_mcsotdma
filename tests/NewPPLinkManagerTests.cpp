@@ -11,7 +11,7 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class NewPPLinkManagerTests : public CppUnit::TestFixture {
 	private:
-		TestEnvironment *env;
+		TestEnvironment* env, * env_you;
 		uint32_t planning_horizon;
 		NewPPLinkManager *pp;
 		SHLinkManager *sh;
@@ -24,6 +24,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			own_id = MacId(42);
 			partner_id = MacId(43);
 			env = new TestEnvironment(own_id, partner_id, true);
+			env_you = new TestEnvironment(partner_id, own_id, false);
+			env->phy_layer->connected_phys.push_back(env_you->phy_layer);
+			env_you->phy_layer->connected_phys.push_back(env->phy_layer);
 			pp = (NewPPLinkManager*) env->mac_layer->getLinkManager(partner_id);
 			sh = (SHLinkManager*) env->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 			mac = env->mac_layer;
@@ -32,6 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void tearDown() override {
 			delete env;
+			delete env_you;
 		}
 
 		/** When new data is reported and the link is not established, establishment should be triggered. */
@@ -291,8 +295,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When no reply has been received in the advertised slot, link establishment should be re-triggered. */
 		void testReplySlotPassed() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until request is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
+			for (size_t t = 0; t < broadcast_slot; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
 		}
 
 		/** When an expected reply has been received, the link status should reflect that. */

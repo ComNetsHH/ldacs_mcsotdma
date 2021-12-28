@@ -33,6 +33,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_established,
 			/** Link has not been established. */
 			link_not_established,
+			/** Awaiting time slot where the request is generated and transmitted. */
+			awaiting_request_generation,
 			/** We're waiting for a link reply. */
 			awaiting_reply,
 			/** We're waiting for the first transmission burst. */
@@ -188,6 +190,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		switch (status) {
 			case LinkManager::link_not_established: {
 				str = "link_not_established";
+				break;
+			}
+			case LinkManager::awaiting_request_generation: {
+				str = "awaiting_request_generation";
 				break;
 			}
 			case LinkManager::awaiting_reply: {

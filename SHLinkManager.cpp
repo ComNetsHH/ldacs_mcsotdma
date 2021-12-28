@@ -62,7 +62,13 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			// Compute payload.
 			if (pair.second->callback == nullptr)
 				throw std::invalid_argument("SHLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
-			pair.second->callback->populateLinkRequest(pair.first, pair.second);
+			try {
+				pair.second->callback->populateLinkRequest(pair.first, pair.second);
+			} catch (const std::invalid_argument &e) {
+				coutd << "ignoring invalid link request -> ";
+				link_requests.erase(link_requests.begin());
+				continue;
+			}
 			// Add to the packet if it fits.
 			if (pair.first->getBits() + pair.second->getBits() <= capacity) {
 				requests_to_add.push_back(pair);
@@ -94,7 +100,7 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 					if (upper_layer_header->frame_type == L2Header::link_info) {
 						// populate
 						auto link_info_payload = (LinkInfoPayload*&) upper_layer_payload;
-						link_info_payload->populate();
+						link_info_payload->populate();						
 						// check if still valid
 						if (link_info_payload->hasExpired())
 							continue; // don't add it if invalid

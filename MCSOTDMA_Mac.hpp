@@ -27,6 +27,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_PhyTests;
 		friend class ThreeUsersTests;
 		friend class P2PLinkManagerTests;
+		friend class NewPPLinkManagerTests;
 		friend class SHLinkManagerTests;
 
 		MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);

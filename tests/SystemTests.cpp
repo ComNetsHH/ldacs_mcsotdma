@@ -1122,9 +1122,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (auto *packet : phy_layer_me->outgoing_packets) {
 				if (packet->getRequestIndex() != -1) {
 					num_requests++;
-					CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+					CPPUNIT_ASSERT_EQUAL(size_t(3), packet->getHeaders().size());
 					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, packet->getHeaders().at(0)->frame_type);
-					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(1)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, packet->getHeaders().at(1)->frame_type);
+					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(2)->frame_type);
 				}
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(2), num_requests);

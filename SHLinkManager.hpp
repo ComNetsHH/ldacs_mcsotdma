@@ -147,7 +147,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MovingAverage avg_num_slots_inbetween_packet_generations;
 		unsigned int num_slots_since_last_packet_generation = 0;
 		bool packet_generated_this_slot = false;
-		ContentionMethod contention_method = binomial_estimate;
+		ContentionMethod contention_method = randomized_slotted_aloha;
 	};
 }
 
