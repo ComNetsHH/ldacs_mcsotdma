@@ -46,6 +46,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void sendLinkRequest(L2HeaderLinkRequest* header, LinkRequestPayload* payload);
 
 		/**
+		 * Schedules a link reply at the specified time slot offset.
+		 * 
+		 * @param header 
+		 * @param payload 
+		 * @param time_slot_offset 
+		 */
+		void sendLinkReply(L2HeaderLinkReply* header, LinkRequestPayload* payload, unsigned int time_slot_offset);
+
+		/**
 		 * Cancels all link requests towards 'id'.
 		 * @param id
 		 * @return Number of removed requests.
@@ -83,6 +92,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setEnableBeacons(bool flag);		
 
 		void onPacketReception(L2Packet*& packet) override;
+
+		bool canSendLinkReply(unsigned int time_slot_offset) const;
 
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob) const;
@@ -125,6 +136,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;
+		/** Collection of link replies and corresponding time slots where they should be transmitted. */
+		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkRequestPayload*>>> link_replies;
 		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
 		ContentionEstimator contention_estimator;
 		BeaconModule beacon_module;

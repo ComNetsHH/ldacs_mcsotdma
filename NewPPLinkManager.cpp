@@ -304,3 +304,123 @@ unsigned int NewPPLinkManager::getRequiredTxSlots() const {
 unsigned int NewPPLinkManager::getRequiredRxSlots() const {
 	return this->force_bidirectional_links ? std::max(uint(1), reported_resoure_requirement) : reported_resoure_requirement;
 }
+
+void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
+	mac->statisticReportLinkRequestReceived();
+	// initial link request
+	if (this->link_status == link_not_established) {
+		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkRequestPayload*&) payload);
+	// cancel the own request and process this one
+	} else if (this->link_status == awaiting_request_generation) {
+		throw std::runtime_error("handling link requests when own link is awaiting request generation is not implemented");
+	// cancel the own reply expectation and process this request
+	} else if (this->link_status == awaiting_reply) {
+		throw std::runtime_error("handling link requests when own link is awaiting reply is not implemented");
+	// cancel the scheduled link and process this request
+	} else if (this->link_status == awaiting_data_tx) {
+		throw std::runtime_error("handling link requests when own link is awaiting data transmission is not implemented");
+	// link re-establishment
+	} else if (this->link_status == link_established) {
+		this->processLinkRequestMessage_reestablish(header, payload);
+	} else {	
+		throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage");	
+	}
+} 
+
+void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+	coutd << "checking for viable resources -> ";
+	// check whether reply slot is viable	
+	bool free_to_send_reply = false;	
+	unsigned int reply_time_slot_offset = 0;
+	auto proposed_resources = payload->proposed_resources;
+	SHLinkManager *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+	for (auto it = proposed_resources.begin(); it != proposed_resources.end(); it++) {
+		auto pair = *it;
+		if (pair.first->isSH()) {
+			reply_time_slot_offset = pair.second.at(0);
+			free_to_send_reply = sh_manager->canSendLinkReply(reply_time_slot_offset);
+			// remove this item
+			proposed_resources.erase(it);
+			break;
+		}
+	}	 		
+	coutd << "reply on SH in " << reply_time_slot_offset << " slots is " << (free_to_send_reply ? "viable" : "NOT viable") << " -> ";
+	if (free_to_send_reply) {		
+		try {				
+			// randomly choose a viable resource
+			auto chosen_resource = chooseRandomResource(proposed_resources, header->burst_length, header->burst_length_tx);
+			const FrequencyChannel *chosen_freq_channel = chosen_resource.first;
+			unsigned int chosen_time_slot_offset = chosen_resource.second;
+			// save the link state
+			bool is_link_initiator = false; // we've received a request
+			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_length, header->burst_length_tx, chosen_time_slot_offset, is_link_initiator, chosen_freq_channel);				
+			coutd << "randomly chose " << chosen_time_slot_offset << "@" << *chosen_freq_channel << " -> ";
+			// schedule the link reply
+			L2HeaderLinkReply *header = new L2HeaderLinkReply();
+			header->burst_length = link_state.burst_length;
+			header->burst_length_tx = link_state.burst_length_tx;
+			header->burst_offset = link_state.next_burst_in;
+			header->timeout = link_state.timeout;
+			header->dest_id = link_id;
+			LinkRequestPayload *payload = new LinkRequestPayload();
+			// write selected resource into payload
+			payload->proposed_resources[chosen_freq_channel].push_back(chosen_time_slot_offset);
+			sh_manager->sendLinkReply(header, payload, reply_time_slot_offset);			
+		} catch (const std::invalid_argument& e) {
+			coutd << "no proposed resources were viable -> attempting own link establishment -> ";
+			establishLink();
+		}
+	} else { // sending reply is not viable 
+		coutd << "attempting own link establishment -> ";
+		establishLink(); // so make a counter proposal
+	}
+}
+
+std::pair<const FrequencyChannel*, unsigned int> NewPPLinkManager::chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx) {
+	std::vector<const FrequencyChannel*> viable_resource_channel;
+	std::vector<unsigned int> viable_resource_slot;
+	// For each resource...
+	coutd << "checking ";
+	for (const auto &resource : resources) {
+		const FrequencyChannel *channel = resource.first;
+		const std::vector<unsigned int> &slots = resource.second;
+		// ... get the channel's ReservationTable
+		const ReservationTable *table = reservation_manager->getReservationTable(channel);
+		// ... and check all proposed slot ranges, saving viable ones.		
+		for (unsigned int slot : slots) {
+			coutd << slot << "@" << *channel << " ";
+			// ... isViableProposal checks that the range is idle and hardware available
+			if (isProposalViable(table, slot, burst_length, burst_length_tx, burst_offset, this->timeout_before_link_expiry)) {
+				viable_resource_channel.push_back(channel);
+				viable_resource_slot.push_back(slot);
+				coutd << "(viable), ";
+			} else
+				coutd << "(busy), ";
+		}
+	}
+	coutd << "-> ";
+	if (viable_resource_channel.empty())
+		throw std::invalid_argument("No viable resources were provided.");
+	else {
+		auto random_index = getRandomInt(0, viable_resource_channel.size());
+		return {viable_resource_channel.at(random_index), viable_resource_slot.at(random_index)};
+	}
+}
+
+bool NewPPLinkManager::isProposalViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
+	bool viable = true;
+	unsigned int burst_length_rx = burst_length - burst_length_tx;
+	for (unsigned int burst = 0; viable && burst < timeout; burst++) {
+		int slot = (int) (burst_start + burst*burst_offset);			
+		// Entire slot range must be idle && receiver during first slots && transmitter during later ones.
+		viable = viable && table->isIdle(slot, burst_length)
+					&& mac->isAnyReceiverIdle(slot, burst_length_tx)
+					&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);
+	}
+	return viable;
+}
+
+void NewPPLinkManager::processLinkRequestMessage_reestablish(const L2Header*& header, const L2Packet::Payload*& payload) {
+	throw std::runtime_error("handling link requests when own link is established is not implemented");	
+}

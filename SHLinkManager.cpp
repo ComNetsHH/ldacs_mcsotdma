@@ -248,6 +248,27 @@ void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::Li
 	notifyOutgoing(header->getBits() + payload->getBits());
 }
 
+bool SHLinkManager::canSendLinkReply(unsigned int time_slot_offset) const {
+	const Reservation &res = current_reservation_table->getReservation(time_slot_offset);
+	return (res.isIdle() && mac->isTransmitterIdle(time_slot_offset, 1)) || res.isTx();
+}
+
+void SHLinkManager::sendLinkReply(L2HeaderLinkReply* header, LinkRequestPayload* payload, unsigned int time_slot_offset) {
+	coutd << *this << " saving link reply for transmission in " << time_slot_offset << " slots -> ";
+	if (!canSendLinkReply(time_slot_offset))
+		throw std::invalid_argument("SHLinkManager::sendLinkReply for a time slot offset where a reply cannot be sent.");
+	// schedule reply
+	if (current_reservation_table->getReservation(time_slot_offset).isIdle()) {
+		current_reservation_table->mark(time_slot_offset, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));		
+		coutd << "reserved -> ";
+	} else {
+		coutd << "already reserved (" << current_reservation_table->getReservation(time_slot_offset) << " ) -> ";
+	}
+	// save reply
+	link_replies.push_back({time_slot_offset, {header, payload}});		
+	coutd << "saved -> ";
+}
+
 size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 	size_t num_removed = 0;
 	for (auto it = link_requests.begin(); it != link_requests.end(); it++) {
