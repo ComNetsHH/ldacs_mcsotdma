@@ -87,7 +87,7 @@ void NewPPLinkManager::onSlotEnd() {
 	if (link_status == awaiting_reply && this->time_slots_until_reply == 0) {
 		coutd << "expected reply hasn't arrived -> trying to establish a new link -> ";
 		mac->statistcReportPPLinkMissedLastReplyOpportunity();
-		link_status = link_not_established;
+		cancelLink();		
 		establishLink();
 	}
 }
@@ -386,6 +386,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 		}
 	} else { // sending reply is not viable 
 		coutd << "attempting own link establishment -> ";
+		mac->statisticReportLinkRequestRejectedDueToUnacceptableReplySlot();		
 		establishLink(); // so make a counter proposal
 	}
 }
@@ -507,10 +508,16 @@ void NewPPLinkManager::cancelLink() {
 	coutd << "cancelling link -> ";
 	if (this->link_status == LinkManager::Status::awaiting_request_generation || this->link_status == LinkManager::Status::awaiting_reply) {		
 		coutd << "unlocking -> ";
-		this->link_state.reserved_resources.unlock();				
+		this->link_state.reserved_resources.unlock();
+		coutd << "changing link status '" << this->link_status << "->";			
+		link_status = link_not_established;		
+		coutd << this->link_status << "' -> ";
 	} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {
 		coutd << "unscheduling -> ";
 		this->link_state.reserved_resources.unschedule();
+		coutd << "changing link status '" << this->link_status << "->";			
+		link_status = link_not_established;		
+		coutd << this->link_status << "' -> ";
 	} else if (this->link_status == LinkManager::Status::link_not_established) {		
 		// nothing to do
 		coutd << "link is not establihed -> ";

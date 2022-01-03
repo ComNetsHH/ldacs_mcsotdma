@@ -189,6 +189,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_num_pp_links_established.increment();
 		}
 
+		void statisticReportLinkRequestRejectedDueToUnacceptableReplySlot() {
+			stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot.increment();
+		}
+
 		unsigned int getP2PBurstOffset() const;
 
 		bool isUsingNewPPLinkManager() const;
@@ -253,6 +257,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
 		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
+		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot = Statistic("num_pp_requests_rejected_due_to_unacceptable_reply_slot", this);
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -285,7 +290,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_unicast_wasted_tx_opportunities,
 				&stat_pp_link_missed_last_reply_opportunity,
 				&stat_pp_link_establishment_time,
-				&stat_num_pp_links_established
+				&stat_num_pp_links_established,
+				&stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot
 		};
 	};
 
