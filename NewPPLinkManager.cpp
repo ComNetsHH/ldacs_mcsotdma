@@ -148,6 +148,12 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEst
 	this->time_slots_until_reply = reply_offset;
 	this->link_status = awaiting_reply;	
 	coutd << this->link_status << "' -> ";
+	// remember link parameters
+	unsigned int next_burst_in = 0; // don't know what the partner will choose
+	FrequencyChannel *chosen_freq_channel = nullptr; // don't know what the partner will choose
+	bool is_link_initiator = true; // sender of the request is the initiator by convention	
+	this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_length, header->burst_length_tx, next_burst_in, is_link_initiator, chosen_freq_channel);
+	this->link_state.reply_offset = reply_offset;
 }
 
 std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx) const {
@@ -324,7 +330,7 @@ void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const 
 	} else if (this->link_status == link_established) {
 		this->processLinkRequestMessage_reestablish(header, payload);
 	} else {	
-		throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage");	
+		throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage: " + std::to_string(this->link_status));	
 	}
 } 
 
@@ -428,6 +434,19 @@ void NewPPLinkManager::processLinkRequestMessage_reestablish(const L2Header*& he
 void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << " processing link reply -> ";	
 	// parse selected communication resource
-	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource = payload->resources;
-	// establish link
+	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
+	if (selected_resource_map.size() != size_t(1))
+		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one selected resource, but " + std::to_string(selected_resource_map.size()));
+	const auto &selected_resource = *selected_resource_map.begin();
+	const FrequencyChannel *selected_freq_channel = selected_resource.first;
+	if (selected_resource.second.size() != size_t(1)) 
+		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
+	const unsigned int selected_time_slot_offset = selected_resource.second.at(0);	
+	// schedule resources
+	unsigned int &timeout = this->link_state.timeout, 
+				 &burst_length = this->link_state.burst_length,
+				 &burst_length_tx = this->link_state.burst_length_tx,
+				 &burst_length_rx = this->link_state.burst_length_rx;	
+	unsigned int first_burst_in = selected_time_slot_offset - this->link_state.reply_offset; // normalize to current time slot
+	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";
 }

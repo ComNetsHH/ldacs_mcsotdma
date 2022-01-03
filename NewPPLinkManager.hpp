@@ -80,6 +80,8 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 			LinkState() : LinkState(0, 0, 0, 0, false, nullptr) {}
 
 			unsigned int timeout, burst_length, burst_length_tx, burst_length_rx, next_burst_in;
+			/** When the reply is received, this is used to normalize the selected resource to the current time slot. */
+			int reply_offset = -1;
 			bool is_link_initator;
 			LockMap reserved_resources;
 			FrequencyChannel const *frequency_channel = nullptr;
