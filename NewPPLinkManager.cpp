@@ -142,7 +142,7 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEst
 	header->burst_length_tx = burst_length_tx;
 	header->burst_offset = burst_offset;
 	header->reply_offset = reply_offset;
-	payload->proposed_resources = proposal_resources;
+	payload->resources = proposal_resources;
 	coutd << "request populated -> expecting reply in " << reply_offset << " slots, changing link status '" << this->link_status << "->";
 	// remember when the reply is expected
 	this->time_slots_until_reply = reply_offset;
@@ -333,15 +333,15 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 	// check whether reply slot is viable	
 	bool free_to_send_reply = false;	
 	unsigned int reply_time_slot_offset = 0;
-	auto proposed_resources = payload->proposed_resources;
+	auto resources = payload->resources;
 	SHLinkManager *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-	for (auto it = proposed_resources.begin(); it != proposed_resources.end(); it++) {
+	for (auto it = resources.begin(); it != resources.end(); it++) {
 		auto pair = *it;
 		if (pair.first->isSH()) {
 			reply_time_slot_offset = pair.second.at(0);
 			free_to_send_reply = sh_manager->canSendLinkReply(reply_time_slot_offset);
 			// remove this item
-			proposed_resources.erase(it);
+			resources.erase(it);
 			break;
 		}
 	}	 		
@@ -349,7 +349,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 	if (free_to_send_reply) {		
 		try {				
 			// randomly choose a viable resource
-			auto chosen_resource = chooseRandomResource(proposed_resources, header->burst_length, header->burst_length_tx);
+			auto chosen_resource = chooseRandomResource(resources, header->burst_length, header->burst_length_tx);
 			const FrequencyChannel *chosen_freq_channel = chosen_resource.first;
 			unsigned int chosen_time_slot_offset = chosen_resource.second;
 			// save the link state
@@ -365,7 +365,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			header->dest_id = link_id;
 			LinkEstablishmentPayload *payload = new LinkEstablishmentPayload();
 			// write selected resource into payload
-			payload->proposed_resources[chosen_freq_channel].push_back(chosen_time_slot_offset);
+			payload->resources[chosen_freq_channel].push_back(chosen_time_slot_offset);
 			sh_manager->sendLinkReply(header, payload, reply_time_slot_offset);			
 		} catch (const std::invalid_argument& e) {
 			coutd << "no proposed resources were viable -> attempting own link establishment -> ";
@@ -428,6 +428,6 @@ void NewPPLinkManager::processLinkRequestMessage_reestablish(const L2Header*& he
 void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << " processing link reply -> ";	
 	// parse selected communication resource
-
+	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource = payload->resources;
 	// establish link
 }

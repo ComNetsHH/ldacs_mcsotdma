@@ -128,7 +128,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_manager->current_link_state->burst_length);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), link_manager->current_link_state->burst_length_tx);
 			// Proposed resources should be present.
-			const auto &proposal = link_request_msg.second->proposed_resources;
+			const auto &proposal = link_request_msg.second->resources;
 			CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_p2p_channels_to_propose), proposal.size());
 			for (const auto &slots : proposal)
 				CPPUNIT_ASSERT_EQUAL(size_t(link_manager->num_slots_per_p2p_channel_to_propose), slots.second.size());
@@ -158,7 +158,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(channel != nullptr);
 			CPPUNIT_ASSERT(slot_offset > 0);
 			// The chosen resource should be one of the proposed ones.
-			CPPUNIT_ASSERT_EQUAL(true, std::any_of(link_request_msg.second->proposed_resources.begin(), link_request_msg.second->proposed_resources.end(), [channel, slot_offset](const auto &pair){
+			CPPUNIT_ASSERT_EQUAL(true, std::any_of(link_request_msg.second->resources.begin(), link_request_msg.second->resources.end(), [channel, slot_offset](const auto &pair){
 				return *channel == *pair.first && std::any_of(pair.second.begin(), pair.second.end(), [slot_offset](unsigned int proposed_slot) {
 					return slot_offset == proposed_slot;
 				});
@@ -261,9 +261,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), link_manager->current_link_state->scheduled_link_replies.size());
 			auto &reply_reservation = link_manager->current_link_state->scheduled_link_replies.at(0);
 			// Reply should encode a single slot.
-			CPPUNIT_ASSERT_EQUAL(size_t(1), reply_reservation.getPayload()->proposed_resources.begin()->second.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), reply_reservation.getPayload()->resources.begin()->second.size());
 			// Some time in the future.
-			CPPUNIT_ASSERT(reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) > 0);
+			CPPUNIT_ASSERT(reply_reservation.getPayload()->resources.begin()->second.at(0) > 0);
 
 			// Now increment time.
 			CPPUNIT_ASSERT(reply_reservation.getRemainingOffset() > 0);
@@ -272,9 +272,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				env->mac_layer->update(1);
 			CPPUNIT_ASSERT_EQUAL(num_slots, max_num_slots);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), reply_reservation.getRemainingOffset());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), reply_reservation.getPayload()->proposed_resources.begin()->second.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), reply_reservation.getPayload()->resources.begin()->second.size());
 			// The slot offset should've also been decreased.
-			CPPUNIT_ASSERT_EQUAL(uint32_t(0), reply_reservation.getPayload()->proposed_resources.begin()->second.at(0));
+			CPPUNIT_ASSERT_EQUAL(uint32_t(0), reply_reservation.getPayload()->resources.begin()->second.at(0));
 			// Incrementing once more should throw an exception, as the control message would've been missed.
 			CPPUNIT_ASSERT_THROW(env->mac_layer->update(1), std::invalid_argument);
 		}

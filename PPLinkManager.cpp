@@ -269,7 +269,7 @@ L2Packet* PPLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 						// and remove from scheduled replies.
 						current_link_state->scheduled_link_replies.erase(it);
 						it--;
-						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to init link on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
+						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to init link on " << *reply_reservation.getPayload()->resources.begin()->first << "@" << reply_reservation.getPayload()->resources.begin()->second.at(0) << " -> ";
 						mac->statisticReportLinkReplySent();
 						// schedule all link resources
 						// Clear locked resources.
@@ -447,7 +447,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManage
 	if (lock_map.anyLocks())
 		clearLockedResources(this->lock_map);
 	const auto &proposed_locked_pair = p2pSlotSelection(num_p2p_channels_to_propose, num_slots_per_p2p_channel_to_propose, min_offset, burst_length, burst_length_tx);
-	payload->proposed_resources = proposed_locked_pair.first;
+	payload->resources = proposed_locked_pair.first;
 	this->lock_map = proposed_locked_pair.second;
 	// Populate header.
 	header->timeout = default_timeout;
@@ -460,7 +460,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManage
 	current_link_state->is_link_initiator = true;
 	current_link_state->initial_setup = true;	
 	// We need to schedule RX slots at each candidate to be able to receive a reply there.
-	for (const auto &pair : payload->proposed_resources) {
+	for (const auto &pair : payload->resources) {
 		const FrequencyChannel *channel = pair.first;
 		const std::vector<unsigned int> &burst_start_offsets = pair.second;
 		ReservationTable *table = reservation_manager->getReservationTable(channel);
@@ -601,7 +601,7 @@ PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2Heade
 
 	// Parse proposed resources.
 	try {
-		auto chosen_resource = chooseRandomResource(payload->proposed_resources, header->burst_length, header->burst_length_tx);
+		auto chosen_resource = chooseRandomResource(payload->resources, header->burst_length, header->burst_length_tx);
 		// ... and save it.
 		state->channel = chosen_resource.first;
 		state->next_burst_start = chosen_resource.second;
@@ -625,9 +625,9 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply
 	// Reset timeout.
 	current_link_state->timeout = default_timeout;
 	// Parse resource.
-	if (payload->proposed_resources.size() != 1)
-		throw std::invalid_argument("PPLinkManager::processInitialReply for payload with " + std::to_string(payload->proposed_resources.size()) + " resources.");
-	const auto &resource = *payload->proposed_resources.begin();
+	if (payload->resources.size() != 1)
+		throw std::invalid_argument("PPLinkManager::processInitialReply for payload with " + std::to_string(payload->resources.size()) + " resources.");
+	const auto &resource = *payload->resources.begin();
 	const auto *channel = resource.first;
 	const auto &slots = resource.second;
 	if (slots.size() != 1)
@@ -679,7 +679,7 @@ std::pair<L2HeaderLinkReply*, LinkManager::LinkEstablishmentPayload*> PPLinkMana
 	header->burst_length_tx = burst_length_tx;
 	// The reply payload encodes the single, chosen resource.
 	auto *payload = new LinkEstablishmentPayload();
-	payload->proposed_resources[channel].push_back(slot_offset);
+	payload->resources[channel].push_back(slot_offset);
 	return {header, payload};
 }
 

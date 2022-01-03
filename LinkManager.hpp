@@ -51,14 +51,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			LinkEstablishmentPayload() = default;
 
 			/** Copy constructor. */
-			LinkEstablishmentPayload(const LinkEstablishmentPayload& other) : proposed_resources(other.proposed_resources) {}
+			LinkEstablishmentPayload(const LinkEstablishmentPayload& other) : resources(other.resources) {}
 			Payload* copy() const override {
 				return new LinkEstablishmentPayload(*this);
 			}
 
 			unsigned int getBits() const override {
 				unsigned int num_bits = 0;
-				for (const auto& item : proposed_resources) {
+				for (const auto& item : resources) {
 					num_bits += 8; // +1B per frequency channel
 					num_bits += 8 * item.second.size(); // +1B per slot
 				}
@@ -70,7 +70,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			unsigned int getLatestProposedSlot() const {
 				unsigned int latest_slot = 0;
-				for (const auto &item : proposed_resources) {
+				for (const auto &item : resources) {
 					for (const auto &slot : item.second) {
 						if (slot > latest_slot)
 							latest_slot = slot;
@@ -80,7 +80,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 
 			/** <channel, <start slots>>-map of proposed resources. */
-			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
+			std::map<const FrequencyChannel*, std::vector<unsigned int>> resources;
 			Callback *callback = nullptr;
 		};
 

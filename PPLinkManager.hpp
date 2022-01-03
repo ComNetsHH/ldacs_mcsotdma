@@ -70,7 +70,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 					remaining_offset -= num_slots;
 
 					// Update payload slot offsets to reflect a correct offset with respect to the current time.
-					for (auto &pair : payload->proposed_resources) {
+					for (auto &pair : payload->resources) {
 						for (unsigned int& i : pair.second) {
 							if (i < num_slots)
 								throw std::invalid_argument("ControlMessageReservation::onSlotEnd would decrement a slot offset past zero. Are we late with sending this reply?");
