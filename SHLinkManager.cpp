@@ -56,7 +56,7 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	} else {
 		coutd << "broadcasting data -> ";		
 		// prioritize link replies
-		std::vector<std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*>> replies_to_add;
+		std::vector<std::pair<L2HeaderLinkReply*, LinkManager::LinkEstablishmentPayload*>> replies_to_add;
 		for (auto it = link_replies.begin(); it != link_replies.end(); it++) {
 			auto pair = *it;
 			coutd << "checking link reply in " << pair.first << " slots...";
@@ -73,7 +73,7 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			}
 		}
 		// prioritize link requests
-		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*>> requests_to_add;		
+		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkEstablishmentPayload*>> requests_to_add;		
 		while (!link_requests.empty()) {
 			// Fetch next link request.
 			auto &pair = link_requests.at(0);
@@ -270,7 +270,7 @@ void SHLinkManager::onSlotEnd() {
 	LinkManager::onSlotEnd();
 }
 
-void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkRequestPayload* payload) {
+void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkEstablishmentPayload* payload) {
 	coutd << *this << " saving link request for transmission -> ";
 	// save request
 	link_requests.emplace_back(header, payload);	
@@ -283,7 +283,7 @@ bool SHLinkManager::canSendLinkReply(unsigned int time_slot_offset) const {
 	return (res.isIdle() && mac->isTransmitterIdle(time_slot_offset, 1)) || res.isTx();
 }
 
-void SHLinkManager::sendLinkReply(L2HeaderLinkReply* header, LinkRequestPayload* payload, unsigned int time_slot_offset) {
+void SHLinkManager::sendLinkReply(L2HeaderLinkReply* header, LinkEstablishmentPayload* payload, unsigned int time_slot_offset) {
 	coutd << *this << " saving link reply for transmission in " << time_slot_offset << " slots -> ";
 	if (!canSendLinkReply(time_slot_offset))
 		throw std::invalid_argument("SHLinkManager::sendLinkReply for a time slot offset where a reply cannot be sent.");
@@ -484,7 +484,7 @@ void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2P
 		coutd << "discarding link request that is not destined to us -> ";
 }
 
-void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) {
+void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	MacId dest_id = header->dest_id;	
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link reply to PPLinkManager -> ";

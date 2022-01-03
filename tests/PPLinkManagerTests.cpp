@@ -139,7 +139,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testSelectResourceFromRequestAllLocked() {
 			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
-			CPPUNIT_ASSERT_THROW(link_manager->selectResourceFromRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second), std::invalid_argument);
+			CPPUNIT_ASSERT_THROW(link_manager->selectResourceFromRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkEstablishmentPayload*&) link_request_msg.second), std::invalid_argument);
 		}
 
 		void testSelectResourceFromRequest() {
@@ -147,7 +147,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 //			coutd.setVerbose(true);
 			TestEnvironment rx_env = TestEnvironment(partner_id, own_id);
-			PPLinkManager::LinkState *state = ((PPLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->selectResourceFromRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkRequestPayload*&) link_request_msg.second);
+			PPLinkManager::LinkState *state = ((PPLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->selectResourceFromRequest((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkEstablishmentPayload*&) link_request_msg.second);
 			CPPUNIT_ASSERT_EQUAL(state->timeout, link_request_msg.first->timeout);
 			CPPUNIT_ASSERT_EQUAL(state->burst_length_tx, link_request_msg.first->burst_length_tx);
 			CPPUNIT_ASSERT_EQUAL(state->burst_length, link_request_msg.first->burst_length);
@@ -361,7 +361,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_rx_res > 0);
 			// Process the link reply.
 //			coutd.setVerbose(true);
-			link_manager->processLinkReplyMessage((const L2HeaderLinkEstablishmentReply*&) link_reply->getHeaders().at(reply_index), (const LinkManager::LinkRequestPayload*&) link_reply->getPayloads().at(reply_index), ((L2HeaderBase*) link_reply->getHeaders().at(0))->src_id);
+			link_manager->processLinkReplyMessage((const L2HeaderLinkEstablishmentReply*&) link_reply->getHeaders().at(reply_index), (const LinkManager::LinkEstablishmentPayload*&) link_reply->getPayloads().at(reply_index), ((L2HeaderBase*) link_reply->getHeaders().at(0))->src_id);
 //			coutd.setVerbose(false);
 			// Transmission bursts should've been saved now.
 			const ReservationTable *table = link_manager->current_reservation_table;
@@ -391,7 +391,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkRequestSize() {
 			testProcessInitialLinkReply();
 			auto request_msg = link_manager->prepareRequestMessage();
-			PPLinkManager::ControlMessageReservation msg = PPLinkManager::ControlMessageReservation(0, (L2Header*&) request_msg.first, (LinkManager::LinkRequestPayload*&) request_msg.second);
+			PPLinkManager::ControlMessageReservation msg = PPLinkManager::ControlMessageReservation(0, (L2Header*&) request_msg.first, (LinkManager::LinkEstablishmentPayload*&) request_msg.second);
 			L2HeaderLinkRequest request = L2HeaderLinkRequest();
 			CPPUNIT_ASSERT_EQUAL(request.getBits(), msg.getHeader()->getBits());
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), msg.getPayload()->getBits());

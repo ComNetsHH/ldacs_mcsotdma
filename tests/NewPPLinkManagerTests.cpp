@@ -122,7 +122,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto *link_request = env->phy_layer->outgoing_packets.at(0);
 			int request_index = link_request->getRequestIndex();
 			CPPUNIT_ASSERT(request_index != -1);			
-			const auto *request_payload = (LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index);
+			const auto *request_payload = (LinkManager::LinkEstablishmentPayload*) link_request->getPayloads().at(request_index);
 			const auto &proposed_resources = request_payload->proposed_resources;
 			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposed_resources.size()); // +1 because of the reply slot on the SH 
 			// they should all be locked
@@ -165,8 +165,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						request_index_2 = i;
 				}
 			}			
-			auto &proposed_resources_1 = ((LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index_1))->proposed_resources;			 						
-			auto &proposed_resources_2 = ((LinkManager::LinkRequestPayload*) link_request->getPayloads().at(request_index_2))->proposed_resources;
+			auto &proposed_resources_1 = ((LinkManager::LinkEstablishmentPayload*) link_request->getPayloads().at(request_index_1))->proposed_resources;			 						
+			auto &proposed_resources_2 = ((LinkManager::LinkEstablishmentPayload*) link_request->getPayloads().at(request_index_2))->proposed_resources;
 			// so there should be as many items as channels
 			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposed_resources_1.size()); // +1 because of the reply slot on the SH 
 			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposed_resources_2.size()); // +1 because of the reply slot on the SH 

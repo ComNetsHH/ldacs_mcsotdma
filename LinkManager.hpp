@@ -41,19 +41,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			awaiting_data_tx
 		};
 
-		class LinkRequestPayload : public L2Packet::Payload {
+		class LinkEstablishmentPayload : public L2Packet::Payload {
 		public:
 			class Callback {
 			public:
-				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload *&payload) = 0;
+				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload *&payload) = 0;
 			};
 
-			LinkRequestPayload() = default;
+			LinkEstablishmentPayload() = default;
 
 			/** Copy constructor. */
-			LinkRequestPayload(const LinkRequestPayload& other) : proposed_resources(other.proposed_resources) {}
+			LinkEstablishmentPayload(const LinkEstablishmentPayload& other) : proposed_resources(other.proposed_resources) {}
 			Payload* copy() const override {
-				return new LinkRequestPayload(*this);
+				return new LinkEstablishmentPayload(*this);
 			}
 
 			unsigned int getBits() const override {
@@ -153,7 +153,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		virtual void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin_id);
-		virtual void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id);
+		virtual void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
 		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);		
 
 	protected:

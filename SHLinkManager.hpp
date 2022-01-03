@@ -43,7 +43,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param header
 		 * @param payload
 		 */
-		void sendLinkRequest(L2HeaderLinkRequest* header, LinkRequestPayload* payload);
+		void sendLinkRequest(L2HeaderLinkRequest* header, LinkEstablishmentPayload* payload);
 
 		/**
 		 * Schedules a link reply at the specified time slot offset.
@@ -52,7 +52,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param payload 
 		 * @param time_slot_offset 
 		 */
-		void sendLinkReply(L2HeaderLinkReply* header, LinkRequestPayload* payload, unsigned int time_slot_offset);
+		void sendLinkReply(L2HeaderLinkReply* header, LinkEstablishmentPayload* payload, unsigned int time_slot_offset);
 
 		/**
 		 * Cancels all link requests towards 'id'.
@@ -124,7 +124,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin_id) override;
 
-		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) override;
+		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 
@@ -135,9 +135,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
-		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;
+		std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
 		/** Collection of link replies and corresponding time slots where they should be transmitted. */
-		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkRequestPayload*>>> link_replies;
+		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;
 		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
 		ContentionEstimator contention_estimator;
 		BeaconModule beacon_module;

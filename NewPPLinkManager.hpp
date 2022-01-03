@@ -10,7 +10,7 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback {
+class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentPayload::Callback {
 
 	friend class NewPPLinkManagerTests;	
 
@@ -24,9 +24,9 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		void notifyOutgoing(unsigned long num_bits) override;
 		void onSlotStart(uint64_t num_slots) override;
 		void onSlotEnd() override;
-		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
+		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) override;
 		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
-		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) override;
+		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 
 	protected:
 		/** Container that saves the resources that were locked during link establishment. */
@@ -92,7 +92,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		 * @param header 
 		 * @param payload 
 		 */
-		void processLinkRequestMessage_initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*&);
+		void processLinkRequestMessage_initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*&);
 
 		/**
 		 * From a map of proposed resources, check each for validity and then choose one randomly.

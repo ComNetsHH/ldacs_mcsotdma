@@ -48,7 +48,7 @@ void NewPPLinkManager::establishLink() {
 	}
 	// create empty message
 	auto *header = new L2HeaderLinkRequest(link_id);
-	auto *payload = new LinkRequestPayload();
+	auto *payload = new LinkEstablishmentPayload();
 	// set callback s.t. the payload can be populated just-in-time.
 	payload->callback = this;
 	// pass to SH link manager
@@ -89,7 +89,7 @@ void NewPPLinkManager::onSlotEnd() {
 	}
 }
 
-void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) {
+void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) {
 	coutd << "populating link request -> ";
 	// determine number of slots in-between transmission bursts
 	burst_offset = getBurstOffset();
@@ -310,7 +310,7 @@ void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const 
 	mac->statisticReportLinkRequestReceived();
 	// initial link request
 	if (this->link_status == link_not_established) {
-		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkRequestPayload*&) payload);
+		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	// cancel the own request and process this one
 	} else if (this->link_status == awaiting_request_generation) {
 		throw std::runtime_error("handling link requests when own link is awaiting request generation is not implemented");
@@ -328,7 +328,7 @@ void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const 
 	}
 } 
 
-void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload) {
 	coutd << "checking for viable resources -> ";
 	// check whether reply slot is viable	
 	bool free_to_send_reply = false;	
@@ -363,7 +363,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			header->burst_offset = link_state.next_burst_in;
 			header->timeout = link_state.timeout;
 			header->dest_id = link_id;
-			LinkRequestPayload *payload = new LinkRequestPayload();
+			LinkEstablishmentPayload *payload = new LinkEstablishmentPayload();
 			// write selected resource into payload
 			payload->proposed_resources[chosen_freq_channel].push_back(chosen_time_slot_offset);
 			sh_manager->sendLinkReply(header, payload, reply_time_slot_offset);			
@@ -425,7 +425,7 @@ void NewPPLinkManager::processLinkRequestMessage_reestablish(const L2Header*& he
 	throw std::runtime_error("handling link requests when own link is established is not implemented");	
 }
 
-void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) {
+void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << " processing link reply -> ";	
 	// parse selected communication resource
 
