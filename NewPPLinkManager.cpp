@@ -129,14 +129,13 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEst
 			reply_offset = time_slots.at(0);			
 			auto *sh_table = reservation_manager->getBroadcastReservationTable();			
 			// remember which one
-			locked_resources.locks_local.push_back({sh_table, reply_offset});
+			locked_resources.resource_reservations.push_back({sh_table, reply_offset});
 			// mark as reception
 			Reservation reply_reservation = Reservation(link_id, Reservation::RX);
 			sh_table->mark(reply_offset, reply_reservation);			
 			// and schedule a receiver
 			for (auto *rx_table : reservation_manager->getRxTables()) {
-				if (rx_table->isIdle(reply_offset)) {
-					locked_resources.locks_receiver.push_back({rx_table, reply_offset});
+				if (rx_table->isIdle(reply_offset)) {					
 					rx_table->mark(reply_offset, reply_reservation);
 					break;
 				}
@@ -200,7 +199,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::s
 	return proposals;
 }
 
-NewPPLinkManager::LockMap NewPPLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table) {
+NewPPLinkManager::ReservationMap NewPPLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table) {
 	coutd << "locking: ";
 	// remember locked resources locally, for the transmitter, and for the receiver
 	std::set<unsigned int> locked_local, locked_tx, locked_rx;
@@ -258,24 +257,22 @@ NewPPLinkManager::LockMap NewPPLinkManager::lock_bursts(const std::vector<unsign
 		}
 	}
 	// actually lock them
-	auto lock_map = LockMap();
+	auto lock_map = ReservationMap();
 	for (unsigned int slot : locked_local) {
 		table->mark(slot, Reservation(link_id, Reservation::LOCKED));
-		lock_map.locks_local.push_back({table, slot});
+		lock_map.resource_reservations.push_back({table, slot});
 	}
 	for (unsigned int slot : locked_tx) {
 		for (auto* tx_table : tx_tables)
 			if (tx_table->canLock(slot)) {
-				table->mark(slot, Reservation(link_id, Reservation::LOCKED));
-				lock_map.locks_transmitter.push_back({tx_table, slot});
+				table->mark(slot, Reservation(link_id, Reservation::LOCKED));				
 				break;
 			}
 	}
 	for (unsigned int slot : locked_rx) {
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(slot)) {
-				table->mark(slot, Reservation(link_id, Reservation::LOCKED));
-				lock_map.locks_receiver.push_back({rx_table, slot});
+				table->mark(slot, Reservation(link_id, Reservation::LOCKED));				
 				break;
 			}
 	}
@@ -377,7 +374,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			payload->resources[selected_freq_channel].push_back(first_burst_in);
 			sh_manager->sendLinkReply(header, payload, reply_time_slot_offset);			
 			// schedule resources
-			schedule_bursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, link_state.burst_length_tx, link_state.burst_length_rx, is_link_initiator);	
+			this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, link_state.burst_length_tx, link_state.burst_length_rx, is_link_initiator);	
 			coutd << "scheduled transmission bursts -> ";
 			// update link status
 			coutd << "updating link status '" << this->link_status << "->";
@@ -465,7 +462,7 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRe
 	this->link_state.reserved_resources.clear();
 	coutd << "free'd locked resources -> ";
 	// schedule resources
-	schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
+	this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
 	coutd << "scheduled transmission bursts -> ";
 	// update link status
 	coutd << "updating link status '" << this->link_status << "->";
@@ -473,7 +470,8 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRe
 	coutd << this->link_status << "' -> ";
 }
 
-void NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator) {		
+NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator) {		
+	NewPPLinkManager::ReservationMap reservation_map;
 	this->assign(channel);		
 	Reservation::Action action_1 = is_link_initiator ? Reservation::TX : Reservation::RX,
 						action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
@@ -489,6 +487,7 @@ void NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const un
 				throw std::runtime_error(s.str());
 			}
 			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_1));						
+			reservation_map.resource_reservations.push_back({this->current_reservation_table, slot_offset});
 		}
 		for (int rx = 0; rx < burst_length_rx; rx++) {
 			int slot_offset = slot + burst_length_tx + rx;
@@ -498,6 +497,24 @@ void NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const un
 				throw std::runtime_error(s.str());
 			}
 			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_2));		
+			reservation_map.resource_reservations.push_back({this->current_reservation_table, slot_offset});
 		}
 	}	
+	return reservation_map;
+}
+
+void NewPPLinkManager::cancelLink() {
+	coutd << "cancelling link -> ";
+	if (this->link_status == LinkManager::Status::awaiting_request_generation || this->link_status == LinkManager::Status::awaiting_reply) {		
+		coutd << "unlocking -> ";
+		this->link_state.reserved_resources.unlock();				
+	} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {
+		coutd << "unscheduling -> ";
+		this->link_state.reserved_resources.unschedule();
+	} else if (this->link_status == LinkManager::Status::link_not_established) {		
+		// nothing to do
+		coutd << "link is not establihed -> ";
+	} else 
+		throw std::runtime_error("PPLinkManager::cancelLink for unexpected link status: " + std::to_string(this->link_status));
+	coutd << "done -> ";
 }

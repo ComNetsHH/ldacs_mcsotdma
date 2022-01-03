@@ -30,71 +30,77 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 
 	protected:
-		/** Container that saves the resources that were locked during link establishment. */
-		class LockMap {
+		/** Container that saves the resources that were locked or scheduled during link establishment. */
+		class ReservationMap {
 		public:
-			LockMap() : num_slots_since_creation(0) {};
-
-			/** Transmitter resources that were locked. */
-			std::vector<std::pair<ReservationTable*, unsigned int>> locks_transmitter;
-			/** Receiver resources that were locked. */
-			std::vector<std::pair<ReservationTable*, unsigned int>> locks_receiver;
+			ReservationMap() : num_slots_since_creation(0) {};
+			
 			/** Local resources that were locked. */
-			std::vector<std::pair<ReservationTable*, unsigned int>> locks_local;
+			std::vector<std::pair<ReservationTable*, unsigned int>> resource_reservations;
 			/** Keep track of the number of time slots since creation, so that the slot offsets can be normalized to the current time. */
 			unsigned int num_slots_since_creation;
 
-			void merge(const LockMap& other) {
-				for (const auto& pair : other.locks_local)
-					locks_local.push_back(pair);
-				for (const auto& pair : other.locks_receiver)
-					locks_receiver.push_back(pair);
-				for (const auto& pair : other.locks_transmitter)
-					locks_transmitter.push_back(pair);
+			void merge(const ReservationMap& other) {
+				for (const auto& pair : other.resource_reservations)
+					resource_reservations.push_back(pair);				
 			}
 
-			size_t size_local() const {
-				return locks_local.size();
-			}
-			size_t size_receiver() const {
-				return locks_receiver.size();
-			}
-			size_t size_transmitter() const {
-				return locks_transmitter.size();
-			}
+			size_t size() const {
+				return resource_reservations.size();
+			}			
 			bool anyLocks() const {
-				return size_local() + size_receiver() + size_transmitter() > 0;
+				return size() > 0;
 			}
-			void clear() {
-				this->locks_transmitter.clear();
-				this->locks_receiver.clear();
-				this->locks_local.clear();
+			void clear() {				
+				this->resource_reservations.clear();
 			}
+
+			/** 
+			 * Assuming that all here-saved resources were locked, it first checks that they are, and then unlocks them.
+			 * @throws std::invalid_argument if any resource was not locked
+			 * */
 			void unlock() {				
-				for (const auto& pair : locks_local) {
+				for (const auto& pair : resource_reservations) {
 					ReservationTable *table = pair.first;
 					unsigned int slot_offset = pair.second - this->num_slots_since_creation;
 					if (slot_offset > 0) {
-						if (!table->getReservation(slot_offset).isLocked()) {
-							for (size_t t = 0; t < 20; t++)
-								std::cout << "t=" << t << ": " << table->getReservation(t) << std::endl;
+						if (!table->getReservation(slot_offset).isLocked()) {							
 							std::stringstream ss;
-							ss << "LockMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
+							ss << "ReservationMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
 							throw std::invalid_argument(ss.str());
 						} else 
-							table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));																			
+							table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 					}
 				}
 				// no need to manually unlock RX and TX tables
 				// because the table->mark takes care of that auto-magically									
-			}			
+			}		
+
+			/** 
+			 * Assuming that all here-saved resources were scheduled, it first checks that they are, and then sets them to IDLE.
+			 * @throws std::invalid_argument if any resource was not scheduled
+			 * */
+			void unschedule() {
+				for (const auto& pair : resource_reservations) {
+					ReservationTable *table = pair.first;
+					unsigned int slot_offset = pair.second - this->num_slots_since_creation;
+					if (slot_offset > 0) {
+						if (!(table->getReservation(slot_offset).isTx() || table->getReservation(slot_offset).isRx())) {							
+							std::stringstream ss;
+							ss << "ReservationMap::unlock cannot unschedule reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be TX or RX.";
+							throw std::invalid_argument(ss.str());
+						} else 
+							table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+					}
+				}
+			}	
 		};
 
 		/** Keeps track of the current link state values. */
 		class LinkState {
 		public:			
 			LinkState(unsigned int timeout, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int next_burst_in, bool is_link_initator, const FrequencyChannel *frequency_channel)
-				: timeout(timeout), burst_offset(burst_offset), burst_length(burst_length), burst_length_tx(burst_length_tx), burst_length_rx(burst_length - burst_length_tx), next_burst_in(next_burst_in), is_link_initator(is_link_initator), reserved_resources(LockMap()), frequency_channel(frequency_channel) {}
+				: timeout(timeout), burst_offset(burst_offset), burst_length(burst_length), burst_length_tx(burst_length_tx), burst_length_rx(burst_length - burst_length_tx), next_burst_in(next_burst_in), is_link_initator(is_link_initator), reserved_resources(ReservationMap()), frequency_channel(frequency_channel) {}
 
 			LinkState() : LinkState(0, 0, 0, 0, 0, false, nullptr) {}
 
@@ -102,11 +108,15 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 			/** When the reply is received, this is used to normalize the selected resource to the current time slot. */
 			int reply_offset = -1;
 			bool is_link_initator;
-			LockMap reserved_resources;
+			ReservationMap reserved_resources;
 			FrequencyChannel const *frequency_channel = nullptr;
 		};
 		
+		/** Initiates link establishment by preparing a link request and its transmission via the SH. */
 		void establishLink();
+
+		/** Cancels all resource reservations that have been made. */
+		void cancelLink();
 
 		/**
 		 * Processes an initial link request.
@@ -175,9 +185,9 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		 * @param table 
 		 * @return Map of locked resources.
 		 */
-		LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table);		
+		ReservationMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table);		
 
-		void schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int selected_time_slot_offset, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator);
+		ReservationMap schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int selected_time_slot_offset, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator);
 
 	protected:
 		/** Number of transmission bursts until link expiry. */

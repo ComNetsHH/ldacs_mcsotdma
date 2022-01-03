@@ -260,9 +260,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testResourcesLockedAfterRequest() {
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
 			// trigger link establishment
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_not_established, pp->link_status);
 			mac->notifyOutgoing(100, partner_id);
 			unsigned int broadcast_slot = sh->next_broadcast_slot;
 			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp->link_status);
 			// proceed until request is sent
 			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
 			for (size_t t = 0; t < broadcast_slot; t++) {
@@ -271,6 +273,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->onSlotEnd();
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);
 			// make sure that all proposed resources are locked
 			auto *link_request = env->phy_layer->outgoing_packets.at(0);
 			int request_index = link_request->getRequestIndex();
@@ -534,6 +537,48 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp_you->link_status);			
 		}
 
+		/** Tests that after locking resources just after transmitting a link request, the reserved resources map can be used to unlock them. */
+		void testUnlockResources() {
+			// proceed to state just after transmitting a link request
+			testResourcesLockedAfterRequest();
+			// cancel reservations
+			pp->cancelLink();
+			// check that everything's been unlocked
+			std::vector<const ReservationTable*> all_tables;
+			for (const auto *pp_table : reservation_manager->getP2PReservationTables())			
+				all_tables.push_back(pp_table);
+			for (const auto *rx_table : reservation_manager->getRxTables())			
+				all_tables.push_back(rx_table);
+			all_tables.push_back(reservation_manager->getBroadcastReservationTable());
+			all_tables.push_back(reservation_manager->getTxTable());
+
+			for (int t = 0; t < planning_horizon; t++) {
+				for (const auto *table : all_tables)
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());								
+			}
+		}
+
+		/** Tests that after receiving a link reply, the reserved resources map can be used to unschedule all bursts. */
+		void testUnscheduleReservedResources() {
+			// proceed to state just after receiving a link reply
+			testReplyReceived();
+			// cancel reservations
+			pp->cancelLink();
+			// check that everything's been unscheduled
+			std::vector<const ReservationTable*> all_tables;
+			for (const auto *pp_table : reservation_manager->getP2PReservationTables())			
+				all_tables.push_back(pp_table);
+			for (const auto *rx_table : reservation_manager->getRxTables())			
+				all_tables.push_back(rx_table);
+			all_tables.push_back(reservation_manager->getBroadcastReservationTable());
+			all_tables.push_back(reservation_manager->getTxTable());
+
+			for (int t = 0; t < planning_horizon; t++) {
+				for (const auto *table : all_tables)
+						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());								
+			}
+		}		
+
 		/** When a link request is received, but the indicated reply slot is not suitable, this should trigger link establishment. */
 		void testRequestReceivedButReplySlotUnsuitable() {
 			bool is_implemented = false;
@@ -575,21 +620,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 	CPPUNIT_TEST_SUITE(NewPPLinkManagerTests);
-		// CPPUNIT_TEST(testStartLinkEstablishment);
-		// CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
-		// CPPUNIT_TEST(testSlotSelection);
-		// CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
-		// CPPUNIT_TEST(testTwoSlotSelections);		
-		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
-		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
-		// CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
-		// CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		// CPPUNIT_TEST(testReplySlotPassed);		
-		// CPPUNIT_TEST(testResourcesLockedAfterRequest);				
-		CPPUNIT_TEST(testReplyReceived);
+		CPPUNIT_TEST(testStartLinkEstablishment);
+		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
+		CPPUNIT_TEST(testSlotSelection);
+		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
+		CPPUNIT_TEST(testTwoSlotSelections);		
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
+		CPPUNIT_TEST(testReplySlotPassed);		
+		CPPUNIT_TEST(testResourcesLockedAfterRequest);				
+		CPPUNIT_TEST(testReplyReceived);		
+		CPPUNIT_TEST(testUnlockResources);		
+		CPPUNIT_TEST(testUnscheduleReservedResources);		
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
