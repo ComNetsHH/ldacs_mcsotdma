@@ -408,7 +408,101 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->onSlotEnd();
 				mac_you->onSlotEnd();
 			}
-
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());						
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_requests_rcvd.get());			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_replies_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_replies_sent.get());
+			// get the selected resource
+			auto *link_reply_packet = env_you->phy_layer->outgoing_packets.at(0);
+			LinkManager::LinkEstablishmentPayload *link_reply_payload = nullptr;
+			for (size_t i = 0; i < link_reply_packet->getHeaders().size(); i++) {
+				const auto *header = link_reply_packet->getHeaders().at(i);
+				if (header->frame_type == L2Header::FrameType::link_establishment_reply) {
+					link_reply_payload = (LinkManager::LinkEstablishmentPayload*) link_reply_packet->getPayloads().at(i);
+					break;
+				}
+			}
+			CPPUNIT_ASSERT(link_reply_payload != nullptr);
+			const auto &selected_resource_map = link_reply_payload->resources;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), selected_resource_map.size());
+			const FrequencyChannel *selected_channel = (*selected_resource_map.begin()).first;
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (*selected_resource_map.begin()).second.size());
+			unsigned int selected_slot = (*selected_resource_map.begin()).second.at(0);
+			unsigned int reply_offset = pp->link_state.reply_offset;
+			selected_slot -= reply_offset; // normalize to current time
+			CPPUNIT_ASSERT_GREATER(uint(0), selected_slot);
+			// now, after receiving and processing the link reply
+			// the chosen resources should've been scheduled in the local reservation table						
+			CPPUNIT_ASSERT_EQUAL(selected_channel, pp->current_channel);
+			CPPUNIT_ASSERT_EQUAL(pp->current_reservation_table->getLinkedChannel(), selected_channel);
+			CPPUNIT_ASSERT_EQUAL(pp->current_reservation_table->getLinkedChannel(), pp->current_channel);
+			std::vector<int> expected_scheduled_resources_tx, expected_scheduled_resources_rx;
+			for (int burst = 0; burst < pp->link_state.timeout; burst++) {				
+				for (int t = 0; t < pp->link_state.burst_length; t++) {
+					int slot = selected_slot + burst*pp->link_state.burst_offset + t;
+					if (t < pp->link_state.burst_length_tx)
+						expected_scheduled_resources_tx.push_back(slot);
+					else
+						expected_scheduled_resources_rx.push_back(slot);
+				}
+			}
+			size_t expected_num_tx_resources = pp->link_state.burst_length_tx * pp->link_state.timeout,
+				   expected_num_rx_resources = pp->link_state.burst_length_rx * pp->link_state.timeout;
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_resources, expected_scheduled_resources_tx.size());
+			CPPUNIT_ASSERT_EQUAL(expected_num_rx_resources, expected_scheduled_resources_rx.size());
+			for (int t = 0; t < planning_horizon; t++) {
+				bool is_tx = false, is_rx = false;
+				for (size_t i = 0; i < expected_scheduled_resources_tx.size(); i++) {
+					if (expected_scheduled_resources_tx.at(i) == t) {
+						is_tx = true;
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), pp->current_reservation_table->getReservation(t));
+					}
+				}
+				for (size_t i = 0; i < expected_scheduled_resources_rx.size(); i++) {
+					if (expected_scheduled_resources_rx.at(i) == t) {
+						is_rx = true;
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), pp->current_reservation_table->getReservation(t));
+					}
+				}
+				if (!is_tx && !is_rx)
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), pp->current_reservation_table->getReservation(t));
+				CPPUNIT_ASSERT(!(is_tx && is_rx));
+			}
+			// and the transmitter reservation table			
+			for (int t = 0; t < planning_horizon; t++) {
+				for (size_t i = 0; i < expected_scheduled_resources_tx.size(); i++) {
+					if (expected_scheduled_resources_tx.at(i) == t) 						
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), reservation_manager->getTxTable()->getReservation(t));					
+					else
+						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), reservation_manager->getTxTable()->getReservation(t));
+				}
+			}
+			// and the receiver reservation tables
+			for (int t = 0; t < planning_horizon; t++) {
+				for (size_t i = 0; i < expected_scheduled_resources_rx.size(); i++) {
+					size_t num_rx_reservations = 0;
+					for (const auto *rx_table : reservation_manager->getRxTables()) {
+						if (rx_table->getReservation(t) == Reservation(partner_id, Reservation::RX))
+							num_rx_reservations++;
+					}
+					if (expected_scheduled_resources_rx.at(i) == t)	{						
+						CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
+					} else
+						CPPUNIT_ASSERT_EQUAL(size_t(0), num_rx_reservations);
+				}
+			}
+			// and all locks should've been free'd
+			std::vector<const ReservationTable*> all_tables;
+			for (const auto *pp_table : reservation_manager->getP2PReservationTables())			
+				all_tables.push_back(pp_table);
+			for (const auto *rx_table : reservation_manager->getRxTables())			
+				all_tables.push_back(rx_table);
+			all_tables.push_back(reservation_manager->getBroadcastReservationTable());
+			all_tables.push_back(reservation_manager->getTxTable());
+			for (const auto *table : all_tables) {
+				for (int t = 0; t < planning_horizon; t++) 
+					CPPUNIT_ASSERT_EQUAL(false, table->getReservation(t).isLocked());
+			}
 		}
 
 		/** When a link request is received, but the indicated reply slot is not suitable, this should trigger link establishment. */

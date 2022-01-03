@@ -436,6 +436,7 @@ void NewPPLinkManager::processLinkRequestMessage_reestablish(const L2Header*& he
 
 void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << " processing link reply -> ";	
+	mac->statisticReportLinkReplyReceived();
 	// parse selected communication resource
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
 	if (selected_resource_map.size() != size_t(1))
