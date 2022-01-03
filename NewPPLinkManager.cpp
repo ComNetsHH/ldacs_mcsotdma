@@ -359,12 +359,12 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 		try {				
 			// randomly choose a viable resource
 			auto chosen_resource = chooseRandomResource(resources, header->burst_length, header->burst_length_tx);
-			const FrequencyChannel *chosen_freq_channel = chosen_resource.first;
-			unsigned int chosen_time_slot_offset = chosen_resource.second;
+			const FrequencyChannel *selected_freq_channel = chosen_resource.first;
+			unsigned int first_burst_in = chosen_resource.second;
 			// save the link state
 			bool is_link_initiator = false; // we've received a request
-			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_offset, header->burst_length, header->burst_length_tx, chosen_time_slot_offset, is_link_initiator, chosen_freq_channel);				
-			coutd << "randomly chose " << chosen_time_slot_offset << "@" << *chosen_freq_channel << " -> ";
+			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_offset, header->burst_length, header->burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
+			coutd << "randomly chose " << first_burst_in << "@" << *selected_freq_channel << " -> ";
 			// schedule the link reply
 			L2HeaderLinkReply *header = new L2HeaderLinkReply();
 			header->burst_length = link_state.burst_length;
@@ -374,8 +374,15 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			header->dest_id = link_id;
 			LinkEstablishmentPayload *payload = new LinkEstablishmentPayload();
 			// write selected resource into payload
-			payload->resources[chosen_freq_channel].push_back(chosen_time_slot_offset);
+			payload->resources[selected_freq_channel].push_back(first_burst_in);
 			sh_manager->sendLinkReply(header, payload, reply_time_slot_offset);			
+			// schedule resources
+			schedule_bursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, link_state.burst_length_tx, link_state.burst_length_rx, is_link_initiator);	
+			coutd << "scheduled transmission bursts -> ";
+			// update link status
+			coutd << "updating link status '" << this->link_status << "->";
+			this->link_status = LinkManager::awaiting_data_tx;
+			coutd << this->link_status << "' -> ";
 		} catch (const std::invalid_argument& e) {
 			coutd << "no proposed resources were viable -> attempting own link establishment -> ";
 			establishLink();
