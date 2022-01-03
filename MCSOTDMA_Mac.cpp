@@ -404,3 +404,7 @@ void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
 void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
 	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
 }
+
+bool MCSOTDMA_Mac::isUsingNewPPLinkManager() const {
+	return this->use_new_pp_link_manager;
+}

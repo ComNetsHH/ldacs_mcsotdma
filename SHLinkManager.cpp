@@ -6,6 +6,7 @@
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "PPLinkManager.hpp"
+#include "NewPPLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -475,7 +476,10 @@ void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2P
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link request to PPLinkManager -> ";
 		// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
-		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
+		if (!mac->isUsingNewPPLinkManager())
+			((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
+		else
+			((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
 	} else
 		coutd << "discarding link request that is not destined to us -> ";
 }
@@ -484,7 +488,10 @@ void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply
 	MacId dest_id = header->dest_id;	
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link reply to PPLinkManager -> ";
-		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
+		if (!mac->isUsingNewPPLinkManager())
+			((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
+		else
+			((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
 	} else 
 		coutd << "discarding link request that is not destined to us -> ";	
 }
@@ -520,7 +527,10 @@ void SHLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, cons
 		coutd << "involves us; discarding -> ";
 	} else {
 		coutd << "passing on to " << tx_id  << " -> ";
-		((PPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
+		if (!mac->isUsingNewPPLinkManager())
+			((PPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
+		else
+			((NewPPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
 	}
 }
 
