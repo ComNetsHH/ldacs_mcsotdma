@@ -28,9 +28,10 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 		void notifyOutgoing(unsigned long num_bits) override;
 		void onSlotStart(uint64_t num_slots) override;
 		void onSlotEnd() override;
-		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
+		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;		
 		LinkInfo getLinkInfo() override;
 		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload, const MacId& origin_id) override;
 		void processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 		void assign(const FrequencyChannel* channel) override;
@@ -217,9 +218,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 			 * @return Pair of (FrequencyChannel, time slot)
 			 * @throws std::invalid_argument If no resources were viable.
 			 */
-			std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
-
-			void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+			std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);			
 
 			/**
 			 * @param table

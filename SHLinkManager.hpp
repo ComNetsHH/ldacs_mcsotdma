@@ -122,9 +122,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void processBaseMessage(L2HeaderBase*& header) override;
 
-		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin_id) override;
 
-		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload, const MacId& origin_id) override;
 
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 

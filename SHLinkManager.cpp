@@ -54,8 +54,25 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
 		coutd << "broadcasting data -> ";		
-		// Put a priority on link requests.
-		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*>> requests_to_add;
+		// prioritize link replies
+		std::vector<std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*>> replies_to_add;
+		for (auto it = link_replies.begin(); it != link_replies.end(); it++) {
+			auto pair = *it;
+			coutd << "checking link reply in " << pair.first << " slots...";
+			if (pair.first == 0) {				
+				auto &header_payload_pair = pair.second;
+				if (header_payload_pair.first->getBits() + header_payload_pair.second->getBits() <= capacity) {
+					replies_to_add.push_back(pair.second);
+					link_replies.erase(it);
+					it--;
+					capacity -= pair.second.first->getBits() + pair.second.second->getBits();
+					coutd << "added link reply for '" << pair.second.first->dest_id << "' to broadcast -> ";
+					mac->statisticReportLinkReplySent();
+				}
+			}
+		}
+		// prioritize link requests
+		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*>> requests_to_add;		
 		while (!link_requests.empty()) {
 			// Fetch next link request.
 			auto &pair = link_requests.at(0);
@@ -125,10 +142,12 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			delete upper_layer_data;
 		}
 		
-		// if no data has been added so far, but link requests should be added
+		// if no data has been added so far, but link requests or replies should be added
 		// add a broadcast header and no payload first
-		if (packet->getHeaders().size() == 1 && !requests_to_add.empty()) 
+		if (packet->getHeaders().size() == 1 && (!requests_to_add.empty() || !replies_to_add.empty())) 
 			packet->addMessage(new L2HeaderBroadcast(), nullptr);
+		for (const auto &pair : replies_to_add)
+			packet->addMessage(pair.first, pair.second);		
 		for (const auto &pair : requests_to_add)
 			packet->addMessage(pair.first, pair.second);		
 
@@ -228,6 +247,16 @@ void SHLinkManager::onSlotEnd() {
 	if (beacon_module.shouldSendBeaconThisSlot() || !next_beacon_scheduled) {
 		// Schedule next beacon slot.
 		scheduleBeacon();
+	}
+
+	// update counters that keep track when link replies are due
+	for (auto &item : link_replies) {
+		coutd << "decrementing counter until link reply from " << item.first << " to ";
+		if (item.first > 0)
+			item.first--;
+		else
+			throw std::runtime_error("SHLinkManager::onSlotEnd for unsent link reply.");
+		coutd << item.first << " -> ";
 	}
 
 	// Update estimators.
@@ -441,18 +470,23 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	}
 }
 
-void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin_id) {
 	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link request to PPLinkManager -> ";
 		// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
-		((PPLinkManager*) mac->getLinkManager(origin))->processLinkRequestMessage(header, payload, origin);
+		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
 	} else
 		coutd << "discarding link request that is not destined to us -> ";
 }
 
-void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
-	throw std::invalid_argument("SHLinkManager::processLinkReplyMessage called, but link replies shouldn't be received on the BC.");
+void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload, const MacId& origin_id) {
+	MacId dest_id = header->dest_id;	
+	if (dest_id == mac->getMacId()) {
+		coutd << "forwarding link reply to PPLinkManager -> ";
+		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
+	} else 
+		coutd << "discarding link request that is not destined to us -> ";	
 }
 
 SHLinkManager::~SHLinkManager() {
