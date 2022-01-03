@@ -31,7 +31,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;		
 		LinkInfo getLinkInfo() override;
 		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
-		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload, const MacId& origin_id) override;
+		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) override;
 		void processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 		void assign(const FrequencyChannel* channel) override;

@@ -612,16 +612,14 @@ PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2Heade
 	}
 }
 
-void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& message_payload, const MacId& origin_id) {
+void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) {
 	coutd << *this << "::processLinkReplyMessage -> ";
 	mac->statisticReportLinkReplyReceived();
 	if (link_status != awaiting_reply) {
 		coutd << "not awaiting reply; discarding -> ";
 		return;
 	}
-	assert(current_link_state != nullptr && "PPLinkManager::processLinkReplyMessage for unset current state.");
-
-	const auto*& payload = (const LinkManager::LinkRequestPayload*&) message_payload;
+	assert(current_link_state != nullptr && "PPLinkManager::processLinkReplyMessage for unset current state.");	
 
 	current_link_state->is_link_initiator = true;
 	// Reset timeout.

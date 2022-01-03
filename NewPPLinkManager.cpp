@@ -424,3 +424,10 @@ bool NewPPLinkManager::isProposalViable(const ReservationTable *table, unsigned 
 void NewPPLinkManager::processLinkRequestMessage_reestablish(const L2Header*& header, const L2Packet::Payload*& payload) {
 	throw std::runtime_error("handling link requests when own link is established is not implemented");	
 }
+
+void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) {
+	coutd << *this << " processing link reply -> ";	
+	// parse selected communication resource
+
+	// establish link
+}

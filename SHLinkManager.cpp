@@ -484,7 +484,7 @@ void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2P
 		coutd << "discarding link request that is not destined to us -> ";
 }
 
-void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload, const MacId& origin_id) {
+void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) {
 	MacId dest_id = header->dest_id;	
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link reply to PPLinkManager -> ";

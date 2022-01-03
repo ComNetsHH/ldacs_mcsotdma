@@ -153,7 +153,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		virtual void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin_id);
-		virtual void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload, const MacId& origin_id);
+		virtual void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id);
 		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);		
 
 	protected:

@@ -26,6 +26,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkRequestPayl
 		void onSlotEnd() override;
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
 		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkRequestPayload*& payload, const MacId& origin_id) override;
 
 	protected:
 		/** Container that saves the resources that were locked during link establishment. */
