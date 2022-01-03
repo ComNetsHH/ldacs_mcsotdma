@@ -6,7 +6,6 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "SHLinkManager.hpp"
-#include <sstream>
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -63,9 +62,13 @@ void NewPPLinkManager::establishLink() {
 
 void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";		
+	// update slot counter
+	if (this->link_state.reserved_resources.anyLocks())
+		this->link_state.reserved_resources.num_slots_since_creation++;
 	// decrement time until the expected reply
 	if (this->time_slots_until_reply > 0)
 		this->time_slots_until_reply--;
+	// re-attempt link establishment
 	if (this->attempt_link_establishment_again) {
 		coutd << "re-attempting link establishment -> ";
 		establishLink();
@@ -105,8 +108,13 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEst
 		this->attempt_link_establishment_again = true;
 		throw std::invalid_argument("couldn't determine any proposal resources");
 	}		
+	// remember link parameters
+	unsigned int next_burst_in = 0; // don't know what the partner will choose
+	FrequencyChannel *chosen_freq_channel = nullptr; // don't know what the partner will choose
+	bool is_link_initiator = true; // sender of the request is the initiator by convention	
+	this->link_state = LinkState(this->timeout_before_link_expiry, burst_offset, burst_length, burst_length_tx, next_burst_in, is_link_initiator, chosen_freq_channel);
 	// lock them
-	auto locked_resources = LockMap();
+	auto &locked_resources = this->link_state.reserved_resources;
 	unsigned int reply_offset = 0;
 	for (const auto pair : proposal_resources) {
 		const auto *frequency_channel = pair.first;
@@ -135,6 +143,7 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEst
 			}						
 		}
 	}
+	this->link_state.reply_offset = reply_offset;	 
 	
 	// populate message
 	header->timeout = this->timeout_before_link_expiry;
@@ -147,13 +156,7 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEst
 	// remember when the reply is expected
 	this->time_slots_until_reply = reply_offset;
 	this->link_status = awaiting_reply;	
-	coutd << this->link_status << "' -> ";
-	// remember link parameters
-	unsigned int next_burst_in = 0; // don't know what the partner will choose
-	FrequencyChannel *chosen_freq_channel = nullptr; // don't know what the partner will choose
-	bool is_link_initiator = true; // sender of the request is the initiator by convention	
-	this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_length, header->burst_length_tx, next_burst_in, is_link_initiator, chosen_freq_channel);
-	this->link_state.reply_offset = reply_offset;
+	coutd << this->link_status << "' -> ";		
 }
 
 std::map<const FrequencyChannel*, std::vector<unsigned int>> NewPPLinkManager::slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx) const {
@@ -257,13 +260,13 @@ NewPPLinkManager::LockMap NewPPLinkManager::lock_bursts(const std::vector<unsign
 	// actually lock them
 	auto lock_map = LockMap();
 	for (unsigned int slot : locked_local) {
-		table->lock(slot);
+		table->mark(slot, Reservation(link_id, Reservation::LOCKED));
 		lock_map.locks_local.push_back({table, slot});
 	}
 	for (unsigned int slot : locked_tx) {
 		for (auto* tx_table : tx_tables)
 			if (tx_table->canLock(slot)) {
-				tx_table->lock(slot);
+				table->mark(slot, Reservation(link_id, Reservation::LOCKED));
 				lock_map.locks_transmitter.push_back({tx_table, slot});
 				break;
 			}
@@ -271,7 +274,7 @@ NewPPLinkManager::LockMap NewPPLinkManager::lock_bursts(const std::vector<unsign
 	for (unsigned int slot : locked_rx) {
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(slot)) {
-				rx_table->lock(slot);
+				table->mark(slot, Reservation(link_id, Reservation::LOCKED));
 				lock_map.locks_receiver.push_back({rx_table, slot});
 				break;
 			}
@@ -360,7 +363,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			unsigned int chosen_time_slot_offset = chosen_resource.second;
 			// save the link state
 			bool is_link_initiator = false; // we've received a request
-			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_length, header->burst_length_tx, chosen_time_slot_offset, is_link_initiator, chosen_freq_channel);				
+			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_offset, header->burst_length, header->burst_length_tx, chosen_time_slot_offset, is_link_initiator, chosen_freq_channel);				
 			coutd << "randomly chose " << chosen_time_slot_offset << "@" << *chosen_freq_channel << " -> ";
 			// schedule the link reply
 			L2HeaderLinkReply *header = new L2HeaderLinkReply();
@@ -441,12 +444,52 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRe
 	const FrequencyChannel *selected_freq_channel = selected_resource.first;
 	if (selected_resource.second.size() != size_t(1)) 
 		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
-	const unsigned int selected_time_slot_offset = selected_resource.second.at(0);	
-	// schedule resources
+	const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
 	unsigned int &timeout = this->link_state.timeout, 
 				 &burst_length = this->link_state.burst_length,
 				 &burst_length_tx = this->link_state.burst_length_tx,
 				 &burst_length_rx = this->link_state.burst_length_rx;	
 	unsigned int first_burst_in = selected_time_slot_offset - this->link_state.reply_offset; // normalize to current time slot
-	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";
+	bool is_link_initiator = true;
+	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";	
+	// free locked resources	
+	this->link_state.reserved_resources.unlock();
+	this->link_state.reserved_resources.clear();
+	coutd << "free'd locked resources -> ";
+	// schedule resources
+	schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
+	coutd << "scheduled transmission bursts -> ";
+	// update link status
+	coutd << "updating link status '" << this->link_status << "->";
+	this->link_status = LinkManager::awaiting_data_tx;
+	coutd << this->link_status << "' -> ";
+}
+
+void NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator) {		
+	this->assign(channel);		
+	Reservation::Action action_1 = is_link_initiator ? Reservation::TX : Reservation::RX,
+						action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
+	for (int burst = 0; burst < timeout; burst++) {
+		int slot = first_burst_in + burst*this->link_state.burst_offset;
+		for (int tx = 0; tx < burst_length_tx; tx++) {
+			int slot_offset = slot + tx;
+			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {				
+				for (size_t t = 0; t < 25; t++)
+					std::cout << "t=" << t << ": " << this->current_reservation_table->getReservation(slot_offset + t) << std::endl;
+				std::stringstream s;
+				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be locked.";
+				throw std::runtime_error(s.str());
+			}
+			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_1));						
+		}
+		for (int rx = 0; rx < burst_length_rx; rx++) {
+			int slot_offset = slot + burst_length_tx + rx;
+			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {
+				std::stringstream s;
+				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be locked.";
+				throw std::runtime_error(s.str());
+			}
+			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_2));		
+		}
+	}	
 }

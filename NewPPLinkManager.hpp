@@ -7,6 +7,7 @@
 
 #include "LinkManager.hpp"
 #include "MovingAverage.hpp"
+#include <sstream>
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -40,6 +41,8 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 			std::vector<std::pair<ReservationTable*, unsigned int>> locks_receiver;
 			/** Local resources that were locked. */
 			std::vector<std::pair<ReservationTable*, unsigned int>> locks_local;
+			/** Keep track of the number of time slots since creation, so that the slot offsets can be normalized to the current time. */
+			unsigned int num_slots_since_creation;
 
 			void merge(const LockMap& other) {
 				for (const auto& pair : other.locks_local)
@@ -67,19 +70,35 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 				this->locks_receiver.clear();
 				this->locks_local.clear();
 			}
-
-			unsigned int num_slots_since_creation;
+			void unlock() {				
+				for (const auto& pair : locks_local) {
+					ReservationTable *table = pair.first;
+					unsigned int slot_offset = pair.second - this->num_slots_since_creation;
+					if (slot_offset > 0) {
+						if (!table->getReservation(slot_offset).isLocked()) {
+							for (size_t t = 0; t < 20; t++)
+								std::cout << "t=" << t << ": " << table->getReservation(t) << std::endl;
+							std::stringstream ss;
+							ss << "LockMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
+							throw std::invalid_argument(ss.str());
+						} else 
+							table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));																			
+					}
+				}
+				// no need to manually unlock RX and TX tables
+				// because the table->mark takes care of that auto-magically									
+			}			
 		};
 
 		/** Keeps track of the current link state values. */
 		class LinkState {
 		public:			
-			LinkState(unsigned int timeout, unsigned int burst_length, unsigned int burst_length_tx, unsigned int next_burst_in, bool is_link_initator, const FrequencyChannel *frequency_channel)
-				: timeout(timeout), burst_length(burst_length), burst_length_tx(burst_length_tx), burst_length_rx(burst_length - burst_length_tx), next_burst_in(next_burst_in), is_link_initator(is_link_initator), reserved_resources(LockMap()), frequency_channel(frequency_channel) {}
+			LinkState(unsigned int timeout, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int next_burst_in, bool is_link_initator, const FrequencyChannel *frequency_channel)
+				: timeout(timeout), burst_offset(burst_offset), burst_length(burst_length), burst_length_tx(burst_length_tx), burst_length_rx(burst_length - burst_length_tx), next_burst_in(next_burst_in), is_link_initator(is_link_initator), reserved_resources(LockMap()), frequency_channel(frequency_channel) {}
 
-			LinkState() : LinkState(0, 0, 0, 0, false, nullptr) {}
+			LinkState() : LinkState(0, 0, 0, 0, 0, false, nullptr) {}
 
-			unsigned int timeout, burst_length, burst_length_tx, burst_length_rx, next_burst_in;
+			unsigned int timeout, burst_offset, burst_length, burst_length_tx, burst_length_rx, next_burst_in;
 			/** When the reply is received, this is used to normalize the selected resource to the current time slot. */
 			int reply_offset = -1;
 			bool is_link_initator;
@@ -156,7 +175,9 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		 * @param table 
 		 * @return Map of locked resources.
 		 */
-		LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table);
+		LockMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table);		
+
+		void schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int selected_time_slot_offset, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator);
 
 	protected:
 		/** Number of transmission bursts until link expiry. */

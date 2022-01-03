@@ -255,6 +255,59 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint(4), split.second);
 		}
 
+		/** After the transmission of a link request, all proposed resources should be locked. */
+		void testResourcesLockedAfterRequest() {
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until request is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
+			for (size_t t = 0; t < broadcast_slot; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			// make sure that all proposed resources are locked
+			auto *link_request = env->phy_layer->outgoing_packets.at(0);
+			int request_index = link_request->getRequestIndex();
+			CPPUNIT_ASSERT(request_index != -1);			
+			const auto *request_payload = (LinkManager::LinkEstablishmentPayload*) link_request->getPayloads().at(request_index);
+			const auto &resources = request_payload->resources;
+			int reply_offset = -1;
+			for (const auto &pair : resources) {
+				const auto *channel = pair.first;
+				const auto &time_slots = pair.second;
+				if (channel->isPP()) {
+					const auto *res_table = reservation_manager->getReservationTable(channel);
+					for (const auto &slot : time_slots) {
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::LOCKED), res_table->getReservation(slot));
+					}
+				} else {
+					reply_offset = time_slots.at(0);
+				}
+			}
+			CPPUNIT_ASSERT_GREATER(-1, reply_offset);
+			// progress until reply and check that the corresponding slots are still locked
+			for (size_t t = 0; t < reply_offset; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				for (const auto &pair : resources) {
+					const auto *channel = pair.first;
+					const auto &time_slots = pair.second;
+					if (channel->isPP()) {
+						const auto *res_table = reservation_manager->getReservationTable(channel);
+						for (const auto &slot : time_slots) {							
+							CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::LOCKED), res_table->getReservation(slot - (t + 1)));
+						}
+					}
+				}
+			}
+		}
+
 		/** At transmission of the link request, the reply reception should be reserved on the SH and for the receiver. */
 		void testReplySlotReserved() {
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
@@ -411,7 +464,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
 		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
 		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		// CPPUNIT_TEST(testReplySlotPassed);
+		// CPPUNIT_TEST(testReplySlotPassed);		
+		// CPPUNIT_TEST(testResourcesLockedAfterRequest);
 		CPPUNIT_TEST(testReplyReceived);
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);

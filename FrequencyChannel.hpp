@@ -62,7 +62,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		if (channel.isPP())
 			return stream << std::to_string(channel.getCenterFrequency()) << "kHz";
 		else
-			return stream << "BC";
+			return stream << "SH";
 	}
 }
 
