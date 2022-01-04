@@ -68,6 +68,9 @@ void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	// decrement time until the expected reply
 	if (this->time_slots_until_reply > 0)
 		this->time_slots_until_reply--;
+	// decrement time until next transmission burst
+	if (this->link_state.next_burst_in > 0)
+		this->link_state.next_burst_in--;	
 	// re-attempt link establishment
 	if (this->attempt_link_establishment_again) {
 		coutd << "re-attempting link establishment -> ";
@@ -90,6 +93,9 @@ void NewPPLinkManager::onSlotEnd() {
 		cancelLink();		
 		establishLink();
 	}
+	// have we missed a transmission burst?
+	if (link_status == link_established && this->link_state.next_burst_in == 0)
+		throw std::runtime_error("transmission burst appears to have been missed");
 }
 
 void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) {
@@ -363,7 +369,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			const FrequencyChannel *selected_freq_channel = chosen_resource.first;
 			unsigned int first_burst_in = chosen_resource.second;
 			// save the link state
-			bool is_link_initiator = false; // we've received a request
+			bool is_link_initiator = false; // we've *received* a request
 			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_offset, header->burst_length, header->burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
 			coutd << "randomly chose " << first_burst_in << "@" << *selected_freq_channel << " -> ";
 			// schedule the link reply
@@ -384,7 +390,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			coutd << "updating link status '" << this->link_status << "->";
 			this->link_status = LinkManager::awaiting_data_tx;
 			coutd << this->link_status << "' -> ";
-		} catch (const std::invalid_argument& e) {
+		} catch (const std::invalid_argument &e) {
 			coutd << "no proposed resources were viable -> attempting own link establishment -> ";
 			mac->statisticReportLinkRequestRejectedDueToUnacceptablePPResourceProposals();
 			establishLink();
@@ -461,8 +467,9 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRe
 				 &burst_length_tx = this->link_state.burst_length_tx,
 				 &burst_length_rx = this->link_state.burst_length_rx;	
 	unsigned int first_burst_in = selected_time_slot_offset - this->link_state.reply_offset; // normalize to current time slot
+	link_state.next_burst_in = first_burst_in;
 	bool is_link_initiator = true;
-	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";	
+	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";		
 	// free locked resources	
 	this->link_state.reserved_resources.unlock();
 	this->link_state.reserved_resources.clear();
