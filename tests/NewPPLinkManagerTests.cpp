@@ -295,7 +295,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_GREATER(-1, reply_offset);
 			// progress until reply and check that the corresponding slots are still locked
-			for (size_t t = 0; t < reply_offset; t++) {
+			for (size_t t = 0; t < reply_offset - 1; t++) {
 				mac->update(1);
 				mac->execute();
 				mac->onSlotEnd();
@@ -693,12 +693,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
 		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
 		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		CPPUNIT_TEST(testReplySlotPassed);		
+		// CPPUNIT_TEST(testReplySlotPassed);		
 		// CPPUNIT_TEST(testResourcesLockedAfterRequest);				
 		// CPPUNIT_TEST(testReplyReceived);		
-		// CPPUNIT_TEST(testUnlockResources);		
+		CPPUNIT_TEST(testUnlockResources);		
 		// CPPUNIT_TEST(testUnscheduleReservedResources);		
-		CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
+		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
 		// CPPUNIT_TEST(testUnscheduleOwnReplyUponReplyReception);
