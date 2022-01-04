@@ -793,7 +793,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// and this transmission should currently be reflected in their link states
 			CPPUNIT_ASSERT_GREATER(uint(0), pp->link_state.next_burst_in);
 			CPPUNIT_ASSERT_EQUAL(pp->link_state.next_burst_in, pp_you->link_state.next_burst_in);
-			// proceed until the first transmission burst
+			// proceed until the first slot of the first transmission burst
 			size_t first_burst_in = pp->link_state.next_burst_in;
 			for (size_t t = 0; t < first_burst_in; t++) {				
 				mac->update(1);
@@ -803,6 +803,32 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->onSlotEnd();
 				mac_you->onSlotEnd();
 			}
+			// the link initator should've transmitted a packet
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_unicasts_sent.get());
+			// the other user should've received it
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_unicasts_rcvd.get());
+			// and this one should've established the link now
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			// while the link initator can't know that it has arrived, and is still waiting for the first data transmission
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp->link_status);
+			// both should have synchronized counters until the next transmission burst
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset, pp->link_state.next_burst_in);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.next_burst_in, pp_you->link_state.next_burst_in);
+			// now continue until the last slot of the burst
+			size_t remaining_burst_length = pp->link_state.burst_length - 1;
+			for (size_t t = 0; t < remaining_burst_length; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			// now both users should have established links and synchronized counters
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);			
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset - pp->link_state.burst_length + 1, pp->link_state.next_burst_in);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.next_burst_in, pp_you->link_state.next_burst_in);
 		}
 
 		/** When we've sent a request and are awaiting a reply, but now a link request comes in, this should be handled instead. */
@@ -825,6 +851,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When we've established a link, but a new link request comes in, this should be handled for the purpose of re-establishment only if the corresponding flag is set. */
 		void testLinkRequestWhileLinkEstablishedForReestablishment() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		void testLinkTermination() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		void testLinkReestablishment() {
 			bool is_implemented = false;
 			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
 		}
@@ -858,6 +894,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablishedForReestablishment);
+		// CPPUNIT_TEST(testLinkTermination);
+		// CPPUNIT_TEST(testLinkReestablishment);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

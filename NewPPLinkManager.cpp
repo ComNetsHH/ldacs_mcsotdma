@@ -12,6 +12,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 NewPPLinkManager::NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
 void NewPPLinkManager::onReceptionBurstStart(unsigned int burst_length) {	
+	coutd << *this << "::onReception";
 }
 
 void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
@@ -19,7 +20,7 @@ void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
-	coutd << *this << "::onTransmissionBurst -> ";			
+	coutd << *this << "::onTransmission -> ";
 	// instantiate packet
 	auto *packet = new L2Packet();
 	// add base header
@@ -84,10 +85,14 @@ void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	if (this->time_slots_until_reply > 0)
 		this->time_slots_until_reply--;
 	// decrement time until next transmission burst
-	if (this->link_state.next_burst_in > 0) {
+	if (link_status == awaiting_data_tx || link_status == link_established) {
+		if (link_state.next_burst_in == 0)
+			throw std::runtime_error("PPLinkManager attempted to decrement next_burst_in past zero.");
 		this->link_state.next_burst_in--;	
-		coutd << "next transmission burst start " << (link_state.next_burst_in == 0 ? "now" : "in " + std::to_string(link_state.next_burst_in) + " slots") << " -> ";
-	}
+		coutd << "next transmission burst start " << (link_state.next_burst_in == 0 ? "now" : "in " + std::to_string(link_state.next_burst_in) + " slots") << " -> ";		
+		if (link_state.next_burst_in == 0)
+			link_state.next_burst_in = link_state.burst_offset;
+	}	
 	// re-attempt link establishment
 	if (this->attempt_link_establishment_again) {
 		coutd << "re-attempting link establishment -> ";
@@ -565,6 +570,24 @@ void NewPPLinkManager::processBaseMessage(L2HeaderBase*& header) {
 
 void NewPPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
 	coutd << *this << "::processUnicastMessage -> ";
+	MacId dest_id = header->dest_id;
+	if (dest_id != mac->getMacId()) {
+		coutd << "discarding unicast message not intended for us -> ";
+		return;
+	} else {
+		mac->statisticReportUnicastMessageProcessed();
+		
+		if (link_status == awaiting_data_tx) {
+			// establish link
+			coutd << "this establishes the link -> link status changes '" << link_status << "->";			
+			link_status = link_established;			
+			coutd << link_status << "' -> ";
+			mac->statisticReportPPLinkEstablished();
+			this->established_link_this_slot = true;			
+			// inform upper sublayers
+			mac->notifyAboutNewLink(link_id);			
+		}
+	}
 }
 
 void NewPPLinkManager::setReportedDesiredTxSlots(unsigned int value) {

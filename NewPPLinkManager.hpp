@@ -107,9 +107,21 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 
 			LinkState() : LinkState(0, 0, 0, 0, 0, false, nullptr) {}
 
-			unsigned int timeout, burst_offset, burst_length, burst_length_tx, burst_length_rx, next_burst_in;
+			/** Remaining number of transmission bursts until link expiry. */
+			unsigned int timeout;
+			/** Number of slots in-between transmission bursts. */
+			unsigned int burst_offset; 
+			/** Number of slot a transmission burst occupies. */
+			unsigned int burst_length;
+			/** Number of initial slots within a transmission burst the link initiator claims for its transmission. */
+			unsigned int burst_length_tx;
+			/** Number of later slots within a transmission burst the link initiator listens for. */
+			unsigned int burst_length_rx;
+			/** Number of slots until the start of the next transmission burst. */
+			unsigned int next_burst_in;
 			/** When the reply is received, this is used to normalize the selected resource to the current time slot. */
 			int reply_offset = -1;
+			/** The link initiator is that user, that has sent the link request with which the link was established. */
 			bool is_link_initator;
 			ReservationMap reserved_resources;
 			FrequencyChannel const *frequency_channel = nullptr;
@@ -220,6 +232,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		/** Set to true if link establishment should be re-attempted next slot. */
 		bool attempt_link_establishment_again = false;
 		LinkState link_state = LinkState();	
+		bool established_link_this_slot = false;
 };
 
 }
