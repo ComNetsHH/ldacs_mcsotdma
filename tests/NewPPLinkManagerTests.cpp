@@ -756,8 +756,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * The first reply is handled.
 		 */
 		void testUnscheduleOwnReplyUponReplyReception() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// attempt link establishment
+			// but fail due to the reply slot being unacceptable
+			testRequestReceivedButReplySlotUnsuitable();
+			// now both communication partners are attempting to establish the link
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_you->link_status);
+			// figure out which one will attempt it sooner
+			int next_broadcast = sh->next_broadcast_slot, next_broadcast_you = sh_you->next_broadcast_slot;
+			int sooner_broadcast = std::min(next_broadcast, next_broadcast_you);
+			// proceed until this attempt
+			for (size_t t = 0; t < sooner_broadcast; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+
 		}
 
 		/** When a link reply is received, this should establish the link on the indicated resources. */
@@ -768,6 +785,30 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When the first burst has been handled, this should be reflected in both users' stati. */
 		void testEstablishLinkUponFirstBurst() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** When we've sent a request and are awaiting a reply, but now a link request comes in, this should be handled instead. */
+		void testLinkRequestWhileAwaitingReply() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** When we're awaiting the first data transmission, but instead a link request comes in, this should be handled instead. */
+		void testLinkRequestWhileAwaitingData() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** When we've established a link, but a new link request comes in, this should cancel the link and start establishment. */
+		void testLinkRequestWhileLinkEstablished() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** When we've established a link, but a new link request comes in, this should be handled for the purpose of re-establishment only if the corresponding flag is set. */
+		void testLinkRequestWhileLinkEstablishedForReestablishment() {
 			bool is_implemented = false;
 			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
 		}
@@ -794,10 +835,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testUnscheduleReservedResources);		
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
-		CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		// CPPUNIT_TEST(testUnscheduleOwnReplyUponReplyReception);
+		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
+		CPPUNIT_TEST(testUnscheduleOwnReplyUponReplyReception);
 		// CPPUNIT_TEST(testEstablishLinkUponReplyReception);
 		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
+		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
+		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);
+		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablishedForReestablishment);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
