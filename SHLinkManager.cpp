@@ -219,7 +219,10 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 	} else
 		next_broadcast_slot = 0;
 
-	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << (next_broadcast_scheduled ? "next broadcast in " + std::to_string(next_broadcast_slot) + " slots -> " : "");
+	if (next_broadcast_scheduled)
+		coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << "next broadcast " << (next_broadcast_slot == 0 ? "now" : "in " + std::to_string(next_broadcast_slot) + " slots") << " -> ";
+	else
+		coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << "no next broadcast scheduled -> ";
 
 	// broadcast link manager should always have a ReservationTable assigned
 	if (current_reservation_table == nullptr)
