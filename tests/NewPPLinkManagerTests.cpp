@@ -781,13 +781,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, pp->link_status);
 				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp_you->link_status);
 			}
-		}
-
-		/** When a link reply is received, this should establish the link on the indicated resources. */
-		void testEstablishLinkUponReplyReception() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
-		}
+		}		
 
 		/** When the first burst has been handled, this should be reflected in both users' stati. */
 		void testEstablishLinkUponFirstBurst() {
@@ -836,14 +830,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
 		// CPPUNIT_TEST(testReplySlotPassed);		
 		// CPPUNIT_TEST(testResourcesLockedAfterRequest);				
-		// CPPUNIT_TEST(testReplyReceived);		
+		CPPUNIT_TEST(testReplyReceived);		
 		// CPPUNIT_TEST(testUnlockResources);		
 		// CPPUNIT_TEST(testUnscheduleReservedResources);		
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);
-		// CPPUNIT_TEST(testEstablishLinkUponReplyReception);
+		CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
 		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
