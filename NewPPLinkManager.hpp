@@ -62,6 +62,9 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 			void unlock() {				
 				for (const auto& pair : resource_reservations) {
 					ReservationTable *table = pair.first;
+					// skip SH reservations
+					if (table->getLinkedChannel() != nullptr && table->getLinkedChannel()->isSH())
+						continue;
 					unsigned int slot_offset = pair.second - this->num_slots_since_creation;
 					if (slot_offset > 0) {
 						if (!table->getReservation(slot_offset).isLocked()) {							
