@@ -23,7 +23,7 @@ L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) 
 	// instantiate packet
 	auto *packet = new L2Packet();
 	// add base header
-	packet->addMessage(new L2HeaderBase(mac->getMacId(), link_state.burst_offset, link_state.burst_length, link_state.burst_length_tx, link_state.timeout), nullptr);
+	packet->addMessage(new L2HeaderBase(mac->getMacId(), link_state.burst_offset, link_state.burst_length, getRequiredTxSlots(), link_state.timeout), nullptr);
 	// request payload
 	size_t capacity = mac->getCurrentDatarate() - packet->getBits();
 	coutd << "requesting " << capacity << " bits from upper sublayer -> ";
@@ -553,4 +553,27 @@ void NewPPLinkManager::cancelLink() {
 	} else 
 		throw std::runtime_error("PPLinkManager::cancelLink for unexpected link status: " + std::to_string(this->link_status));
 	coutd << "done -> ";
+}
+
+void NewPPLinkManager::processBaseMessage(L2HeaderBase*& header) {
+	coutd << *this << "::processBaseMessage -> ";
+	// communication partner can indicate its resource requirements through this header field
+	this->setReportedDesiredTxSlots(header->burst_length_tx);
+	// communication partner is quite obviously active
+	mac->reportNeighborActivity(header->src_id);
+}
+
+void NewPPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+	coutd << *this << "::processUnicastMessage -> ";
+}
+
+void NewPPLinkManager::setReportedDesiredTxSlots(unsigned int value) {
+	if (this->force_bidirectional_links)
+		this->reported_resoure_requirement = std::max(uint(1), value);
+	else
+		this->reported_resoure_requirement = value;
+}
+
+void NewPPLinkManager::setForceBidirectionalLinks(bool flag) {
+	this->force_bidirectional_links = flag;
 }

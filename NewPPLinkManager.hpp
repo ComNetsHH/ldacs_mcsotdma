@@ -192,6 +192,12 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 
 		ReservationMap schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int selected_time_slot_offset, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator);
 
+		void processBaseMessage(L2HeaderBase*& header) override;
+		void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;		
+
+		void setReportedDesiredTxSlots(unsigned int value);
+		void setForceBidirectionalLinks(bool flag);
+
 	protected:
 		/** Number of transmission bursts until link expiry. */
 		unsigned int timeout_before_link_expiry = 20;
