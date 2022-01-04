@@ -793,6 +793,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// and this transmission should currently be reflected in their link states
 			CPPUNIT_ASSERT_GREATER(uint(0), pp->link_state.next_burst_in);
 			CPPUNIT_ASSERT_EQUAL(pp->link_state.next_burst_in, pp_you->link_state.next_burst_in);
+			// proceed until the first transmission burst
+			size_t first_burst_in = pp->link_state.next_burst_in;
+			for (size_t t = 0; t < first_burst_in; t++) {				
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
 		}
 
 		/** When we've sent a request and are awaiting a reply, but now a link request comes in, this should be handled instead. */

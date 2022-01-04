@@ -19,7 +19,22 @@ void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
 }
 
 L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
-	return nullptr;
+	coutd << *this << "::onTransmissionBurst -> ";			
+	// instantiate packet
+	auto *packet = new L2Packet();
+	// add base header
+	packet->addMessage(new L2HeaderBase(mac->getMacId(), link_state.burst_offset, link_state.burst_length, link_state.burst_length_tx, link_state.timeout), nullptr);
+	// request payload
+	size_t capacity = mac->getCurrentDatarate() - packet->getBits();
+	coutd << "requesting " << capacity << " bits from upper sublayer -> ";
+	auto *data = mac->requestSegment(capacity, link_id);
+	// add payload
+	for (size_t i = 0; i < data->getPayloads().size(); i++) 
+		if (data->getHeaders().at(i)->frame_type != L2Header::base)
+			packet->addMessage(data->getHeaders().at(i), data->getPayloads().at(i));	
+	// return packet
+	mac->statisticReportUnicastSent();
+	return packet;
 }
 
 void NewPPLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
@@ -69,8 +84,10 @@ void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	if (this->time_slots_until_reply > 0)
 		this->time_slots_until_reply--;
 	// decrement time until next transmission burst
-	if (this->link_state.next_burst_in > 0)
+	if (this->link_state.next_burst_in > 0) {
 		this->link_state.next_burst_in--;	
+		coutd << "next transmission burst start " << (link_state.next_burst_in == 0 ? "now" : "in " + std::to_string(link_state.next_burst_in) + " slots") << " -> ";
+	}
 	// re-attempt link establishment
 	if (this->attempt_link_establishment_again) {
 		coutd << "re-attempting link establishment -> ";
