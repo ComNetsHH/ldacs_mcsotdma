@@ -963,6 +963,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
 		}
 
+		void testDecrementingTimeout() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
 		void testLinkTermination() {
 			bool is_implemented = false;
 			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
@@ -1002,6 +1007,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablishedForReestablishment);
+		// CPPUNIT_TEST(testDecrementingTimeout);
 		// CPPUNIT_TEST(testLinkTermination);
 		// CPPUNIT_TEST(testLinkReestablishment);
 	CPPUNIT_TEST_SUITE_END();
