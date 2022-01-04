@@ -752,10 +752,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), sh_table_you->getReservation(reply_offset));
 		}	
 
-		/** When a link reply is received, this should unschedule any own link replies currently scheduled. 
-		 * The first reply is handled.
-		 */
-		void testUnscheduleOwnReplyUponReplyReception() {
+		/** When a link request is received, this should unschedule any own link requests currently scheduled. */
+		void testUnscheduleOwnRequestUponRequestReception() {
 			// attempt link establishment
 			// but fail due to the reply slot being unacceptable
 			testRequestReceivedButReplySlotUnsuitable();
@@ -763,8 +761,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_you->link_status);
 			// figure out which one will attempt it sooner
-			int next_broadcast = sh->next_broadcast_slot, next_broadcast_you = sh_you->next_broadcast_slot;
-			int sooner_broadcast = std::min(next_broadcast, next_broadcast_you);
+			CPPUNIT_ASSERT_GREATER(uint(0), sh->next_broadcast_slot);
+			CPPUNIT_ASSERT_GREATER(uint(0), sh_you->next_broadcast_slot);
+			int sooner_broadcast = std::min(sh->next_broadcast_slot, sh_you->next_broadcast_slot);			
 			// proceed until this attempt
 			for (size_t t = 0; t < sooner_broadcast; t++) {
 				mac->update(1);
@@ -774,7 +773,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->onSlotEnd();
 				mac_you->onSlotEnd();
 			}
-
+			bool my_attempt_sooner = sh->next_broadcast_slot < sh_you->next_broadcast_slot;
+			if (my_attempt_sooner) {
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);				
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, pp_you->link_status);				
+			} else {
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, pp->link_status);
+				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp_you->link_status);
+			}
 		}
 
 		/** When a link reply is received, this should establish the link on the indicated resources. */
@@ -836,7 +842,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		CPPUNIT_TEST(testUnscheduleOwnReplyUponReplyReception);
+		CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);
 		// CPPUNIT_TEST(testEstablishLinkUponReplyReception);
 		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);

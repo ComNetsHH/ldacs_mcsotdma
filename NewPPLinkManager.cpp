@@ -312,14 +312,18 @@ unsigned int NewPPLinkManager::getRequiredRxSlots() const {
 }
 
 void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
-	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
+	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> own link status is '" << link_status << "' -> ";
 	mac->statisticReportLinkRequestReceived();
 	// initial link request
 	if (this->link_status == link_not_established) {
+		coutd << "treating this as an initial link establishment attempt -> ";
 		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	// cancel the own request and process this one
-	} else if (this->link_status == awaiting_request_generation) {
-		throw std::runtime_error("handling link requests when own link is awaiting request generation is not implemented");
+	} else if (this->link_status == awaiting_request_generation) {		
+		cancelLink();		
+		coutd << "canceling own request -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) << " requests cancelled -> ";
+		coutd << "processing request -> ";
+		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	// cancel the own reply expectation and process this request
 	} else if (this->link_status == awaiting_reply) {
 		throw std::runtime_error("handling link requests when own link is awaiting reply is not implemented");
