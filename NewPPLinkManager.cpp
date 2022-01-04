@@ -382,6 +382,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			coutd << this->link_status << "' -> ";
 		} catch (const std::invalid_argument& e) {
 			coutd << "no proposed resources were viable -> attempting own link establishment -> ";
+			mac->statisticReportLinkRequestRejectedDueToUnacceptablePPResourceProposals();
 			establishLink();
 		}
 	} else { // sending reply is not viable 
@@ -427,7 +428,7 @@ bool NewPPLinkManager::isProposalViable(const ReservationTable *table, unsigned 
 	unsigned int burst_length_rx = burst_length - burst_length_tx;
 	for (unsigned int burst = 0; viable && burst < timeout; burst++) {
 		int slot = (int) (burst_start + burst*burst_offset);			
-		// Entire slot range must be idle && receiver during first slots && transmitter during later ones.
+		// Entire slot range must be idle && receiver during first slots && transmitter during later ones.		
 		viable = viable && table->isIdle(slot, burst_length)
 					&& mac->isAnyReceiverIdle(slot, burst_length_tx)
 					&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);

@@ -100,7 +100,7 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		// Add broadcast data.
 		int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
 		if (remaining_bits > 0) {
-			coutd << "adding " << remaining_bits << " bits from upper sublayer -> ";
+			coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
 			L2Packet* upper_layer_data = mac->requestSegment(remaining_bits, link_id);
 			size_t num_bits_added = 0;
 			for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {

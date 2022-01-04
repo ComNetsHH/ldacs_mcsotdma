@@ -621,8 +621,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			}
 			CPPUNIT_ASSERT_GREATER(-1, reply_offset);
-			// mark this slot as utilized so that it cannot be accepted
-			std::cout << std::endl << "marking reply slot in " << reply_offset << " as utilized" << std::endl;
+			// mark this slot as utilized so that it cannot be accepted			
 			reservation_manager_you->getBroadcastReservationTable()->mark(reply_offset, Reservation(MacId(partner_id.getId() + 1), Reservation::RX));
 			// now proceed with the request reception
 			mac_you->execute();
@@ -648,8 +647,66 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When a link request is received, but none of the proposed resources are suitable, this should trigger link establishment. */
 		void testRequestReceivedButProposedResourcesUnsuitable() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until just before request is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
+			for (size_t t = 0; t < broadcast_slot - 1; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			// now send link request
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();			
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);
+			// find the proposed PP resources
+			auto *link_request = env->phy_layer->outgoing_packets.at(0);
+			int request_index = link_request->getRequestIndex();
+			CPPUNIT_ASSERT(request_index != -1);			
+			const auto *request_payload = (LinkManager::LinkEstablishmentPayload*) link_request->getPayloads().at(request_index);
+			const auto &resources = request_payload->resources;
+			int reply_offset = -1;
+			for (const auto &pair : resources) {
+				const auto *channel = pair.first;
+				const auto &time_slots = pair.second;
+				if (channel->isPP()) {
+					auto *res_table = reservation_manager_you->getReservationTable(channel);
+					// and lock them so that this request must be rejected
+					for (const auto &slot : time_slots) 						
+						res_table->lock(slot);				
+				} else {
+					reply_offset = time_slots.at(0);
+				}
+			}
+			CPPUNIT_ASSERT_GREATER(-1, reply_offset);			
+			// now proceed with the request reception
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+			// which should've been rejected
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals.get());
+			// and which should've triggered link establishment on the communication partner's side
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);
+			// now proceed until the expected reply slot, which won't be transmitted
+			for (size_t t = 0; t < reply_offset; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			// link establishment should've been re-triggered
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);
 		}
 
 		/** When a link request is received, the reply slot is suitable, a proposed resource is suitable, then this should be selected and the reply slot scheduled. */
@@ -698,8 +755,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testReplyReceived);		
 		CPPUNIT_TEST(testUnlockResources);		
 		CPPUNIT_TEST(testUnscheduleReservedResources);		
-		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
-		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
+		CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
+		CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
 		// CPPUNIT_TEST(testUnscheduleOwnReplyUponReplyReception);
 		// CPPUNIT_TEST(testEstablishLinkUponReplyReception);
