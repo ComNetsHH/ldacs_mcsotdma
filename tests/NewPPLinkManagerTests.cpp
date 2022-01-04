@@ -833,8 +833,116 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When we've sent a request and are awaiting a reply, but now a link request comes in, this should be handled instead. */
 		void testLinkRequestWhileAwaitingReply() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment
+			mac->notifyOutgoing(100, partner_id);
+			unsigned int broadcast_slot = sh->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until just before request is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), env->phy_layer->outgoing_packets.size());
+			for (size_t t = 0; t < broadcast_slot - 1; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			// now send link request
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();			
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);
+			// find the slot offset for the link reply
+			auto *link_request = env->phy_layer->outgoing_packets.at(0);
+			int request_index = link_request->getRequestIndex();
+			CPPUNIT_ASSERT(request_index != -1);			
+			const auto *request_payload = (LinkManager::LinkEstablishmentPayload*) link_request->getPayloads().at(request_index);
+			const auto &resources = request_payload->resources;
+			int reply_offset = -1;
+			for (const auto &pair : resources) {
+				const auto *channel = pair.first;
+				const auto &time_slots = pair.second;
+				if (channel->isPP()) {
+					const auto *res_table = reservation_manager->getReservationTable(channel);
+					for (const auto &slot : time_slots) {
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::LOCKED), res_table->getReservation(slot));
+					}
+				} else {
+					reply_offset = time_slots.at(0);
+				}
+			}
+			CPPUNIT_ASSERT_GREATER(-1, reply_offset);
+			// mark this slot as utilized so that it cannot be accepted			
+			reservation_manager_you->getBroadcastReservationTable()->mark(reply_offset, Reservation(MacId(partner_id.getId() + 1), Reservation::RX));
+			// now proceed with the request reception
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+			// which should've been rejected
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot.get());
+			// and which should've triggered link establishment on the communication partner's side
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(true, pp->link_state.is_link_initator);
+			CPPUNIT_ASSERT_EQUAL(false, pp_you->link_state.is_link_initator);
+			// now the communication partner manages to send a request before the reply slot has arrived
+			// which we hackily achieve by not updating the link initiator			
+			size_t num_slots_until_request = sh_you->next_broadcast_slot;
+			for (size_t t = 0; t < num_slots_until_request - 1; t++) {
+				mac_you->update(1);
+				mac_you->execute();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+			// this should force the link initator to cancel its establishment,
+			// process the request and become the link recipient
+			CPPUNIT_ASSERT_EQUAL(false, pp->link_state.is_link_initator);
+			CPPUNIT_ASSERT_EQUAL(true, pp_you->link_state.is_link_initator);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, pp_you->link_status);
+			// now proceed until the reply is sent
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_replies.size());
+			unsigned int reply_tx_in = sh->link_replies.at(0).first + 1;		
+			CPPUNIT_ASSERT_GREATER(uint(0), reply_tx_in);
+			for (size_t t = 0; t < reply_tx_in; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp_you->link_status);
+			unsigned int first_burst_in = pp->link_state.next_burst_in;
+			for (size_t t = 0; t < first_burst_in; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp_you->link_status);
+			unsigned int last_slot_in_burst_in = pp->link_state.burst_length;
+			for (size_t t = 0; t < last_slot_in_burst_in; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 		}
 
 		/** When we're awaiting the first data transmission, but instead a link request comes in, this should be handled instead. */
@@ -889,8 +997,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
 		// CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
-		CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
-		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
+		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablishedForReestablishment);

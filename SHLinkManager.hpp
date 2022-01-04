@@ -61,6 +61,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		size_t cancelLinkRequest(const MacId& id);
 
+		size_t cancelLinkReply(const MacId& id);
+
 		void assign(const FrequencyChannel* channel) override;
 
 		void setTargetCollisionProb(double value);

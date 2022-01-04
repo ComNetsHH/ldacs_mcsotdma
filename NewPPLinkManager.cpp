@@ -354,10 +354,15 @@ void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const 
 		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	// cancel the own reply expectation and process this request
 	} else if (this->link_status == awaiting_reply) {
-		throw std::runtime_error("handling link requests when own link is awaiting reply is not implemented");
+		cancelLink();		
+		coutd << "processing request -> ";
+		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	// cancel the scheduled link and process this request
 	} else if (this->link_status == awaiting_data_tx) {
-		throw std::runtime_error("handling link requests when own link is awaiting data transmission is not implemented");
+		cancelLink();
+		coutd << "canceling own reply -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id) << " replies cancelled -> ";
+		coutd << "processing request -> ";
+		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	// link re-establishment
 	} else if (this->link_status == link_established) {
 		this->processLinkRequestMessage_reestablish(header, payload);

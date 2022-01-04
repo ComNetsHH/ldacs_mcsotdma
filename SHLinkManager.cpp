@@ -314,6 +314,26 @@ size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 	return num_removed;
 }
 
+size_t SHLinkManager::cancelLinkReply(const MacId& id) {
+	size_t num_removed = 0;
+	std::cout << "checking " << link_replies.size() << " replies" << std::endl;
+	for (auto it = link_replies.begin(); it != link_replies.end(); it++) {
+		const auto &pair = *it;
+		const auto &reply_msg = pair.second;
+		const auto *header = reply_msg.first;
+		std::cout << "checking header to " << header->dest_id << std::endl;
+		if (header->dest_id == id) {
+			delete reply_msg.first;
+			delete reply_msg.second;
+			link_replies.erase(it);
+			it--;
+			num_removed++;
+			std::cout << "removed" << std::endl;
+		}
+	}
+	return num_removed;
+}
+
 unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob) const {
 	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
 		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
