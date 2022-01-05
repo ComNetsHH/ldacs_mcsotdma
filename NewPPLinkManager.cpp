@@ -13,13 +13,15 @@ NewPPLinkManager::NewPPLinkManager(const MacId& link_id, ReservationManager *res
 
 void NewPPLinkManager::onReceptionBurstStart(unsigned int burst_length) {	
 	coutd << *this << "::onReception";
+	communication_during_this_slot = true;
 }
 
 void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
-	throw std::runtime_error("onReceptionBurst not implemented");
+	communication_during_this_slot = true;
 }
 
 L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+	communication_during_this_slot = true;
 	coutd << *this << "::onTransmission -> ";
 	// instantiate packet
 	auto *packet = new L2Packet();
@@ -39,7 +41,7 @@ L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) 
 }
 
 void NewPPLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
-	throw std::runtime_error("onTransmissionBurst not implemented");
+	communication_during_this_slot = true;
 }
 
 void NewPPLinkManager::notifyOutgoing(unsigned long num_bits) {
@@ -78,6 +80,7 @@ void NewPPLinkManager::establishLink() {
 
 void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";		
+	communication_during_this_slot = false;
 	// update slot counter
 	if (this->link_state.reserved_resources.anyLocks())
 		this->link_state.reserved_resources.num_slots_since_creation++;
@@ -102,7 +105,12 @@ void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void NewPPLinkManager::onSlotEnd() {
-	coutd << *mac << "::" << *this << "::onSlotEnd -> ";
+	// decrement timeout
+	if (current_reservation_table != nullptr && communication_during_this_slot && current_reservation_table->isBurstEnd(0, link_id)) {
+		coutd << *mac << "::" << *this << "::onSlotEnd -> ";
+		if (decrementTimeout())
+			onTimeoutExpiry();	
+	}
 	// update the outgoing traffic estimate if it hasn't been
 	if (!outgoing_traffic_estimate.hasBeenUpdated())
 		outgoing_traffic_estimate.put(0);
@@ -117,7 +125,8 @@ void NewPPLinkManager::onSlotEnd() {
 	}
 	// have we missed a transmission burst?
 	if (link_status == link_established && this->link_state.next_burst_in == 0)
-		throw std::runtime_error("transmission burst appears to have been missed");
+		throw std::runtime_error("transmission burst appears to have been missed");	
+	LinkManager::onSlotEnd();
 }
 
 void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) {
@@ -609,4 +618,46 @@ void NewPPLinkManager::setReportedDesiredTxSlots(unsigned int value) {
 
 void NewPPLinkManager::setForceBidirectionalLinks(bool flag) {
 	this->force_bidirectional_links = flag;
+}
+
+bool NewPPLinkManager::decrementTimeout() {
+	// Don't decrement timeout if,
+	// (1) the link is not established right now
+	if (link_status == LinkManager::link_not_established) {
+		coutd << "link not established; not decrementing timeout -> ";
+		return false;
+	}
+	// (2) we are in the process of initial establishment.
+	if (link_status == LinkManager::awaiting_request_generation || link_status == LinkManager::awaiting_reply || link_status == LinkManager::awaiting_data_tx) {
+		coutd << "link being established; not decrementing timeout -> ";
+		return false;
+	}
+	// (3) it has already been updated this slot.
+	if (updated_timeout_this_slot) {
+		coutd << "already decremented timeout this slot; not decrementing timeout -> ";
+		return link_state.timeout == 0;
+	}
+	// (4) the link was just now established.
+	if (established_link_this_slot) {
+		coutd << "link was established in this slot; not decrementing timeout -> ";
+		return link_state.timeout == 0;
+	}
+
+	updated_timeout_this_slot = true;
+
+	if (link_state.timeout == 0)
+		throw std::runtime_error("PPLinkManager::decrementTimeout attempted to decrement timeout past zero.");
+	coutd << "timeout " << link_state.timeout << "->";
+	link_state.timeout--;
+	coutd << link_state.timeout << " -> ";
+	return link_state.timeout == 0;
+}
+
+void NewPPLinkManager::onTimeoutExpiry() {
+	coutd << "timeout reached -> ";	
+	link_state.reserved_resources.clear(); // no need to unschedule anything
+	cancelLink();
+	// re-establish the link if there is more data
+	if (mac->isThereMoreData(link_id)) 
+		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 }

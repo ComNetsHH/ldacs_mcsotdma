@@ -607,7 +607,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// which should've been rejected
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot.get());
 			// and which should've triggered link establishment on the communication partner's side
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);			
 			// now proceed until the expected reply slot, which won't be transmitted
 			for (size_t t = 0; t < reply_offset; t++) {
 				mac->update(1);
@@ -618,8 +618,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_you->onSlotEnd();
 			}
 			// link establishment should've been re-triggered
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);			
+			// where maybe the request has already been transmitted, maybe not			
+			CPPUNIT_ASSERT(pp->link_status == LinkManager::Status::awaiting_request_generation || pp->link_status == LinkManager::Status::awaiting_data_tx);
+			CPPUNIT_ASSERT(pp_you->link_status == LinkManager::Status::awaiting_request_generation || pp_you->link_status == LinkManager::Status::awaiting_reply);			
 		}
 
 		/** When a link request is received, but none of the proposed resources are suitable, this should trigger link establishment. */
@@ -682,8 +683,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_you->onSlotEnd();
 			}
 			// link establishment should've been re-triggered
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_request_generation, pp_you->link_status);
+			// where maybe the request has already been transmitted, maybe not			
+			CPPUNIT_ASSERT(pp->link_status == LinkManager::Status::awaiting_request_generation || pp->link_status == LinkManager::Status::awaiting_data_tx);
+			CPPUNIT_ASSERT(pp_you->link_status == LinkManager::Status::awaiting_request_generation || pp_you->link_status == LinkManager::Status::awaiting_reply);			
 		}
 
 		/** When a link request is received, the reply slot is suitable, a proposed resource is suitable, then this should be selected and the reply slot scheduled. */
@@ -731,16 +733,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When a link request is received, this should unschedule any own link requests currently scheduled. */
 		void testUnscheduleOwnRequestUponRequestReception() {
-			// attempt link establishment
-			// but fail due to the reply slot being unacceptable
-			testRequestReceivedButReplySlotUnsuitable();
+			mac->notifyOutgoing(100, partner_id);
+			mac_you->notifyOutgoing(100, own_id);
 			// now both communication partners are attempting to establish the link
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_you->link_status);
 			// figure out which one will attempt it sooner
 			CPPUNIT_ASSERT_GREATER(uint(0), sh->next_broadcast_slot);
 			CPPUNIT_ASSERT_GREATER(uint(0), sh_you->next_broadcast_slot);
-			int sooner_broadcast = std::min(sh->next_broadcast_slot, sh_you->next_broadcast_slot);			
+			int request_attempt_me = sh->next_broadcast_slot, request_attempt_you = sh_you->next_broadcast_slot;
+			bool simultaneous_request_attempts = request_attempt_me == request_attempt_you;
+			int sooner_broadcast = std::min(request_attempt_me, request_attempt_you);			
 			// proceed until this attempt
 			for (size_t t = 0; t < sooner_broadcast; t++) {
 				mac->update(1);
@@ -749,14 +752,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_you->execute();
 				mac->onSlotEnd();
 				mac_you->onSlotEnd();
-			}
-			bool my_attempt_sooner = sh->next_broadcast_slot < sh_you->next_broadcast_slot;
-			if (my_attempt_sooner) {
-				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp->link_status);				
-				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, pp_you->link_status);				
+			}			
+			CPPUNIT_ASSERT(pp->link_status == LinkManager::Status::awaiting_reply || pp->link_status == LinkManager::Status::awaiting_data_tx);			
+			CPPUNIT_ASSERT(pp_you->link_status == LinkManager::Status::awaiting_reply || pp_you->link_status == LinkManager::Status::awaiting_data_tx);			
+			if (simultaneous_request_attempts) {
+				CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, pp->link_status);
+				CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, pp_you->link_status);
 			} else {
-				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, pp->link_status);
-				CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp_you->link_status);
+				if (pp->link_status == LinkManager::Status::awaiting_reply)
+					CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp_you->link_status);
+				if (pp_you->link_status == LinkManager::Status::awaiting_reply)
+					CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp->link_status);
 			}
 		}		
 

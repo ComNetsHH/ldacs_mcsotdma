@@ -202,6 +202,12 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 
 		ReservationMap schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int selected_time_slot_offset, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator);
 
+		/**		 
+		 * @return Whether the timeout expires now.
+		 */
+		bool decrementTimeout();
+		void onTimeoutExpiry();
+
 		void processBaseMessage(L2HeaderBase*& header) override;
 		void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;		
 
@@ -230,7 +236,12 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		/** Set to true if link establishment should be re-attempted next slot. */
 		bool attempt_link_establishment_again = false;
 		LinkState link_state = LinkState();	
+		/** Whether the link has been established in the current time slot. */
 		bool established_link_this_slot = false;
+		/** Whether the timeout has already been updated in this time slot. */
+		bool updated_timeout_this_slot = false;
+		/** Whether communication has taken place during this time slot. */		
+		bool communication_during_this_slot = false;
 };
 
 }
