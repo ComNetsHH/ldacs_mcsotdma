@@ -1128,19 +1128,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// the first transmission burst has passed (this has established the link)
 			// so the timeout should reflect that
 			CPPUNIT_ASSERT_EQUAL(pp->timeout_before_link_expiry - 1, pp->link_state.timeout);
-			CPPUNIT_ASSERT_EQUAL(pp_you->link_state.timeout, pp->link_state.timeout);					
+			CPPUNIT_ASSERT_EQUAL(pp_you->link_state.timeout, pp->link_state.timeout);	
+			// now make sure that timeouts are updated as expected
 			for (size_t n_burst = pp->timeout_before_link_expiry - 1; n_burst > 1; n_burst--) {
+				CPPUNIT_ASSERT_EQUAL(n_burst, size_t(pp->link_state.timeout));
 				for (size_t t = 0; t < pp->burst_offset; t++) {
 					mac->update(1);
 					mac_you->update(1);
 					mac->execute();
 					mac_you->execute();
 					mac->onSlotEnd();
-					mac_you->onSlotEnd();				
+					mac_you->onSlotEnd();
+					// at the end of each slot
+					// both users should agree on the timeout
 					CPPUNIT_ASSERT_EQUAL(pp_you->link_state.timeout, pp->link_state.timeout);
-				}
-				CPPUNIT_ASSERT_EQUAL(n_burst - 1, size_t(pp->link_state.timeout));
+				}				
 			}
+			// finally we're just before link expiry
 			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.timeout);
 			CPPUNIT_ASSERT_EQUAL(uint(1), pp_you->link_state.timeout);
 		}
