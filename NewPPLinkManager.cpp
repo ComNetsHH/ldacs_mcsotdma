@@ -603,6 +603,8 @@ void NewPPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet:
 			link_status = link_established;			
 			coutd << link_status << "' -> ";
 			mac->statisticReportPPLinkEstablished();			
+			int link_establishment_time = mac->getCurrentSlot() - this->time_when_request_was_generated;
+			mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);
 			// inform upper sublayers
 			mac->notifyAboutNewLink(link_id);			
 		}
