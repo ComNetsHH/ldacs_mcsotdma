@@ -652,6 +652,7 @@ void NewPPLinkManager::onTimeoutExpiry() {
 	coutd << "timeout reached -> ";	
 	link_state.reserved_resources.clear(); // no need to unschedule anything
 	cancelLink();
+	mac->statisticReportPPLinkExpired();
 	// re-establish the link if there is more data
 	if (mac->isThereMoreData(link_id)) 
 		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
