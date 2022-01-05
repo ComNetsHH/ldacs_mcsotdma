@@ -1173,7 +1173,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_you->link_status);
 		}
 
-		void testLinkExpiryAndAutomaticReestablishment() {
+		void testLinkReestablishment() {
 			env->rlc_layer->should_there_be_more_p2p_data = true;
 			env_you->rlc_layer->should_there_be_more_p2p_data = true;
 			// proceed to just before link expiry
@@ -1195,12 +1195,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_expired.get());
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_you->link_status);
-		}
-
-		void testLinkReestablishment() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
-		}
+		}		
 
 		void testLinkEstablishmentTimeMeasurement() {
 			bool is_implemented = false;
@@ -1236,9 +1231,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);		
 		// CPPUNIT_TEST(testDecrementingTimeout);
-		// CPPUNIT_TEST(testLinkExpiry);
-		CPPUNIT_TEST(testLinkExpiryAndAutomaticReestablishment);		
-		// CPPUNIT_TEST(testLinkReestablishment);
+		CPPUNIT_TEST(testLinkExpiry);		
+		CPPUNIT_TEST(testLinkReestablishment);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
