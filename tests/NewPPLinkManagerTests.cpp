@@ -1111,8 +1111,38 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testDecrementingTimeout() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// establish link
+			mac->notifyOutgoing(100, partner_id);
+			size_t num_slots = 0, max_slots = 20;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();				
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			// the first transmission burst has passed (this has established the link)
+			// so the timeout should reflect that
+			CPPUNIT_ASSERT_EQUAL(pp->timeout_before_link_expiry - 1, pp->link_state.timeout);
+			CPPUNIT_ASSERT_EQUAL(pp_you->link_state.timeout, pp->link_state.timeout);					
+			for (size_t n_burst = pp->timeout_before_link_expiry - 1; n_burst > 1; n_burst--) {
+				for (size_t t = 0; t < pp->burst_offset; t++) {
+					mac->update(1);
+					mac_you->update(1);
+					mac->execute();
+					mac_you->execute();
+					mac->onSlotEnd();
+					mac_you->onSlotEnd();				
+					CPPUNIT_ASSERT_EQUAL(pp_you->link_state.timeout, pp->link_state.timeout);
+				}
+				CPPUNIT_ASSERT_EQUAL(n_burst - 1, size_t(pp->link_state.timeout));
+			}
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.timeout);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_you->link_state.timeout);
 		}
 
 		void testLinkTermination() {
@@ -1128,32 +1158,32 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 	CPPUNIT_TEST_SUITE(NewPPLinkManagerTests);
-		CPPUNIT_TEST(testStartLinkEstablishment);
-		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
-		CPPUNIT_TEST(testSlotSelection);
-		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
-		CPPUNIT_TEST(testTwoSlotSelections);		
-		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
-		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
-		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
-		CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		CPPUNIT_TEST(testReplySlotPassed);		
-		CPPUNIT_TEST(testResourcesLockedAfterRequest);				
-		CPPUNIT_TEST(testReplyReceived);		
-		CPPUNIT_TEST(testUnlockResources);		
-		CPPUNIT_TEST(testUnscheduleReservedResources);		
-		CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
-		CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
-		CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
-		CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
-		CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
-		CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
-		CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);		
-		// CPPUNIT_TEST(testDecrementingTimeout);
+		// CPPUNIT_TEST(testStartLinkEstablishment);
+		// CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
+		// CPPUNIT_TEST(testSlotSelection);
+		// CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
+		// CPPUNIT_TEST(testTwoSlotSelections);		
+		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
+		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		// CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
+		// CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
+		// CPPUNIT_TEST(testReplySlotPassed);		
+		// CPPUNIT_TEST(testResourcesLockedAfterRequest);				
+		// CPPUNIT_TEST(testReplyReceived);		
+		// CPPUNIT_TEST(testUnlockResources);		
+		// CPPUNIT_TEST(testUnscheduleReservedResources);		
+		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
+		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
+		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
+		// CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
+		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
+		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
+		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);		
+		CPPUNIT_TEST(testDecrementingTimeout);
 		// CPPUNIT_TEST(testLinkTermination);
 		// CPPUNIT_TEST(testLinkReestablishment);
 	CPPUNIT_TEST_SUITE_END();

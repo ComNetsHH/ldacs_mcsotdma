@@ -80,7 +80,8 @@ void NewPPLinkManager::establishLink() {
 
 void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";		
-	communication_during_this_slot = false;
+	communication_during_this_slot = false;	
+	updated_timeout_this_slot = false;
 	// update slot counter
 	if (this->link_state.reserved_resources.anyLocks())
 		this->link_state.reserved_resources.num_slots_since_creation++;
@@ -601,8 +602,7 @@ void NewPPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet:
 			coutd << "this establishes the link -> link status changes '" << link_status << "->";			
 			link_status = link_established;			
 			coutd << link_status << "' -> ";
-			mac->statisticReportPPLinkEstablished();
-			this->established_link_this_slot = true;			
+			mac->statisticReportPPLinkEstablished();			
 			// inform upper sublayers
 			mac->notifyAboutNewLink(link_id);			
 		}
@@ -621,7 +621,7 @@ void NewPPLinkManager::setForceBidirectionalLinks(bool flag) {
 }
 
 bool NewPPLinkManager::decrementTimeout() {
-	// Don't decrement timeout if,
+	// Don't decrement timeout if
 	// (1) the link is not established right now
 	if (link_status == LinkManager::link_not_established) {
 		coutd << "link not established; not decrementing timeout -> ";
@@ -636,12 +636,7 @@ bool NewPPLinkManager::decrementTimeout() {
 	if (updated_timeout_this_slot) {
 		coutd << "already decremented timeout this slot; not decrementing timeout -> ";
 		return link_state.timeout == 0;
-	}
-	// (4) the link was just now established.
-	if (established_link_this_slot) {
-		coutd << "link was established in this slot; not decrementing timeout -> ";
-		return link_state.timeout == 0;
-	}
+	}	
 
 	updated_timeout_this_slot = true;
 
