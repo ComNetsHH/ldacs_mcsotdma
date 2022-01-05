@@ -35,6 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			sh_you = (SHLinkManager*) mac_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);						
 			reservation_manager = mac->getReservationManager();
 			reservation_manager_you = mac_you->getReservationManager();
+			planning_horizon = env->planning_horizon;
 		}
 
 		void tearDown() override {
@@ -441,16 +442,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(pp->current_reservation_table->getLinkedChannel(), selected_channel);
 			CPPUNIT_ASSERT_EQUAL(pp->current_reservation_table->getLinkedChannel(), pp->current_channel);
 			CPPUNIT_ASSERT_EQUAL(pp->current_channel, pp_you->current_channel);
-			std::vector<int> expected_scheduled_resources_tx, expected_scheduled_resources_rx;
+			std::vector<int> expected_scheduled_resources_tx, expected_scheduled_resources_rx;						
 			for (int burst = 0; burst < pp->link_state.timeout; burst++) {				
 				for (int t = 0; t < pp->link_state.burst_length; t++) {
 					int slot = selected_slot + burst*pp->link_state.burst_offset + t;
-					if (t < pp->link_state.burst_length_tx)
+					if (slot == selected_slot || t < pp->link_state.burst_length_tx)
 						expected_scheduled_resources_tx.push_back(slot);
 					else
 						expected_scheduled_resources_rx.push_back(slot);
 				}
-			}
+			}						
 			size_t expected_num_tx_resources = pp->link_state.burst_length_tx * pp->link_state.timeout,
 				   expected_num_rx_resources = pp->link_state.burst_length_rx * pp->link_state.timeout;
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx_resources, expected_scheduled_resources_tx.size());
@@ -458,14 +459,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (int t = 0; t < planning_horizon; t++) {
 				bool is_tx = false, is_rx = false;
 				for (size_t i = 0; i < expected_scheduled_resources_tx.size(); i++) {
-					if (expected_scheduled_resources_tx.at(i) == t) {
+					if (std::find(expected_scheduled_resources_tx.begin(), expected_scheduled_resources_tx.end(), t) != expected_scheduled_resources_tx.end()) {
 						is_tx = true;
 						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), pp->current_reservation_table->getReservation(t));
 						CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), pp_you->current_reservation_table->getReservation(t));
 					}
 				}
 				for (size_t i = 0; i < expected_scheduled_resources_rx.size(); i++) {
-					if (expected_scheduled_resources_rx.at(i) == t) {
+					if (std::find(expected_scheduled_resources_rx.begin(), expected_scheduled_resources_rx.end(), t) != expected_scheduled_resources_rx.end()) {
 						is_rx = true;
 						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), pp->current_reservation_table->getReservation(t));
 						CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), pp_you->current_reservation_table->getReservation(t));
@@ -477,40 +478,23 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 				CPPUNIT_ASSERT(!(is_tx && is_rx));
 			}
-			// and the transmitter reservation table			
+			// and the transmitter/receiver reservation table			
 			for (int t = 0; t < planning_horizon; t++) {
-				for (size_t i = 0; i < expected_scheduled_resources_tx.size(); i++) {
-					if (expected_scheduled_resources_tx.at(i) == t) {
+				for (size_t i = 0; i < expected_scheduled_resources_tx.size(); i++) {					
+					if (std::find(expected_scheduled_resources_tx.begin(), expected_scheduled_resources_tx.end(), t) != expected_scheduled_resources_tx.end()) {
 						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), reservation_manager->getTxTable()->getReservation(t));					
-						CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), reservation_manager_you->getTxTable()->getReservation(t));					
+						CPPUNIT_ASSERT_EQUAL(true, std::any_of(reservation_manager_you->getRxTables().begin(), reservation_manager_you->getRxTables().end(), [t, this](ReservationTable *tbl) {return tbl->getReservation(t) == Reservation(this->own_id, Reservation::RX);}));
 					} else {
-						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), reservation_manager->getTxTable()->getReservation(t));
-						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), reservation_manager_you->getTxTable()->getReservation(t));									
+						// transmitting on the SH is okay
+						if (reservation_manager->getTxTable()->getReservation(t).getTarget() != SYMBOLIC_LINK_ID_BROADCAST && reservation_manager->getTxTable()->getReservation(t).getTarget() != SYMBOLIC_LINK_ID_BEACON) 							
+							CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), reservation_manager->getTxTable()->getReservation(t));														
 					}
+					if (std::find(expected_scheduled_resources_rx.begin(), expected_scheduled_resources_rx.end(), t) != expected_scheduled_resources_rx.end()) {
+						CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), reservation_manager_you->getTxTable()->getReservation(t));					
+						CPPUNIT_ASSERT_EQUAL(true, std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [t, this](ReservationTable *tbl) {return tbl->getReservation(t) == Reservation(this->partner_id, Reservation::RX);}));
+					} 
 				}
-			}
-			// and the receiver reservation tables
-			for (int t = 0; t < planning_horizon; t++) {
-				for (size_t i = 0; i < expected_scheduled_resources_rx.size(); i++) {
-					size_t num_rx_reservations = 0, num_tx_reservations_you = 0;
-					for (const auto *rx_table : reservation_manager->getRxTables()) {
-						if (rx_table->getReservation(t) == Reservation(partner_id, Reservation::RX))
-							num_rx_reservations++;
-					}
-					for (const auto *rx_table : reservation_manager_you->getRxTables()) {
-						if (rx_table->getReservation(t) == Reservation(own_id, Reservation::TX))
-							num_tx_reservations_you++;
-					}
-					if (expected_scheduled_resources_rx.at(i) == t)	{						
-						CPPUNIT_ASSERT_EQUAL(size_t(1), num_rx_reservations);
-						CPPUNIT_ASSERT_EQUAL(size_t(1), num_tx_reservations_you);
-					} else {
-						CPPUNIT_ASSERT_EQUAL(size_t(0), num_rx_reservations);
-						CPPUNIT_ASSERT_EQUAL(size_t(0), num_tx_reservations_you);
-					}
-					CPPUNIT_ASSERT_EQUAL(num_rx_reservations, num_tx_reservations_you);
-				}
-			}
+			}			
 			// and all locks should've been free'd
 			std::vector<const ReservationTable*> all_tables, all_tables_you;
 			for (const auto *pp_table : reservation_manager->getP2PReservationTables())			
@@ -544,17 +528,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// cancel reservations
 			pp->cancelLink();
 			// check that everything's been unlocked
-			std::vector<const ReservationTable*> all_tables;
-			for (const auto *pp_table : reservation_manager->getP2PReservationTables())			
-				all_tables.push_back(pp_table);
-			for (const auto *rx_table : reservation_manager->getRxTables())			
-				all_tables.push_back(rx_table);
-			all_tables.push_back(reservation_manager->getBroadcastReservationTable());
-			all_tables.push_back(reservation_manager->getTxTable());
-
 			for (int t = 0; t < planning_horizon; t++) {
-				for (const auto *table : all_tables)
-						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());								
+				// PPs
+				for (const auto *table : reservation_manager->getP2PReservationTables())					
+					CPPUNIT_ASSERT_EQUAL(false, table->getReservation(t).isLocked());
+				// SH				
+				CPPUNIT_ASSERT_EQUAL(false, reservation_manager->getBroadcastReservationTable()->getReservation(t).isLocked());
+				// TX				
+				CPPUNIT_ASSERT_EQUAL(false, reservation_manager->getTxTable()->getReservation(t).isLocked());
+				// RXs
+				for (const auto *table : reservation_manager->getRxTables())					
+					CPPUNIT_ASSERT_EQUAL(false, table->getReservation(t).isLocked());
 			}
 		}
 
@@ -565,17 +549,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// cancel reservations
 			pp->cancelLink();
 			// check that everything's been unscheduled
-			std::vector<const ReservationTable*> all_tables;
-			for (const auto *pp_table : reservation_manager->getP2PReservationTables())			
-				all_tables.push_back(pp_table);
-			for (const auto *rx_table : reservation_manager->getRxTables())			
-				all_tables.push_back(rx_table);
-			all_tables.push_back(reservation_manager->getBroadcastReservationTable());
-			all_tables.push_back(reservation_manager->getTxTable());
-
 			for (int t = 0; t < planning_horizon; t++) {
-				for (const auto *table : all_tables)
-						CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());								
+				// PPs				
+				for (const auto *table : reservation_manager->getP2PReservationTables())					
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));								
 			}
 		}		
 
@@ -829,6 +806,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);			
 			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset - pp->link_state.burst_length + 1, pp->link_state.next_burst_in);
 			CPPUNIT_ASSERT_EQUAL(pp->link_state.next_burst_in, pp_you->link_state.next_burst_in);
+			// there should be no more non-idle resources than for this link (this confirms that everything's been unlocked/unscheduled properly)
+			size_t num_reservations = 0;
+			for (const auto *tbl : reservation_manager->getP2PReservationTables()) {
+				for (size_t t = 1; t < planning_horizon; t++)
+					if (!tbl->getReservation(t).isIdle())
+						num_reservations++;
+			}
+			size_t expected_reserved_slots = (pp->timeout_before_link_expiry - 1) * 2; // 1 burst already passed, 2 reservations per burst
+			CPPUNIT_ASSERT_EQUAL(expected_reserved_slots, num_reservations);
 		}
 
 		/** When we've sent a request and are awaiting a reply, but now a link request comes in, this should be handled instead. */
@@ -942,7 +928,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_you->onSlotEnd();
 			}
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);			
+			// there should be no more non-idle resources than for this link (this confirms that everything's been unlocked/unscheduled properly)
+			size_t num_reservations = 0;
+			for (const auto *tbl : reservation_manager->getP2PReservationTables()) {
+				for (size_t t = 1; t < planning_horizon; t++)
+					if (!tbl->getReservation(t).isIdle())
+						num_reservations++;
+			}
+			size_t expected_reserved_slots = (pp->timeout_before_link_expiry - 1) * 2; // 1 burst already passed, 2 reservations per burst
+			CPPUNIT_ASSERT_EQUAL(expected_reserved_slots, num_reservations);
 		}
 
 		/** When we're awaiting the first data transmission, but instead a link request comes in, this should be handled instead. */
@@ -1005,6 +1000,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			// and reserved resources should match						
+			size_t expected_reserved_slots = (pp->timeout_before_link_expiry - 1) * 2; // 1 burst already passed, 2 reservations per burst
+			// current reservation should've been us transmitting (we're the link recipient)
+			CPPUNIT_ASSERT_EQUAL(false, pp->link_state.is_link_initator);
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), pp->current_reservation_table->getReservation(0));
+			// there should be no more non-idle resources than for this link (this confirms that everything's been unlocked/unscheduled properly)
+			size_t num_reservations = 0;
+			for (const auto *tbl : reservation_manager->getP2PReservationTables()) {
+				for (size_t t = 1; t < planning_horizon; t++)
+					if (!tbl->getReservation(t).isIdle())
+						num_reservations++;
+			}
+			CPPUNIT_ASSERT_EQUAL(expected_reserved_slots, num_reservations);
 		}
 
 		/** When we've established a link, but a new link request comes in, this should cancel the link and start establishment. */
@@ -1037,29 +1045,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 	CPPUNIT_TEST_SUITE(NewPPLinkManagerTests);
-		// CPPUNIT_TEST(testStartLinkEstablishment);
-		// CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
-		// CPPUNIT_TEST(testSlotSelection);
-		// CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
-		// CPPUNIT_TEST(testTwoSlotSelections);		
-		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
-		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
-		// CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
-		// CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		// CPPUNIT_TEST(testReplySlotPassed);		
-		// CPPUNIT_TEST(testResourcesLockedAfterRequest);				
-		// CPPUNIT_TEST(testReplyReceived);		
-		// CPPUNIT_TEST(testUnlockResources);		
-		// CPPUNIT_TEST(testUnscheduleReservedResources);		
-		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
-		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
-		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		// CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
-		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
-		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
+		CPPUNIT_TEST(testStartLinkEstablishment);
+		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
+		CPPUNIT_TEST(testSlotSelection);
+		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
+		CPPUNIT_TEST(testTwoSlotSelections);		
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
+		CPPUNIT_TEST(testReplySlotPassed);		
+		CPPUNIT_TEST(testResourcesLockedAfterRequest);				
+		CPPUNIT_TEST(testReplyReceived);		
+		CPPUNIT_TEST(testUnlockResources);		
+		CPPUNIT_TEST(testUnscheduleReservedResources);		
+		CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
+		CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
+		CPPUNIT_TEST(testProcessRequestAndScheduleReply);
+		CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
+		CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
 		CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablishedForReestablishment);

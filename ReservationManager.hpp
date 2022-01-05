@@ -61,7 +61,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		ReservationTable* getReservationTableByIndex(size_t index);
 
-		ReservationTable* getReservationTable(const FrequencyChannel* channel);
+		ReservationTable* getReservationTable(const FrequencyChannel* channel);		
 
 		FrequencyChannel* getBroadcastFreqChannel();
 
