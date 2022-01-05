@@ -365,9 +365,15 @@ void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const 
 			coutd << "cancelled " << num_replies_cancelled << " own link replies -> ";
 		coutd << "processing request -> ";
 		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
-	// link re-establishment
-	} else if (this->link_status == link_established) {
-		this->processLinkRequestMessage_reestablish(header, payload);
+	// link re-establishment: cancel remaining scheduled resources and process this request
+	} else if (this->link_status == link_established) {		
+		cancelLink();
+		if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) != 0)
+			throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link request while the link is established - this shouldn't have happened!");
+		if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id))
+			throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link reply while the link is established - this shouldn't have happened!");
+		coutd << "processing request -> ";
+		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	} else {	
 		throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage: " + std::to_string(this->link_status));	
 	}
@@ -473,10 +479,6 @@ bool NewPPLinkManager::isProposalViable(const ReservationTable *table, unsigned 
 					&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);
 	}
 	return viable;
-}
-
-void NewPPLinkManager::processLinkRequestMessage_reestablish(const L2Header*& header, const L2Packet::Payload*& payload) {
-	throw std::runtime_error("handling link requests when own link is established is not implemented");	
 }
 
 void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {

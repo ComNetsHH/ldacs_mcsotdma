@@ -160,9 +160,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		 * @param timeout 
 		 * @return true if viable
 		 */
-		bool isProposalViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
-
-		void processLinkRequestMessage_reestablish(const L2Header*& header, const L2Packet::Payload*& payload);
+		bool isProposalViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;		
 
 		/**		 
 		 * @param resource_req_me The number of slots that ideally should be used for transmission.
