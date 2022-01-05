@@ -947,14 +947,70 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When we're awaiting the first data transmission, but instead a link request comes in, this should be handled instead. */
 		void testLinkRequestWhileAwaitingData() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			env->rlc_layer->should_there_be_more_broadcast_data = false;
+			// trigger link establishment from partner
+			mac_you->notifyOutgoing(100, own_id);
+			unsigned int broadcast_slot = sh_you->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			// proceed until own reply has been prepared for transmission
+			size_t num_slots = 0, max_slots = 20;
+			while (pp->link_status != LinkManager::awaiting_data_tx && num_slots++ < max_slots) {				
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();				
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			// we should already be awaiting the first data tx, i.e. all slots have been reserved
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp->link_status);
+			// they should still be expecting the link reply
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, pp_you->link_status);
+			// now we receive another link request from our partner
+			pp_you->cancelLink();
+			mac_you->notifyOutgoing(100, own_id);
+			broadcast_slot = sh_you->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
+			for (size_t t = 0; t < broadcast_slot - 1; t++) {			
+				mac_you->update(1);				
+				mac_you->execute();				
+				mac_you->onSlotEnd();				
+			}
+			mac_you->update(1);
+			mac->update(1);			
+			mac_you->execute();
+			mac->execute();	
+			mac_you->onSlotEnd();						
+			mac->onSlotEnd();			
+			// so we should've received two requests and sent zero replies
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_you->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_you->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_you->stat_num_replies_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_you->stat_num_replies_sent.get());
+			// now link establishment can proceed
+			num_slots = 0;
+			while (pp_you->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();				
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 		}
 
 		/** When we've established a link, but a new link request comes in, this should cancel the link and start establishment. */
 		void testLinkRequestWhileLinkEstablished() {
 			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);			
 		}
 
 		/** When we've established a link, but a new link request comes in, this should be handled for the purpose of re-establishment only if the corresponding flag is set. */
@@ -1003,8 +1059,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
 		// CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
 		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
-		CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
-		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
+		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
+		CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablishedForReestablishment);
 		// CPPUNIT_TEST(testDecrementingTimeout);

@@ -11,7 +11,7 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 void LinkManager::assign(const FrequencyChannel* channel) {
-	if (current_channel == nullptr && current_reservation_table == nullptr) {
+	if ((current_channel == nullptr && current_reservation_table == nullptr) || channel == nullptr) {
 		this->current_channel = channel;
 		this->current_reservation_table = reservation_manager->getReservationTable(channel);
 		coutd << "assigned channel ";

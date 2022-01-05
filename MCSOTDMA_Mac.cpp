@@ -28,9 +28,10 @@ MCSOTDMA_Mac::~MCSOTDMA_Mac() {
 }
 
 void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
-	coutd << *this << "::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id << ")... ";
-	// Tell the manager of new data.
-	getLinkManager(mac_id)->notifyOutgoing(num_bits);
+	coutd << *this << "::notifyOutgoing(bits=" << num_bits << ", id=" << mac_id << ")... ";	
+	// tell the manager about new data
+	if (mac_id != id)
+		getLinkManager(mac_id)->notifyOutgoing(num_bits);
 }
 
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {

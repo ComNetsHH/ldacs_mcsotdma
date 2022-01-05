@@ -360,7 +360,9 @@ void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const 
 	// cancel the scheduled link and process this request
 	} else if (this->link_status == awaiting_data_tx) {
 		cancelLink();
-		coutd << "canceling own reply -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id) << " replies cancelled -> ";
+		size_t num_replies_cancelled = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
+		if (num_replies_cancelled > 0)
+			coutd << "cancelled " << num_replies_cancelled << " own link replies -> ";
 		coutd << "processing request -> ";
 		this->processLinkRequestMessage_initial((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload);
 	// link re-establishment
@@ -545,23 +547,24 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 
 void NewPPLinkManager::cancelLink() {
 	coutd << "cancelling link -> ";
-	if (this->link_status == LinkManager::Status::awaiting_request_generation || this->link_status == LinkManager::Status::awaiting_reply) {		
-		coutd << "unlocking -> ";
-		this->link_state.reserved_resources.unlock();
+	if (link_status != LinkManager::link_not_established) {
+		if (this->link_status == LinkManager::Status::awaiting_request_generation || this->link_status == LinkManager::Status::awaiting_reply) {
+			coutd << "unlocking -> ";
+			this->link_state.reserved_resources.unlock();		
+		} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {
+			coutd << "unscheduling -> ";
+			this->link_state.reserved_resources.unschedule();
+		} else
+			throw std::runtime_error("PPLinkManager::cancelLink for unexpected link_status: " + std::to_string(link_status));
+		this->link_state.reserved_resources.clear();
+		coutd << "unassigning frequency channel -> ";
+		assign(nullptr);
 		coutd << "changing link status '" << this->link_status << "->";			
 		link_status = link_not_established;		
 		coutd << this->link_status << "' -> ";
-	} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {
-		coutd << "unscheduling -> ";
-		this->link_state.reserved_resources.unschedule();
-		coutd << "changing link status '" << this->link_status << "->";			
-		link_status = link_not_established;		
-		coutd << this->link_status << "' -> ";
-	} else if (this->link_status == LinkManager::Status::link_not_established) {		
-		// nothing to do
-		coutd << "link is not establihed -> ";
-	} else 
-		throw std::runtime_error("PPLinkManager::cancelLink for unexpected link status: " + std::to_string(this->link_status));
+
+	} else
+		coutd << "link is not established -> ";	
 	coutd << "done -> ";
 }
 

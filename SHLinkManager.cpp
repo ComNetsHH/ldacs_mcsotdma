@@ -315,20 +315,17 @@ size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 }
 
 size_t SHLinkManager::cancelLinkReply(const MacId& id) {
-	size_t num_removed = 0;
-	std::cout << "checking " << link_replies.size() << " replies" << std::endl;
+	size_t num_removed = 0;	
 	for (auto it = link_replies.begin(); it != link_replies.end(); it++) {
 		const auto &pair = *it;
 		const auto &reply_msg = pair.second;
-		const auto *header = reply_msg.first;
-		std::cout << "checking header to " << header->dest_id << std::endl;
+		const auto *header = reply_msg.first;		
 		if (header->dest_id == id) {
 			delete reply_msg.first;
 			delete reply_msg.second;
 			link_replies.erase(it);
 			it--;
-			num_removed++;
-			std::cout << "removed" << std::endl;
+			num_removed++;			
 		}
 	}
 	return num_removed;
