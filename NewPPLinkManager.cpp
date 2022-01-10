@@ -389,7 +389,7 @@ void NewPPLinkManager::processLinkRequestMessage(const L2Header*& header, const 
 	}
 } 
 
-void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload) {
+void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& request_header, const LinkManager::LinkEstablishmentPayload*& payload) {
 	coutd << "checking for viable resources -> ";
 	// check whether reply slot is viable	
 	bool free_to_send_reply = false;	
@@ -410,26 +410,29 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 	if (free_to_send_reply) {		
 		try {				
 			// randomly choose a viable resource
-			auto chosen_resource = chooseRandomResource(resources, header->burst_length, header->burst_length_tx);
+			// here, the header field's burst_length_tx must be used, during which a receiver must be available
+			auto chosen_resource = chooseRandomResource(resources, request_header->burst_length, request_header->burst_length_tx);
 			const FrequencyChannel *selected_freq_channel = chosen_resource.first;
 			unsigned int first_burst_in = chosen_resource.second;
 			// save the link state
 			bool is_link_initiator = false; // we've *received* a request
-			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_offset, header->burst_length, header->burst_length - header->burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
+			// compute the local burst_length_tx
+			unsigned int my_burst_length_tx = request_header->burst_length - request_header->burst_length_tx;
+			this->link_state = LinkState(this->timeout_before_link_expiry, request_header->burst_offset, request_header->burst_length, my_burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
 			coutd << "randomly chose " << first_burst_in << "@" << *selected_freq_channel << " -> ";
 			// schedule the link reply
-			L2HeaderLinkReply *header = new L2HeaderLinkReply();
-			header->burst_length = link_state.burst_length;
-			header->burst_length_tx = link_state.burst_length_tx;
-			header->burst_offset = link_state.next_burst_in;
-			header->timeout = link_state.timeout;
-			header->dest_id = link_id;
+			L2HeaderLinkReply *reply_header = new L2HeaderLinkReply();
+			reply_header->burst_length = link_state.burst_length;
+			reply_header->burst_length_tx = link_state.burst_length_tx;
+			reply_header->burst_offset = link_state.next_burst_in;
+			reply_header->timeout = link_state.timeout;
+			reply_header->dest_id = link_id;
 			LinkEstablishmentPayload *payload = new LinkEstablishmentPayload();
 			// write selected resource into payload
 			payload->resources[selected_freq_channel].push_back(first_burst_in);
-			sh_manager->sendLinkReply(header, payload, reply_time_slot_offset);			
+			sh_manager->sendLinkReply(reply_header, payload, reply_time_slot_offset);			
 			// schedule resources
-			this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, link_state.burst_length_tx, link_state.burst_length_rx, is_link_initiator);	
+			this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, request_header->burst_length_tx, request_header->burst_length - request_header->burst_length_tx, is_link_initiator);	
 			coutd << "scheduled transmission bursts -> ";
 			// update link status
 			coutd << "updating link status '" << this->link_status << "->";
@@ -530,9 +533,9 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 	Reservation::Action action_1 = is_link_initiator ? Reservation::TX : Reservation::RX,
 						action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
 	for (int burst = 0; burst < timeout; burst++) {
-		int slot = first_burst_in + burst*this->link_state.burst_offset;
-		for (int tx = 0; tx < burst_length_tx; tx++) {
-			int slot_offset = slot + tx;
+		int slot = first_burst_in + burst*link_state.burst_offset;
+		for (int i = 0; i < burst_length_tx; i++) {
+			int slot_offset = slot + i;
 			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {				
 				for (size_t t = 0; t < 25; t++)
 					std::cout << "t=" << t << ": " << this->current_reservation_table->getReservation(slot_offset + t) << std::endl;
@@ -543,8 +546,8 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_1));						
 			reservation_map.resource_reservations.push_back({this->current_reservation_table, slot_offset});
 		}
-		for (int rx = 0; rx < burst_length_rx; rx++) {
-			int slot_offset = slot + burst_length_tx + rx;
+		for (int i = 0; i < burst_length_rx; i++) {
+			int slot_offset = slot + burst_length_tx + i;
 			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {
 				std::stringstream s;
 				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be locked.";
