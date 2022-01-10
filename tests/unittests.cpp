@@ -37,9 +37,9 @@ int main() {
 	// runner.addTest(CongestionEstimatorTests::suite());
 	// runner.addTest(ContentionEstimatorTests::suite());
 	// runner.addTest(SHLinkManagerTests::suite());
-	runner.addTest(SystemTests::suite());
+	// runner.addTest(SystemTests::suite());
 	// runner.addTest(ThreeUsersTests::suite());
-	// runner.addTest(NewPPLinkManagerTests::suite());
+	runner.addTest(NewPPLinkManagerTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

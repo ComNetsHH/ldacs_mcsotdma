@@ -415,7 +415,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			unsigned int first_burst_in = chosen_resource.second;
 			// save the link state
 			bool is_link_initiator = false; // we've *received* a request
-			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_offset, header->burst_length, header->burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
+			this->link_state = LinkState(this->timeout_before_link_expiry, header->burst_offset, header->burst_length, header->burst_length - header->burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
 			coutd << "randomly chose " << first_burst_in << "@" << *selected_freq_channel << " -> ";
 			// schedule the link reply
 			L2HeaderLinkReply *header = new L2HeaderLinkReply();

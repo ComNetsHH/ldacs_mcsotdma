@@ -257,6 +257,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint(4), split.second);
 		}
 
+		void testTxRxSplitSeveralTxSlots() {
+			// make link initator require 2 TX resources
+			unsigned int datarate = mac->getCurrentDatarate();
+			unsigned int required_tx_resources = 2;			
+			mac->notifyOutgoing(datarate * required_tx_resources, partner_id);
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp->getRequiredTxSlots());			
+			const auto split = pp->getTxRxSplit(pp->getRequiredTxSlots(), pp->getRequiredRxSlots(), pp->burst_offset);
+			CPPUNIT_ASSERT_EQUAL(uint(2), split.first);
+			CPPUNIT_ASSERT_EQUAL(uint(1), split.second);
+		}
+
 		/** After the transmission of a link request, all proposed resources should be locked. */
 		void testResourcesLockedAfterRequest() {
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
@@ -1216,39 +1227,81 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// link establishment time should've been measured
 			CPPUNIT_ASSERT_GREATER(0.0, mac->stat_pp_link_establishment_time.get());			
 		}
+
+		/** Tests that resource reservations are correct when >1 resources are used for transmission of the link initiator. */
+		void testMultiSlotBurstEstablishmentForInitiator() {
+			// make link initator require 2 TX resources
+			unsigned int datarate = mac->getCurrentDatarate();
+			unsigned int required_tx_resources = 2;			
+			mac->notifyOutgoing(datarate * required_tx_resources, partner_id);
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp->getRequiredTxSlots());			
+			// establish link			
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp->getRequiredTxSlots());			
+			size_t num_slots = 0, max_slots = 100;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();				
+				mac->notifyOutgoing(datarate * required_tx_resources, partner_id);
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			// check that both agree on the no. of TX/RX resources
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_you->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp_you->link_state.burst_length_rx);
+		}
+
+		/** Tests that resource reservations are correct when >1 resources are used for transmission of the link recipient. */
+		void testMultiSlotBurstEstablishmentForRecipient() {
+
+		}
+
+		/** Tests that resource reservations are correct when >1 resources are used for transmission of both link initator and recipient. */
+		void testMultiSlotBurstEstablishmentForBoth() {
+
+		}
  
 
 
 	CPPUNIT_TEST_SUITE(NewPPLinkManagerTests);
-		CPPUNIT_TEST(testStartLinkEstablishment);
-		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
-		CPPUNIT_TEST(testSlotSelection);
-		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
-		CPPUNIT_TEST(testTwoSlotSelections);		
-		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
-		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
-		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
-		CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
-		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		CPPUNIT_TEST(testReplySlotPassed);		
-		CPPUNIT_TEST(testResourcesLockedAfterRequest);				
-		CPPUNIT_TEST(testReplyReceived);		
-		CPPUNIT_TEST(testUnlockResources);		
-		CPPUNIT_TEST(testUnscheduleReservedResources);		
-		CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
-		CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
-		CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
-		CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
-		CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
-		CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
-		CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);		
-		CPPUNIT_TEST(testDecrementingTimeout);
-		CPPUNIT_TEST(testLinkExpiry);		
-		CPPUNIT_TEST(testLinkReestablishment);
-		CPPUNIT_TEST(testLinkEstablishmentTimeMeasurement);
+		// CPPUNIT_TEST(testStartLinkEstablishment);
+		// CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
+		// CPPUNIT_TEST(testSlotSelection);
+		// CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
+		// CPPUNIT_TEST(testTwoSlotSelections);		
+		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
+		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		// CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
+		// CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
+		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
+		CPPUNIT_TEST(testTxRxSplitSeveralTxSlots);				
+		// CPPUNIT_TEST(testReplySlotPassed);		
+		// CPPUNIT_TEST(testResourcesLockedAfterRequest);				
+		// CPPUNIT_TEST(testReplyReceived);		
+		// CPPUNIT_TEST(testUnlockResources);		
+		// CPPUNIT_TEST(testUnscheduleReservedResources);		
+		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
+		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
+		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
+		// CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
+		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
+		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
+		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);		
+		// CPPUNIT_TEST(testDecrementingTimeout);
+		// CPPUNIT_TEST(testLinkExpiry);		
+		// CPPUNIT_TEST(testLinkReestablishment);
+		// CPPUNIT_TEST(testLinkEstablishmentTimeMeasurement);
+		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForInitiator);
+		// CPPUNIT_TEST(testMultiSlotBurstEstablishmentForRecipient);
+		// CPPUNIT_TEST(testMultiSlotBurstEstablishmentForBoth);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
