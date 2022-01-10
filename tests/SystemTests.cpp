@@ -111,53 +111,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_slots);
-			// Link reply should've arrived, so *our* link should be established...
+			// Link reply + first data tx should've arrived, so *our* link should be established...
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(partner_id)->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_packets_rcvd.get());
-			// ... and *their* link should indicate that the reply has been sent.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_status);
-			// Reservation timeout should still be default.
-			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry, lm_me->link_state.timeout);
-			CPPUNIT_ASSERT_EQUAL(lm_you->timeout_before_link_expiry, lm_you->link_state.timeout);
-			// Make sure that all corresponding slots are marked as TX on our side,
-			ReservationTable* table_me = lm_me->current_reservation_table;
-			ReservationTable* table_you = lm_you->current_reservation_table;
-			for (size_t offset = lm_me->burst_offset; offset < lm_me->link_state.timeout * lm_me->link_state.burst_offset; offset += lm_me->link_state.burst_offset) {
-				const Reservation& reservation_tx = table_me->getReservation(offset);
-				const Reservation& reservation_rx = table_you->getReservation(offset);
-				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
-				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
-				CPPUNIT_ASSERT_EQUAL(partner_id, reservation_tx.getTarget());
-				// and as RX on their side.				
-				CPPUNIT_ASSERT(reservation_rx == Reservation(own_id, Reservation::RX));				
-			}
-			CPPUNIT_ASSERT(mac_layer_you->stat_num_packets_rcvd.get() > 0.0);
-			// Jump in time to the next transmission.
-			for (size_t t = 0; t < lm_you->burst_offset; t++) {
-				mac_layer_me->update(1);
-				mac_layer_you->update(1);
-				mac_layer_me->execute();
-				mac_layer_you->execute();
-				mac_layer_me->onSlotEnd();
-				mac_layer_you->onSlotEnd();
-			}
-			// *Their* status should now show an established link.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
-			// Reservation timeout should be 1 less now.
-			CPPUNIT_ASSERT_EQUAL(lm_you->timeout_before_link_expiry - 1, lm_you->link_state.timeout);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_layer_me->stat_num_packets_rcvd.get());
+			// ... and *their* link should also be established
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_status);
+			// Reservation timeouts should have been decremented once
 			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry - 1, lm_me->link_state.timeout);
-			// Ensure reservations now match: one side has TX, other side has RX.
-			for (size_t offset = lm_me->burst_offset; offset < lm_me->link_state.timeout * lm_me->link_state.burst_offset; offset += lm_me->link_state.burst_offset) {
-				const Reservation& reservation_tx = table_me->getReservation(offset);
-				const Reservation& reservation_rx = table_you->getReservation(offset);
-				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
-				CPPUNIT_ASSERT_EQUAL(true, reservation_tx.isTx());
-				CPPUNIT_ASSERT_EQUAL(partner_id, reservation_tx.getTarget());
-				CPPUNIT_ASSERT_EQUAL(true, reservation_rx.isRx());
-				CPPUNIT_ASSERT_EQUAL(own_id, reservation_rx.getTarget());
-			}
-//			coutd.setVerbose(false);
+			CPPUNIT_ASSERT_EQUAL(lm_you->timeout_before_link_expiry - 1, lm_you->link_state.timeout);
 		}
 
 		/**
@@ -171,12 +132,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			// Update traffic estimate s.t. multi-slot bursts should be used.
 			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
-			unsigned int expected_num_slots = 3;
-			lm_me->outgoing_traffic_estimate.put(expected_num_slots * bits_per_slot);
+			unsigned int req_tx_slots = 3, expected_num_slots = req_tx_slots + 1;
+			lm_me->outgoing_traffic_estimate.put(req_tx_slots * bits_per_slot);
 			unsigned int required_slots = lm_me->getRequiredTxSlots() + lm_me->getRequiredRxSlots();
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			// New data for communication partner.
-			mac_layer_me->notifyOutgoing(expected_num_slots * bits_per_slot, partner_id);
+			mac_layer_me->notifyOutgoing(req_tx_slots * bits_per_slot, partner_id);
 			while (mac_layer_me->stat_num_broadcasts_sent.get() < 1) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -184,7 +145,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
-				lm_me->outgoing_traffic_estimate.put(expected_num_slots * bits_per_slot);
+				lm_me->outgoing_traffic_estimate.put(req_tx_slots * bits_per_slot);
 				required_slots = lm_me->getRequiredTxSlots() + lm_me->getRequiredRxSlots();
 				CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			}
@@ -208,12 +169,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
 			}
-			// Link reply should've arrived, so *our* link should be established...
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(partner_id)->link_status);
-			// ... and *their* link should indicate that the reply has been sent.
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, mac_layer_you->getLinkManager(own_id)->link_status);
-			// Reservation timeout should still be default.
-			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry, lm_me->link_state.timeout);
+			// Link reply should've arrived, so both links should be established...
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_me->getLinkManager(partner_id)->link_status);			
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, mac_layer_you->getLinkManager(own_id)->link_status);
+			// Reservation timeout should have been decremented once.
+			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry - 1, lm_me->link_state.timeout);
 
 			// Make sure that all corresponding slots are marked as TX on our side,
 			ReservationTable* table_me = lm_me->current_reservation_table;
@@ -248,7 +208,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				const Reservation& reservation_tx = table_me->getReservation(offset);
 				const Reservation& reservation_rx = table_you->getReservation(offset);
 				coutd << "t=" << offset << " " << reservation_tx << ":" << *table_me->getLinkedChannel() << " " << reservation_rx << ":" << *table_you->getLinkedChannel() << std::endl;
-				unsigned int remaining_slots = (unsigned int) expected_num_slots - 1;
+				unsigned int remaining_slots = (unsigned int) req_tx_slots - 1;
 				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), reservation_tx);
 				CPPUNIT_ASSERT_EQUAL(partner_id, reservation_tx.getTarget());
 				CPPUNIT_ASSERT_EQUAL(remaining_slots, reservation_tx.getNumRemainingSlots());
@@ -324,7 +284,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// New data for communication partner.
 			mac_layer_me->notifyOutgoing(512, partner_id);
 			size_t num_slots = 0, max_slots = 1000;
-			while (lm_you->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+			while (lm_me->link_status != LinkManager::link_established && num_slots++ < max_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -336,9 +296,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_you->link_status);
 			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry - 1, lm_me->link_state.timeout);
-			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry - 1, lm_you->link_state.timeout);
-			CPPUNIT_ASSERT_EQUAL(true, lm_me->current_reservation_table->getReservation(0).isTx());
-			CPPUNIT_ASSERT_EQUAL(true, lm_you->current_reservation_table->getReservation(0).isRx());
+			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry - 1, lm_you->link_state.timeout);			
 
 			num_slots = 0;
 			while (lm_me->link_status != LinkManager::link_not_established && num_slots++ < max_slots) {
@@ -348,18 +306,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->execute();
 				mac_layer_me->onSlotEnd();
 				mac_layer_you->onSlotEnd();
-				if (lm_me->link_status != LinkManager::link_not_established) {
-					size_t num_non_idle = 0;
+				if (lm_me->link_status != LinkManager::link_not_established) {					
 					for (int t = 1; t < planning_horizon; t++) {
 						const Reservation& res_tx = lm_me->current_reservation_table->getReservation(t);
 						const Reservation& res_rx = lm_you->current_reservation_table->getReservation(t);
-						if (res_tx.isTx()) {
-							num_non_idle++;
+						if (res_tx.isTx()) {							
 							CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), res_tx);
 							CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), res_rx);
 						}
-					}
-					CPPUNIT_ASSERT_EQUAL(size_t(lm_me->link_state.timeout), num_non_idle);
+					}					
 				}
 			}
 			CPPUNIT_ASSERT(num_slots < max_slots);
@@ -441,12 +396,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// Do link establishment.
-			size_t num_slots = 0, max_num_slots = 100;
-			auto *lm_tx = (NewPPLinkManager*) mac_layer_me->getLinkManager(partner_id),
-					*lm_rx = (NewPPLinkManager*) mac_layer_you->getLinkManager(own_id);
+			size_t num_slots = 0, max_num_slots = 100;			
 			// Other guy tries to communicate with us.
 			mac_layer_you->notifyOutgoing(512, own_id);
-			while (lm_tx->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
+			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
 				mac_layer_me->execute();
@@ -455,8 +408,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_rx->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 		}
 
 		/** Before introducing the onSlotEnd() function, success depended on the order of the execute() calls (which is of course terrible),
@@ -466,11 +419,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
 			// Do link establishment.
-			size_t num_slots = 0, max_num_slots = 100;
-			auto *lm_tx = (NewPPLinkManager*) mac_layer_me->getLinkManager(partner_id),
-					*lm_rx = (NewPPLinkManager*) mac_layer_you->getLinkManager(own_id);
+			size_t num_slots = 0, max_num_slots = 100;			
 			mac_layer_me->notifyOutgoing(512, partner_id);
-			while (lm_rx->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
+			while (lm_me->link_status != LinkManager::Status::link_established && num_slots++ < max_num_slots) {
 				// you first, then me
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -480,8 +431,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_rx->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 		}
 
 		void testPacketSize() {
@@ -602,7 +553,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Reconnect.
 			env_me->phy_layer->connected_phys.push_back(env_you->phy_layer);
 			num_slots = 0;
-			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
+			while (lm_me->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
 				mac_layer_you->execute();
@@ -647,7 +598,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			lm_me->notifyOutgoing(512);
 			size_t num_slots = 0, max_slots = 1000;
 
-			while (lm_you->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+			while (lm_me->link_status != LinkManager::link_established && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
 				mac_layer_you->execute();
@@ -657,17 +608,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_me->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_you->link_status);
-
-			// Link has just been established at RX side, so their reservation must be RX and "ours" TX.
-			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), lm_you->current_reservation_table->getReservation(0));
-			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), lm_me->current_reservation_table->getReservation(0));
-			// We have a bidirectional link, so the next reservation should be the other way around.			
-			CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), lm_you->current_reservation_table->getReservation(1));
-			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), lm_me->current_reservation_table->getReservation(1));
-			// Neither side should've decremented the timeout.
-			CPPUNIT_ASSERT_EQUAL(lm_you->timeout_before_link_expiry, lm_you->link_state.timeout);
-			CPPUNIT_ASSERT_EQUAL(lm_me->timeout_before_link_expiry, lm_me->link_state.timeout);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, lm_you->link_status);			
 
 			num_slots = 0;
 //			coutd.setVerbose(true);
@@ -963,7 +904,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 			size_t num_tx_reservations = 0, num_rx_reservations = 0;
-			for (size_t t = 0; t < lm_me->burst_offset*2; t++) {
+			for (size_t t = 0; t < lm_me->burst_offset; t++) {
 				const auto& res = lm_me->current_reservation_table->getReservation(t);				
 				if (res.isAnyTx())
 					num_tx_reservations++;
