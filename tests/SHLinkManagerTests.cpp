@@ -22,7 +22,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setUp() override {
 			id = MacId(42);
 			partner_id = MacId(43);
-			env = new TestEnvironment(id, partner_id);
+			env = new TestEnvironment(id, partner_id, true);
 			planning_horizon = env->planning_horizon;
 			mac = env->mac_layer;
 			link_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
