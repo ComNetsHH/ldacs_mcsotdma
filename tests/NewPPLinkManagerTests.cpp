@@ -1337,7 +1337,59 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that resource reservations are correct when >1 resources are used for transmission of both link initator and recipient. */
 		void testMultiSlotBurstEstablishmentForBoth() {
-
+			// make link initator require 2 TX resources
+			unsigned int datarate = mac->getCurrentDatarate();
+			unsigned int required_tx_resources = 2;									
+			// make link recipient require 2 TX resources
+			unsigned int required_rx_resources = 2;
+			pp->reported_resoure_requirement = required_rx_resources;
+			CPPUNIT_ASSERT_EQUAL(required_rx_resources, pp->getRequiredRxSlots());												
+			// establish link			
+			mac->notifyOutgoing(datarate * required_tx_resources, partner_id);
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp->getRequiredTxSlots());			
+			size_t num_slots = 0, max_slots = 100;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();				
+				mac->notifyOutgoing(datarate * required_tx_resources, partner_id);
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			// check that both agree on the no. of TX/RX resources
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(required_rx_resources, pp->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(required_rx_resources, pp_you->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp_you->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length_tx, pp_you->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length_rx, pp_you->link_state.burst_length_tx);
+			// check that reservations have been made correctly
+			size_t num_tx_res = 0, num_rx_res = 0;
+			for (size_t t = 0; t < planning_horizon; t++) {
+				if (pp->current_reservation_table->getReservation(t).isTx())
+					num_tx_res++;
+				else if (pp->current_reservation_table->getReservation(t).isRx())
+					num_rx_res++;
+			}
+			size_t 	expected_num_tx = (pp->timeout_before_link_expiry - 1) * pp->link_state.burst_length_tx, // -1 because first TX has already happened
+					expected_num_rx = pp->timeout_before_link_expiry * pp->link_state.burst_length_rx; // not -1 because the current reservation is RX, which established the link
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx, num_tx_res);
+			CPPUNIT_ASSERT_EQUAL(expected_num_rx, num_rx_res);
+			// same for the link recipient
+			num_tx_res = 0, num_rx_res = 0;
+			for (size_t t = 0; t < planning_horizon; t++) {				
+				if (pp_you->current_reservation_table->getReservation(t).isTx())
+					num_tx_res++;
+				else if (pp_you->current_reservation_table->getReservation(t).isRx())
+					num_rx_res++;
+			}						
+			expected_num_tx = pp_you->timeout_before_link_expiry * pp_you->link_state.burst_length_tx; 
+			expected_num_rx = (pp_you->timeout_before_link_expiry - 1) * pp_you->link_state.burst_length_rx; 
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx, num_tx_res);
+			CPPUNIT_ASSERT_EQUAL(expected_num_rx, num_rx_res);
 		}
  
 
@@ -1375,7 +1427,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testLinkEstablishmentTimeMeasurement);
 		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForInitiator);
 		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForRecipient);
-		// CPPUNIT_TEST(testMultiSlotBurstEstablishmentForBoth);
+		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForBoth);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
