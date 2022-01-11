@@ -126,7 +126,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * @return Hardware transmitter ReservationTable.
 		 */
-		ReservationTable* getTxTable() const;
+		ReservationTable* getTxTable() const;		
 
 	protected:
 

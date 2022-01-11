@@ -128,8 +128,19 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 			case Reservation::TX: {
 				// Ensure that we have no simultaneous transmissions scheduled.
 				num_txs++;
-				if (num_txs > num_transmitters)
-					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
+				if (num_txs > num_transmitters) {
+					std::stringstream ss;
+					ss << "MCSOTDMA_Mac::execute for too many transmissions within this time slot: ";					
+					if (reservation_manager->getBroadcastReservationTable()->getReservation(0).isTx())
+						ss << "SHTable: " << reservation_manager->getBroadcastReservationTable()->getReservation(0) << "; ";					
+					for (const auto *tbl : reservation_manager->getP2PReservationTables()) {													
+						if (tbl->getReservation(0).isTx())
+							ss << "PPTable(" << *tbl->getLinkedChannel() << "): " << tbl->getReservation(0) << "; ";						
+					}					
+					if (reservation_manager->getTxTable()->getReservation(0).isTx())
+						ss << "TXTable: " << reservation_manager->getTxTable()->getReservation(0) << "; ";					
+					throw std::runtime_error(ss.str());
+				}
 				// Find the corresponding LinkManager.
 				const MacId& id = reservation.getTarget();
 				LinkManager* link_manager = getLinkManager(id);
