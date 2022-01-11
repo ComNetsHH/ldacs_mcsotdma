@@ -156,7 +156,11 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			// Schedule next broadcast if there's more data to send.
 			if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
 				coutd << "there's more data, so scheduling next slot -> ";
-				scheduleBroadcastSlot();
+				try {
+					scheduleBroadcastSlot();
+				} catch (const std::exception &e) {
+					throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
+				}
 				coutd << next_broadcast_slot << " slots -> ";
 				// Put it into the header.
 				if (this->advertise_slot_in_header) {
@@ -171,7 +175,11 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		} else {
 			// Schedule next broadcast.
 			coutd << "auto-schedule is on, scheduling next slot -> ";
-			scheduleBroadcastSlot();
+			try {
+				scheduleBroadcastSlot();
+			} catch (const std::exception &e) {
+				throw std::runtime_error("Error when trying to schedule next broadcast because auto-schedule is on: " + std::string(e.what()));
+			}
 			coutd << next_broadcast_slot << " slots -> ";
 			if (this->advertise_slot_in_header) {
 				coutd << "advertising slot in header -> ";
@@ -201,7 +209,11 @@ void SHLinkManager::notifyOutgoing(unsigned long num_bits) {
 	packet_generated_this_slot = true;
 	if (!next_broadcast_scheduled) {
 		coutd << "scheduling next broadcast -> ";
-		scheduleBroadcastSlot();
+		try {
+			scheduleBroadcastSlot();
+		} catch (const std::exception &e) {
+			throw std::runtime_error("Error when trying to schedule broadcast because of new data: " + std::string(e.what()));
+		}
 	}
 	coutd << "next broadcast scheduled in " << next_broadcast_slot << " slots -> ";
 	// to account for application-layer starting times later than immediately,
@@ -397,8 +409,12 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
 	mac->statisticReportBroadcastCandidateSlots((size_t) num_candidates);
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, min_offset, 1, 1, 1, 0, false);
-	if (candidate_slots.empty())
+	if (candidate_slots.empty()) {
+		coutd << "printing reservations over entire planning horizon: " << std::endl << "t\tlocal\t\tTX" << std::endl;
+		for (size_t t = 0; t < current_reservation_table->getPlanningHorizon(); t++) 
+			coutd << "t=" << t << ":\t" << current_reservation_table->getReservation(t) << "\t" << reservation_manager->getTxTable()->getReservation(t) << std::endl;
 		throw std::runtime_error("SHLinkManager::broadcastSlotSelection found zero candidate slots.");
+	}
 	unsigned int selected_slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
 	mac->statisticReportSelectedBroadcastCandidateSlots(selected_slot);
 	return selected_slot;
@@ -426,7 +442,7 @@ void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 	coutd << "parsing incoming beacon -> ";
 	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 	if (pair.first) {
-		coutd << "re-scheduling beacon from t=" << beacon_module.getNextBeaconOffset() << " to ";
+		coutd << "re-scheduling beacon from t=" << beacon_module.getNextBeaconOffset() << " to ";		
 		scheduleBeacon();
 		coutd << "t=" << beacon_module.getNextBeaconOffset() << " -> ";
 	} if (pair.second) {
@@ -438,7 +454,11 @@ void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 		// mark it as BUSY so it won't be scheduled again
 		current_reservation_table->mark(current_broadcast_slot, Reservation(origin_id, Reservation::BUSY));
 		// find a new slot
-		scheduleBroadcastSlot();
+		try {
+			scheduleBroadcastSlot();
+		} catch (const std::exception &e) {
+			throw std::runtime_error("Error when trying to re-schedule broadcast due to collision detected from parsing a beacon: " + std::string(e.what()));
+		}
 		coutd << "t=" << next_broadcast_slot << " -> ";
 	}
 	// pass it to the MAC layer
@@ -473,7 +493,11 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
 			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
 			// ... and re-schedule one's own broadcast transmission
-			scheduleBroadcastSlot();
+			try {
+				scheduleBroadcastSlot();
+			} catch (const std::exception &e) {
+				throw std::runtime_error("Error when trying to re-schedule broadcast due to collision detected from slot advertisement: " + std::string(e.what()));
+			}
 			coutd << "re-scheduled own broadcast in " << next_broadcast_slot << " slots -> ";
 		// if locally, one's own beacon is scheduled...
 		} else if (res.isBeaconTx()) {

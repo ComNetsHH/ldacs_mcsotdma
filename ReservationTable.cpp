@@ -233,7 +233,7 @@ unsigned int ReservationTable::findEarliestIdleSlotsPP(unsigned int start_offset
 
 unsigned int ReservationTable::findEarliestIdleSlotsBC(unsigned int start_offset) const {
 	if (!isValid((int) start_offset))
-		throw std::invalid_argument("Invalid slot range!");
+		throw std::invalid_argument("exceeded planning horizon");
 	if (transmitter_reservation_table == nullptr)
 		throw std::runtime_error("ReservationTable::findEarliestIdleSlotsBC for unset transmitter table.");
 
@@ -321,9 +321,11 @@ std::vector<unsigned int> ReservationTable::findCandidates(unsigned int num_prop
 			last_offset = start_slot + 1; // Next attempt, look later than current one.
 		} catch (const std::range_error& e) {
 			// This is thrown if no idle range can be found.
-			break; // Stop if no more ranges can be found.
+			coutd << "cannot find anymore after t=" << last_offset << ": " << e.what() << " -> stopping at " << start_slots.size() << " candidates -> ";
+ 			break; // Stop if no more ranges can be found.
 		} catch (const std::invalid_argument& e) {
 			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
+			coutd << "cannot find anymore after t=" << last_offset << ": " << e.what() << " -> stopping at " << start_slots.size() << " candidates -> ";
 			break; // Stop if no more ranges can be found.
 		} // all other exceptions should still end execution
 	}
