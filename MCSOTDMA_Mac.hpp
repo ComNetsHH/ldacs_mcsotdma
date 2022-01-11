@@ -178,6 +178,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_pp_link_missed_last_reply_opportunity.increment();
 		}
 
+		/** After sending a reply we wait for the first data transmission. If this doesn't arrive, this statistic counts the event. */
+		void statistcReportPPLinkMissedFirstDataTx() {
+			stat_pp_link_missed_first_data_tx.increment();
+		}		
+
 		/**
 		 * @param num_slots Number of slots that have passed since the sending of a link request, and the final establishment of the link.
 		 */
@@ -263,6 +268,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_broadcast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_broadcast_wasted_tx_opportunities", this);
 		Statistic stat_unicast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_unicast_wasted_tx_opportunities", this);
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
+		Statistic stat_pp_link_missed_first_data_tx = Statistic("mcsotdma_statistic_pp_link_missed_first_data_tx", this);
 		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);		
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
 		Statistic stat_num_pp_links_expired = Statistic("mcsotdma_statistic_num_pp_links_expired", this);
@@ -299,6 +305,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_wasted_tx_opportunities,
 				&stat_unicast_wasted_tx_opportunities,
 				&stat_pp_link_missed_last_reply_opportunity,
+				&stat_pp_link_missed_first_data_tx,
 				&stat_pp_link_establishment_time,
 				&stat_num_pp_links_established,
 				&stat_num_pp_links_expired,

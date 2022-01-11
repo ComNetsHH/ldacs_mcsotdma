@@ -946,8 +946,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 				mac_layer_me->onSlotEnd();
 			}
+			// both sides should've entered link establishment by now
 			CPPUNIT_ASSERT(lm_me->link_status == LinkManager::awaiting_request_generation || lm_me->link_status == LinkManager::awaiting_reply);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, lm_you->link_status);			
+			CPPUNIT_ASSERT(lm_you->link_status == LinkManager::awaiting_request_generation || lm_you->link_status == LinkManager::awaiting_reply);
+			// and should have sent a couple of requests
+			CPPUNIT_ASSERT_GREATER(size_t(1), (size_t) mac_layer_me->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_GREATER(size_t(1), (size_t) mac_layer_you->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_you->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_you->stat_pp_link_missed_first_data_tx.get());
 		}
 
 		void testMissedAndReceivedPacketsMatch() {
@@ -1023,33 +1030,33 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
-// 			CPPUNIT_TEST(testLinkEstablishment);
-// 			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
-// 			CPPUNIT_TEST(testLinkExpiry);
-// 			CPPUNIT_TEST(testLinkExpiryMultiSlot);
-// 			CPPUNIT_TEST(testReservationsUntilExpiry);
-// 			CPPUNIT_TEST(testLinkTermination);
-// 			CPPUNIT_TEST(testLinkRenewal);
-// 			CPPUNIT_TEST(testCommunicateInOtherDirection);
-// 			CPPUNIT_TEST(testCommunicateReverseOrder);
-// //			CPPUNIT_TEST(testPacketSize);						
-// 			CPPUNIT_TEST(testReestablishmentAfterDrop);
-// 			CPPUNIT_TEST(testSimultaneousRequests);
-// 			CPPUNIT_TEST(testTimeout);
-// 			CPPUNIT_TEST(testManyReestablishments);
-// 			CPPUNIT_TEST(testSlotAdvertisement);
-// 			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
-// 			// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
-// 			CPPUNIT_TEST(testMACDelays);			
-// 			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
-// 			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
-// 			CPPUNIT_TEST(testForcedBidirectionalLinks);					
-// 			CPPUNIT_TEST(testNoEmptyBroadcasts);			
-// 			CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
-// 			CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
+			CPPUNIT_TEST(testLinkEstablishment);
+			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+			CPPUNIT_TEST(testLinkExpiry);
+			CPPUNIT_TEST(testLinkExpiryMultiSlot);
+			CPPUNIT_TEST(testReservationsUntilExpiry);
+			CPPUNIT_TEST(testLinkTermination);
+			CPPUNIT_TEST(testLinkRenewal);
+			CPPUNIT_TEST(testCommunicateInOtherDirection);
+			CPPUNIT_TEST(testCommunicateReverseOrder);
+//			CPPUNIT_TEST(testPacketSize);						
+			CPPUNIT_TEST(testReestablishmentAfterDrop);
+			CPPUNIT_TEST(testSimultaneousRequests);
+			CPPUNIT_TEST(testTimeout);
+			CPPUNIT_TEST(testManyReestablishments);
+			CPPUNIT_TEST(testSlotAdvertisement);
+			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
+			// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
+			CPPUNIT_TEST(testMACDelays);			
+			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
+			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
+			CPPUNIT_TEST(testForcedBidirectionalLinks);					
+			CPPUNIT_TEST(testNoEmptyBroadcasts);			
+			CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
+			// CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
 			CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);					
-			// CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
-			// CPPUNIT_TEST(testPPLinkEstablishmentTime);
+			CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
+			CPPUNIT_TEST(testPPLinkEstablishmentTime);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

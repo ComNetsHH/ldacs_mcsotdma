@@ -82,6 +82,7 @@ void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";		
 	communication_during_this_slot = false;	
 	updated_timeout_this_slot = false;
+	expecting_first_data_tx_this_slot = false;
 	// update slot counter
 	if (this->link_state.reserved_resources.anyLocks())
 		this->link_state.reserved_resources.num_slots_since_creation++;
@@ -94,9 +95,12 @@ void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 			throw std::runtime_error("PPLinkManager attempted to decrement next_burst_in past zero.");
 		this->link_state.next_burst_in--;	
 		coutd << "next transmission burst start " << (link_state.next_burst_in == 0 ? "now" : "in " + std::to_string(link_state.next_burst_in) + " slots") << " -> ";		
-		if (link_state.next_burst_in == 0)
-			link_state.next_burst_in = link_state.burst_offset;
+		if (link_state.next_burst_in == 0) 			
+			link_state.next_burst_in = link_state.burst_offset;		
 	}	
+	// should this resource establish the link?		
+	if (link_status == awaiting_data_tx && current_reservation_table->getReservation(0) == Reservation(link_id, Reservation::RX))
+		expecting_first_data_tx_this_slot = true; // then save this s.t. we can re-trigger link establishment if it's not established
 	// re-attempt link establishment
 	if (this->attempt_link_establishment_again) {
 		coutd << "re-attempting link establishment -> ";
@@ -122,6 +126,13 @@ void NewPPLinkManager::onSlotEnd() {
 		coutd << "expected reply hasn't arrived -> trying to establish a new link -> ";
 		mac->statistcReportPPLinkMissedLastReplyOpportunity();
 		cancelLink();		
+		establishLink();
+	}
+	// has an expected first data transmission not arrived?
+	if (link_status == awaiting_data_tx && expecting_first_data_tx_this_slot) {
+		coutd << "expected first data transmission hasn't arrived -> reply must've been lost -> trying to establish a new link -> ";
+		mac->statistcReportPPLinkMissedFirstDataTx();
+		cancelLink();
 		establishLink();
 	}
 	// have we missed a transmission burst?

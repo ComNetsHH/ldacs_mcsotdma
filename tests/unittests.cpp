@@ -36,7 +36,7 @@ int main() {
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
-	runner.addTest(ThreeUsersTests::suite());
+	// runner.addTest(ThreeUsersTests::suite());
 	runner.addTest(NewPPLinkManagerTests::suite());
 
 	runner.run();

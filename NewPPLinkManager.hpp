@@ -241,6 +241,8 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		bool updated_timeout_this_slot = false;
 		/** Whether communication has taken place during this time slot. */		
 		bool communication_during_this_slot = false;
+		/** Needed to detect that an expected data transmission has not arrived. */
+		bool expecting_first_data_tx_this_slot = false;
 };
 
 }
