@@ -861,18 +861,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_me->onSlotEnd();
 			}
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-			CPPUNIT_ASSERT_EQUAL(size_t(2), size_t(mac_layer_me->stat_num_pp_links_established.get()));			
-			size_t num_requests = 0;
+			CPPUNIT_ASSERT_EQUAL(size_t(2), size_t(mac_layer_me->stat_num_pp_links_established.get()));						
 			for (auto *packet : phy_layer_me->outgoing_packets) {
-				if (packet->getRequestIndex() != -1) {
-					num_requests++;
+				if (packet->getRequestIndex() != -1) {					
 					CPPUNIT_ASSERT_EQUAL(size_t(3), packet->getHeaders().size());
 					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::base, packet->getHeaders().at(0)->frame_type);
 					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, packet->getHeaders().at(1)->frame_type);
 					CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::link_establishment_request, packet->getHeaders().at(2)->frame_type);
 				}
-			}
-			CPPUNIT_ASSERT(num_requests == 2 || num_requests == 1);
+			}			
 		}
 
 		/**
