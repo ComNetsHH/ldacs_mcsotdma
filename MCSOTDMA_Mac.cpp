@@ -345,11 +345,13 @@ void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {
 	if (flag)
 		throw std::runtime_error("closing P2P links early is currently broken, please don't attempt this!");
 	close_link_early_if_no_first_data_packet_comes_in = flag;
-	for (auto pair : link_managers) {
-		const MacId id = pair.first;
-		auto *manager = (PPLinkManager*) pair.second;
-		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) 
-			manager->setShouldTerminateLinksEarly(flag);
+	if (!use_new_pp_link_manager) {
+		for (auto pair : link_managers) {
+			const MacId id = pair.first;
+			auto *manager = (PPLinkManager*) pair.second;
+			if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) 
+				manager->setShouldTerminateLinksEarly(flag);
+		}
 	}
 }
 
@@ -374,8 +376,12 @@ void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
 	IMac::setForceBidirectionalLinks(flag);	
 	// now also handle those that already exist
 	for (auto pair : link_managers) {
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-			((PPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
+		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) {
+			if (use_new_pp_link_manager)
+				((NewPPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
+			else
+				((PPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
+		}
 	}	
 }
 
@@ -383,7 +389,7 @@ void MCSOTDMA_Mac::setInitializeBidirectionalLinks(bool flag) {
 	// this sets the flag which treats link managers that are created in the future
 	IMac::setInitializeBidirectionalLinks(flag);	
 	// now also handle those that already exist
-	if (flag) {
+	if (flag && use_new_pp_link_manager) {
 		for (auto pair : link_managers) {
 			if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
 				((PPLinkManager*) pair.second)->setInitializeBidirectionalLinks();

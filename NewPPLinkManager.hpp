@@ -29,6 +29,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) override;
 		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
 		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
+		void setForceBidirectionalLinks(bool flag);
 
 	protected:
 		/** Container that saves the resources that were locked or scheduled during link establishment. */
@@ -212,8 +213,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		void processBaseMessage(L2HeaderBase*& header) override;
 		void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;		
 
-		void setReportedDesiredTxSlots(unsigned int value);
-		void setForceBidirectionalLinks(bool flag);
+		void setReportedDesiredTxSlots(unsigned int value);		
 
 	protected:
 		/** Number of transmission bursts until link expiry. */
