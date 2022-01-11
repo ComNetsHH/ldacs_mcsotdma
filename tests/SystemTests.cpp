@@ -234,8 +234,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkExpiryMultiSlot() {
 			// Update traffic estimate s.t. multi-slot bursts should be used.
 			unsigned long bits_per_slot = phy_layer_me->getCurrentDatarate();
-			unsigned int expected_num_slots = 3;
-			lm_me->outgoing_traffic_estimate.put(expected_num_slots * bits_per_slot);
+			unsigned int required_tx_slots = 3;
+			lm_me->outgoing_traffic_estimate.put(required_tx_slots * bits_per_slot);
+			unsigned int expected_num_slots = required_tx_slots + 1;
 			unsigned int required_slots = lm_me->getRequiredTxSlots() + lm_me->getRequiredRxSlots();
 			CPPUNIT_ASSERT_EQUAL(expected_num_slots, required_slots);
 			// Now do the other tests.
@@ -1116,9 +1117,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	CPPUNIT_TEST_SUITE(SystemTests);
 			// CPPUNIT_TEST(testLinkEstablishment);
-			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+			// CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
 // 			CPPUNIT_TEST(testLinkExpiry);
-// 			CPPUNIT_TEST(testLinkExpiryMultiSlot);
+			CPPUNIT_TEST(testLinkExpiryMultiSlot);
 // 			CPPUNIT_TEST(testReservationsUntilExpiry);
 // 			CPPUNIT_TEST(testLinkTermination);
 // 			CPPUNIT_TEST(testLinkRenewal);
