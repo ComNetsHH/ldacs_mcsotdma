@@ -252,7 +252,7 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::lock_bursts(const std::vector
 	coutd << "locking: ";
 	// remember locked resources locally, for the transmitter, and for the receiver
 	std::set<unsigned int> locked_local, locked_tx, locked_rx;
-	// check that slots can be locked
+	// check that slots *can* be locked
 	for (unsigned int start_offset : start_slots) {
 		// go over all bursts of the entire link
 		for (unsigned int n_burst = 0; n_burst < timeout; n_burst++) {
@@ -308,20 +308,18 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::lock_bursts(const std::vector
 	// actually lock them
 	auto lock_map = ReservationMap();
 	for (unsigned int slot : locked_local) {
-		table->mark(slot, Reservation(link_id, Reservation::LOCKED));
+		table->lock(slot, link_id);
 		lock_map.resource_reservations.push_back({table, slot});
 	}
 	for (unsigned int slot : locked_tx) {
-		for (auto* tx_table : tx_tables)
-			if (tx_table->canLock(slot)) {
-				table->mark(slot, Reservation(link_id, Reservation::LOCKED));				
-				break;
-			}
+		reservation_manager->getTxTable()->lock(slot, link_id);		
+		lock_map.resource_reservations.push_back({reservation_manager->getTxTable(), slot});
 	}
 	for (unsigned int slot : locked_rx) {
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(slot)) {
-				table->mark(slot, Reservation(link_id, Reservation::LOCKED));				
+				table->lock(slot, link_id);
+				lock_map.resource_reservations.push_back({rx_table, slot});
 				break;
 			}
 	}

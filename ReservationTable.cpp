@@ -386,9 +386,9 @@ void ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
 }
 
 void ReservationTable::unlock(unsigned int slot_offset, const MacId& id) {
-	if (!isLocked(slot_offset))
+	if (!isLocked(slot_offset) && !isIdle(slot_offset))
 		throw std::invalid_argument("cannot unlock non-locked reservation");
-	if (slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget() != id)	
+	if (slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget() != id && slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget() != SYMBOLIC_ID_UNSET)	
 		throw std::invalid_argument("cannot unlock locked reservation whose ID is " + std::to_string(slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget().getId()) + " and not " + std::to_string(id.getId()));
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::IDLE);
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setTarget(SYMBOLIC_ID_UNSET);	

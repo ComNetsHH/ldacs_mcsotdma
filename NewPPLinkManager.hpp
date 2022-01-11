@@ -68,7 +68,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 						continue;
 					unsigned int slot_offset = pair.second - this->num_slots_since_creation;
 					if (slot_offset > 0) {
-						if (!table->getReservation(slot_offset).isLocked()) {							
+						if (!table->getReservation(slot_offset).isLocked() && !table->getReservation(slot_offset).isIdle()) {							
 							std::stringstream ss;
 							ss << "ReservationMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
 							throw std::invalid_argument(ss.str());
