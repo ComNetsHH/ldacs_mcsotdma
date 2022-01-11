@@ -111,7 +111,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const;		
 
 		void lock(unsigned int slot_offset, const MacId& id);
-		void unlock(unsigned int slot_offset);
+
+		/**		 
+		 * @param slot_offset 
+		 * @param id 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked or if the ID does not match
+		 */
+		void unlock(unsigned int slot_offset, const MacId& id);
 
 		/**
 		 * @param start_offset The minimum slot offset to start the search.

@@ -60,7 +60,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 			 * Assuming that all here-saved resources were locked, it first checks that they are, and then unlocks them.
 			 * @throws std::invalid_argument if any resource was not locked
 			 * */
-			void unlock() {				
+			void unlock(const MacId &id) {				
 				for (const auto& pair : resource_reservations) {
 					ReservationTable *table = pair.first;
 					// skip SH reservations
@@ -73,7 +73,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 							ss << "ReservationMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
 							throw std::invalid_argument(ss.str());
 						} else 
-							table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));							
+							table->unlock(slot_offset, id);							
 					}
 				}
 				// no need to manually unlock RX and TX tables

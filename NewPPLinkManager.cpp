@@ -526,7 +526,7 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRe
 	bool is_link_initiator = true;
 	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";				
 	// free locked resources	
-	this->link_state.reserved_resources.unlock();
+	this->link_state.reserved_resources.unlock(link_id);
 	this->link_state.reserved_resources.clear();
 	coutd << "free'd locked resources -> ";	
 	// schedule resources
@@ -622,7 +622,7 @@ void NewPPLinkManager::cancelLink() {
 	if (link_status != LinkManager::link_not_established) {
 		if (this->link_status == LinkManager::Status::awaiting_request_generation || this->link_status == LinkManager::Status::awaiting_reply) {
 			coutd << "unlocking -> ";
-			this->link_state.reserved_resources.unlock();		
+			this->link_state.reserved_resources.unlock(link_id);		
 		} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {
 			coutd << "unscheduling -> ";
 			this->link_state.reserved_resources.unschedule();
