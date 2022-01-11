@@ -555,7 +555,7 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 				for (size_t t = 0; t < 25; t++)
 					std::cout << "t=" << t << ": " << this->current_reservation_table->getReservation(slot_offset + t) << std::endl;
 				std::stringstream s;
-				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
+				s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
 				throw std::runtime_error(s.str());
 			}
 			// make sure that hardware is available
@@ -564,14 +564,14 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 				bool transmitter_available = tx_reservation.isIdle();
 				if (!transmitter_available) {
 					std::stringstream s;
-					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
+					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 					throw std::runtime_error(s.str());
 				}
 			} else {
 				bool receiver_available = std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
 				if (!receiver_available) {
 					std::stringstream s;
-					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
+					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
 					for (const auto *rx_table : reservation_manager->getRxTables())
 						s << rx_table->getReservation(slot_offset) << " ";
 					s << "when at least one should be idle.";
@@ -587,7 +587,7 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 			// make sure that the reservation is idle locally
 			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {
 				std::stringstream s;
-				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
+				s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
 				throw std::runtime_error(s.str());
 			}
 			// make sure that hardware is available
@@ -596,14 +596,14 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 				bool transmitter_available = tx_reservation.isIdle();
 				if (!transmitter_available) {
 					std::stringstream s;
-					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
+					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 					throw std::runtime_error(s.str());
 				}
 			} else {
 				bool receiver_available = std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
 				if (!receiver_available) {
 					std::stringstream s;
-					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
+					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
 					for (const auto *rx_table : reservation_manager->getRxTables())
 						s << rx_table->getReservation(slot_offset) << " ";
 					s << "when at least one should be idle.";
