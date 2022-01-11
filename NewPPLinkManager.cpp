@@ -524,11 +524,11 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRe
 	unsigned int first_burst_in = selected_time_slot_offset - this->link_state.reply_offset; // normalize to current time slot
 	link_state.next_burst_in = first_burst_in;
 	bool is_link_initiator = true;
-	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";		
+	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";				
 	// free locked resources	
 	this->link_state.reserved_resources.unlock();
 	this->link_state.reserved_resources.clear();
-	coutd << "free'd locked resources -> ";
+	coutd << "free'd locked resources -> ";	
 	// schedule resources
 	this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
 	coutd << "scheduled transmission bursts -> ";
@@ -543,26 +543,72 @@ NewPPLinkManager::ReservationMap NewPPLinkManager::schedule_bursts(const Frequen
 	this->assign(channel);		
 	Reservation::Action action_1 = is_link_initiator ? Reservation::TX : Reservation::RX,
 						action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
+	// go over each transmission burst
 	for (int burst = 0; burst < timeout; burst++) {
-		int slot = first_burst_in + burst*link_state.burst_offset;
+		// normalize to burst start
+		int burst_start_offset = first_burst_in + burst*link_state.burst_offset;
+		// go over link initiator's TX slots
 		for (int i = 0; i < burst_length_tx; i++) {
-			int slot_offset = slot + i;
+			int slot_offset = burst_start_offset + i;
+			// make sure that the reservation is idle locally
 			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {				
 				for (size_t t = 0; t < 25; t++)
 					std::cout << "t=" << t << ": " << this->current_reservation_table->getReservation(slot_offset + t) << std::endl;
 				std::stringstream s;
-				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be locked.";
+				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
 				throw std::runtime_error(s.str());
+			}
+			// make sure that hardware is available
+			if (action_1 == Reservation::TX) {
+				const auto &tx_reservation = reservation_manager->getTxTable()->getReservation(slot_offset);
+				bool transmitter_available = tx_reservation.isIdle();
+				if (!transmitter_available) {
+					std::stringstream s;
+					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
+					throw std::runtime_error(s.str());
+				}
+			} else {
+				bool receiver_available = std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
+				if (!receiver_available) {
+					std::stringstream s;
+					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
+					for (const auto *rx_table : reservation_manager->getRxTables())
+						s << rx_table->getReservation(slot_offset) << " ";
+					s << "when at least one should be idle.";
+					throw std::runtime_error(s.str());
+				}
 			}
 			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_1));						
 			reservation_map.resource_reservations.push_back({this->current_reservation_table, slot_offset});
 		}
+		// go over the link initator's RX slots
 		for (int i = 0; i < burst_length_rx; i++) {
-			int slot_offset = slot + burst_length_tx + i;
+			int slot_offset = burst_start_offset + burst_length_tx + i;
+			// make sure that the reservation is idle locally
 			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {
 				std::stringstream s;
-				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be locked.";
+				s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
 				throw std::runtime_error(s.str());
+			}
+			// make sure that hardware is available
+			if (action_2 == Reservation::TX) {
+				const auto &tx_reservation = reservation_manager->getTxTable()->getReservation(slot_offset);
+				bool transmitter_available = tx_reservation.isIdle();
+				if (!transmitter_available) {
+					std::stringstream s;
+					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
+					throw std::runtime_error(s.str());
+				}
+			} else {
+				bool receiver_available = std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
+				if (!receiver_available) {
+					std::stringstream s;
+					s << "PPLinkManager::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
+					for (const auto *rx_table : reservation_manager->getRxTables())
+						s << rx_table->getReservation(slot_offset) << " ";
+					s << "when at least one should be idle.";
+					throw std::runtime_error(s.str());
+				}
 			}
 			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_2));		
 			reservation_map.resource_reservations.push_back({this->current_reservation_table, slot_offset});
