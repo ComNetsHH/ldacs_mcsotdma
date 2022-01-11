@@ -373,7 +373,7 @@ std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_pr
 	return start_slot_offsets;
 }
 
-void ReservationTable::lock(unsigned int slot_offset) {
+void ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
 	// Nothing to do if it's already locked.
 	if (isLocked(slot_offset))
 		return;
@@ -382,6 +382,12 @@ void ReservationTable::lock(unsigned int slot_offset) {
 		throw std::range_error("ReservationTable::lock_bursts for non-idle and non-locked slot.");
 	// Then lock.
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::LOCKED);
+	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setTarget(id);
+}
+
+void ReservationTable::unlock(unsigned int slot_offset) {
+	if (isLocked(slot_offset))
+		slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::IDLE);
 }
 
 bool ReservationTable::canLock(unsigned int slot_offset) const {

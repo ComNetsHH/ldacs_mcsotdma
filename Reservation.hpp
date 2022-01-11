@@ -68,6 +68,8 @@ class Reservation {
 
 		void setAction(Action action);
 
+		void setTarget(const MacId& target);
+
 //		/**
 //		 * @return Whether locking succeeded.
 //		 */

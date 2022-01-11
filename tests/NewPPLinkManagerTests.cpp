@@ -670,7 +670,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					auto *res_table = reservation_manager_you->getReservationTable(channel);
 					// and lock them so that this request must be rejected
 					for (const auto &slot : time_slots) 						
-						res_table->lock(slot);				
+						res_table->lock(slot, own_id);				
 				} else {
 					reply_offset = time_slots.at(0);
 				}

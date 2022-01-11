@@ -198,14 +198,14 @@ PPLinkManager::LockMap PPLinkManager::lock_bursts(const std::vector<unsigned int
 	LockMap locked_resources_map = LockMap();
 	// *All* slots should be locked in the local ReservationTable.
 	for (unsigned int offset : unique_offsets_local) {		
-		table->lock(offset);
+		table->lock(offset, link_id);
 		locked_resources_map.locks_local.push_back({table, offset});
 	}
 	// Then lock transmitter resources.
 	for (unsigned int offset : unique_offsets_tx) {
 		for (auto* tx_table : tx_tables)
 			if (tx_table->canLock(offset)) {
-				tx_table->lock(offset);
+				tx_table->lock(offset, link_id);
 				locked_resources_map.locks_transmitter.push_back({tx_table, offset});
 				break;
 			}
@@ -214,7 +214,7 @@ PPLinkManager::LockMap PPLinkManager::lock_bursts(const std::vector<unsigned int
 	for (unsigned int offset : unique_offsets_rx) {
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(offset)) {
-				rx_table->lock(offset);
+				rx_table->lock(offset, link_id);
 				locked_resources_map.locks_receiver.push_back({rx_table, offset});
 				break;
 			}

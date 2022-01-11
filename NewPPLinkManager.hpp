@@ -73,7 +73,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 							ss << "ReservationMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
 							throw std::invalid_argument(ss.str());
 						} else 
-							table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+							table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));							
 					}
 				}
 				// no need to manually unlock RX and TX tables
