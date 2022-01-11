@@ -407,91 +407,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL( phy_layer_me->outgoing_packets.empty(), false);
 			for (L2Packet *packet : phy_layer_me->outgoing_packets)
 				CPPUNIT_ASSERT(phy_layer_me->getCurrentDatarate() >= packet->getBits());
-		}		
-
-		void testLinkInfoBroadcast() {
-//			coutd.setVerbose(true);
-			// Single message.
-			rlc_layer_me->should_there_be_more_p2p_data = false;
-			rlc_layer_me->should_there_be_more_broadcast_data = false;
-			// New data for communication partner.
-			mac_layer_me->notifyOutgoing(512, partner_id);
-			size_t num_slots = 0, max_slots = 50;
-			// establish link
-			while (lm_me->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
-				mac_layer_you->update(1);
-				mac_layer_me->update(1);
-				mac_layer_you->execute();
-				mac_layer_me->execute();
-				mac_layer_you->onSlotEnd();
-				mac_layer_me->onSlotEnd();
-			}
-			CPPUNIT_ASSERT(num_slots < max_slots);
-			// LinkInfo should've been injected.
-			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).size());
-			CPPUNIT_ASSERT(rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).at(0)->getLinkInfoIndex() > -1);
-			num_slots = 0;
-			// broadcast slot for link info should've been scheduled
-			ReservationTable *bc_table = mac_layer_me->reservation_manager->getBroadcastReservationTable();
-			auto *bc_manager = (SHLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-			CPPUNIT_ASSERT_EQUAL(bc_manager->next_broadcast_scheduled, true);
-			CPPUNIT_ASSERT(bc_manager->next_broadcast_slot > 0);
-			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_table->getReservation(bc_manager->next_broadcast_slot));
-			// proceed to broadcast slot
-			int broadcast_in = (int) bc_manager->next_broadcast_slot;
-			for (int t = 0; t < broadcast_in; t++) {
-				mac_layer_you->update(1);
-				mac_layer_me->update(1);
-				mac_layer_you->execute();
-				mac_layer_me->execute();
-				mac_layer_you->onSlotEnd();
-				mac_layer_me->onSlotEnd();
-			}
-			// proceed until link info injection has been erased
-			while (!rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty() && num_slots++ < max_slots) {
-				mac_layer_you->update(1);
-				mac_layer_me->update(1);
-				mac_layer_you->execute();
-				mac_layer_me->execute();
-				mac_layer_you->onSlotEnd();
-				mac_layer_me->onSlotEnd();
-				if (bc_manager->next_broadcast_slot != 0)
-					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_table->getReservation(bc_manager->next_broadcast_slot));
-			}
-			CPPUNIT_ASSERT(num_slots < max_slots);
-			// link info should've been sent, none should remain
-			CPPUNIT_ASSERT_EQUAL(true, rlc_layer_me->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty());			
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_link_infos_sent.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_you->stat_num_link_infos_rcvd.get());
-			// proceed until other communication partner agrees that the link's been established
-			num_slots = 0;
-			while (lm_you->link_status != LinkManager::Status::link_established && num_slots++ < max_slots) {
-				mac_layer_you->update(1);
-				mac_layer_me->update(1);
-				mac_layer_you->execute();
-				mac_layer_me->execute();
-				mac_layer_you->onSlotEnd();
-				mac_layer_me->onSlotEnd();
-			}
-			CPPUNIT_ASSERT(num_slots < max_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_you->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), rlc_layer_you->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).size());
-			// proceed until link info has been sent
-			num_slots = 0;
-			while (!rlc_layer_you->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty() && num_slots++ < max_slots) {
-				mac_layer_you->update(1);
-				mac_layer_me->update(1);
-				mac_layer_you->execute();
-				mac_layer_me->execute();
-				mac_layer_you->onSlotEnd();
-				mac_layer_me->onSlotEnd();
-			}
-			CPPUNIT_ASSERT(num_slots < max_slots);
-			CPPUNIT_ASSERT_EQUAL(true, rlc_layer_you->control_message_injections.at(SYMBOLIC_LINK_ID_BROADCAST).empty());
-			// make sure link info's been received
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_you->stat_num_link_infos_sent.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_link_infos_rcvd.get());
-		}
+		}				
 
 		/**
 		 * Tests that if a link request is lost, establishment is re-tried after all reception possibilities have passed.
@@ -1119,17 +1035,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testLinkEstablishment);
 			// CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
 // 			CPPUNIT_TEST(testLinkExpiry);
-			CPPUNIT_TEST(testLinkExpiryMultiSlot);
+			// CPPUNIT_TEST(testLinkExpiryMultiSlot);
 // 			CPPUNIT_TEST(testReservationsUntilExpiry);
 // 			CPPUNIT_TEST(testLinkTermination);
 // 			CPPUNIT_TEST(testLinkRenewal);
 // 			CPPUNIT_TEST(testCommunicateInOtherDirection);
 // 			CPPUNIT_TEST(testCommunicateReverseOrder);
-// //			CPPUNIT_TEST(testPacketSize);			
-// 			CPPUNIT_TEST(testLinkInfoBroadcast);
+// //			CPPUNIT_TEST(testPacketSize);						
 // 			CPPUNIT_TEST(testReestablishmentAfterDrop);
 // 			CPPUNIT_TEST(testSimultaneousRequests);
-// 			CPPUNIT_TEST(testTimeout);
+			CPPUNIT_TEST(testTimeout);
 // 			CPPUNIT_TEST(testManyReestablishments);
 // 			CPPUNIT_TEST(testSlotAdvertisement);
 // 			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
