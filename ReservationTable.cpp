@@ -332,6 +332,27 @@ std::vector<unsigned int> ReservationTable::findCandidates(unsigned int num_prop
 	return start_slots;
 }
 
+std::vector<unsigned int> ReservationTable::findSHCandidates(unsigned int num_candidates, int min_offset) const {
+	std::vector<unsigned int> start_slots;
+	int last_offset = min_offset;
+	for (size_t i = 0; i < num_candidates; i++) {
+		try {
+			auto start_slot = findEarliestIdleSlotsBC(last_offset);
+			start_slots.push_back(start_slot);
+			last_offset = start_slot + 1;
+		} catch (const std::range_error& e) {
+			// This is thrown if no idle range can be found.
+			coutd << "cannot find anymore after t=" << last_offset << ": " << e.what() << " -> stopping at " << start_slots.size() << " candidates -> ";
+ 			break; // Stop if no more ranges can be found.
+		} catch (const std::invalid_argument& e) {
+			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
+			coutd << "cannot find anymore after t=" << last_offset << ": " << e.what() << " -> stopping at " << start_slots.size() << " candidates -> ";
+			break; // Stop if no more ranges can be found.
+		} // all other exceptions should still end execution
+	}
+	return start_slots;
+}
+
 std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const {
 	std::vector<unsigned int> start_slot_offsets;
 	unsigned int last_offset = min_offset;

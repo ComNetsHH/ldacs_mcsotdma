@@ -97,6 +97,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		[[deprecated]]
 		std::vector<unsigned int> findCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool p2p) const;
 
+		std::vector<unsigned int> findSHCandidates(unsigned int num_candidates, int min_offset) const;
+
 		/**		 
 		 * @param num_proposal_slots 
 		 * @param min_offset 

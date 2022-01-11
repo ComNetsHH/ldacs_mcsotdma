@@ -404,11 +404,14 @@ unsigned long long SHLinkManager::nchoosek(unsigned long n, unsigned long k) con
 }
 
 unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
+	coutd << "broadcast slot selection -> ";
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("SHLinkManager::broadcastSlotSelection for unset ReservationTable.");
 	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
 	mac->statisticReportBroadcastCandidateSlots((size_t) num_candidates);
-	std::vector<unsigned int > candidate_slots = current_reservation_table->findCandidates(num_candidates, min_offset, 1, 1, 1, 0, false);
+	coutd << "min_offset=" << (int) min_offset << " -> ";
+	std::vector<unsigned int > candidate_slots = current_reservation_table->findSHCandidates(num_candidates, (int) min_offset);
+	coutd << "found " << candidate_slots.size() << " -> ";
 	if (candidate_slots.empty()) {
 		coutd << "printing reservations over entire planning horizon: " << std::endl << "t\tlocal\t\tTX" << std::endl;
 		for (size_t t = 0; t < current_reservation_table->getPlanningHorizon(); t++) 
@@ -425,8 +428,8 @@ void SHLinkManager::scheduleBroadcastSlot() {
 	// By default, even the next slot could be chosen.
 	unsigned int min_offset = 1;
 	// Unless there's currently no data to send; then, schedule one when on average the next data packet should've been generated.
-	if (!mac->isThereMoreData(link_id))
-		min_offset = std::max(uint(1), getAvgNumSlotsInbetweenPacketGeneration());
+	if (!mac->isThereMoreData(link_id) && link_requests.empty() && link_replies.empty())
+		min_offset = std::max(uint(1), std::min(getAvgNumSlotsInbetweenPacketGeneration(), current_reservation_table->getPlanningHorizon() / 4));
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
