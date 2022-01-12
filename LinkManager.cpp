@@ -83,7 +83,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
-				processLinkRequestMessage((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());				
+				processLinkRequestMessage((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
 				break;
 			}
 			case L2Header::link_establishment_reply: {
@@ -132,7 +132,7 @@ void LinkManager::processBaseMessage(L2HeaderBase*& header) {
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin_id) {
+void LinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << "::processLinkRequestMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }

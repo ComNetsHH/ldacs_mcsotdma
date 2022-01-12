@@ -220,7 +220,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(link_manager->current_reservation_table == nullptr);
 
 			// Now process the request.
-			link_manager->processLinkRequestMessage((const L2Header*&) link_request_msg.first, (const L2Packet::Payload*&) link_request_msg.second, partner_id);
+			link_manager->processLinkRequestMessage((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkEstablishmentPayload*&) link_request_msg.second, partner_id);
 			// Now, the link should be being established.
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_data_tx, link_manager->link_status);
 			CPPUNIT_ASSERT(link_manager->current_link_state != nullptr);
@@ -333,7 +333,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto link_request_msg = link_manager->prepareRequestMessage();
 			link_request_msg.second->callback->populateLinkRequest(link_request_msg.first, link_request_msg.second);
 			// Receive request.
-			((PPLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processLinkRequestMessage((const L2Header*&) link_request_msg.first, (const L2Packet::Payload*&) link_request_msg.second, own_id);
+			((PPLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->processLinkRequestMessage((const L2HeaderLinkRequest*&) link_request_msg.first, (const LinkManager::LinkEstablishmentPayload*&) link_request_msg.second, own_id);
 			// Send the reply.
 			size_t num_slots = 0, max_num_slots = 100;
 			while (!((PPLinkManager*) rx_env.mac_layer->getLinkManager(own_id))->current_link_state->scheduled_link_replies.empty() && num_slots++ < max_num_slots) {

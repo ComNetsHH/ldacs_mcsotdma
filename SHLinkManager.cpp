@@ -518,7 +518,7 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	}
 }
 
-void SHLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin_id) {
+void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
 	if (dest_id == mac->getMacId()) {
 		coutd << "forwarding link request to PPLinkManager -> ";

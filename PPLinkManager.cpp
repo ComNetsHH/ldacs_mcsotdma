@@ -493,7 +493,7 @@ bool PPLinkManager::isProposalViable(const ReservationTable* table, unsigned int
 	return viable;
 }
 
-void PPLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {
 	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
 	mac->statisticReportLinkRequestReceived();
 	// If currently the link is unestablished, then this request must be an initial request.
@@ -516,7 +516,7 @@ void PPLinkManager::processLinkRequestMessage(const L2Header*& header, const L2P
 	}
 }
 
-void PPLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void PPLinkManager::processIncomingLinkRequest_Initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {
 	// Unlock any previously-locked resources, as a new link request re-starts this procedure.
 	if (lock_map.anyLocks()) {
 		clearLockedResources(lock_map);
@@ -524,7 +524,7 @@ void PPLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, 
 	}
 	try {
 		// Pick a random resource from those proposed.
-		LinkState* state = selectResourceFromRequest((const L2HeaderLinkRequest*&) header, (const PPLinkManager::LinkEstablishmentPayload*&) payload);
+		LinkState* state = selectResourceFromRequest(header, payload);
 		state->initial_setup = true;
 		// remember the choice,
 		delete current_link_state;

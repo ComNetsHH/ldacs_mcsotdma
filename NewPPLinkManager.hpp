@@ -15,6 +15,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 
 	friend class NewPPLinkManagerTests;	
 	friend class SystemTests;
+	friend class ThreeUsersTests;
 
 	public:
 		NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
@@ -27,7 +28,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		void onSlotStart(uint64_t num_slots) override;
 		void onSlotEnd() override;
 		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) override;
-		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) override;
 		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 		void setForceBidirectionalLinks(bool flag);
 
