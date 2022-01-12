@@ -69,7 +69,7 @@ public:
 	void unschedule() {
 		for (const auto& pair : resource_reservations) {
 			ReservationTable *table = pair.first;
-			unsigned int slot_offset = pair.second - this->num_slots_since_creation;
+			int slot_offset = pair.second - this->num_slots_since_creation;
 			if (slot_offset > 0) {
 				if (!(table->getReservation(slot_offset).isTx() || table->getReservation(slot_offset).isRx())) {							
 					std::stringstream ss;
