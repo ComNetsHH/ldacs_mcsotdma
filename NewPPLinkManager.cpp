@@ -85,7 +85,7 @@ void NewPPLinkManager::onSlotStart(uint64_t num_slots) {
 	expecting_first_data_tx_this_slot = false;
 	// update slot counter
 	if (this->link_state.reserved_resources.anyLocks())
-		this->link_state.reserved_resources.num_slots_since_creation++;
+		this->link_state.reserved_resources.onSlotStart();
 	// decrement time until the expected reply
 	if (this->time_slots_until_reply > 0)
 		this->time_slots_until_reply--;
@@ -178,7 +178,7 @@ void NewPPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEst
 			reply_offset = time_slots.at(0);			
 			auto *sh_table = reservation_manager->getBroadcastReservationTable();			
 			// remember which one
-			locked_resources.resource_reservations.push_back({sh_table, reply_offset});
+			locked_resources.add(sh_table, reply_offset);
 			// mark as reception
 			Reservation reply_reservation = Reservation(link_id, Reservation::RX);
 			sh_table->mark(reply_offset, reply_reservation);			
@@ -309,17 +309,17 @@ ReservationMap NewPPLinkManager::lock_bursts(const std::vector<unsigned int>& st
 	auto lock_map = ReservationMap();
 	for (unsigned int slot : locked_local) {
 		table->lock(slot, link_id);
-		lock_map.resource_reservations.push_back({table, slot});
+		lock_map.add(table, slot);
 	}
 	for (unsigned int slot : locked_tx) {
 		reservation_manager->getTxTable()->lock(slot, link_id);		
-		lock_map.resource_reservations.push_back({reservation_manager->getTxTable(), slot});
+		lock_map.add(reservation_manager->getTxTable(), slot);
 	}
 	for (unsigned int slot : locked_rx) {
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(slot)) {
 				table->lock(slot, link_id);
-				lock_map.resource_reservations.push_back({rx_table, slot});
+				lock_map.add(rx_table, slot);
 				break;
 			}
 	}
@@ -581,7 +581,7 @@ ReservationMap NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel
 				}
 			}
 			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_1));						
-			reservation_map.resource_reservations.push_back({this->current_reservation_table, slot_offset});
+			reservation_map.add(this->current_reservation_table, slot_offset);
 		}
 		// go over the link initator's RX slots
 		for (int i = 0; i < burst_length_rx; i++) {
@@ -613,7 +613,7 @@ ReservationMap NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel
 				}
 			}
 			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_2));		
-			reservation_map.resource_reservations.push_back({this->current_reservation_table, slot_offset});
+			reservation_map.add(this->current_reservation_table, slot_offset);
 		}
 	}	
 	return reservation_map;

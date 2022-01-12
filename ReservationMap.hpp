@@ -13,16 +13,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 /** Container that saves the resources that were locked or scheduled during link establishment. */
 class ReservationMap {
 public:
-	ReservationMap() : num_slots_since_creation(0) {};
-	
-	/** Local resources that were locked. */
-	std::vector<std::pair<ReservationTable*, unsigned int>> resource_reservations;
-	/** Keep track of the number of time slots since creation, so that the slot offsets can be normalized to the current time. */
-	unsigned int num_slots_since_creation;
+	ReservationMap() : num_slots_since_creation(0) {};		
 
 	void merge(const ReservationMap& other) {
 		for (const auto& pair : other.resource_reservations)
 			resource_reservations.push_back(pair);				
+	}
+
+	void add(ReservationTable *table, unsigned int slot_offset) {
+		resource_reservations.push_back({table, slot_offset});
+	}
+
+	void onSlotStart() {
+		num_slots_since_creation++;
 	}
 
 	size_t size() const {
@@ -77,6 +80,12 @@ public:
 			}
 		}
 	}	
+
+	protected:
+		/** Local resources that were locked. */
+		std::vector<std::pair<ReservationTable*, unsigned int>> resource_reservations;
+		/** Keep track of the number of time slots since creation, so that the slot offsets can be normalized to the current time. */
+		unsigned int num_slots_since_creation;
 };
 
 }
