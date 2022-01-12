@@ -144,6 +144,14 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		void processLinkRequestMessage_initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*&);
 
 		/**
+		 * Parses a third-party link request and locks indicated resources so that no later collisions are caused.
+		 * @param header 
+		 * @param payload 
+		 * @param origin 
+		 */
+		void processLinkRequestMessage_3rdparty(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin);
+
+		/**
 		 * From a map of proposed resources, check each for validity and then choose one randomly.
 		 * @param resources 
 		 * @param burst_length 

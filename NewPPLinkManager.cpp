@@ -359,42 +359,50 @@ unsigned int NewPPLinkManager::getRequiredRxSlots() const {
 }
 
 void NewPPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {	
-	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> own link status is '" << link_status << "' -> ";		
-	mac->statisticReportLinkRequestReceived();
-	// initial link request
-	if (this->link_status == link_not_established) {
-		coutd << "treating this as an initial link establishment attempt -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// cancel the own request and process this one
-	} else if (this->link_status == awaiting_request_generation) {		
-		cancelLink();		
-		coutd << "canceling own request -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) << " requests cancelled -> ";
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// cancel the own reply expectation and process this request
-	} else if (this->link_status == awaiting_reply) {
-		cancelLink();		
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// cancel the scheduled link and process this request
-	} else if (this->link_status == awaiting_data_tx) {
-		cancelLink();
-		size_t num_replies_cancelled = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
-		if (num_replies_cancelled > 0)
-			coutd << "cancelled " << num_replies_cancelled << " own link replies -> ";
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// link re-establishment: cancel remaining scheduled resources and process this request
-	} else if (this->link_status == link_established) {		
-		cancelLink();
-		if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) != 0)
-			throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link request while the link is established - this shouldn't have happened!");
-		if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id))
-			throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link reply while the link is established - this shouldn't have happened!");
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	} else {	
-		throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage: " + std::to_string(this->link_status));	
+	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
+	// is this link request NOT destined to us?
+	if (header->getDestId() != mac->getMacId()) {
+		// then lock the indicated resources so that no later collision is caused by planning for the same resources as this neighbor
+		processLinkRequestMessage_3rdparty(header, payload, origin);			
+	// if it is, process it
+	} else {		
+		coutd << "own link status is '" << link_status << "' -> ";		
+		mac->statisticReportLinkRequestReceived();
+		// initial link request
+		if (this->link_status == link_not_established) {
+			coutd << "treating this as an initial link establishment attempt -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// cancel the own request and process this one
+		} else if (this->link_status == awaiting_request_generation) {		
+			cancelLink();		
+			coutd << "canceling own request -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) << " requests cancelled -> ";
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// cancel the own reply expectation and process this request
+		} else if (this->link_status == awaiting_reply) {
+			cancelLink();		
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// cancel the scheduled link and process this request
+		} else if (this->link_status == awaiting_data_tx) {
+			cancelLink();
+			size_t num_replies_cancelled = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
+			if (num_replies_cancelled > 0)
+				coutd << "cancelled " << num_replies_cancelled << " own link replies -> ";
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// link re-establishment: cancel remaining scheduled resources and process this request
+		} else if (this->link_status == link_established) {		
+			cancelLink();
+			if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) != 0)
+				throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link request while the link is established - this shouldn't have happened!");
+			if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id))
+				throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link reply while the link is established - this shouldn't have happened!");
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		} else {	
+			throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage: " + std::to_string(this->link_status));	
+		}
 	}
 } 
 
@@ -457,6 +465,11 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 		mac->statisticReportLinkRequestRejectedDueToUnacceptableReplySlot();		
 		establishLink(); // so make a counter proposal
 	}
+}
+
+void NewPPLinkManager::processLinkRequestMessage_3rdparty(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {
+	coutd << "third-party link request -> ";
+	mac->statisticReportThirdPartyLinkRequestReceived();	
 }
 
 std::pair<const FrequencyChannel*, unsigned int> NewPPLinkManager::chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx) {

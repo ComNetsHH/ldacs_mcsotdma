@@ -112,6 +112,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportLinkRequestReceived() {
 			stat_num_requests_rcvd.increment();
 		}
+		void statisticReportThirdPartyLinkRequestReceived() {
+			stat_num_thid_party_requests_rcvd.increment();
+		}		
 		void statisticReportLinkReplyReceived() {
 			stat_num_replies_rcvd.increment();
 		}
@@ -243,6 +246,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_unicasts_rcvd = Statistic("mcsotdma_statistic_num_unicasts_received", this);
 		Statistic stat_num_unicast_msgs_processed = Statistic("mcsotdma_statistic_num_unicast_message_processed", this);
 		Statistic stat_num_requests_rcvd = Statistic("mcsotdma_statistic_num_link_requests_received", this);
+		Statistic stat_num_thid_party_requests_rcvd = Statistic("mcsotdma_statistic_num_third_party_link_requests_received", this);
 		Statistic stat_num_replies_rcvd = Statistic("mcsotdma_statistic_num_link_replies_received", this);
 		Statistic stat_num_beacons_rcvd = Statistic("mcsotdma_statistic_num_beacons_received", this);
 		Statistic stat_num_link_infos_rcvd = Statistic("mcsotdma_statistic_num_link_infos_received", this);
@@ -281,6 +285,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_unicasts_rcvd,
 				&stat_num_unicast_msgs_processed,
 				&stat_num_requests_rcvd,
+				&stat_num_thid_party_requests_rcvd,
 				&stat_num_replies_rcvd,
 				&stat_num_beacons_rcvd,
 				&stat_num_link_infos_rcvd,
