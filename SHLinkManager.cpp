@@ -518,21 +518,31 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	}
 }
 
-void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-	coutd << "forwarding link request to PPLinkManager -> ";
-	// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
-	if (!mac->isUsingNewPPLinkManager())
-		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
-	else
-		((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);	
+void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
+	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
+	if (dest_id == mac->getMacId()) {
+		coutd << "forwarding link request to PPLinkManager -> ";
+		// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
+		if (!mac->isUsingNewPPLinkManager())
+			((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
+		else
+			((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
+	} else {
+		coutd << "processing third-party link request -> ";
+		
+	}
 }
 
-void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-	coutd << "forwarding link reply to PPLinkManager -> ";
-	if (!mac->isUsingNewPPLinkManager())
-		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
-	else
-		((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);	
+void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
+	MacId dest_id = header->dest_id;	
+	if (dest_id == mac->getMacId()) {
+		coutd << "forwarding link reply to PPLinkManager -> ";
+		if (!mac->isUsingNewPPLinkManager())
+			((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
+		else
+			((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
+	} else 
+		coutd << "discarding link request that is not destined to us -> ";	
 }
 
 SHLinkManager::~SHLinkManager() {
