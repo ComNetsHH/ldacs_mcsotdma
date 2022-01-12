@@ -20,7 +20,7 @@ public:
 			resource_reservations.push_back(pair);				
 	}
 
-	void add(ReservationTable *table, unsigned int slot_offset) {
+	void add(ReservationTable *table, int slot_offset) {
 		resource_reservations.push_back({table, slot_offset});
 	}
 
@@ -48,7 +48,7 @@ public:
 			// skip SH reservations
 			if (table->getLinkedChannel() != nullptr && table->getLinkedChannel()->isSH())
 				continue;
-			unsigned int slot_offset = pair.second - this->num_slots_since_creation;
+			int slot_offset = pair.second - this->num_slots_since_creation;
 			if (slot_offset > 0) {
 				if (!table->getReservation(slot_offset).isLocked() && !table->getReservation(slot_offset).isIdle()) {							
 					std::stringstream ss;
@@ -83,9 +83,9 @@ public:
 
 	protected:
 		/** Local resources that were locked. */
-		std::vector<std::pair<ReservationTable*, unsigned int>> resource_reservations;
+		std::vector<std::pair<ReservationTable*, int>> resource_reservations;
 		/** Keep track of the number of time slots since creation, so that the slot offsets can be normalized to the current time. */
-		unsigned int num_slots_since_creation;
+		int num_slots_since_creation;
 };
 
 }
