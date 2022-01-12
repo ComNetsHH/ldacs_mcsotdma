@@ -6,6 +6,7 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_THIRDPARTYLINK_HPP
 
 #include <MacId.hpp>
+#include "ReservationMap.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -17,12 +18,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
  */
 class ThirdPartyLink {
 	public:
+		ThirdPartyLink(const MacId& id_link_initiator, const MacId& id_link_recipient);
+		void onSlotStart();
+
+
 
 	protected:
+		static const int UNSET = -1;
 		/** ID of the link initiator. */
 		MacId id_link_initiator;
 		/** ID of the link recipient. */
-		MacId id_link_recipient;
+		MacId id_link_recipient;		
+		/** Keeps track of scheduled or locked resources. */
+		ReservationMap reservation_map;
+		int num_slots_until_expected_link_reply = UNSET;
 };
 }
 
