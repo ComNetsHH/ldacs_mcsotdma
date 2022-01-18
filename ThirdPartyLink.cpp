@@ -69,7 +69,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 		if (sh_manager->getNextBroadcastSlot() == num_slots_until_expected_link_reply) {
 			coutd << "detected collision of advertised reply slot and our own broadcast -> ";
 			// re-schedule own broadcast and mark the slot as BUSY
-			sh_manager->reportCollisionWithScheduledBroadcast(id_link_initiator);
+			sh_manager->reportCollisionWithScheduledBroadcast(id_link_recipient);
 		}
 	}
 	// now mark the slot as RX
@@ -125,33 +125,29 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 }
 
 void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-	coutd << *this << " processing link reply -> ";
-	// is this an expected reply?
-	if (num_slots_until_expected_link_reply == 0) {
-		coutd << "had been expected during this slot -> ";		
-		// unlock all locks
-		locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
-		locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
-		// parse selected resource
-		const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
-		if (selected_resource_map.size() != size_t(1))
-			throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one selected resource, but " + std::to_string(selected_resource_map.size()));
-		const auto &selected_resource = *selected_resource_map.begin();
-		const FrequencyChannel *selected_freq_channel = selected_resource.first;
-		if (selected_resource.second.size() != size_t(1)) 
-			throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
-		const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
-		const unsigned int &timeout = header->timeout, 
-					&burst_length = header->burst_length,
-					&burst_length_tx = header->burst_length_tx,
-					burst_length_rx = header->burst_length - header->burst_length_tx,
-					&burst_offset = header->burst_offset;
-		unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot
-		const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;
-		// schedule the link's resources		
-		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
-		// reset counters
-		num_slots_until_expected_link_reply = UNSET;
-		reply_offset = UNSET;
-	}
+	coutd << *this << " processing link reply -> ";			
+	// unlock all locks
+	locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
+	locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
+	// parse selected resource
+	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
+	if (selected_resource_map.size() != size_t(1))
+		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one selected resource, but " + std::to_string(selected_resource_map.size()));
+	const auto &selected_resource = *selected_resource_map.begin();
+	const FrequencyChannel *selected_freq_channel = selected_resource.first;
+	if (selected_resource.second.size() != size_t(1)) 
+		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
+	const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
+	const unsigned int &timeout = header->timeout, 
+				&burst_length = header->burst_length,
+				&burst_length_tx = header->burst_length_tx,
+				burst_length_rx = header->burst_length - header->burst_length_tx,
+				&burst_offset = header->burst_offset;
+	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot
+	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;
+	// schedule the link's resources		
+	this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
+	// reset counters
+	num_slots_until_expected_link_reply = UNSET;
+	reply_offset = UNSET;	
 }

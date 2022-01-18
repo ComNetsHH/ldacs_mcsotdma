@@ -105,299 +105,299 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					CPPUNIT_ASSERT_EQUAL(res_tx, res_3);
 				} else if (res_tx.isTx()) {
 					CPPUNIT_ASSERT_EQUAL(Reservation(id1, Reservation::RX), res_rx);
-					CPPUNIT_ASSERT_EQUAL(Reservation(id1, Reservation::BUSY), res_3);
+					CPPUNIT_ASSERT_EQUAL(true, res_3.isBusy());
 				} else if (res_tx.isRx()) {
 					CPPUNIT_ASSERT_EQUAL(Reservation(id1, Reservation::TX), res_rx);
-					CPPUNIT_ASSERT_EQUAL(Reservation(id2, Reservation::BUSY), res_3);
+					CPPUNIT_ASSERT_EQUAL(true, res_3.isBusy());
 				}
 			}
 		}
 
-// 		void testLinkEstablishmentTwoUsersMultiSlot() {
-// //			coutd.setVerbose(true);
-// 			unsigned long bits_per_slot = env1->phy_layer->getCurrentDatarate();
-// 			unsigned int expected_num_slots = 3;
-// 			num_outgoing_bits = expected_num_slots * bits_per_slot;
-// 			((PPLinkManager*) env1->mac_layer->getLinkManager(id2))->setInitializeBidirectionalLinks();
-// 			// Now do the other tests.
-// 			testLinkEstablishmentTwoUsers();
-// 		}
+		void testLinkEstablishmentTwoUsersMultiSlot() {
+//			coutd.setVerbose(true);
+			unsigned long bits_per_slot = env1->phy_layer->getCurrentDatarate();
+			unsigned int expected_num_slots = 3;
+			num_outgoing_bits = expected_num_slots * bits_per_slot;
+			((NewPPLinkManager*) env1->mac_layer->getLinkManager(id2))->setForceBidirectionalLinks(true);
+			// Now do the other tests.
+			testLinkEstablishmentTwoUsers();
+		}
 
-// 		/**
-// 		 * Tests that three users can communicate like so: A->B B->C.
-// 		 * They initiate communication at exactly the same time. Tests that links are established.
-// 		 */
-// 		void threeUsersLinkEstablishmentSameStart() {
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
-// 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
-// 			auto* p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
+		/**
+		 * Tests that three users can communicate like so: A->B B->C.
+		 * They initiate communication at exactly the same time. Tests that links are established.
+		 */
+		void threeUsersLinkEstablishmentSameStart() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
+			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
+			auto* p2p_1 = (NewPPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (NewPPLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (NewPPLinkManager*) mac_3->getLinkManager(id2);
 
-// 			// Trigger establishment.
-// 			p2p_1->notifyOutgoing(num_outgoing_bits);
-// 			p2p_2->notifyOutgoing(num_outgoing_bits);
+			// Trigger establishment.
+			p2p_1->notifyOutgoing(num_outgoing_bits);
+			p2p_2->notifyOutgoing(num_outgoing_bits);
 
-// 			size_t num_slots = 0, max_num_slots = 1000;
-// 			while ((p2p_1->link_status != LinkManager::link_established || p2p_2->link_status != LinkManager::link_established || p2p_3->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}
-// 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-// 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
-// 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
-// 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
-// 		}
+			size_t num_slots = 0, max_num_slots = 1000;
+			while ((p2p_1->link_status != LinkManager::link_established || p2p_2->link_status != LinkManager::link_established || p2p_3->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
+		}
 
-// 		/**
-// 		 * Tests that three users can communicate like so: A->B B->C.
-// 		 * They initiate communication at exactly the same time. Tests that links are re-established after expiry.
-// 		 */
-// 		void threeUsersLinkReestablishmentSameStart() {
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
-// 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
-// 			((SHLinkManager*) env1->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
-// 			((SHLinkManager*) env2->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
-// 			auto* p2p_1_tx = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_1_rx = (PPLinkManager*) mac_2->getLinkManager(id1),
-// 				  *p2p_2_tx = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_2_rx = (PPLinkManager*) mac_3->getLinkManager(id2);
+		/**
+		 * Tests that three users can communicate like so: A->B B->C.
+		 * They initiate communication at exactly the same time. Tests that links are re-established after expiry.
+		 */
+		void threeUsersLinkReestablishmentSameStart() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
+			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
+			((SHLinkManager*) env1->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
+			((SHLinkManager*) env2->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
+			auto* p2p_1_tx = (NewPPLinkManager*) mac_1->getLinkManager(id2), *p2p_1_rx = (NewPPLinkManager*) mac_2->getLinkManager(id1),
+				  *p2p_2_tx = (NewPPLinkManager*) mac_2->getLinkManager(id3), *p2p_2_rx = (NewPPLinkManager*) mac_3->getLinkManager(id2);
 
-// 			// Trigger establishment.
-// 			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
-// 			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
+			// Trigger establishment.
+			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
+			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
 
-// 			size_t num_slots = 0, max_num_slots = 10000, num_renewals = 10;
-// 			while ((p2p_1_tx->statistic_num_links_established < num_renewals || p2p_2_tx->statistic_num_links_established < num_renewals) && num_slots++ < max_num_slots) {
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}
-// 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-// 			CPPUNIT_ASSERT(p2p_1_tx->statistic_num_links_established >= num_renewals);
-// 			CPPUNIT_ASSERT(p2p_2_tx->statistic_num_links_established >= num_renewals);
+			size_t num_slots = 0, max_num_slots = 10000, num_renewals = 10;
+			while (((size_t) mac_1->stat_num_pp_links_established.get() < num_renewals || (size_t) mac_2->stat_num_pp_links_established.get() < num_renewals) && num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(num_renewals, (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(num_renewals, (size_t) mac_2->stat_num_pp_links_established.get());			
 
-// //			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1_tx->link_status);
-// //			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2_tx->link_status);
-// //			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2_rx->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2_tx->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2_rx->link_status);
 
-// //			size_t expected_num_packets = p2p_1_tx->current_link_state->timeout;
-// //			size_t t_max = p2p_1_tx->current_link_state->timeout * p2p_1_tx->burst_offset + p2p_1_tx->burst_offset;
-// //			for (size_t t = 0; t < t_max; t++) {
-// //				mac_1->update(1);
-// //				mac_2->update(1);
-// //				mac_3->update(1);
-// //				mac_1->execute();
-// //				mac_2->execute();
-// //				mac_3->execute();
-// //				mac_1->onSlotEnd();
-// //				mac_2->onSlotEnd();
-// //				mac_3->onSlotEnd();
-// //			}
-// //
-// //			CPPUNIT_ASSERT(p2p_1_tx->link_status != LinkManager::link_not_established);
-// //			CPPUNIT_ASSERT(p2p_2_tx->link_status != LinkManager::link_not_established);
-// //			CPPUNIT_ASSERT(p2p_1_tx->statistic_num_sent_packets >= expected_num_packets);
-// //			CPPUNIT_ASSERT(p2p_1_tx->statistic_num_sent_packets > p2p_1_tx->statistic_num_sent_requests);
-// //			CPPUNIT_ASSERT(p2p_2_tx->statistic_num_sent_packets >= expected_num_packets);
-// //			CPPUNIT_ASSERT(p2p_2_tx->statistic_num_sent_packets > p2p_2_tx->statistic_num_sent_requests);
-// 		}
+			// size_t expected_num_packets = p2p_1_tx->current_link_state->timeout;
+			// size_t t_max = p2p_1_tx->current_link_state->timeout * p2p_1_tx->burst_offset + p2p_1_tx->burst_offset;
+			// for (size_t t = 0; t < t_max; t++) {
+			// 	mac_1->update(1);
+			// 	mac_2->update(1);
+			// 	mac_3->update(1);
+			// 	mac_1->execute();
+			// 	mac_2->execute();
+			// 	mac_3->execute();
+			// 	mac_1->onSlotEnd();
+			// 	mac_2->onSlotEnd();
+			// 	mac_3->onSlotEnd();
+			// }
 
-// 		/**
-// 		 * Tests that three users can communicate like so: A->B B->C.
-// 		 * They initiate communication at exactly the same moment in time.
-// 		 */
-// 		void threeUsersNonOverlappingTest() {
-// //			coutd.setVerbose(true);
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			env1->rlc_layer->should_there_be_more_p2p_data = false;
-// 			env2->rlc_layer->should_there_be_more_p2p_data = false;
-// 			env3->rlc_layer->should_there_be_more_p2p_data = false;
-// 			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
-// 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
-// 			auto* p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
-// 			p2p_1->notifyOutgoing(num_outgoing_bits);
-// 			p2p_2->notifyOutgoing(num_outgoing_bits);
+			// CPPUNIT_ASSERT(p2p_1_tx->link_status != LinkManager::link_not_established);
+			// CPPUNIT_ASSERT(p2p_2_tx->link_status != LinkManager::link_not_established);
+			// CPPUNIT_ASSERT(p2p_1_tx->statistic_num_sent_packets >= expected_num_packets);
+			// CPPUNIT_ASSERT(p2p_1_tx->statistic_num_sent_packets > p2p_1_tx->statistic_num_sent_requests);
+			// CPPUNIT_ASSERT(p2p_2_tx->statistic_num_sent_packets >= expected_num_packets);
+			// CPPUNIT_ASSERT(p2p_2_tx->statistic_num_sent_packets > p2p_2_tx->statistic_num_sent_requests);
+		}
 
-// 			size_t num_slots = 0, max_num_slots = 5000;
-// 			while ((p2p_1->link_status != LinkManager::link_established || p2p_2->link_status != LinkManager::link_established || p2p_3->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}
-// 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-// 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
-// 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
-// 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
-// 			CPPUNIT_ASSERT_EQUAL(size_t(1), p2p_1->statistic_num_links_established);
-// 			CPPUNIT_ASSERT_EQUAL(size_t(1), p2p_2->statistic_num_links_established);
-// 			CPPUNIT_ASSERT_EQUAL(size_t(1), p2p_3->statistic_num_links_established);
+		/**
+		 * Tests that three users can communicate like so: A->B B->C.
+		 * They initiate communication at exactly the same moment in time.
+		 */
+		void threeUsersNonOverlappingTest() {
+//			coutd.setVerbose(true);
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			env1->rlc_layer->should_there_be_more_p2p_data = false;
+			env2->rlc_layer->should_there_be_more_p2p_data = false;
+			env3->rlc_layer->should_there_be_more_p2p_data = false;
+			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
+			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
+			auto* p2p_1 = (NewPPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (NewPPLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (NewPPLinkManager*) mac_3->getLinkManager(id2);
+			p2p_1->notifyOutgoing(num_outgoing_bits);
+			p2p_2->notifyOutgoing(num_outgoing_bits);
 
-// 			unsigned long packets_so_far_1 = (size_t) mac_1->stat_num_requests_sent.get(), packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
-// 			num_slots = 0;
-// 			while ((p2p_1->statistic_num_links_established < 2 || p2p_2->statistic_num_links_established < 2  || p2p_3->statistic_num_links_established < 2 ) && num_slots++ < max_num_slots) {
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}
-// 			CPPUNIT_ASSERT_EQUAL(size_t(2), p2p_1->statistic_num_links_established);
-// 			CPPUNIT_ASSERT_EQUAL(size_t(2), p2p_2->statistic_num_links_established);
-// 			CPPUNIT_ASSERT_EQUAL(size_t(2), p2p_3->statistic_num_links_established);
-// 			CPPUNIT_ASSERT((size_t) mac_1->stat_num_packets_sent.get() > packets_so_far_1);
-// 			CPPUNIT_ASSERT((size_t) mac_2->stat_num_packets_sent.get() > packets_so_far_2);
-// 			unsigned int num_renewals = 10;
-// 			for (unsigned int n = 3; n < num_renewals; n++) {
-// 				num_slots = 0;
-// 				while ((p2p_1->statistic_num_links_established < n || p2p_2->statistic_num_links_established < n  || p2p_3->statistic_num_links_established < n ) && num_slots++ < max_num_slots) {
-// 					mac_1->update(1);
-// 					mac_2->update(1);
-// 					mac_3->update(1);
-// 					mac_1->execute();
-// 					mac_2->execute();
-// 					mac_3->execute();
-// 					mac_1->onSlotEnd();
-// 					mac_2->onSlotEnd();
-// 					mac_3->onSlotEnd();
-// 				}
-// 				if (num_slots >= max_num_slots)
-// 					std::cerr << "oh no" << std::endl;
-// 				CPPUNIT_ASSERT(num_slots < max_num_slots);
-// 				CPPUNIT_ASSERT(p2p_1->statistic_num_links_established >= n);
-// 				CPPUNIT_ASSERT(p2p_2->statistic_num_links_established >= n);
-// 				CPPUNIT_ASSERT(p2p_3->statistic_num_links_established >= n);
-// 				CPPUNIT_ASSERT((size_t) mac_1->stat_num_packets_sent.get() > packets_so_far_1);
-// 				CPPUNIT_ASSERT((size_t) mac_2->stat_num_packets_sent.get() > packets_so_far_2);
-// 				packets_so_far_1 = (size_t) mac_1->stat_num_packets_sent.get();
-// 				packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
-// 			}
-// 		}		
+			size_t num_slots = 0, max_num_slots = 5000;
+			while ((p2p_1->link_status != LinkManager::link_established || p2p_2->link_status != LinkManager::link_established || p2p_3->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_established.get());
 
-// 		void testStatPacketsSent() {
-// 			env1->rlc_layer->should_there_be_more_broadcast_data = false;
-// 			env2->rlc_layer->should_there_be_more_broadcast_data = false;
-// 			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
-// 			env1->rlc_layer->always_return_broadcast_payload = true;
-// 			env2->rlc_layer->always_return_broadcast_payload = true;
-// 			env3->rlc_layer->always_return_broadcast_payload = true;						
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
-// 			for (auto *mac : macs) {
-// 				mac->setContentionMethod(ContentionMethod::naive_random_access);
-// 				mac->setAlwaysScheduleNextBroadcastSlot(false);
-// 				mac->setBcSlotSelectionMinNumCandidateSlots(3);
-// 				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
-// 			}	
+			unsigned long packets_so_far_1 = (size_t) mac_1->stat_num_requests_sent.get(), packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
+			num_slots = 0;
+			while (((size_t) mac_1->stat_num_pp_links_established.get() < 2 || (size_t) mac_2->stat_num_pp_links_established.get() < 2  || (size_t) mac_3->stat_num_pp_links_established.get() < 2 ) && num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_2->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_3->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT((size_t) mac_1->stat_num_packets_sent.get() > packets_so_far_1);
+			CPPUNIT_ASSERT((size_t) mac_2->stat_num_packets_sent.get() > packets_so_far_2);
+			unsigned int num_renewals = 10;
+			for (unsigned int n = 3; n < num_renewals; n++) {
+				num_slots = 0;
+				while (((size_t) mac_1->stat_num_pp_links_established.get() < n || (size_t) mac_2->stat_num_pp_links_established.get() < n  || (size_t) mac_3->stat_num_pp_links_established.get() < n ) && num_slots++ < max_num_slots) {
+					mac_1->update(1);
+					mac_2->update(1);
+					mac_3->update(1);
+					mac_1->execute();
+					mac_2->execute();
+					mac_3->execute();
+					mac_1->onSlotEnd();
+					mac_2->onSlotEnd();
+					mac_3->onSlotEnd();
+				}
+				if (num_slots >= max_num_slots)
+					std::cerr << "oh no" << std::endl;
+				CPPUNIT_ASSERT(num_slots < max_num_slots);
+				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_1->stat_num_pp_links_established.get());
+				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_2->stat_num_pp_links_established.get());
+				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_3->stat_num_pp_links_established.get());
+				CPPUNIT_ASSERT((size_t) mac_1->stat_num_packets_sent.get() > packets_so_far_1);
+				CPPUNIT_ASSERT((size_t) mac_2->stat_num_packets_sent.get() > packets_so_far_2);
+				packets_so_far_1 = (size_t) mac_1->stat_num_packets_sent.get();
+				packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
+			}
+		}		
 
-// 			size_t num_slots = 0, max_slots = 1000;
-// 			// send at least t beacons
-// 			while (mac_1->stat_num_beacons_sent.get() < 3.0 && num_slots++ < max_slots) {
-// 				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}
-// 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-// 			CPPUNIT_ASSERT_EQUAL(size_t(3), (size_t) mac_1->stat_num_beacons_sent.get());						
-// 			size_t num_packets_sent_1 = (size_t) mac_1->stat_num_packets_sent.get(), num_packets_sent_2 = (size_t) mac_2->stat_num_packets_sent.get(), num_packets_sent_3 = (size_t) mac_3->stat_num_packets_sent.get();
-// 			size_t num_broadcasts_sent_1 = (size_t) mac_1->stat_num_broadcasts_sent.get(), num_broadcasts_sent_2 = (size_t) mac_2->stat_num_broadcasts_sent.get(), num_broadcasts_sent_3 = (size_t) mac_3->stat_num_broadcasts_sent.get();
-// 			size_t num_beacons_sent_1 = (size_t) mac_1->stat_num_beacons_sent.get(), num_beacons_sent_2 = (size_t) mac_2->stat_num_beacons_sent.get(), num_beacons_sent_3 = (size_t) mac_3->stat_num_beacons_sent.get();			
-// 			// no unicast-type packets should've been sent
-// 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
-// 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_replies_sent.get());
-// 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_requests_sent.get());
-// 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_unicasts_sent.get());
-// 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
-// 			// now, the number of sent packets should equal the sum of broadcasts and beacons			
-// 			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_1 + num_beacons_sent_1, num_packets_sent_1);
-// 			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_2 + num_beacons_sent_2, num_packets_sent_2);
-// 			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_3 + num_beacons_sent_3, num_packets_sent_3);
-// 		}		
+		void testStatPacketsSent() {
+			env1->rlc_layer->should_there_be_more_broadcast_data = false;
+			env2->rlc_layer->should_there_be_more_broadcast_data = false;
+			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
+			env1->rlc_layer->always_return_broadcast_payload = true;
+			env2->rlc_layer->always_return_broadcast_payload = true;
+			env3->rlc_layer->always_return_broadcast_payload = true;						
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
+			for (auto *mac : macs) {
+				mac->setContentionMethod(ContentionMethod::naive_random_access);
+				mac->setAlwaysScheduleNextBroadcastSlot(false);
+				mac->setBcSlotSelectionMinNumCandidateSlots(3);
+				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
+			}	
 
-// 		void testCollisions() {			
-// 			env1->rlc_layer->should_there_be_more_broadcast_data = false;
-// 			env2->rlc_layer->should_there_be_more_broadcast_data = false;
-// 			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
-// 			env1->rlc_layer->always_return_broadcast_payload = true;
-// 			env2->rlc_layer->always_return_broadcast_payload = true;
-// 			env3->rlc_layer->always_return_broadcast_payload = true;						
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
-// 			for (auto *mac : macs) {
-// 				mac->setContentionMethod(ContentionMethod::naive_random_access);
-// 				mac->setAlwaysScheduleNextBroadcastSlot(false);
-// 				mac->setBcSlotSelectionMinNumCandidateSlots(3);
-// 				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
-// 			}		
-// 			size_t max_slots = 1000;
-// 			for (size_t t = 0; t < max_slots; t++) {
-// 				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}						
-// 			size_t num_packets_sent_to_1 = (size_t) mac_2->stat_num_packets_sent.get() + (size_t) mac_3->stat_num_packets_sent.get();
-// 			size_t num_packets_rcvd = (size_t) mac_1->stat_num_packets_rcvd.get();
-// 			size_t num_packets_missed = (size_t) env1->phy_layer->stat_num_packets_missed.get();
-// 			size_t num_packet_collisions = (size_t) mac_1->stat_num_packet_collisions.get();
-// 			CPPUNIT_ASSERT_GREATER(size_t(0), num_packet_collisions);
-// 			CPPUNIT_ASSERT_GREATER(size_t(0), num_packets_missed);			
-// 			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + num_packet_collisions, num_packets_sent_to_1);
-// 		}
+			size_t num_slots = 0, max_slots = 1000;
+			// send at least t beacons
+			while (mac_1->stat_num_beacons_sent.get() < 3.0 && num_slots++ < max_slots) {
+				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(3), (size_t) mac_1->stat_num_beacons_sent.get());						
+			size_t num_packets_sent_1 = (size_t) mac_1->stat_num_packets_sent.get(), num_packets_sent_2 = (size_t) mac_2->stat_num_packets_sent.get(), num_packets_sent_3 = (size_t) mac_3->stat_num_packets_sent.get();
+			size_t num_broadcasts_sent_1 = (size_t) mac_1->stat_num_broadcasts_sent.get(), num_broadcasts_sent_2 = (size_t) mac_2->stat_num_broadcasts_sent.get(), num_broadcasts_sent_3 = (size_t) mac_3->stat_num_broadcasts_sent.get();
+			size_t num_beacons_sent_1 = (size_t) mac_1->stat_num_beacons_sent.get(), num_beacons_sent_2 = (size_t) mac_2->stat_num_beacons_sent.get(), num_beacons_sent_3 = (size_t) mac_3->stat_num_beacons_sent.get();			
+			// no unicast-type packets should've been sent
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_replies_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_unicasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
+			// now, the number of sent packets should equal the sum of broadcasts and beacons			
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_1 + num_beacons_sent_1, num_packets_sent_1);
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_2 + num_beacons_sent_2, num_packets_sent_2);
+			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_3 + num_beacons_sent_3, num_packets_sent_3);
+		}		
+
+		void testCollisions() {			
+			env1->rlc_layer->should_there_be_more_broadcast_data = false;
+			env2->rlc_layer->should_there_be_more_broadcast_data = false;
+			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
+			env1->rlc_layer->always_return_broadcast_payload = true;
+			env2->rlc_layer->always_return_broadcast_payload = true;
+			env3->rlc_layer->always_return_broadcast_payload = true;						
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
+			for (auto *mac : macs) {
+				mac->setContentionMethod(ContentionMethod::naive_random_access);
+				mac->setAlwaysScheduleNextBroadcastSlot(false);
+				mac->setBcSlotSelectionMinNumCandidateSlots(3);
+				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
+			}		
+			size_t max_slots = 1000;
+			for (size_t t = 0; t < max_slots; t++) {
+				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}						
+			size_t num_packets_sent_to_1 = (size_t) mac_2->stat_num_packets_sent.get() + (size_t) mac_3->stat_num_packets_sent.get();
+			size_t num_packets_rcvd = (size_t) mac_1->stat_num_packets_rcvd.get();
+			size_t num_packets_missed = (size_t) env1->phy_layer->stat_num_packets_missed.get();
+			size_t num_packet_collisions = (size_t) mac_1->stat_num_packet_collisions.get();
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_packet_collisions);
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_packets_missed);			
+			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + num_packet_collisions, num_packets_sent_to_1);
+		}
 
 
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
-			// CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
-			// CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
-			// CPPUNIT_TEST(testStatPacketsSent);			
-			// CPPUNIT_TEST(testCollisions);
-//			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
-//			CPPUNIT_TEST(threeUsersNonOverlappingTest);
+			CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
+			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
+			CPPUNIT_TEST(testStatPacketsSent);			
+			CPPUNIT_TEST(testCollisions);
+			// CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
+			// CPPUNIT_TEST(threeUsersNonOverlappingTest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

@@ -83,7 +83,10 @@ public:
 			if (slot_offset > 0) {
 				if (!(table->getReservation(slot_offset).isTx() || table->getReservation(slot_offset).isRx())) {							
 					std::stringstream ss;
-					ss << "ReservationMap::unlock cannot unschedule reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be TX or RX.";
+					ss << "ReservationMap::unlock cannot unschedule reservation in " << slot_offset << " slots";
+					if (table->getLinkedChannel() != nullptr)
+						ss << " on f=" << *table->getLinkedChannel();	
+					ss << ". Its status is: " << table->getReservation(slot_offset) << " when it should be TX or RX.";
 					throw std::invalid_argument(ss.str());
 				} else 
 					table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
