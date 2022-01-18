@@ -26,9 +26,9 @@ void ThirdPartyLink::onSlotStart(size_t num_slots) {
 	}
 	// update counter towards link expiry	
 	if (link_expiry_offset != UNSET) {
-		link_expiry_offset--;
-		if (link_expiry_offset < 0)
-			throw std::runtime_error("ThidPartyLink decremented the counter until link expiry past zero!");
+		if (link_expiry_offset < num_slots)
+			throw std::runtime_error("ThidPartyLink attempted to decrement the counter until link expiry past zero.");
+		link_expiry_offset -= num_slots;				
 	}
 }
 
