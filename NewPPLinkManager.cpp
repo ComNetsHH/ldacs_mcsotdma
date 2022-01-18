@@ -516,35 +516,45 @@ bool NewPPLinkManager::isProposalViable(const ReservationTable *table, unsigned 
 
 void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << " processing link reply -> ";	
-	mac->statisticReportLinkReplyReceived();
-	// parse selected communication resource
-	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
-	if (selected_resource_map.size() != size_t(1))
-		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one selected resource, but " + std::to_string(selected_resource_map.size()));
-	const auto &selected_resource = *selected_resource_map.begin();
-	const FrequencyChannel *selected_freq_channel = selected_resource.first;
-	if (selected_resource.second.size() != size_t(1)) 
-		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
-	const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
-	unsigned int &timeout = this->link_state.timeout, 
-				 &burst_length = this->link_state.burst_length,
-				 &burst_length_tx = this->link_state.burst_length_tx,
-				 &burst_length_rx = this->link_state.burst_length_rx;	
-	unsigned int first_burst_in = selected_time_slot_offset - this->link_state.reply_offset; // normalize to current time slot
-	link_state.next_burst_in = first_burst_in;
-	bool is_link_initiator = true;
-	coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";				
-	// free locked resources	
-	this->link_state.reserved_resources.unlock(link_id);
-	this->link_state.reserved_resources.clear();
-	coutd << "free'd locked resources -> ";	
-	// schedule resources
-	this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
-	coutd << "scheduled transmission bursts -> ";
-	// update link status
-	coutd << "updating link status '" << this->link_status << "->";
-	this->link_status = LinkManager::awaiting_data_tx;
-	coutd << this->link_status << "' -> ";
+	// check whether this user is meant by this request
+	const MacId& dest_id = header->getDestId();		
+	if (dest_id != mac->getMacId()) { // if not
+		coutd << "third-party link reply between " << origin_id << " and " << dest_id << " -> ";
+		mac->statisticReportThirdPartyLinkReplyReceived();		
+		// process it through a third part link
+		ThirdPartyLink &link = mac->getThirdPartyLink(origin_id, dest_id);
+		link.processLinkReplyMessage(header, payload);
+	} else { // if we are the recipient
+		mac->statisticReportLinkReplyReceived();
+		// parse selected communication resource
+		const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
+		if (selected_resource_map.size() != size_t(1))
+			throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one selected resource, but " + std::to_string(selected_resource_map.size()));
+		const auto &selected_resource = *selected_resource_map.begin();
+		const FrequencyChannel *selected_freq_channel = selected_resource.first;
+		if (selected_resource.second.size() != size_t(1)) 
+			throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
+		const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
+		unsigned int &timeout = this->link_state.timeout, 
+					&burst_length = this->link_state.burst_length,
+					&burst_length_tx = this->link_state.burst_length_tx,
+					&burst_length_rx = this->link_state.burst_length_rx;	
+		unsigned int first_burst_in = selected_time_slot_offset - this->link_state.reply_offset; // normalize to current time slot
+		link_state.next_burst_in = first_burst_in;
+		bool is_link_initiator = true;
+		coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";				
+		// free locked resources	
+		this->link_state.reserved_resources.unlock(link_id);
+		this->link_state.reserved_resources.clear();
+		coutd << "free'd locked resources -> ";	
+		// schedule resources
+		this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
+		coutd << "scheduled transmission bursts -> ";
+		// update link status
+		coutd << "updating link status '" << this->link_status << "->";
+		this->link_status = LinkManager::awaiting_data_tx;
+		coutd << this->link_status << "' -> ";
+	}
 }
 
 ReservationMap NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator) {		
