@@ -48,7 +48,7 @@ public:
 	/** 	 
 	 * @throws std::invalid_argument if any resource was not locked
 	 * */
-	void unlock(const MacId &id) {				
+	void unlock_either_id(const MacId &id1, const MacId &id2) {				
 		for (const auto& pair : locked_resources) {
 			ReservationTable *table = pair.first;
 			// skip SH reservations
@@ -61,11 +61,16 @@ public:
 					ss << "ReservationMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
 					throw std::invalid_argument(ss.str());
 				} else 
-					table->unlock(slot_offset, id);							
+					table->unlock_either_id(slot_offset, id1, id2);							
 			}
-		}
-		// no need to manually unlock RX and TX tables
-		// because the table->mark takes care of that auto-magically									
+		}		
+	}		
+
+	/** 	 
+	 * @throws std::invalid_argument if any resource was not locked
+	 * */
+	void unlock(const MacId &id) {				
+		unlock_either_id(id, id);
 	}		
 
 	/** 	 

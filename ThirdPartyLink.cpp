@@ -11,13 +11,27 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 ThirdPartyLink::ThirdPartyLink(const MacId& id_link_initiator, const MacId& id_link_recipient, MCSOTDMA_Mac *mac) 
 	: id_link_initiator(id_link_initiator), id_link_recipient(id_link_recipient), reservation_map_for_link_initator(), reservation_map_for_link_recipient(), mac(mac) {}
 
-void ThirdPartyLink::onSlotStart() {
-	reservation_map_for_link_initator.onSlotStart(); 
-	reservation_map_for_link_recipient.onSlotStart();
+void ThirdPartyLink::onSlotStart(size_t num_slots) {
+	for (size_t t = 0; t < num_slots; t++) {
+		reservation_map_for_link_initator.onSlotStart(); 
+		reservation_map_for_link_recipient.onSlotStart();
+	}
 	if (this->num_slots_until_expected_link_reply != UNSET) {
-		if (this->num_slots_until_expected_link_reply == 0)
+		if (this->num_slots_until_expected_link_reply < num_slots)
 			throw std::runtime_error("ThidPartyLink::onSlotStart attempted to decrement counter until expected link reply past zero.");
-		this->num_slots_until_expected_link_reply--;		
+		this->num_slots_until_expected_link_reply -= num_slots;		
+	}
+}
+
+void ThirdPartyLink::onSlotEnd() {
+	// was a link reply expected this slot?
+	if (num_slots_until_expected_link_reply == 0) {
+		coutd << *mac << "::" << *this << " expected link reply hasn't arrived -> ";
+		// unlock all locks
+		reservation_map_for_link_initator.unlock_either_id(id_link_initiator, id_link_recipient);
+		reservation_map_for_link_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
+		// reset counter
+		num_slots_until_expected_link_reply = UNSET;
 	}
 }
 

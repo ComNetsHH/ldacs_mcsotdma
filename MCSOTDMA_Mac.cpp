@@ -67,6 +67,10 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 		if (item.first != SYMBOLIC_LINK_ID_BROADCAST)
 			item.second->onSlotStart(num_slots);
 	}
+	// Notify the third-party links.
+	for (auto &item : third_party_links) 
+		item.second.onSlotStart(num_slots);
+	
 	// Notify the PHY about the channels to which receivers are tuned to in this time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
 	size_t num_rx = 0;
@@ -313,6 +317,10 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	// update link managers
 	for (auto item : link_managers)
 		item.second->onSlotEnd();
+
+	// update third-party links
+	for (auto &item : third_party_links)
+		item.second.onSlotEnd();
 
 	// update active neighbors list
 	active_neighbor_observer.onSlotEnd();

@@ -27,7 +27,8 @@ class ThirdPartyLink {
 	public:
 		ThirdPartyLink(const MacId &id_link_initiator, const MacId &id_link_recipient, MCSOTDMA_Mac *mac);
 		
-		void onSlotStart();
+		void onSlotStart(size_t num_slots);
+		void onSlotEnd();
 
 		void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload);
 		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload);

@@ -16,6 +16,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 	friend class NewPPLinkManagerTests;	
 	friend class SystemTests;
 	friend class ThreeUsersTests;
+	friend class ThirdPartyLinkTests;
 
 	public:
 		NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);

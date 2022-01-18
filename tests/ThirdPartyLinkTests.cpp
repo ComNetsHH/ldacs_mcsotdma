@@ -61,7 +61,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** A link request should lock all links that are proposed. */
 		void testLinkRequestLocks() {
-			// establish a link
+			// start link establishment
 			pp_initiator->notifyOutgoing(1);
 			size_t num_slots = 0, max_slots = 100;
 			while (pp_initiator->link_status != LinkManager::awaiting_reply && num_slots++ < max_slots) {
@@ -96,9 +96,52 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);
 		}		
 
+		/** After locks were made through the processing of a third-party link request, a counter is started that expects a link reply.
+		 * If no such reply arrives, all locks should be undone. */
+		void testMissingReplyUnlocks() {
+			testLinkRequestLocks();
+			ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// both link initiator and the third party user should agree on the slot offset where the link reply is expected
+			CPPUNIT_ASSERT_GREATER(0, link.num_slots_until_expected_link_reply);
+			CPPUNIT_ASSERT_EQUAL(link.num_slots_until_expected_link_reply, ((NewPPLinkManager*) mac_initiator->getLinkManager(id_recipient))->link_state.reply_offset);
+			// drop all packets from now on => link reply will surely not be received
+			env->phy_layer->connected_phys.clear();
+			env_initator->phy_layer->connected_phys.clear();
+			env_recipient->phy_layer->connected_phys.clear();
+			// proceed past expected reply slot
+			int expected_reply_slot = link.num_slots_until_expected_link_reply;
+			for (int t = 0; t < expected_reply_slot; t++) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			// both link initiator and third party should now have zero locks
+			size_t num_locks_initiator = 0, num_locks_thirdparty = 0;
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const auto *tbl_initiator = env_initator->mac_layer->reservation_manager->getReservationTable(channel);
+				const auto *tbl_thirdparty = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) {					
+					CPPUNIT_ASSERT_EQUAL(tbl_initiator->getReservation(t).getAction(), tbl_thirdparty->getReservation(t).getAction());
+					if (tbl_initiator->getReservation(t).isLocked())
+						num_locks_initiator++;
+					if (tbl_thirdparty->getReservation(t).isLocked())
+						num_locks_thirdparty++;
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(0), num_locks_initiator);
+			CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);
+		}	
+
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
 			CPPUNIT_TEST(testGetThirdPartyLink);			
-			CPPUNIT_TEST(testLinkRequestLocks);			
+			CPPUNIT_TEST(testLinkRequestLocks);
+			CPPUNIT_TEST(testMissingReplyUnlocks);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
