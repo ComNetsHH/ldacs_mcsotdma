@@ -78,7 +78,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_reply, pp_initiator->link_status);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_thid_party_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_requests_rcvd.get());
 			// the locks at the link initiator and our third party should match
 			size_t num_locks_initiator = 0, num_locks_thirdparty = 0;
 			for (auto *channel : reservation_manager->getP2PFreqChannels()) {
@@ -93,7 +93,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			}
 			CPPUNIT_ASSERT_GREATER(size_t(0), num_locks_initiator);
-			CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);
+			CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);			
 		}		
 
 		/** After locks were made through the processing of a third-party link request, a counter is started that expects a link reply.
@@ -104,6 +104,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// both link initiator and the third party user should agree on the slot offset where the link reply is expected
 			CPPUNIT_ASSERT_GREATER(0, link.num_slots_until_expected_link_reply);
 			CPPUNIT_ASSERT_EQUAL(link.num_slots_until_expected_link_reply, ((NewPPLinkManager*) mac_initiator->getLinkManager(id_recipient))->link_state.reply_offset);
+			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), reservation_manager->getBroadcastReservationTable()->getReservation(link.num_slots_until_expected_link_reply));
+			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), env_initator->mac_layer->reservation_manager->getBroadcastReservationTable()->getReservation(link.num_slots_until_expected_link_reply));
 			// drop all packets from now on => link reply will surely not be received
 			env->phy_layer->connected_phys.clear();
 			env_initator->phy_layer->connected_phys.clear();
@@ -138,10 +140,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);
 		}	
 
+		/** The reception of an expected reply should undo all previously-made locks. */
+		void testExpectedReplyUnlocks() {
+			// start link establishment
+			pp_initiator->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 100;
+			while (pp_initiator->link_status != LinkManager::awaiting_data_tx && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_data_tx, pp_initiator->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_replies_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_replies_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_replies_rcvd.get());
+		}
+
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
 			CPPUNIT_TEST(testGetThirdPartyLink);			
 			CPPUNIT_TEST(testLinkRequestLocks);
 			CPPUNIT_TEST(testMissingReplyUnlocks);
+			CPPUNIT_TEST(testExpectedReplyUnlocks);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

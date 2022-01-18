@@ -88,7 +88,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(false, env1->rlc_layer->isThereMoreData(SYMBOLIC_LINK_ID_BROADCAST));
 			CPPUNIT_ASSERT_EQUAL(p2p_tx->link_status, LinkManager::Status::link_established);
 			CPPUNIT_ASSERT_EQUAL(p2p_rx->link_status, LinkManager::Status::link_established);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_3->stat_num_thid_party_requests_rcvd.get());			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_3->stat_num_third_party_requests_rcvd.get());			
 			FrequencyChannel channel = FrequencyChannel(*p2p_tx->current_channel);
 			ReservationTable *table_tx = p2p_tx->current_reservation_table,
 				*table_rx = p2p_rx->current_reservation_table,

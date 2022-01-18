@@ -61,11 +61,15 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 	this->num_slots_until_expected_link_reply = (int) header->reply_offset;
 	// check for a potential collision with our own broadcast
 	auto *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-	if (sh_manager->isNextBroadcastScheduled()) 
+	if (sh_manager->isNextBroadcastScheduled()) {
 		if (sh_manager->getNextBroadcastSlot() == num_slots_until_expected_link_reply) {
 			coutd << "detected collision of advertised reply slot and our own broadcast -> ";
+			// re-schedule own broadcast and mark the slot as BUSY
 			sh_manager->reportCollisionWithScheduledBroadcast(id_link_initiator);
 		}
+	}
+	// now mark the slot as RX
+	sh_manager->reportExpectedLinkReply(this->num_slots_until_expected_link_reply, id_link_recipient);
 	// parse proposed resources	
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources = payload->resources;
 	const unsigned int  &timeout = header->timeout, 
@@ -77,6 +81,9 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 	for (const auto &pair : proposed_resources) {
 		// for this subchannel
 		const FrequencyChannel *channel = pair.first;		
+		// skip the SH, as we have already reserved the expected link reply resource
+		if (channel->isSH())
+			continue;
 		const std::vector<unsigned int> &start_slot_offsets = pair.second;
 		ReservationTable *table = mac->getReservationManager()->getReservationTable(channel);
 		// for each starting slot offset

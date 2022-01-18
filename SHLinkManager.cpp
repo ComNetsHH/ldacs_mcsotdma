@@ -480,6 +480,20 @@ void SHLinkManager::reportCollisionWithScheduledBroadcast(const MacId& collider)
 	}		
 }
 
+void SHLinkManager::reportExpectedLinkReply(int slot_offset, const MacId& sender_id) {
+	coutd << "marking slot in " << slot_offset << " as RX (expecting a third-party link reply there) -> ";
+	const auto &res = current_reservation_table->getReservation(slot_offset);
+	coutd << res << "->";
+	if (res.isIdle() || (res.isBusy() && res.getTarget() == sender_id)) {
+		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
+		coutd << current_reservation_table->getReservation(slot_offset) << " -> ";
+	} else {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::reportExpectedLinkReply error: existing reservation " << res << " is neither idle nor BUSY@" << sender_id << ".";
+		throw std::runtime_error(ss.str());
+	}
+}
+
 void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
 	mac->statisticReportBroadcastMessageProcessed();
 }
