@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <sstream>
+#include <algorithm>
 #include "ReservationTable.hpp"
 #include "Reservation.hpp"
 
@@ -76,17 +77,20 @@ public:
 	/** 	 
 	 * @throws std::invalid_argument if any resource was not scheduled
 	 * */
-	void unschedule() {
+	void unschedule(std::vector<Reservation::Action> expected_actions) {
 		for (const auto& pair : scheduled_resources) {
 			ReservationTable *table = pair.first;
 			int slot_offset = pair.second - this->num_slots_since_creation;
 			if (slot_offset > 0) {
-				if (!(table->getReservation(slot_offset).isTx() || table->getReservation(slot_offset).isRx())) {							
+				auto action = table->getReservation(slot_offset).getAction();
+				if (!std::any_of(expected_actions.begin(), expected_actions.end(), [action](const Reservation::Action &expected_action) {return expected_action == action;})) {							
 					std::stringstream ss;
 					ss << "ReservationMap::unlock cannot unschedule reservation in " << slot_offset << " slots";
 					if (table->getLinkedChannel() != nullptr)
 						ss << " on f=" << *table->getLinkedChannel();	
-					ss << ". Its status is: " << table->getReservation(slot_offset) << " when it should be TX or RX.";
+					ss << ". Its status is: " << table->getReservation(slot_offset) << " when it should be any from: ";
+					for (const auto &a : expected_actions)
+						ss << a << " "; 
 					throw std::invalid_argument(ss.str());
 				} else 
 					table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));

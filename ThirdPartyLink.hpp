@@ -36,7 +36,10 @@ class ThirdPartyLink {
 		const MacId& getIdLinkRecipient() const;
 
 	protected:
-		static const int UNSET = -1;
+		void reset();
+
+	protected:
+		static const int UNSET = -2;
 		/** ID of the link initiator. */
 		MacId id_link_initiator;
 		/** ID of the link recipient. */
@@ -44,7 +47,12 @@ class ThirdPartyLink {
 		/** Keeps track of locked resources. */
 		ReservationMap locked_resources_for_initiator, locked_resources_for_recipient;
 		ReservationMap scheduled_resources;
-		int num_slots_until_expected_link_reply = UNSET, reply_offset = UNSET;
+		/** Counter until an expected link reply. Once set, this is decremented each slot. */
+		int num_slots_until_expected_link_reply = UNSET;
+		/** Constant number of slots until an expected link reply. It is set together with num_slots_until_expected_link_reply, but this variable is not decremented. */
+		int reply_offset = UNSET;		
+		/** Set when a link reply is processed, this counter is decremented each slot and indicates when a link will terminate. */
+		int link_expiry_offset = UNSET;
 		MCSOTDMA_Mac *mac;
 };
 

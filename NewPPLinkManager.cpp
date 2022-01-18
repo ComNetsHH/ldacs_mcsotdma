@@ -570,7 +570,7 @@ void NewPPLinkManager::cancelLink() {
 			this->link_state.reserved_resources.unlock(link_id);		
 		} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {
 			coutd << "unscheduling -> ";
-			this->link_state.reserved_resources.unschedule();
+			this->link_state.reserved_resources.unschedule({Reservation::TX, Reservation::RX});
 		} else
 			throw std::runtime_error("PPLinkManager::cancelLink for unexpected link_status: " + std::to_string(link_status));
 		this->link_state.reserved_resources.clear();
@@ -661,6 +661,9 @@ void NewPPLinkManager::onTimeoutExpiry() {
 	cancelLink();
 	mac->statisticReportPPLinkExpired();
 	// re-establish the link if there is more data
-	if (mac->isThereMoreData(link_id)) 
+	if (mac->isThereMoreData(link_id)) {
+		coutd << "upper layer reports more data -> ";
 		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
+	} else
+		coutd << "no more data to send, keeping link closed -> ";
 }

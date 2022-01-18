@@ -232,7 +232,7 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 			// make sure that the reservation is idle locally
 			if (!tbl->getReservation(slot_offset).isIdle()) {								
 				std::stringstream s;
-				s << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+				s << *this << "::schedule_bursts couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
 				throw std::runtime_error(s.str());
 			}
 			// make sure that hardware is available
@@ -241,14 +241,14 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 				bool transmitter_available = tx_reservation.isIdle();
 				if (!transmitter_available) {
 					std::stringstream s;
-					s << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
+					s << *this << "::schedule_bursts couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 					throw std::runtime_error(s.str());
 				}
 			} else {
 				bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
 				if (!receiver_available) {
 					std::stringstream s;
-					s << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
+					s << *this << "::schedule_bursts couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
 					for (const auto *rx_table : getRxTables())
 						s << rx_table->getReservation(slot_offset) << " ";
 					s << "when at least one should be idle.";
@@ -264,7 +264,7 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 			// make sure that the reservation is idle locally
 			if (!tbl->getReservation(slot_offset).isIdle()) {
 				std::stringstream s;
-				s << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+				s << *this << "::schedule_bursts couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
 				throw std::runtime_error(s.str());
 			}
 			// make sure that hardware is available
@@ -273,14 +273,14 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 				bool transmitter_available = tx_reservation.isIdle();
 				if (!transmitter_available) {
 					std::stringstream s;
-					s << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
+					s << *this << "::schedule_bursts couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 					throw std::runtime_error(s.str());
 				}
 			} else {
 				bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
 				if (!receiver_available) {
 					std::stringstream s;
-					s << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
+					s << *this << "::schedule_bursts couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
 					for (const auto *rx_table : getRxTables())
 						s << rx_table->getReservation(slot_offset) << " ";
 					s << "when at least one should be idle.";

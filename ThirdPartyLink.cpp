@@ -12,28 +12,59 @@ ThirdPartyLink::ThirdPartyLink(const MacId& id_link_initiator, const MacId& id_l
 	: id_link_initiator(id_link_initiator), id_link_recipient(id_link_recipient), locked_resources_for_initiator(), locked_resources_for_recipient(), mac(mac) {}
 
 void ThirdPartyLink::onSlotStart(size_t num_slots) {
+	// update locked resources
 	for (size_t t = 0; t < num_slots; t++) {
 		locked_resources_for_initiator.onSlotStart(); 
 		locked_resources_for_recipient.onSlotStart();
+		scheduled_resources.onSlotStart();		
 	}
+	// update counter towards expected link reply
 	if (this->num_slots_until_expected_link_reply != UNSET) {
 		if (this->num_slots_until_expected_link_reply < num_slots)
 			throw std::runtime_error("ThidPartyLink::onSlotStart attempted to decrement counter until expected link reply past zero.");
 		this->num_slots_until_expected_link_reply -= num_slots;		
+	}
+	// update counter towards link expiry	
+	if (link_expiry_offset != UNSET) {
+		link_expiry_offset--;
+		if (link_expiry_offset < 0)
+			throw std::runtime_error("ThidPartyLink decremented the counter until link expiry past zero!");
 	}
 }
 
 void ThirdPartyLink::onSlotEnd() {
 	// was a link reply expected this slot?
 	if (num_slots_until_expected_link_reply == 0) {
-		coutd << *mac << "::" << *this << " expected link reply hasn't arrived -> ";
-		// unlock all locks
-		locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
-		locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
-		// reset counter
-		num_slots_until_expected_link_reply = UNSET;
-		reply_offset = UNSET;
+		coutd << *mac << "::" << *this << " expected link reply hasn't arrived -> resetting -> ";
+		reset();
+	}	
+	// does the link terminate now?
+	if (link_expiry_offset == 0) {
+		coutd << *this << " terminates -> resetting -> ";
+		reset();
+	} else {
+		coutd << std::endl << "#slots until expiry: " << link_expiry_offset << std::endl;
 	}
+}
+
+void ThirdPartyLink::reset() {
+	// unlock and unschedule everything
+	if (locked_resources_for_initiator.size() > 0) {
+		locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);		
+		locked_resources_for_initiator.clear();
+	}
+	if (locked_resources_for_recipient.size() > 0) {
+		locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
+		locked_resources_for_recipient.clear();
+	}
+	if (scheduled_resources.size() > 0) {
+		scheduled_resources.unschedule({Reservation::BUSY});
+		scheduled_resources.clear();
+	}
+	// reset counters	
+	num_slots_until_expected_link_reply = UNSET;
+	reply_offset = UNSET;
+	link_expiry_offset = UNSET;
 }
 
 const MacId& ThirdPartyLink::getIdLinkInitiator() const {
@@ -48,18 +79,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 	coutd << *this << " processing link request -> ";
 	// if anything has been locked or scheduled
 	// then a new link request erases all of that
-	if (locked_resources_for_initiator.size() > 0) {
-		locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);		
-		locked_resources_for_initiator.clear();
-	}
-	if (locked_resources_for_recipient.size() > 0) {
-		locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
-		locked_resources_for_recipient.clear();
-	}
-	if (scheduled_resources.size() > 0) {
-		scheduled_resources.unschedule();
-		scheduled_resources.clear();
-	}
+	reset();
 	// parse expected reply slot
 	this->num_slots_until_expected_link_reply = (int) header->reply_offset; // this one is updated each slot
 	this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed
@@ -128,7 +148,9 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	coutd << *this << " processing link reply -> ";			
 	// unlock all locks
 	locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
-	locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
+	locked_resources_for_initiator.clear();
+	locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);			
+	locked_resources_for_recipient.clear();
 	// parse selected resource
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
 	if (selected_resource_map.size() != size_t(1))
@@ -149,5 +171,7 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
 	// reset counters
 	num_slots_until_expected_link_reply = UNSET;
-	reply_offset = UNSET;	
+	reply_offset = UNSET;
+	// set new counters
+	link_expiry_offset = first_burst_in + (timeout-1)*burst_offset + burst_length - 1;	
 }
