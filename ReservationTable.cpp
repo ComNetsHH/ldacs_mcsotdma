@@ -420,7 +420,7 @@ void ReservationTable::unlock_either_id(unsigned int slot_offset, const MacId& i
 		try {
 			unlock(slot_offset, id2);
 		} catch (const id_mismatch &e) {
-			throw id_mismatch("Couldn't unlock, tried both IDs, error: " + std::string(e.what()));
+			throw id_mismatch("Couldn't unlock, tried both IDs, error after trying the second ID: " + std::string(e.what()));
 		}
 	}
 }

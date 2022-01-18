@@ -77,7 +77,8 @@ public:
 	/** 	 
 	 * @throws std::invalid_argument if any resource was not scheduled
 	 * */
-	void unschedule(std::vector<Reservation::Action> expected_actions) {
+	size_t unschedule(std::vector<Reservation::Action> expected_actions) {
+		size_t num_unscheduled = 0;
 		for (const auto& pair : scheduled_resources) {
 			ReservationTable *table = pair.first;
 			int slot_offset = pair.second - this->num_slots_since_creation;
@@ -92,10 +93,13 @@ public:
 					for (const auto &a : expected_actions)
 						ss << a << " "; 
 					throw std::invalid_argument(ss.str());
-				} else 
+				} else {
 					table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+					num_unscheduled++;
+				}
 			}
 		}
+		return num_unscheduled;
 	}	
 
 	protected:		

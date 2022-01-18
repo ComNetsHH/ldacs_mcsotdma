@@ -50,15 +50,19 @@ void ThirdPartyLink::onSlotEnd() {
 void ThirdPartyLink::reset() {
 	// unlock and unschedule everything
 	if (locked_resources_for_initiator.size() > 0) {
+		coutd << "unlocked " << locked_resources_for_initiator.size() << " link initiator locks -> ";
 		locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);		
 		locked_resources_for_initiator.clear();
 	}
 	if (locked_resources_for_recipient.size() > 0) {
+		coutd << "unlocked " << locked_resources_for_recipient.size() << " link recipient locks -> ";
 		locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
 		locked_resources_for_recipient.clear();
 	}
 	if (scheduled_resources.size() > 0) {
-		scheduled_resources.unschedule({Reservation::BUSY});
+		size_t num_unscheduled = scheduled_resources.unschedule({Reservation::BUSY});
+		if (num_unscheduled > 0) 
+			coutd << "unscheduled " << num_unscheduled << " resources -> ";		
 		scheduled_resources.clear();
 	}
 	// reset counters	
@@ -119,24 +123,24 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 					unsigned int slot_offset = start_slot_offset + burst*burst_offset + tx_slot;
 					try {
 						table->lock_either_id(slot_offset, id_link_initiator, id_link_recipient);
+						locked_resources_for_initiator.add_locked_resource(table, slot_offset);
 					} catch (const std::exception &e) {
 						std::stringstream ss;
 						ss << *mac << "::" << *this << " couldn't lock link initiator's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
 						throw std::runtime_error(ss.str());
-					}
-					locked_resources_for_initiator.add_locked_resource(table, slot_offset);
+					}					
 				}
 				// for each of the link recipient's transmission slot
 				for (unsigned int tx_slot = 0; tx_slot < burst_length_rx; tx_slot++) {
 					unsigned int slot_offset = start_slot_offset + burst*burst_offset + burst_length_tx + tx_slot;
 					try {
 						table->lock_either_id(slot_offset, id_link_recipient, id_link_initiator);
+						locked_resources_for_recipient.add_locked_resource(table, slot_offset);
 					} catch (const std::exception &e) {
 						std::stringstream ss;
 						ss << *mac << "::" << *this << " couldn't lock link recipient's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
 						throw std::runtime_error(ss.str());
-					}
-					locked_resources_for_recipient.add_locked_resource(table, slot_offset);
+					}					
 				}
 			}
 		}
@@ -146,7 +150,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 
 void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
 	coutd << *this << " processing link reply -> ";			
-	// unlock all locks
+	// reset
 	locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
 	locked_resources_for_initiator.clear();
 	locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);			
@@ -168,10 +172,16 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot
 	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;
 	// schedule the link's resources		
-	this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
+	try {
+		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: " << e.what();
+		throw std::runtime_error(ss.str());
+	}
 	// reset counters
 	num_slots_until_expected_link_reply = UNSET;
 	reply_offset = UNSET;
-	// set new counters
+	// set new counter
 	link_expiry_offset = first_burst_in + (timeout-1)*burst_offset + burst_length - 1;	
 }
