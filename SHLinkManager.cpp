@@ -449,23 +449,35 @@ void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 		scheduleBeacon();
 		coutd << "t=" << beacon_module.getNextBeaconOffset() << " -> ";
 	} if (pair.second) {
-		coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to ";
-		// remember current broadcast slot
-		auto current_broadcast_slot = next_broadcast_slot;
-		// unschedule it
-		unscheduleBroadcastSlot();
-		// mark it as BUSY so it won't be scheduled again
-		current_reservation_table->mark(current_broadcast_slot, Reservation(origin_id, Reservation::BUSY));
-		// find a new slot
-		try {
-			scheduleBroadcastSlot();
-			coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
-		} catch (const std::exception &e) {
-			throw std::runtime_error("Error when trying to re-schedule broadcast due to collision detected from parsing a beacon: " + std::string(e.what()));
-		}		
+		reportCollisionWithScheduledBroadcast(origin_id);
 	}
 	// pass it to the MAC layer
 	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));
+}
+
+bool SHLinkManager::isNextBroadcastScheduled() const {
+	return next_broadcast_scheduled;
+}
+
+unsigned int SHLinkManager::getNextBroadcastSlot() const {
+	return next_broadcast_slot;
+}
+
+void SHLinkManager::reportCollisionWithScheduledBroadcast(const MacId& collider) {
+	coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to ";
+	// remember current broadcast slot
+	auto current_broadcast_slot = next_broadcast_slot;
+	// unschedule it
+	unscheduleBroadcastSlot();
+	// mark it as BUSY so it won't be scheduled again
+	current_reservation_table->mark(current_broadcast_slot, Reservation(collider, Reservation::BUSY));
+	// find a new slot
+	try {
+		scheduleBroadcastSlot();
+		coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
+	} catch (const std::exception &e) {
+		throw std::runtime_error("Error when trying to re-schedule broadcast due to collision detected from parsing a beacon: " + std::string(e.what()));
+	}		
 }
 
 void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
@@ -477,7 +489,7 @@ void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Pa
 	LinkManager::processUnicastMessage(header, payload);
 }
 
-void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
+void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {	
 	// Check indicated next broadcast slot.
 	int next_broadcast = (int) header->burst_offset;
 	if (next_broadcast > 0) { // If it has been set ...
@@ -515,22 +527,17 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 		} else {
 			coutd << "indicated next broadcast in " << next_broadcast << " slots is locally reserved for " << res << " (not doing anything) -> ";
 		}
-	}
+	} else
+		coutd << "no next broadcast slot indicated -> ";
 }
 
-void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
-	MacId dest_id = ((const L2HeaderLinkRequest*&) header)->dest_id;
-	if (dest_id == mac->getMacId()) {
-		coutd << "forwarding link request to PPLinkManager -> ";
-		// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
-		if (!mac->isUsingNewPPLinkManager())
-			((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
-		else
-			((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
-	} else {
-		coutd << "processing third-party link request -> ";
-		
-	}
+void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
+	coutd << "forwarding link request to PPLinkManager -> ";
+	// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
+	if (!mac->isUsingNewPPLinkManager())
+		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
+	else
+		((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);	
 }
 
 void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {

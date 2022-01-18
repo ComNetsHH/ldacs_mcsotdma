@@ -199,16 +199,9 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	}
 	if (dest_id == SYMBOLIC_ID_UNSET)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");	
-	// Store,
-	if (dest_id == SYMBOLIC_LINK_ID_BROADCAST || dest_id == SYMBOLIC_LINK_ID_BEACON || dest_id == id) {
-		received_packets[center_frequency].push_back(packet);
-		coutd << "stored until slot end.";
-	// ... or discard.
-	} else {
-		coutd << "packet not intended for us; discarding." << std::endl;
-		this->deletePacket(packet);
-		delete packet;
-	}
+	// store until slot end, then process
+	received_packets[center_frequency].push_back(packet);
+	coutd << "stored until slot end.";
 }
 
 LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
@@ -251,6 +244,23 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 
 	}
 	return link_manager;
+}
+
+ThirdPartyLink& MCSOTDMA_Mac::getThirdPartyLink(const MacId& id1, const MacId& id2) {
+	// look for an existing link
+	auto it = third_party_links.find({id1, id2});
+	if (it == third_party_links.end())
+		it = third_party_links.find({id2, id1});	
+	// if found, return it
+	if (it != third_party_links.end()) 
+		return (*it).second;
+	// else, create one
+	else {
+		auto it_success = third_party_links.emplace(std::piecewise_construct, std::make_tuple(id1, id2), std::make_tuple(id1, id2, this));
+		if (!it_success.second)
+			throw std::runtime_error("couldn't emplace third-party link");		
+		return it_success.first->second;
+	}
 }
 
 void MCSOTDMA_Mac::onReceptionSlot(const FrequencyChannel* channel) {

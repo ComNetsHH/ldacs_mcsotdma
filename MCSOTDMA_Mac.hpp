@@ -15,6 +15,7 @@
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Phy.hpp"
 #include "NeighborObserver.hpp"
+#include "ThirdPartyLink.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -29,6 +30,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class P2PLinkManagerTests;
 		friend class NewPPLinkManagerTests;
 		friend class SHLinkManagerTests;
+		friend class ThirdPartyLinkTests;
 
 		MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);
 
@@ -45,6 +47,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return The LinkManager that manages the given 'id'.
 		 */
 		LinkManager* getLinkManager(const MacId& id);
+
+		ThirdPartyLink& getThirdPartyLink(const MacId& id1, const MacId& id2);
 
 		void passToUpper(L2Packet* packet) override;
 
@@ -224,6 +228,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ReservationManager* reservation_manager;
 		/** Maps links to their link managers. */
 		std::map<MacId, LinkManager*> link_managers;
+		std::map<std::pair<MacId, MacId>, ThirdPartyLink> third_party_links;
 		const size_t num_transmitters = 1, num_receivers = 2;
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;

@@ -360,46 +360,53 @@ unsigned int NewPPLinkManager::getRequiredRxSlots() const {
 
 void NewPPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {	
 	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";	
-	if (header->getDestId() != mac->getMacId()) 
-		throw std::invalid_argument("link request that is not destined to this user has made it to the PPLinkManager");
-			
-	coutd << "own link status is '" << link_status << "' -> ";		
-	mac->statisticReportLinkRequestReceived();
-	// initial link request
-	if (this->link_status == link_not_established) {
-		coutd << "treating this as an initial link establishment attempt -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// cancel the own request and process this one
-	} else if (this->link_status == awaiting_request_generation) {		
-		cancelLink();		
-		coutd << "canceling own request -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) << " requests cancelled -> ";
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// cancel the own reply expectation and process this request
-	} else if (this->link_status == awaiting_reply) {
-		cancelLink();		
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// cancel the scheduled link and process this request
-	} else if (this->link_status == awaiting_data_tx) {
-		cancelLink();
-		size_t num_replies_cancelled = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
-		if (num_replies_cancelled > 0)
-			coutd << "cancelled " << num_replies_cancelled << " own link replies -> ";
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	// link re-establishment: cancel remaining scheduled resources and process this request
-	} else if (this->link_status == link_established) {		
-		cancelLink();
-		if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) != 0)
-			throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link request while the link is established - this shouldn't have happened!");
-		if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id))
-			throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link reply while the link is established - this shouldn't have happened!");
-		coutd << "processing request -> ";
-		this->processLinkRequestMessage_initial(header, payload);
-	} else {	
-		throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage: " + std::to_string(this->link_status));	
-	}	
+	// check whether this user is meant by this request
+	const MacId& dest_id = header->getDestId();		
+	if (dest_id != mac->getMacId()) { // if not
+		coutd << "third-party link request between " << origin << " and " << dest_id << " -> ";
+		mac->statisticReportThirdPartyLinkRequestReceived();		
+		// process it through a third part link
+		ThirdPartyLink &link = mac->getThirdPartyLink(origin, dest_id);
+		link.processLinkRequestMessage(header, payload);
+	} else { // if we are the recipient
+		coutd << "link request from " << origin << " to us -> own link status is '" << link_status << "' -> ";		
+		mac->statisticReportLinkRequestReceived();
+		// initial link request
+		if (this->link_status == link_not_established) {
+			coutd << "treating this as an initial link establishment attempt -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// cancel the own request and process this one
+		} else if (this->link_status == awaiting_request_generation) {		
+			cancelLink();		
+			coutd << "canceling own request -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) << " requests cancelled -> ";
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// cancel the own reply expectation and process this request
+		} else if (this->link_status == awaiting_reply) {
+			cancelLink();		
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// cancel the scheduled link and process this request
+		} else if (this->link_status == awaiting_data_tx) {
+			cancelLink();
+			size_t num_replies_cancelled = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
+			if (num_replies_cancelled > 0)
+				coutd << "cancelled " << num_replies_cancelled << " own link replies -> ";
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		// link re-establishment: cancel remaining scheduled resources and process this request
+		} else if (this->link_status == link_established) {		
+			cancelLink();
+			if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) != 0)
+				throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link request while the link is established - this shouldn't have happened!");
+			if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id))
+				throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link reply while the link is established - this shouldn't have happened!");
+			coutd << "processing request -> ";
+			this->processLinkRequestMessage_initial(header, payload);
+		} else {	
+			throw std::runtime_error("unexpected link status during NewPPLinkManager::processLinkRequestMessage: " + std::to_string(this->link_status));	
+		}	
+	}
 } 
 
 void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& request_header, const LinkManager::LinkEstablishmentPayload*& payload) {

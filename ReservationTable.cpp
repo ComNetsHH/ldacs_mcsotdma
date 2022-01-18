@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <math.h>
 #include <limits>
+#include <sstream>
 #include "ReservationTable.hpp"
 #include "coutdebug.hpp"
 
@@ -375,23 +376,53 @@ std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_pr
 
 void ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
 	// Nothing to do if it's already locked.
-	if (isLocked(slot_offset))
+	MacId res_id = slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget();
+	if (isLocked(slot_offset) && res_id == id)
 		return;
+	if (isLocked(slot_offset) && res_id != id) {
+		std::stringstream ss;
+		ss << "ReservationTable::lock cannot lock resource in " << slot_offset << " slots for given ID '" << id << "' as it is already locked to '" << res_id << "'.";
+		throw id_mismatch(ss.str());	
+	}
 	// Ensure that you *can* lock before actually doing so.
 	if (!isIdle(slot_offset))
-		throw std::range_error("ReservationTable::lock_bursts for non-idle and non-locked slot.");
+		throw std::invalid_argument("ReservationTable::lock for non-idle and non-locked slot.");
 	// Then lock.
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::LOCKED);
-	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setTarget(id);
+	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setTarget(id);		
+}
+
+void ReservationTable::lock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2) {
+	try {
+		lock(slot_offset, id1);		
+	} catch (const id_mismatch &e) {
+		try {
+			lock(slot_offset, id2);
+		} catch (const id_mismatch &e) {
+			throw id_mismatch("Couldn't lock to either ID: " + std::string(e.what()));
+		}
+	}
 }
 
 void ReservationTable::unlock(unsigned int slot_offset, const MacId& id) {
 	if (!isLocked(slot_offset) && !isIdle(slot_offset))
 		throw std::invalid_argument("cannot unlock non-locked reservation");
 	if (slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget() != id && slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget() != SYMBOLIC_ID_UNSET)	
-		throw std::invalid_argument("cannot unlock locked reservation whose ID is " + std::to_string(slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget().getId()) + " and not " + std::to_string(id.getId()));
+		throw id_mismatch("cannot unlock locked reservation whose ID is " + std::to_string(slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget().getId()) + " and not " + std::to_string(id.getId()));
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::IDLE);
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setTarget(SYMBOLIC_ID_UNSET);	
+}
+
+void ReservationTable::unlock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2) {
+	try {
+		unlock(slot_offset, id1);		
+	} catch (const id_mismatch &e) {
+		try {
+			unlock(slot_offset, id2);
+		} catch (const id_mismatch &e) {
+			throw id_mismatch("Couldn't unlock, tried both IDs, error: " + std::string(e.what()));
+		}
+	}
 }
 
 bool ReservationTable::canLock(unsigned int slot_offset) const {

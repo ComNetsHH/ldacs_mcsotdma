@@ -495,24 +495,29 @@ bool PPLinkManager::isProposalViable(const ReservationTable* table, unsigned int
 
 void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {
 	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
-	mac->statisticReportLinkRequestReceived();
-	// If currently the link is unestablished, then this request must be an initial request.
-	if (link_status == link_not_established) {
-		processIncomingLinkRequest_Initial(header, payload, origin);
-	// If a link request had been prepared by this node and a link request arrives here
-	// then reset the link, stop trying to send the local request, and process the remote request.
-	} else if (link_status == awaiting_reply) {
-		// Cancel buffered and unsent local link requests.
-		size_t num_cancelled_requests = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
-		coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
-		mac->statisticReportCancelledLinkRequest(num_cancelled_requests);
-		// Reset link.
-		terminateLink();
-		// Process request.
-		processIncomingLinkRequest_Initial(header, payload, origin);
-	// If the link is of any other status, there is nothing to do.
+	if (header->dest_id != link_id) {
+		coutd << "this is a third-party link request (not destined to us) -> ";
+		mac->statisticReportThirdPartyLinkRequestReceived();
 	} else {
-		coutd << "link is not unestablished; ignoring -> ";
+		mac->statisticReportLinkRequestReceived();
+		// If currently the link is unestablished, then this request must be an initial request.
+		if (link_status == link_not_established) {
+			processIncomingLinkRequest_Initial(header, payload, origin);
+		// If a link request had been prepared by this node and a link request arrives here
+		// then reset the link, stop trying to send the local request, and process the remote request.
+		} else if (link_status == awaiting_reply) {
+			// Cancel buffered and unsent local link requests.
+			size_t num_cancelled_requests = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
+			coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
+			mac->statisticReportCancelledLinkRequest(num_cancelled_requests);
+			// Reset link.
+			terminateLink();
+			// Process request.
+			processIncomingLinkRequest_Initial(header, payload, origin);
+		// If the link is of any other status, there is nothing to do.
+		} else {
+			coutd << "link is not unestablished; ignoring -> ";
+		}
 	}
 }
 

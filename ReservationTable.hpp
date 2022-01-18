@@ -23,6 +23,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit no_tx_available_error(const std::string& arg) : std::runtime_error(arg) {}
 	};
 
+	class id_mismatch : public std::invalid_argument {
+	public:
+		explicit id_mismatch(const std::string &arg) : std::invalid_argument(arg) {}
+	};
+
 	/**
 	 * A reservation table keeps track of all slots of a particular, logical frequency channel for a pre-defined planning horizon.
 	 * It is regularly updated when new information about slot utilization becomes available.
@@ -110,14 +115,42 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const;		
 
+		/**		 
+		 * @param slot_offset 
+		 * @param id 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if ID does not match
+		 */
 		void lock(unsigned int slot_offset, const MacId& id);
+
+		/**
+		 * When processing third-party link requests, one resource may be locked for id1's transmission or id2's transmission, as several proposals are made.
+		 * This function attempts to lock the resource to the first ID. If it is already locked to the second ID, no error is thrown.
+		 * Through this, the indicated ID may not belong to the correct ID after link establishment, but when the link reply is processed, this is corrected.
+		 * @param slot_offset 
+		 * @param id1 
+		 * @param id2 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if neither ID matches
+		 */
+		void lock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2);
 
 		/**		 
 		 * @param slot_offset 
 		 * @param id 
-		 * @throws std::invalid_argument if reservation at slot_offset is not locked or if the ID does not match
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if ID does not match
 		 */
 		void unlock(unsigned int slot_offset, const MacId& id);
+
+		/** 
+		 * @param slot_offset 
+		 * @param id1 
+		 * @param id2 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if neither ID matches
+		 */
+		void unlock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2);
 
 		/**
 		 * @param start_offset The minimum slot offset to start the search.
