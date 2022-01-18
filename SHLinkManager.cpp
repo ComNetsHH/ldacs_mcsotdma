@@ -554,7 +554,7 @@ void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header
 		((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);	
 }
 
-void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
+void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
 	coutd << "forwarding link reply to PPLinkManager -> ";
 	if (!mac->isUsingNewPPLinkManager())
 		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);

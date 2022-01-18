@@ -617,7 +617,7 @@ PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2Heade
 	}
 }
 
-void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
+void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << "::processLinkReplyMessage -> ";
 	mac->statisticReportLinkReplyReceived();
 	if (link_status != awaiting_reply) {

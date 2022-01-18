@@ -10,6 +10,7 @@
 #include <queue>
 #include "ReservationTable.hpp"
 #include "FrequencyChannel.hpp"
+#include "ReservationMap.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -128,6 +129,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		ReservationTable* getTxTable() const;		
 
+		ReservationMap schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator, bool is_third_party_link);
+
 	protected:
 
 		/**
@@ -156,6 +159,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** A number of hardware receiver ReservationTables may be kept, which will be linked to all ReservationTables within this manager. */
 		std::vector<ReservationTable*> hardware_rx_tables;
 	};
+
+	inline std::ostream& operator<<(std::ostream& stream, const ReservationManager& manager) {
+		return stream << "ReservationManager";
+	}
 
 }
 

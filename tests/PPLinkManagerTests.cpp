@@ -361,7 +361,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_rx_res > 0);
 			// Process the link reply.
 //			coutd.setVerbose(true);
-			link_manager->processLinkReplyMessage((const L2HeaderLinkEstablishmentReply*&) link_reply->getHeaders().at(reply_index), (const LinkManager::LinkEstablishmentPayload*&) link_reply->getPayloads().at(reply_index), ((L2HeaderBase*) link_reply->getHeaders().at(0))->src_id);
+			link_manager->processLinkReplyMessage((const L2HeaderLinkReply*&) link_reply->getHeaders().at(reply_index), (const LinkManager::LinkEstablishmentPayload*&) link_reply->getPayloads().at(reply_index), ((L2HeaderBase*) link_reply->getHeaders().at(0))->src_id);
 //			coutd.setVerbose(false);
 			// Transmission bursts should've been saved now.
 			const ReservationTable *table = link_manager->current_reservation_table;

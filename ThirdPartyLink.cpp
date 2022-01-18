@@ -32,6 +32,7 @@ void ThirdPartyLink::onSlotEnd() {
 		reservation_map_for_link_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
 		// reset counter
 		num_slots_until_expected_link_reply = UNSET;
+		reply_offset = UNSET;
 	}
 }
 
@@ -58,7 +59,8 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 		reservation_map_for_link_recipient.clear();
 	}
 	// parse expected reply slot
-	this->num_slots_until_expected_link_reply = (int) header->reply_offset;
+	this->num_slots_until_expected_link_reply = (int) header->reply_offset; // this one is updated each slot
+	this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed
 	// check for a potential collision with our own broadcast
 	auto *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 	if (sh_manager->isNextBroadcastScheduled()) {
@@ -120,6 +122,30 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 	coutd << "locked " << reservation_map_for_link_initator.size() << " initiator resources and " << reservation_map_for_link_recipient.size() << " recipient resources -> ";
 }
 
-void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload) {
-
+void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload) {	
+	coutd << *this << " processing link reply -> ";
+	// is this an expected reply?
+	if (num_slots_until_expected_link_reply == 0) {
+		coutd << "had been expected during this slot -> ";		
+		// unlock all locks
+		reservation_map_for_link_initator.unlock_either_id(id_link_initiator, id_link_recipient);
+		reservation_map_for_link_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
+		// parse selected resource
+		const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
+		if (selected_resource_map.size() != size_t(1))
+			throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one selected resource, but " + std::to_string(selected_resource_map.size()));
+		const auto &selected_resource = *selected_resource_map.begin();
+		const FrequencyChannel *selected_freq_channel = selected_resource.first;
+		if (selected_resource.second.size() != size_t(1)) 
+			throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
+		const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
+		const unsigned int &timeout = header->timeout, 
+					&burst_length = header->burst_length,
+					&burst_length_tx = header->burst_length_tx,
+					&burst_length_rx = header->burst_length - header->burst_length_tx;	
+		unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot
+		// reset counters
+		num_slots_until_expected_link_reply = UNSET;
+		reply_offset = UNSET;
+	}
 }

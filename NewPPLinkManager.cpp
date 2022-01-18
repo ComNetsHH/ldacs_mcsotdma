@@ -514,7 +514,7 @@ bool NewPPLinkManager::isProposalViable(const ReservationTable *table, unsigned 
 	return viable;
 }
 
-void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
+void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << " processing link reply -> ";	
 	// check whether this user is meant by this request
 	const MacId& dest_id = header->getDestId();		
@@ -557,83 +557,9 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentRe
 	}
 }
 
-ReservationMap NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator) {		
-	ReservationMap reservation_map;
+ReservationMap NewPPLinkManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator) {			
 	this->assign(channel);		
-	Reservation::Action action_1 = is_link_initiator ? Reservation::TX : Reservation::RX,
-						action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
-	// go over each transmission burst
-	for (int burst = 0; burst < timeout; burst++) {
-		// normalize to burst start
-		int burst_start_offset = first_burst_in + burst*link_state.burst_offset;
-		// go over link initiator's TX slots
-		for (int i = 0; i < burst_length_tx; i++) {
-			int slot_offset = burst_start_offset + i;
-			// make sure that the reservation is idle locally
-			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {				
-				for (size_t t = 0; t < 25; t++)
-					std::cout << "t=" << t << ": " << this->current_reservation_table->getReservation(slot_offset + t) << std::endl;
-				std::stringstream s;
-				s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
-				throw std::runtime_error(s.str());
-			}
-			// make sure that hardware is available
-			if (action_1 == Reservation::TX) {
-				const auto &tx_reservation = reservation_manager->getTxTable()->getReservation(slot_offset);
-				bool transmitter_available = tx_reservation.isIdle();
-				if (!transmitter_available) {
-					std::stringstream s;
-					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			} else {
-				bool receiver_available = std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
-				if (!receiver_available) {
-					std::stringstream s;
-					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
-					for (const auto *rx_table : reservation_manager->getRxTables())
-						s << rx_table->getReservation(slot_offset) << " ";
-					s << "when at least one should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			}
-			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_1));						
-			reservation_map.add_scheduled_resource(this->current_reservation_table, slot_offset);
-		}
-		// go over the link initator's RX slots
-		for (int i = 0; i < burst_length_rx; i++) {
-			int slot_offset = burst_start_offset + burst_length_tx + i;
-			// make sure that the reservation is idle locally
-			if (!this->current_reservation_table->getReservation(slot_offset).isIdle()) {
-				std::stringstream s;
-				s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. It is " << this->current_reservation_table->getReservation(slot_offset) << ", when it should be idle.";
-				throw std::runtime_error(s.str());
-			}
-			// make sure that hardware is available
-			if (action_2 == Reservation::TX) {
-				const auto &tx_reservation = reservation_manager->getTxTable()->getReservation(slot_offset);
-				bool transmitter_available = tx_reservation.isIdle();
-				if (!transmitter_available) {
-					std::stringstream s;
-					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			} else {
-				bool receiver_available = std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
-				if (!receiver_available) {
-					std::stringstream s;
-					s << *mac << "::" << *this << "::processLinkReply couldn't schedule a " << action_2 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
-					for (const auto *rx_table : reservation_manager->getRxTables())
-						s << rx_table->getReservation(slot_offset) << " ";
-					s << "when at least one should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			}
-			this->current_reservation_table->mark(slot_offset, Reservation(link_id, action_2));		
-			reservation_map.add_scheduled_resource(this->current_reservation_table, slot_offset);
-		}
-	}	
-	return reservation_map;
+	return reservation_manager->schedule_bursts(channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, link_state.burst_offset, mac->getMacId(), link_id, is_link_initiator, false);
 }
 
 void NewPPLinkManager::cancelLink() {

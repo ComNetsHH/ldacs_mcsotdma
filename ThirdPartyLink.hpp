@@ -31,7 +31,7 @@ class ThirdPartyLink {
 		void onSlotEnd();
 
 		void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload);
-		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const LinkManager::LinkEstablishmentPayload*& payload);
+		void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload);
 		const MacId& getIdLinkInitiator() const;
 		const MacId& getIdLinkRecipient() const;
 
@@ -43,7 +43,7 @@ class ThirdPartyLink {
 		MacId id_link_recipient;		
 		/** Keeps track of scheduled or locked resources. */
 		ReservationMap reservation_map_for_link_initator, reservation_map_for_link_recipient;
-		int num_slots_until_expected_link_reply = UNSET;
+		int num_slots_until_expected_link_reply = UNSET, reply_offset = UNSET;
 		MCSOTDMA_Mac *mac;
 };
 
