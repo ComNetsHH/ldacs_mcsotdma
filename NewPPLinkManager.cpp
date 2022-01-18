@@ -444,7 +444,7 @@ void NewPPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkReque
 			L2HeaderLinkReply *reply_header = new L2HeaderLinkReply();
 			reply_header->burst_length = link_state.burst_length;
 			reply_header->burst_length_tx = link_state.burst_length_tx;
-			reply_header->burst_offset = link_state.next_burst_in;
+			reply_header->burst_offset = burst_offset;
 			reply_header->timeout = link_state.timeout;
 			reply_header->dest_id = link_id;
 			LinkEstablishmentPayload *payload = new LinkEstablishmentPayload();
@@ -523,7 +523,7 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header,
 		mac->statisticReportThirdPartyLinkReplyReceived();		
 		// process it through a third part link
 		ThirdPartyLink &link = mac->getThirdPartyLink(origin_id, dest_id);
-		link.processLinkReplyMessage(header, payload);
+		link.processLinkReplyMessage(header, payload, origin_id);
 	} else { // if we are the recipient
 		mac->statisticReportLinkReplyReceived();
 		// parse selected communication resource

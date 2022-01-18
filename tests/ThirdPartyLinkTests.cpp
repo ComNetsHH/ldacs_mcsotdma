@@ -163,6 +163,49 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_replies_sent.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_requests_rcvd.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_replies_rcvd.get());
+			// both link initiator and third party should now have zero locks
+			size_t num_locks_initiator = 0, num_locks_thirdparty = 0;
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const auto *tbl_initiator = env_initator->mac_layer->reservation_manager->getReservationTable(channel);
+				const auto *tbl_thirdparty = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) {										
+					if (tbl_initiator->getReservation(t).isLocked()) {
+						num_locks_initiator++;
+						CPPUNIT_ASSERT_EQUAL(tbl_initiator->getReservation(t).getAction(), tbl_thirdparty->getReservation(t).getAction());
+					}
+					if (tbl_thirdparty->getReservation(t).isLocked()) {
+						num_locks_thirdparty++;
+						CPPUNIT_ASSERT_EQUAL(tbl_initiator->getReservation(t).getAction(), tbl_thirdparty->getReservation(t).getAction());
+					}
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(0), num_locks_initiator);
+			CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);
+			// and all users should agree on resource reservations for the entire link
+			const auto *tbl_initiator = pp_initiator->current_reservation_table;
+			const auto *tbl_recipient = pp_recipient->current_reservation_table;
+			const auto *tbl_thirdparty = reservation_manager->getReservationTable(tbl_initiator->getLinkedChannel());
+			size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0;
+			for (int t = 0; t < env->planning_horizon; t++) {
+				const Reservation &res_initiator = tbl_initiator->getReservation(t),
+								  &res_recipient = tbl_recipient->getReservation(t),
+								  &res_thirdparty = tbl_thirdparty->getReservation(t);
+				if (res_initiator.isTx()) {					
+					num_tx_at_initiator++;
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
+				}
+				if (res_recipient.isTx()) {
+					num_tx_at_recipient++;
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
+				}
+				if (res_thirdparty.isBusy())
+					num_busy_at_thirdparty++;
+			}
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_initiator);
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_recipient);
+			CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);
 		}
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		

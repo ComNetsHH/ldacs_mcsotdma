@@ -203,8 +203,25 @@ std::vector<ReservationTable*>& ReservationManager::getP2PReservationTables() {
 ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator, bool is_third_party_link) {
 	ReservationMap reservation_map;
 	ReservationTable *tbl = getReservationTable(channel);	
-	Reservation::Action action_1 = is_link_initiator ? Reservation::TX : Reservation::RX,
-						action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
+	Reservation::Action action_1, action_2;
+	MacId target_id_1, target_id_2;
+	// if we're scheduling links for ourself
+	if (!is_third_party_link) {
+		// then we differentiate between being the link initiator or not
+		action_1 = is_link_initiator ? Reservation::TX : Reservation::RX;
+		action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
+		// and the target is always the other user
+		target_id_1 = recipient_id;
+		target_id_2 = recipient_id;
+	// if we're not
+	} else {
+		// then all actions are just BUSY
+		action_1 = Reservation::BUSY;
+		action_2 = Reservation::BUSY;
+		// and we differentiate between the respective transmitters
+		target_id_1 = initiator_id;
+		target_id_2 = recipient_id;
+	}
 	// go over each transmission burst
 	for (int burst = 0; burst < timeout; burst++) {
 		// normalize to burst start
@@ -238,10 +255,10 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 					throw std::runtime_error(s.str());
 				}
 			}
-			tbl->mark(slot_offset, Reservation(recipient_id, action_1));						
-			reservation_map.add_scheduled_resource(tbl, slot_offset);
+			tbl->mark(slot_offset, Reservation(target_id_1, action_1));						
+			reservation_map.add_scheduled_resource(tbl, slot_offset);			
 		}
-		// go over the link initator's RX slots
+		// go over the link initiator's RX slots
 		for (int i = 0; i < burst_length_rx; i++) {
 			int slot_offset = burst_start_offset + burst_length_tx + i;
 			// make sure that the reservation is idle locally
@@ -270,8 +287,8 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 					throw std::runtime_error(s.str());
 				}
 			}
-			tbl->mark(slot_offset, Reservation(recipient_id, action_2));		
-			reservation_map.add_scheduled_resource(tbl, slot_offset);
+			tbl->mark(slot_offset, Reservation(target_id_2, action_2));		
+			reservation_map.add_scheduled_resource(tbl, slot_offset);			
 		}
 	}	
 	return reservation_map;
