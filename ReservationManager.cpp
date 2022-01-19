@@ -244,7 +244,7 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 					s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 					throw std::runtime_error(s.str());
 				}
-			} else {
+			} else if (action_1 == Reservation::RX) {
 				bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
 				if (!receiver_available) {
 					std::stringstream s;
@@ -276,7 +276,7 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 					s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 <<   " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 					throw std::runtime_error(s.str());
 				}
-			} else {
+			} else if (action_2 == Reservation::RX) {
 				bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
 				if (!receiver_available) {
 					std::stringstream s;

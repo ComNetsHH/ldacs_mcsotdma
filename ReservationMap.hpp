@@ -41,30 +41,35 @@ public:
 		return scheduled_resources.size() + locked_resources.size();
 	}			
 	
-	void clear() {				
+	void reset() {				
 		this->scheduled_resources.clear();
 		this->locked_resources.clear();
-	}
+		this->num_slots_since_creation = 0;
+	}	
 
 	/** 	 
 	 * @throws std::invalid_argument if any resource was not locked
 	 * */
-	void unlock_either_id(const MacId &id1, const MacId &id2) {				
+	size_t unlock_either_id(const MacId &id1, const MacId &id2) {				
+		size_t num_unlocked = 0;
 		for (const auto& pair : locked_resources) {
 			ReservationTable *table = pair.first;
 			// skip SH reservations
 			if (table->getLinkedChannel() != nullptr && table->getLinkedChannel()->isSH())
-				continue;
-			int slot_offset = pair.second - this->num_slots_since_creation;
-			if (slot_offset > 0) {
+				continue;			
+			int slot_offset = pair.second - this->num_slots_since_creation;						
+			if (slot_offset > 0) {				
 				if (!table->getReservation(slot_offset).isLocked() && !table->getReservation(slot_offset).isIdle()) {							
 					std::stringstream ss;
 					ss << "ReservationMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
 					throw std::invalid_argument(ss.str());
-				} else 
+				} else {
 					table->unlock_either_id(slot_offset, id1, id2);							
+					num_unlocked++;
+				}
 			}
 		}		
+		return num_unlocked;
 	}		
 
 	/** 	 

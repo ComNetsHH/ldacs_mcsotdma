@@ -545,7 +545,7 @@ void NewPPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header,
 		coutd << "partner chose resource " << first_burst_in << "@" << *selected_freq_channel << " -> ";				
 		// free locked resources	
 		this->link_state.reserved_resources.unlock(link_id);
-		this->link_state.reserved_resources.clear();
+		this->link_state.reserved_resources.reset();
 		coutd << "free'd locked resources -> ";	
 		// schedule resources
 		this->link_state.reserved_resources = schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
@@ -573,7 +573,7 @@ void NewPPLinkManager::cancelLink() {
 			this->link_state.reserved_resources.unschedule({Reservation::TX, Reservation::RX});
 		} else
 			throw std::runtime_error("PPLinkManager::cancelLink for unexpected link_status: " + std::to_string(link_status));
-		this->link_state.reserved_resources.clear();
+		this->link_state.reserved_resources.reset();
 		coutd << "unassigning frequency channel -> ";
 		assign(nullptr);
 		coutd << "changing link status '" << this->link_status << "->";			
@@ -657,7 +657,7 @@ bool NewPPLinkManager::decrementTimeout() {
 
 void NewPPLinkManager::onTimeoutExpiry() {
 	coutd << "timeout reached -> ";	
-	link_state.reserved_resources.clear(); // no need to unschedule anything
+	link_state.reserved_resources.reset(); // no need to unschedule anything
 	cancelLink();
 	mac->statisticReportPPLinkExpired();
 	// re-establish the link if there is more data

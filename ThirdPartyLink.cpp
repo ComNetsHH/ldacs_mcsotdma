@@ -42,29 +42,20 @@ void ThirdPartyLink::onSlotEnd() {
 	if (link_expiry_offset == 0) {
 		coutd << *this << " terminates -> resetting -> ";
 		reset();
-	} else {
-		coutd << std::endl << "#slots until expiry: " << link_expiry_offset << std::endl;
+	} else if (link_expiry_offset != UNSET) {
+		coutd << *mac << "::" << *this << " #slots until expiry: " << link_expiry_offset << std::endl;
 	}
 }
 
 void ThirdPartyLink::reset() {
+	coutd << *this << " resetting -> ";
 	// unlock and unschedule everything
-	if (locked_resources_for_initiator.size() > 0) {
-		coutd << "unlocked " << locked_resources_for_initiator.size() << " link initiator locks -> ";
-		locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);		
-		locked_resources_for_initiator.clear();
-	}
-	if (locked_resources_for_recipient.size() > 0) {
-		coutd << "unlocked " << locked_resources_for_recipient.size() << " link recipient locks -> ";
-		locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);		
-		locked_resources_for_recipient.clear();
-	}
-	if (scheduled_resources.size() > 0) {
-		size_t num_unscheduled = scheduled_resources.unschedule({Reservation::BUSY});
-		if (num_unscheduled > 0) 
-			coutd << "unscheduled " << num_unscheduled << " resources -> ";		
-		scheduled_resources.clear();
-	}
+	coutd << "unlocked " << locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient) << " initiator locks -> ";
+	coutd << "unlocked " << locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator) << " recipient locks -> ";
+	coutd << "unscheduled " << scheduled_resources.unschedule({Reservation::BUSY}) << " resources -> ";	
+	locked_resources_for_initiator.reset();
+	locked_resources_for_recipient.reset();
+	scheduled_resources.reset();		
 	// reset counters	
 	num_slots_until_expected_link_reply = UNSET;
 	reply_offset = UNSET;
@@ -104,7 +95,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 						&burst_length = header->burst_length, 
 						&burst_length_tx = header->burst_length_tx,
 						burst_length_rx = burst_length - burst_length_tx,
-						&burst_offset = header->burst_offset;	
+						&burst_offset = header->burst_offset;							
 	// lock all links	
 	for (const auto &pair : proposed_resources) {
 		// for this subchannel
@@ -150,11 +141,11 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 
 void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
 	coutd << *this << " processing link reply -> ";			
-	// reset
-	locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
-	locked_resources_for_initiator.clear();
-	locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);			
-	locked_resources_for_recipient.clear();
+	// reset	
+	coutd << "attempting to unlock " << locked_resources_for_initiator.size() << " initator locks: unlocked " << locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient) << " -> ";	
+	locked_resources_for_initiator.reset();		
+	coutd << "attempting to unlock " << locked_resources_for_recipient.size() << " recipient locks: unlocked " << locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator) << " -> ";		
+	locked_resources_for_recipient.reset();	
 	// parse selected resource
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
 	if (selected_resource_map.size() != size_t(1))

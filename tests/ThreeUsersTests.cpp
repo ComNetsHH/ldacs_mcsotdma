@@ -176,7 +176,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
 			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
 
-			size_t num_slots = 0, max_num_slots = 10000, num_renewals = 10;
+			size_t num_slots = 0, max_num_slots = 50000, num_renewals = 5;
 			while (((size_t) mac_1->stat_num_pp_links_established.get() < num_renewals || (size_t) mac_2->stat_num_pp_links_established.get() < num_renewals) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
@@ -236,7 +236,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			p2p_1->notifyOutgoing(num_outgoing_bits);
 			p2p_2->notifyOutgoing(num_outgoing_bits);
 
-			size_t num_slots = 0, max_num_slots = 5000;
+			size_t num_slots = 0, max_num_slots = 10000;
 			while ((p2p_1->link_status != LinkManager::link_established || p2p_2->link_status != LinkManager::link_established || p2p_3->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
@@ -269,9 +269,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_2->onSlotEnd();
 				mac_3->onSlotEnd();
 			}
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_1->stat_num_pp_links_established.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_2->stat_num_pp_links_established.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_3->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), (size_t) mac_2->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), (size_t) mac_3->stat_num_pp_links_established.get());
 			CPPUNIT_ASSERT((size_t) mac_1->stat_num_packets_sent.get() > packets_so_far_1);
 			CPPUNIT_ASSERT((size_t) mac_2->stat_num_packets_sent.get() > packets_so_far_2);
 			unsigned int num_renewals = 10;
@@ -287,9 +288,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					mac_1->onSlotEnd();
 					mac_2->onSlotEnd();
 					mac_3->onSlotEnd();
-				}
-				if (num_slots >= max_num_slots)
-					std::cerr << "oh no" << std::endl;
+				}				
 				CPPUNIT_ASSERT(num_slots < max_num_slots);
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_1->stat_num_pp_links_established.get());
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_2->stat_num_pp_links_established.get());
@@ -396,8 +395,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
 			CPPUNIT_TEST(testStatPacketsSent);			
 			CPPUNIT_TEST(testCollisions);
-			// CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
-			// CPPUNIT_TEST(threeUsersNonOverlappingTest);
+			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
+			CPPUNIT_TEST(threeUsersNonOverlappingTest);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
