@@ -176,7 +176,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
 			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
 
-			size_t num_slots = 0, max_num_slots = 50000, num_renewals = 5;
+			size_t num_slots = 0, max_num_slots = 20000, num_renewals = 3;
 			while (((size_t) mac_1->stat_num_pp_links_established.get() < num_renewals || (size_t) mac_2->stat_num_pp_links_established.get() < num_renewals) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
