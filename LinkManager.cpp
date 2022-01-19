@@ -11,7 +11,7 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 void LinkManager::assign(const FrequencyChannel* channel) {
-	if (current_channel == nullptr && current_reservation_table == nullptr) {
+	if ((current_channel == nullptr && current_reservation_table == nullptr) || channel == nullptr) {
 		this->current_channel = channel;
 		this->current_reservation_table = reservation_manager->getReservationTable(channel);
 		coutd << "assigned channel ";
@@ -83,12 +83,12 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
-				processLinkRequestMessage((const L2Header*&) header, (const L2Packet::Payload*&) payload, packet->getOrigin());				
+				processLinkRequestMessage((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
 				break;
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				processLinkReplyMessage((const L2HeaderLinkEstablishmentReply*&) header, (const L2Packet::Payload*&) payload);				
+				processLinkReplyMessage((const L2HeaderLinkReply*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
 				break;
 			}
 			case L2Header::link_info: {
@@ -132,12 +132,12 @@ void LinkManager::processBaseMessage(L2HeaderBase*& header) {
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void LinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << "::processLinkRequestMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) {
+void LinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << "::processLinkReplyMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }

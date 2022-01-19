@@ -24,6 +24,10 @@ const MacId& Reservation::getTarget() const {
 	return this->target;
 }
 
+void Reservation::setTarget(const MacId& target) {
+	this->target = target;
+}
+
 const Reservation::Action& Reservation::getAction() const {
 	return this->action;
 }

@@ -15,6 +15,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class SHLinkManager : public LinkManager {
 
 		friend class SHLinkManagerTests;
+		friend class NewPPLinkManagerTests;
 		friend class SystemTests;
 		friend class ThreeUsersTests;
 
@@ -42,7 +43,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param header
 		 * @param payload
 		 */
-		void sendLinkRequest(L2HeaderLinkRequest* header, LinkRequestPayload* payload);
+		void sendLinkRequest(L2HeaderLinkRequest* header, LinkEstablishmentPayload* payload);
+
+		/**
+		 * Schedules a link reply at the specified time slot offset.
+		 * 
+		 * @param header 
+		 * @param payload 
+		 * @param time_slot_offset 
+		 */
+		void sendLinkReply(L2HeaderLinkReply* header, LinkEstablishmentPayload* payload, unsigned int time_slot_offset);
 
 		/**
 		 * Cancels all link requests towards 'id'.
@@ -50,6 +60,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return Number of removed requests.
 		 */
 		size_t cancelLinkRequest(const MacId& id);
+
+		size_t cancelLinkReply(const MacId& id);
 
 		void assign(const FrequencyChannel* channel) override;
 
@@ -83,6 +95,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void onPacketReception(L2Packet*& packet) override;
 
+		bool canSendLinkReply(unsigned int time_slot_offset) const;
+
+		bool isNextBroadcastScheduled() const;
+		unsigned int getNextBroadcastSlot() const;
+		void reportCollisionWithScheduledBroadcast(const MacId& collider);		
+		void reportExpectedLinkReply(int slot_offset, const MacId& sender_id);
+
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob) const;
 
@@ -110,9 +129,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void processBaseMessage(L2HeaderBase*& header) override;
 
-		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
+		void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 
-		void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+		void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 
@@ -123,7 +142,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
-		std::vector<std::pair<L2HeaderLinkRequest*, LinkRequestPayload*>> link_requests;
+		std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
+		/** Collection of link replies and corresponding time slots where they should be transmitted. */
+		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;
 		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
 		ContentionEstimator contention_estimator;
 		BeaconModule beacon_module;
@@ -146,7 +167,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MovingAverage avg_num_slots_inbetween_packet_generations;
 		unsigned int num_slots_since_last_packet_generation = 0;
 		bool packet_generated_this_slot = false;
-		ContentionMethod contention_method = binomial_estimate;
+		ContentionMethod contention_method = randomized_slotted_aloha;
 	};
 }
 

@@ -198,14 +198,14 @@ PPLinkManager::LockMap PPLinkManager::lock_bursts(const std::vector<unsigned int
 	LockMap locked_resources_map = LockMap();
 	// *All* slots should be locked in the local ReservationTable.
 	for (unsigned int offset : unique_offsets_local) {		
-		table->lock(offset);
+		table->lock(offset, link_id);
 		locked_resources_map.locks_local.push_back({table, offset});
 	}
 	// Then lock transmitter resources.
 	for (unsigned int offset : unique_offsets_tx) {
 		for (auto* tx_table : tx_tables)
 			if (tx_table->canLock(offset)) {
-				tx_table->lock(offset);
+				tx_table->lock(offset, link_id);
 				locked_resources_map.locks_transmitter.push_back({tx_table, offset});
 				break;
 			}
@@ -214,7 +214,7 @@ PPLinkManager::LockMap PPLinkManager::lock_bursts(const std::vector<unsigned int
 	for (unsigned int offset : unique_offsets_rx) {
 		for (auto* rx_table : rx_tables)
 			if (rx_table->canLock(offset)) {
-				rx_table->lock(offset);
+				rx_table->lock(offset, link_id);
 				locked_resources_map.locks_receiver.push_back({rx_table, offset});
 				break;
 			}
@@ -269,7 +269,7 @@ L2Packet* PPLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 						// and remove from scheduled replies.
 						current_link_state->scheduled_link_replies.erase(it);
 						it--;
-						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to init link on " << *reply_reservation.getPayload()->proposed_resources.begin()->first << "@" << reply_reservation.getPayload()->proposed_resources.begin()->second.at(0) << " -> ";
+						coutd << "added " << reply_reservation.getHeader()->getBits() + reply_reservation.getPayload()->getBits() << "-bit scheduled link reply to init link on " << *reply_reservation.getPayload()->resources.begin()->first << "@" << reply_reservation.getPayload()->resources.begin()->second.at(0) << " -> ";
 						mac->statisticReportLinkReplySent();
 						// schedule all link resources
 						// Clear locked resources.
@@ -411,9 +411,9 @@ void PPLinkManager::onSlotEnd() {
 	LinkManager::onSlotEnd();
 }
 
-std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> PPLinkManager::prepareRequestMessage() {
+std::pair<L2HeaderLinkRequest*, LinkManager::LinkEstablishmentPayload*> PPLinkManager::prepareRequestMessage() {
 	auto *header = new L2HeaderLinkRequest(link_id);
-	auto *payload = new LinkRequestPayload();
+	auto *payload = new LinkEstablishmentPayload();
 	// Set this as the callback s.t. the payload can be populated just-in-time.
 	payload->callback = this;
 	return {header, payload};
@@ -433,7 +433,7 @@ std::pair<unsigned int, unsigned int> PPLinkManager::getTxRxDistribution(unsigne
 	return {burst_length_tx, burst_length};
 }
 
-void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkRequestPayload*& payload) {
+void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkEstablishmentPayload*& payload) {
 	coutd << "populating link request -> ";
 	unsigned int min_offset = 2;
 
@@ -447,7 +447,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManage
 	if (lock_map.anyLocks())
 		clearLockedResources(this->lock_map);
 	const auto &proposed_locked_pair = p2pSlotSelection(num_p2p_channels_to_propose, num_slots_per_p2p_channel_to_propose, min_offset, burst_length, burst_length_tx);
-	payload->proposed_resources = proposed_locked_pair.first;
+	payload->resources = proposed_locked_pair.first;
 	this->lock_map = proposed_locked_pair.second;
 	// Populate header.
 	header->timeout = default_timeout;
@@ -460,7 +460,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkManage
 	current_link_state->is_link_initiator = true;
 	current_link_state->initial_setup = true;	
 	// We need to schedule RX slots at each candidate to be able to receive a reply there.
-	for (const auto &pair : payload->proposed_resources) {
+	for (const auto &pair : payload->resources) {
 		const FrequencyChannel *channel = pair.first;
 		const std::vector<unsigned int> &burst_start_offsets = pair.second;
 		ReservationTable *table = reservation_manager->getReservationTable(channel);
@@ -493,30 +493,35 @@ bool PPLinkManager::isProposalViable(const ReservationTable* table, unsigned int
 	return viable;
 }
 
-void PPLinkManager::processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {
 	coutd << *mac << "::" << *this << "::processLinkRequestMessage -> ";
-	mac->statisticReportLinkRequestReceived();
-	// If currently the link is unestablished, then this request must be an initial request.
-	if (link_status == link_not_established) {
-		processIncomingLinkRequest_Initial(header, payload, origin);
-	// If a link request had been prepared by this node and a link request arrives here
-	// then reset the link, stop trying to send the local request, and process the remote request.
-	} else if (link_status == awaiting_reply) {
-		// Cancel buffered and unsent local link requests.
-		size_t num_cancelled_requests = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
-		coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
-		mac->statisticReportCancelledLinkRequest(num_cancelled_requests);
-		// Reset link.
-		terminateLink();
-		// Process request.
-		processIncomingLinkRequest_Initial(header, payload, origin);
-	// If the link is of any other status, there is nothing to do.
+	if (header->dest_id != link_id) {
+		coutd << "this is a third-party link request (not destined to us) -> ";
+		mac->statisticReportThirdPartyLinkRequestReceived();
 	} else {
-		coutd << "link is not unestablished; ignoring -> ";
+		mac->statisticReportLinkRequestReceived();
+		// If currently the link is unestablished, then this request must be an initial request.
+		if (link_status == link_not_established) {
+			processIncomingLinkRequest_Initial(header, payload, origin);
+		// If a link request had been prepared by this node and a link request arrives here
+		// then reset the link, stop trying to send the local request, and process the remote request.
+		} else if (link_status == awaiting_reply) {
+			// Cancel buffered and unsent local link requests.
+			size_t num_cancelled_requests = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
+			coutd << "cancelled " << num_cancelled_requests << " link requests from local buffer -> ";
+			mac->statisticReportCancelledLinkRequest(num_cancelled_requests);
+			// Reset link.
+			terminateLink();
+			// Process request.
+			processIncomingLinkRequest_Initial(header, payload, origin);
+		// If the link is of any other status, there is nothing to do.
+		} else {
+			coutd << "link is not unestablished; ignoring -> ";
+		}
 	}
 }
 
-void PPLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) {
+void PPLinkManager::processIncomingLinkRequest_Initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {
 	// Unlock any previously-locked resources, as a new link request re-starts this procedure.
 	if (lock_map.anyLocks()) {
 		clearLockedResources(lock_map);
@@ -524,7 +529,7 @@ void PPLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, 
 	}
 	try {
 		// Pick a random resource from those proposed.
-		LinkState* state = selectResourceFromRequest((const L2HeaderLinkRequest*&) header, (const PPLinkManager::LinkRequestPayload*&) payload);
+		LinkState* state = selectResourceFromRequest(header, payload);
 		state->initial_setup = true;
 		// remember the choice,
 		delete current_link_state;
@@ -542,7 +547,7 @@ void PPLinkManager::processIncomingLinkRequest_Initial(const L2Header*& header, 
 		}
 		// schedule a link reply,
 		auto link_reply_message = prepareReply(origin, current_link_state->channel, current_link_state->next_burst_start, current_link_state->burst_length, current_link_state->burst_length_tx);
-		current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, (L2Header*&) link_reply_message.first, (LinkRequestPayload*&) link_reply_message.second);
+		current_link_state->scheduled_link_replies.emplace_back(state->next_burst_start, (L2Header*&) link_reply_message.first, (LinkEstablishmentPayload*&) link_reply_message.second);
 		// mark the slot as TX,
 		current_reservation_table->mark(state->next_burst_start, Reservation(origin, Reservation::TX));
 		coutd << "scheduled link reply at offset " << state->next_burst_start << " -> ";
@@ -593,7 +598,7 @@ std::pair<const FrequencyChannel*, unsigned int> PPLinkManager::chooseRandomReso
 	}
 }
 
-PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload) {
+PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload) {
 	// Parse header fields.
 	auto *state = new LinkState(header->timeout, header->burst_length, header->burst_length_tx);
 	// Since this user is processing the request, they have not initiated the link.
@@ -601,7 +606,7 @@ PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2Heade
 
 	// Parse proposed resources.
 	try {
-		auto chosen_resource = chooseRandomResource(payload->proposed_resources, header->burst_length, header->burst_length_tx);
+		auto chosen_resource = chooseRandomResource(payload->resources, header->burst_length, header->burst_length_tx);
 		// ... and save it.
 		state->channel = chosen_resource.first;
 		state->next_burst_start = chosen_resource.second;
@@ -612,24 +617,22 @@ PPLinkManager::LinkState* PPLinkManager::selectResourceFromRequest(const L2Heade
 	}
 }
 
-void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& message_payload) {
+void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << "::processLinkReplyMessage -> ";
 	mac->statisticReportLinkReplyReceived();
 	if (link_status != awaiting_reply) {
 		coutd << "not awaiting reply; discarding -> ";
 		return;
 	}
-	assert(current_link_state != nullptr && "PPLinkManager::processLinkReplyMessage for unset current state.");
-
-	const auto*& payload = (const LinkManager::LinkRequestPayload*&) message_payload;
+	assert(current_link_state != nullptr && "PPLinkManager::processLinkReplyMessage for unset current state.");	
 
 	current_link_state->is_link_initiator = true;
 	// Reset timeout.
 	current_link_state->timeout = default_timeout;
 	// Parse resource.
-	if (payload->proposed_resources.size() != 1)
-		throw std::invalid_argument("PPLinkManager::processInitialReply for payload with " + std::to_string(payload->proposed_resources.size()) + " resources.");
-	const auto &resource = *payload->proposed_resources.begin();
+	if (payload->resources.size() != 1)
+		throw std::invalid_argument("PPLinkManager::processInitialReply for payload with " + std::to_string(payload->resources.size()) + " resources.");
+	const auto &resource = *payload->resources.begin();
 	const auto *channel = resource.first;
 	const auto &slots = resource.second;
 	if (slots.size() != 1)
@@ -672,7 +675,7 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkEstablishmentReply
 	current_link_state->waiting_for_agreement = false;
 }
 
-std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> PPLinkManager::prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {
+std::pair<L2HeaderLinkReply*, LinkManager::LinkEstablishmentPayload*> PPLinkManager::prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const {
 	// The reply header.
 	auto *header = new L2HeaderLinkReply(dest_id);
 	header->timeout = default_timeout;
@@ -680,8 +683,8 @@ std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> PPLinkManager::p
 	header->burst_length = burst_length;
 	header->burst_length_tx = burst_length_tx;
 	// The reply payload encodes the single, chosen resource.
-	auto *payload = new LinkRequestPayload();
-	payload->proposed_resources[channel].push_back(slot_offset);
+	auto *payload = new LinkEstablishmentPayload();
+	payload->resources[channel].push_back(slot_offset);
 	return {header, payload};
 }
 

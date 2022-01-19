@@ -143,12 +143,12 @@ std::pair<bool, bool> BeaconModule::parseBeacon(const MacId &sender_id, const Be
 				} else {
 					coutd << "won't mark t=" << t << " which is already reserved for: " << res << " -> ";
 					// We have to re-schedule our beacon transmission if this beacon tells us that another transmission is going to take place.
-					if (channel->isBroadcastChannel() && res.getAction() == Reservation::TX_BEACON) {
+					if (channel->isSH() && res.getAction() == Reservation::TX_BEACON) {
 						coutd << "re-scheduling own beacon transmission since it would collide -> ";
 						must_reschedule_beacon = true;
 					}
 					// We have to re-schedule our broadcast transmission if this beacon tells us that another transmission is going to take place.
-					if (channel->isBroadcastChannel() && res.isTx()) {
+					if (channel->isSH() && res.isTx()) {
 						coutd << "re-scheduling own broadcast transmission since it would collide -> ";
 						must_reschedule_broadcast = true;
 					}

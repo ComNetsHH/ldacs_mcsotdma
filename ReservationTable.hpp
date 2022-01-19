@@ -23,6 +23,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit no_tx_available_error(const std::string& arg) : std::runtime_error(arg) {}
 	};
 
+	class id_mismatch : public std::invalid_argument {
+	public:
+		explicit id_mismatch(const std::string &arg) : std::invalid_argument(arg) {}
+	};
+
 	/**
 	 * A reservation table keeps track of all slots of a particular, logical frequency channel for a pre-defined planning horizon.
 	 * It is regularly updated when new information about slot utilization becomes available.
@@ -94,9 +99,58 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param p2p Whether this slot selection is used for initial link establishment, i.e. does the receiver have to be idle during the first slot of each burst, s.t. a reply can be received.
 		 * @return Start slot offsets.
 		 */
+		[[deprecated]]
 		std::vector<unsigned int> findCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool p2p) const;
 
-		void lock(unsigned int slot_offset);
+		std::vector<unsigned int> findSHCandidates(unsigned int num_candidates, int min_offset) const;
+
+		/**		 
+		 * @param num_proposal_slots 
+		 * @param min_offset 
+		 * @param burst_offset 
+		 * @param burst_length 
+		 * @param burst_length_tx 
+		 * @param timeout 		 
+		 * @return Start slot offsets that could be used to initiate a PP link.
+		 */
+		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const;		
+
+		/**		 
+		 * @param slot_offset 
+		 * @param id 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if ID does not match
+		 */
+		void lock(unsigned int slot_offset, const MacId& id);
+
+		/**
+		 * When processing third-party link requests, one resource may be locked for id1's transmission or id2's transmission, as several proposals are made.
+		 * This function attempts to lock the resource to the first ID. If it is already locked to the second ID, no error is thrown.
+		 * Through this, the indicated ID may not belong to the correct ID after link establishment, but when the link reply is processed, this is corrected.
+		 * @param slot_offset 
+		 * @param id1 
+		 * @param id2 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if neither ID matches
+		 */
+		void lock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2);
+
+		/**		 
+		 * @param slot_offset 
+		 * @param id 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if ID does not match
+		 */
+		void unlock(unsigned int slot_offset, const MacId& id);
+
+		/** 
+		 * @param slot_offset 
+		 * @param id1 
+		 * @param id2 
+		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
+		 * @throws id_mismatch if neither ID matches
+		 */
+		void unlock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2);
 
 		/**
 		 * @param start_offset The minimum slot offset to start the search.
@@ -229,6 +283,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		uint64_t convertOffsetToIndex(int32_t slot_offset) const;
 
 		/**
+		 * DEPRECATED please use findEarliestIdleSlotsPP now. 
+		 * The difference is that the first burst is not treated specially, where earlier the link reply had been expected.
+		 * 
 		 * @param start_offset
 		 * @param burst_length
 		 * @param burst_length_tx
@@ -238,7 +295,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @throws range_error If no suitable slot range can be found.
 		 * @throws invalid_argument If the planning horizon is exceeded.
 		 */
+		[[deprecated]]
 		unsigned int findEarliestIdleSlotsP2P(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
+
+		/**		 
+		 * @param start_offset 
+		 * @param burst_length 
+		 * @param burst_length_tx 
+		 * @param burst_offset 
+		 * @param timeout 
+		 * @return Start slot where a link with the given characteristics can be initiated.
+		 */
+		unsigned int findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
 		unsigned int findEarliestIdleSlotsBC(unsigned int start_offset) const;
 
 		/**

@@ -25,38 +25,41 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
-		friend class SystemTests;
+		friend class ThreeUsersTests;
+		friend class ThirdPartyLinkTests;		
 
 	public:
 		enum Status {
 			/** Everything is OK. */
 			link_established,
-			/** Link has not been established yet. */
+			/** Link has not been established. */
 			link_not_established,
-			/** Link establishment request has been prepared and we're waiting for the reply. */
+			/** Awaiting time slot where the request is generated and transmitted. */
+			awaiting_request_generation,
+			/** We're waiting for a link reply. */
 			awaiting_reply,
-			/** Link establishment reply has been prepared and we're waiting for the first message. */
+			/** We're waiting for the first transmission burst. */
 			awaiting_data_tx
 		};
 
-		class LinkRequestPayload : public L2Packet::Payload {
+		class LinkEstablishmentPayload : public L2Packet::Payload {
 		public:
 			class Callback {
 			public:
-				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload *&payload) = 0;
+				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload *&payload) = 0;
 			};
 
-			LinkRequestPayload() = default;
+			LinkEstablishmentPayload() = default;
 
 			/** Copy constructor. */
-			LinkRequestPayload(const LinkRequestPayload& other) : proposed_resources(other.proposed_resources) {}
+			LinkEstablishmentPayload(const LinkEstablishmentPayload& other) : resources(other.resources) {}
 			Payload* copy() const override {
-				return new LinkRequestPayload(*this);
+				return new LinkEstablishmentPayload(*this);
 			}
 
 			unsigned int getBits() const override {
 				unsigned int num_bits = 0;
-				for (const auto& item : proposed_resources) {
+				for (const auto& item : resources) {
 					num_bits += 8; // +1B per frequency channel
 					num_bits += 8 * item.second.size(); // +1B per slot
 				}
@@ -68,7 +71,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			unsigned int getLatestProposedSlot() const {
 				unsigned int latest_slot = 0;
-				for (const auto &item : proposed_resources) {
+				for (const auto &item : resources) {
 					for (const auto &slot : item.second) {
 						if (slot > latest_slot)
 							latest_slot = slot;
@@ -78,7 +81,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 
 			/** <channel, <start slots>>-map of proposed resources. */
-			std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
+			std::map<const FrequencyChannel*, std::vector<unsigned int>> resources;
 			Callback *callback = nullptr;
 		};
 
@@ -150,15 +153,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rx_tables.push_back(rx_table);
 		}
 
-		virtual void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		virtual void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
+		virtual void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
 		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);		
 
 	protected:
 		virtual void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
 		virtual void processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header);
 		virtual void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
-		virtual void processBaseMessage(L2HeaderBase*& header);
-		virtual void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload);
+		virtual void processBaseMessage(L2HeaderBase*& header);		
 		/** 
 		 * Called whenever a channel access is performed. Measures the number of slots since the last channel access and reports it to the MAC.
 		 * @return Number of slots since the last channel access, i.e. the current MAC delay.
@@ -188,6 +191,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		switch (status) {
 			case LinkManager::link_not_established: {
 				str = "link_not_established";
+				break;
+			}
+			case LinkManager::awaiting_request_generation: {
+				str = "awaiting_request_generation";
 				break;
 			}
 			case LinkManager::awaiting_reply: {

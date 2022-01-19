@@ -15,6 +15,7 @@
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Phy.hpp"
 #include "NeighborObserver.hpp"
+#include "ThirdPartyLink.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -27,7 +28,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_PhyTests;
 		friend class ThreeUsersTests;
 		friend class P2PLinkManagerTests;
+		friend class NewPPLinkManagerTests;
 		friend class SHLinkManagerTests;
+		friend class ThirdPartyLinkTests;
 
 		MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon);
 
@@ -44,6 +47,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return The LinkManager that manages the given 'id'.
 		 */
 		LinkManager* getLinkManager(const MacId& id);
+
+		ThirdPartyLink& getThirdPartyLink(const MacId& id1, const MacId& id2);
 
 		void passToUpper(L2Packet* packet) override;
 
@@ -111,6 +116,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportLinkRequestReceived() {
 			stat_num_requests_rcvd.increment();
 		}
+		void statisticReportThirdPartyLinkRequestReceived() {
+			stat_num_third_party_requests_rcvd.increment();
+		}		
+		void statisticReportThirdPartyLinkReplyReceived() {
+			stat_num_third_party_replies_rcvd.increment();
+		}
 		void statisticReportLinkReplyReceived() {
 			stat_num_replies_rcvd.increment();
 		}
@@ -177,6 +188,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_pp_link_missed_last_reply_opportunity.increment();
 		}
 
+		/** After sending a reply we wait for the first data transmission. If this doesn't arrive, this statistic counts the event. */
+		void statistcReportPPLinkMissedFirstDataTx() {
+			stat_pp_link_missed_first_data_tx.increment();
+		}		
+
 		/**
 		 * @param num_slots Number of slots that have passed since the sending of a link request, and the final establishment of the link.
 		 */
@@ -188,7 +204,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_num_pp_links_established.increment();
 		}
 
+		void statisticReportPPLinkExpired() {
+			stat_num_pp_links_expired.increment();
+		}
+
+		void statisticReportLinkRequestRejectedDueToUnacceptableReplySlot() {
+			stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot.increment();
+		}
+
+		void statisticReportLinkRequestRejectedDueToUnacceptablePPResourceProposals() {
+			stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals.increment();
+		}
+
 		unsigned int getP2PBurstOffset() const;
+
+		bool isUsingNewPPLinkManager() const;
 
 	protected:
 		/**
@@ -201,6 +231,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ReservationManager* reservation_manager;
 		/** Maps links to their link managers. */
 		std::map<MacId, LinkManager*> link_managers;
+		std::map<std::pair<MacId, MacId>, ThirdPartyLink> third_party_links;
 		const size_t num_transmitters = 1, num_receivers = 2;
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;
@@ -213,6 +244,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int default_p2p_link_timeout = 10;
 		/** Number of slots between two transmission bursts. */
 		const unsigned int default_p2p_link_burst_offset = 20;
+		/** TODO REMOVE; while working on it, this flag creates NewPPLinkManager instances. */
+		bool use_new_pp_link_manager = false;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
@@ -221,7 +254,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_unicasts_rcvd = Statistic("mcsotdma_statistic_num_unicasts_received", this);
 		Statistic stat_num_unicast_msgs_processed = Statistic("mcsotdma_statistic_num_unicast_message_processed", this);
 		Statistic stat_num_requests_rcvd = Statistic("mcsotdma_statistic_num_link_requests_received", this);
+		Statistic stat_num_third_party_requests_rcvd = Statistic("mcsotdma_statistic_num_third_party_link_requests_received", this);
 		Statistic stat_num_replies_rcvd = Statistic("mcsotdma_statistic_num_link_replies_received", this);
+		Statistic stat_num_third_party_replies_rcvd = Statistic("mcsotdma_statistic_num_third_party_replies_rcvd", this);
 		Statistic stat_num_beacons_rcvd = Statistic("mcsotdma_statistic_num_beacons_received", this);
 		Statistic stat_num_link_infos_rcvd = Statistic("mcsotdma_statistic_num_link_infos_received", this);
 		Statistic stat_num_packets_sent = Statistic("mcsotdma_statistic_num_packets_sent", this);
@@ -246,8 +281,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_broadcast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_broadcast_wasted_tx_opportunities", this);
 		Statistic stat_unicast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_unicast_wasted_tx_opportunities", this);
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
-		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);
+		Statistic stat_pp_link_missed_first_data_tx = Statistic("mcsotdma_statistic_pp_link_missed_first_data_tx", this);
+		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);		
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
+		Statistic stat_num_pp_links_expired = Statistic("mcsotdma_statistic_num_pp_links_expired", this);
+		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_reply_slot", this);
+		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -255,7 +294,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_unicasts_rcvd,
 				&stat_num_unicast_msgs_processed,
 				&stat_num_requests_rcvd,
+				&stat_num_third_party_requests_rcvd,
 				&stat_num_replies_rcvd,
+				&stat_num_third_party_replies_rcvd,
 				&stat_num_beacons_rcvd,
 				&stat_num_link_infos_rcvd,
 				&stat_num_packets_sent,
@@ -279,8 +320,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_wasted_tx_opportunities,
 				&stat_unicast_wasted_tx_opportunities,
 				&stat_pp_link_missed_last_reply_opportunity,
+				&stat_pp_link_missed_first_data_tx,
 				&stat_pp_link_establishment_time,
-				&stat_num_pp_links_established
+				&stat_num_pp_links_established,
+				&stat_num_pp_links_expired,
+				&stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot,
+				&stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals
 		};
 	};
 

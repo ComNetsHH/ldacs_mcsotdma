@@ -326,14 +326,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(uint32_t(min_offset + i), candidate_slots.at(i));
 
 			// Now mark some slots as busy for the receiver.
-			rx_table.lock(0);
+			rx_table.lock(0, MacId(42));
 			candidate_slots = table->findCandidates(num_candidates, min_offset, 0, range_length, range_length, 0, true);
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 			// And these should be consecutive slots starting at 1.
 			for (int32_t i = 0; i < num_candidates; i++)
 				CPPUNIT_ASSERT_EQUAL(uint32_t(min_offset + i + 1), candidate_slots.at(i));
 
-			rx_table.lock(2);
+			rx_table.lock(2, MacId(42));
 			range_length = 1;
 			candidate_slots = table->findCandidates(num_candidates, min_offset, 0, range_length, range_length, 0, true);
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
@@ -544,7 +544,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<unsigned int> slots = table->findCandidates(num_candidates, 0, 0, 5, 5, 0, true);
 			// Now lock these slots.
 			for (auto t : slots)
-				table->lock(t);
+				table->lock(t, MacId(42));
 			// So these slots should *not* be considered for a further request.
 			std::vector<unsigned int> slots2 = table->findCandidates(num_candidates, 0, 0, 5, 5, 0, true);
 			CPPUNIT_ASSERT_EQUAL(slots.size(), slots2.size());
@@ -591,8 +591,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX)), no_tx_available_error);
 			CPPUNIT_ASSERT_THROW(second_table.mark(0, Reservation(MacId(1), Reservation::TX)), no_tx_available_error);
 
-			table->lock(3);
-			table_tx->lock(3);
+			table->lock(3, MacId(42));
+			table_tx->lock(3, MacId(42));
 			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table->getReservation(3).getAction());
 			CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, table_tx->getReservation(3).getAction());
 		}

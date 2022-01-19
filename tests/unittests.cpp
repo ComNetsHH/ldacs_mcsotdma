@@ -15,10 +15,11 @@
 #include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
-#include "PPLinkManagerTests.cpp"
 #include "BeaconModuleTests.cpp"
 #include "CongestionEstimatorTests.cpp"
 #include "ThreeUsersTests.cpp"
+#include "NewPPLinkManagerTests.cpp"
+#include "ThirdPartyLinkTests.cpp"
 
 int main() {
 	coutd.setVerbose(true);
@@ -28,8 +29,7 @@ int main() {
 	runner.addTest(ReservationTests::suite());
 	runner.addTest(ReservationTableTests::suite());
 	runner.addTest(ReservationManagerTests::suite());
-	runner.addTest(FrequencyChannelTests::suite());
-	runner.addTest(PPLinkManagerTests::suite());
+	runner.addTest(FrequencyChannelTests::suite());	
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(MCSOTDMA_PhyTests::suite());
 	runner.addTest(BeaconModuleTests::suite());
@@ -38,6 +38,8 @@ int main() {
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
 	runner.addTest(ThreeUsersTests::suite());
+	runner.addTest(NewPPLinkManagerTests::suite());
+	runner.addTest(ThirdPartyLinkTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

@@ -11,7 +11,7 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload::Callback, public LinkInfoPayload::Callback {
+class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentPayload::Callback, public LinkInfoPayload::Callback {
 
 		friend class PPLinkManagerTests;
 		friend class SystemTests;
@@ -28,10 +28,11 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 		void notifyOutgoing(unsigned long num_bits) override;
 		void onSlotStart(uint64_t num_slots) override;
 		void onSlotEnd() override;
-		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkRequestPayload*& payload) override;
+		void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) override;		
 		LinkInfo getLinkInfo() override;
-		void processLinkRequestMessage(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin) override;
-		void processIncomingLinkRequest_Initial(const L2Header*& header, const L2Packet::Payload*& payload, const MacId& origin);
+		void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) override;
+		void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
+		void processIncomingLinkRequest_Initial(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin);
 		void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) override;
 		void assign(const FrequencyChannel* channel) override;
 		/**
@@ -59,7 +60,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 			/** Allows the scheduling of control messages at specific slots. */
 			class ControlMessageReservation {
 			public:
-				ControlMessageReservation(unsigned int slot_offset, L2Header *&header, LinkRequestPayload *&payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
+				ControlMessageReservation(unsigned int slot_offset, L2Header *&header, LinkEstablishmentPayload *&payload) : remaining_offset(slot_offset), header(header), payload(payload) {}
 				virtual ~ControlMessageReservation() = default;
 
 				void update(unsigned int num_slots) {
@@ -69,7 +70,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 					remaining_offset -= num_slots;
 
 					// Update payload slot offsets to reflect a correct offset with respect to the current time.
-					for (auto &pair : payload->proposed_resources) {
+					for (auto &pair : payload->resources) {
 						for (unsigned int& i : pair.second) {
 							if (i < num_slots)
 								throw std::invalid_argument("ControlMessageReservation::onSlotEnd would decrement a slot offset past zero. Are we late with sending this reply?");
@@ -81,7 +82,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 				L2Header*& getHeader() {
 					return header;
 				}
-				LinkRequestPayload*& getPayload() {
+				LinkEstablishmentPayload*& getPayload() {
 					return payload;
 				}
 				unsigned int getRemainingOffset() const {
@@ -95,7 +96,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 			protected:
 				unsigned int remaining_offset;
 				L2Header *header;
-				LinkRequestPayload *payload;
+				LinkEstablishmentPayload *payload;
 			};
 
 			/** Container class of the state of a link. */
@@ -197,8 +198,8 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 			 */
 			std::pair<std::map<const FrequencyChannel*, std::vector<unsigned int>>, PPLinkManager::LockMap> p2pSlotSelection(unsigned int num_channels, unsigned int num_slots, unsigned int min_offset, unsigned int burst_length, unsigned int burst_length_tx);
 
-			std::pair<L2HeaderLinkRequest*, LinkManager::LinkRequestPayload*> prepareRequestMessage();
-			std::pair<L2HeaderLinkReply*, LinkManager::LinkRequestPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
+			std::pair<L2HeaderLinkRequest*, LinkManager::LinkEstablishmentPayload*> prepareRequestMessage();
+			std::pair<L2HeaderLinkReply*, LinkManager::LinkEstablishmentPayload*> prepareReply(const MacId& dest_id, const FrequencyChannel *channel, unsigned int slot_offset, unsigned int burst_length, unsigned int burst_length_tx) const;
 
 			/**
 			 * Processes a link establishment request by parsing it and selecting a viable, proposed resource.
@@ -207,7 +208,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 			 * @return A LinkState with the selected resource saved.
 			 * @throws std::invalid_argument If no resource was viable.
 			 */
-			LinkState* selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkRequestPayload*& payload);
+			LinkState* selectResourceFromRequest(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload);
 
 			/**
 			 * Checks the provided resources for viable ones and selects from those one randomly.
@@ -217,9 +218,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkRequestPayload
 			 * @return Pair of (FrequencyChannel, time slot)
 			 * @throws std::invalid_argument If no resources were viable.
 			 */
-			std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
-
-			void processLinkReplyMessage(const L2HeaderLinkEstablishmentReply*& header, const L2Packet::Payload*& payload) override;
+			std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);			
 
 			/**
 			 * @param table

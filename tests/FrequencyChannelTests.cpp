@@ -30,24 +30,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testCheckP2P() {
-			CPPUNIT_ASSERT_EQUAL(true, channel->isPointToPointChannel());
-			CPPUNIT_ASSERT_EQUAL(false, channel->isBroadcastChannel());
+			CPPUNIT_ASSERT_EQUAL(true, channel->isPP());
+			CPPUNIT_ASSERT_EQUAL(false, channel->isSH());
 		}
 
 		void testEquality() {
-			FrequencyChannel* other = new FrequencyChannel(channel->isPointToPointChannel(),
+			FrequencyChannel* other = new FrequencyChannel(channel->isPP(),
 			                                               channel->getCenterFrequency(), channel->getBandwidth());
 			CPPUNIT_ASSERT_EQUAL(true, *channel == *other);
 			delete other;
-			other = new FrequencyChannel(!channel->isPointToPointChannel(), channel->getCenterFrequency(),
+			other = new FrequencyChannel(!channel->isPP(), channel->getCenterFrequency(),
 			                             channel->getBandwidth());
 			CPPUNIT_ASSERT_EQUAL(false, *channel == *other);
 			delete other;
-			other = new FrequencyChannel(channel->isPointToPointChannel(), channel->getCenterFrequency() + 1,
+			other = new FrequencyChannel(channel->isPP(), channel->getCenterFrequency() + 1,
 			                             channel->getBandwidth());
 			CPPUNIT_ASSERT_EQUAL(false, *channel == *other);
 			delete other;
-			other = new FrequencyChannel(channel->isPointToPointChannel(), channel->getCenterFrequency(),
+			other = new FrequencyChannel(channel->isPP(), channel->getCenterFrequency(),
 			                             channel->getBandwidth() - 1);
 			CPPUNIT_ASSERT_EQUAL(false, *channel == *other);
 			delete other;
