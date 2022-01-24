@@ -864,6 +864,61 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), payload->local_reservations.size());
 		}
 
+		void testSHChannelAccessDelay() {
+			const double target_collision_prob = .626;
+			// zero neighbors
+			double n = 0;
+			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());
+			unsigned int k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			unsigned int expected_k = std::max((double) link_manager->MIN_CANDIDATES, 2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			CPPUNIT_ASSERT_EQUAL(expected_k, k);						
+			// one neighbor
+			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(1), 0);
+			n = 1;
+			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			unsigned int new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
+			CPPUNIT_ASSERT_GREATER(k, new_k);
+			k = new_k;
+			// two neighbors
+			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(2), 0);
+			n = 2;
+			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
+			CPPUNIT_ASSERT_GREATER(k, new_k);
+			k = new_k;
+			// three neighbors
+			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(3), 0);
+			n = 3;
+			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
+			CPPUNIT_ASSERT_GREATER(k, new_k);
+			k = new_k;
+			// four neighbors
+			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(4), 0);
+			n = 4;
+			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
+			CPPUNIT_ASSERT_GREATER(k, new_k);
+			k = new_k;
+			// five neighbors
+			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(5), 0);
+			n = 5;
+			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
+			CPPUNIT_ASSERT_GREATER(k, new_k);
+			k = new_k;
+		}
+
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -894,6 +949,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testBeaconInterval);				
 		CPPUNIT_TEST(testBeaconWithResourceUtilization);	
 		CPPUNIT_TEST(testBeaconWithoutResourceUtilization);	
+		CPPUNIT_TEST(testSHChannelAccessDelay);	
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
