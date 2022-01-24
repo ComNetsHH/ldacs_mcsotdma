@@ -151,7 +151,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Congestion estimation is neighbor activity regarding all broadcasts. */
 		CongestionEstimator congestion_estimator;
 		/** Target collision probability for non-beacon broadcasts. */
-		double broadcast_target_collision_prob = .05;
+		double broadcast_target_collision_prob = .626;
 		/** Whether the next broadcast slot has been scheduled. */
 		bool next_broadcast_scheduled = false;
 		bool next_beacon_scheduled = false;
