@@ -146,7 +146,12 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		void processBaseMessage(L2HeaderBase*& header) override;
 		void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;		
 
-		void setReportedDesiredTxSlots(unsigned int value);		
+		void setReportedDesiredTxSlots(unsigned int value);	
+
+		bool isLinkEstablishedAndBidirectional() const;	
+
+		/** If a link is deemed faulty due to not receiving data packets, it may be closed early. */
+		void onFaultyLink();
 
 	protected:
 		/** Number of transmission bursts until link expiry. */
@@ -165,7 +170,12 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		unsigned int reported_resoure_requirement = 1;
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
 		unsigned int time_when_request_was_generated = 0;
+		/** Keeps track of the no. of time slots until a reply is expected, s.t. not receiving it can be handled. */
 		unsigned int time_slots_until_reply = 0;
+		/** As a failsafe for bad links, if too many transmission bursts were faulty (nothing received), a link may be terminated early. */
+		unsigned int max_no_of_tolerable_empty_bursts = 3;
+		/** Keeps track of the number of consecutive bursts where something should have been received, but wasn't. Used as a failsafe to terminate faulty links. */
+		unsigned int no_of_consecutive_empty_bursts = 0;
 		bool force_bidirectional_links = true;
 		/** Set to true if link establishment should be re-attempted next slot. */
 		bool attempt_link_establishment_again = false;
@@ -173,9 +183,11 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		/** Whether the timeout has already been updated in this time slot. */
 		bool updated_timeout_this_slot = false;
 		/** Whether communication has taken place during this time slot. */		
-		bool communication_during_this_slot = false;
+		bool communication_during_this_slot = false;		
 		/** Needed to detect that an expected data transmission has not arrived. */
 		bool expecting_first_data_tx_this_slot = false;
+		/** Set to true if a data packet has been received since the previous transmission burst. */
+		bool received_data_this_burst = false;
 };
 
 }

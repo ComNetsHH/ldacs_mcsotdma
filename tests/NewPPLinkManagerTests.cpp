@@ -1391,6 +1391,102 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx, num_tx_res);
 			CPPUNIT_ASSERT_EQUAL(expected_num_rx, num_rx_res);
 		}
+
+		/** Tests that an established link is closed early if for too many bursts, no data comes in. */
+		void testCloseLinkEarly() {
+			// establish link			
+			mac->notifyOutgoing(1, partner_id);			
+			size_t num_slots = 0, max_slots = 100;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();								
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(true, pp->isLinkEstablishedAndBidirectional());
+			CPPUNIT_ASSERT_EQUAL(true, pp_you->isLinkEstablishedAndBidirectional());
+			// sever connection
+			env->phy_layer->connected_phys.clear();
+			env_you->phy_layer->connected_phys.clear();
+			// continue for enough bursts to trigger closing the link
+			num_slots = pp->max_no_of_tolerable_empty_bursts * pp->link_state.burst_offset - 1;
+			for (int t = 0; t < num_slots; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();								
+			}
+			// not yet
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_links_closed_early.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_you->stat_num_links_closed_early.get());
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();								
+			// but now
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_links_closed_early.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_links_closed_early.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_you->link_status);
+		}
+
+		/** Tests that if one partner closes the link early, the other will still transmit until it, too, closes the link. */
+		void testCloseLinkEarlyOneSided() {
+			env->rlc_layer->should_there_be_more_p2p_data = false;
+			env_you->rlc_layer->should_there_be_more_p2p_data = false;
+			// establish link			
+			mac->notifyOutgoing(1, partner_id);			
+			size_t num_slots = 0, max_slots = 100;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();								
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(true, pp->isLinkEstablishedAndBidirectional());
+			CPPUNIT_ASSERT_EQUAL(true, pp_you->isLinkEstablishedAndBidirectional());
+			// sever ONE connection
+			env->phy_layer->connected_phys.clear();
+			// continue for enough bursts to trigger closing the link
+			num_slots = pp->max_no_of_tolerable_empty_bursts * pp->link_state.burst_offset;
+			for (int t = 0; t < num_slots; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();								
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_links_closed_early.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_links_closed_early.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_you->link_status);
+			// now that one side has closed their link, there won't be any more data, so the other will soon close its link, too
+			for (int t = 0; t < num_slots; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();								
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_links_closed_early.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_links_closed_early.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_you->link_status);
+		}
  
 
 
@@ -1428,6 +1524,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForInitiator);
 		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForRecipient);
 		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForBoth);
+		CPPUNIT_TEST(testCloseLinkEarly);
+		CPPUNIT_TEST(testCloseLinkEarlyOneSided);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

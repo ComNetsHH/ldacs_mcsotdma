@@ -579,7 +579,9 @@ void NewPPLinkManager::cancelLink() {
 		coutd << "changing link status '" << this->link_status << "->";			
 		link_status = link_not_established;		
 		coutd << this->link_status << "' -> ";
-
+		// reset counter and flag
+		no_of_consecutive_empty_bursts = 0;
+		received_data_this_burst = false;
 	} else
 		coutd << "link is not established -> ";	
 	coutd << "done -> ";
@@ -605,14 +607,20 @@ void NewPPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet:
 		if (link_status == awaiting_data_tx) {
 			// establish link
 			coutd << "this establishes the link -> link status changes '" << link_status << "->";			
-			link_status = link_established;			
+			link_status = link_established;
 			coutd << link_status << "' -> ";
 			mac->statisticReportPPLinkEstablished();			
 			int link_establishment_time = mac->getCurrentSlot() - this->time_when_request_was_generated;
 			mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);
 			// inform upper sublayers
-			mac->notifyAboutNewLink(link_id);			
+			mac->notifyAboutNewLink(link_id);
+			// reset counter
+			no_of_consecutive_empty_bursts = 0;						
 		}
+
+		// no else if! Should also be set if the above if has just established the link.
+		if (link_status == link_established)
+			received_data_this_burst = true;
 	}
 }
 
@@ -647,12 +655,31 @@ bool NewPPLinkManager::decrementTimeout() {
 
 	updated_timeout_this_slot = true;
 
+	// check if we should've received data but haven't
+	if (isLinkEstablishedAndBidirectional() && !received_data_this_burst) {
+		no_of_consecutive_empty_bursts++;
+		if (no_of_consecutive_empty_bursts >= max_no_of_tolerable_empty_bursts) {
+			// cancels the link
+			onFaultyLink();		
+			// don't attempt to decrement the timeout of the cancelled link	
+			// also don't treat this as a timeout expiry, which would update the wrong statistics
+			return false;
+		}
+	}
+	// a burst has passed, so reset the flag
+	received_data_this_burst = false;
+
 	if (link_state.timeout == 0)
 		throw std::runtime_error("PPLinkManager::decrementTimeout attempted to decrement timeout past zero.");
 	coutd << "timeout " << link_state.timeout << "->";
 	link_state.timeout--;
 	coutd << link_state.timeout << " -> ";
 	return link_state.timeout == 0;
+}
+
+void NewPPLinkManager::onFaultyLink() {
+	mac->statisticReportLinkClosedEarly();
+	cancelLink();
 }
 
 void NewPPLinkManager::onTimeoutExpiry() {
@@ -666,4 +693,8 @@ void NewPPLinkManager::onTimeoutExpiry() {
 		notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
 	} else
 		coutd << "no more data to send, keeping link closed -> ";
+}
+
+bool NewPPLinkManager::isLinkEstablishedAndBidirectional() const {
+	return link_status == link_established && link_state.burst_length_tx < link_state.burst_length;
 }

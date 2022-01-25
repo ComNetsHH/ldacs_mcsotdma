@@ -173,7 +173,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportSelectedBroadcastCandidateSlots(size_t val) {
 			stat_broadcast_selected_candidate_slots.capture(val);
 		}
-		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early. This counts the number of times this has happened. */
+		/** Number of times a PP link was closed early because it was deemed as faulty. */
 		void statisticReportLinkClosedEarly() {
 			stat_num_links_closed_early.increment();
 		}
