@@ -18,18 +18,14 @@ SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_M
 	beacon_module.setMinBeaconGap(min_beacon_gap);
 }
 
-void SHLinkManager::onReceptionBurstStart(unsigned int burst_length) {
+void SHLinkManager::onReceptionReservation(unsigned int burst_length) {
 
 }
 
-void SHLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
-
-}
-
-L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_length) {
-	coutd << *mac << "::" << *this << "::onTransmissionBurstStart -> ";
+L2Packet* SHLinkManager::onTransmissionReservation(unsigned int remaining_burst_length) {
+	coutd << *mac << "::" << *this << "::onTransmissionReservation -> ";
 	if (remaining_burst_length != 0)
-		throw std::invalid_argument("SHLinkManager::onTransmissionBurstStart for burst_length!=0.");
+		throw std::invalid_argument("SHLinkManager::onTransmissionReservation for burst_length!=0.");
 
 	auto *packet = new L2Packet();
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);
@@ -78,7 +74,7 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			auto &pair = link_requests.at(0);
 			// Compute payload.
 			if (pair.second->callback == nullptr)
-				throw std::invalid_argument("SHLinkManager::onTransmissionBurstStart has nullptr link request callback - can't populate the LinkRequest!");
+				throw std::invalid_argument("SHLinkManager::onTransmissionReservation has nullptr link request callback - can't populate the LinkRequest!");
 			try {
 				pair.second->callback->populateLinkRequest(pair.first, pair.second);
 			} catch (const std::invalid_argument &e) {
@@ -136,7 +132,7 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 			coutd << "added " << num_bits_added << " bits -> ";
 //			if (num_bits_added > remaining_bits) {
 //				std::stringstream ss;
-//				ss << *mac << "::" << *this << "::onTransmissionBurstStart error: " << num_bits_added << " bits were returned by upper sublayer instead of requested " << remaining_bits << "!";
+//				ss << *mac << "::" << *this << "::onTransmissionReservation error: " << num_bits_added << " bits were returned by upper sublayer instead of requested " << remaining_bits << "!";
 //				throw std::runtime_error(ss.str());
 //			}
 			delete upper_layer_data;
@@ -197,10 +193,6 @@ L2Packet* SHLinkManager::onTransmissionBurstStart(unsigned int remaining_burst_l
 		}
 		return packet;
 	}
-}
-
-void SHLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
-	throw std::runtime_error("SHLinkManager::onTransmissionBurst, but the SHLinkManager should never have multi-slot transmissions.");
 }
 
 void SHLinkManager::notifyOutgoing(unsigned long num_bits) {
