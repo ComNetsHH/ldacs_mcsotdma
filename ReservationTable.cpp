@@ -63,30 +63,19 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	// If a transmitter table is linked, mark it there, too.
 	if ((reservation.isAnyTx() || reservation.isIdle()) && transmitter_reservation_table != nullptr) {
 		// Need a copy here s.t. the linked table's recursive call won't set all slots now.
-		Reservation cpy = Reservation(reservation);
-		cpy.setNumRemainingSlots(0);
+		Reservation cpy = Reservation(reservation);		
 		transmitter_reservation_table->mark(slot_offset, cpy);
 	}
 	// Same for receiver tables
-	if ((reservation.isAnyRx() || reservation.isIdle()) && !receiver_reservation_tables.empty())
+	if ((reservation.isAnyRx() || reservation.isIdle()) && !receiver_reservation_tables.empty()) {
 		for (ReservationTable* rx_table : receiver_reservation_tables) {
 			if (rx_table->getReservation(slot_offset).isIdle()) {
 				// Need a copy here s.t. the linked table's recursive call won't set all slots now.
-				Reservation cpy = Reservation(reservation);
-				cpy.setNumRemainingSlots(0);
+				Reservation cpy = Reservation(reservation);				
 				rx_table->mark(slot_offset, cpy);
 				break;
 			}
-		}
-	// If this is a multi-slot transmission reservation, set the following ones, too.
-	if (reservation.getNumRemainingSlots() > 0) {
-		Reservation::Action action = reservation.getAction();
-		if (action == Reservation::TX)
-			action = Reservation::TX_CONT;
-		else if (action == Reservation::RX)
-			action = Reservation::RX_CONT;
-		Reservation next_reservation = Reservation(reservation.getTarget(), action, reservation.getNumRemainingSlots() - 1);
-		mark(slot_offset + 1, next_reservation);
+		}	
 	}
 	return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
 }

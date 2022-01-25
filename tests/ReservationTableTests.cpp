@@ -345,77 +345,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				exception_occurred = true;
 			}
 			CPPUNIT_ASSERT_EQUAL(true, exception_occurred);
-		}
-
-		void testMultiSlotTransmissionReservationTx() {
-			uint32_t num_cont_slots = 4; // 5 slots in total
-			Reservation reservation = Reservation(MacId(42), Reservation::Action::TX, num_cont_slots);
-			table->mark(0, reservation);
-			for (uint32_t t = 0; t < planning_horizon; t++) {
-				if (t == 0)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTx());
-				else if (t <= num_cont_slots)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTxCont());
-				else
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
-			}
-		}
-
-		void testMultiSlotTransmissionReservationRx() {
-			uint32_t num_cont_slots = 4; // 5 slots in total
-			Reservation reservation = Reservation(MacId(42), Reservation::Action::RX, num_cont_slots);
-			table->mark(0, reservation);
-			for (uint32_t t = 0; t < planning_horizon; t++) {
-				if (t == 0)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isRx());
-				else if (t <= num_cont_slots)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isRxCont());
-				else
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
-			}
-		}
-
-		void testMultiSlotTransmissionReservationBusy() {
-			uint32_t num_cont_slots = 4; // 5 slots in total
-			Reservation reservation = Reservation(MacId(42), Reservation::Action::BUSY, num_cont_slots);
-			table->mark(0, reservation);
-			for (uint32_t t = 0; t < planning_horizon; t++) {
-				if (t == 0)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isBusy());
-				else if (t <= num_cont_slots)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isBusy());
-				else
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
-			}
-		}
-
-		void testMultiSlotTransmissionReservationIdle() {
-			uint32_t num_cont_slots = 4; // 5 slots in total
-			Reservation reservation = Reservation(MacId(42), Reservation::Action::IDLE, num_cont_slots);
-			table->mark(0, reservation);
-			for (uint32_t t = 0; t < planning_horizon; t++) {
-				if (t == 0)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
-				else if (t <= num_cont_slots)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
-				else
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
-			}
-		}
-
-		void testMultiSlotTransmissionReservationTxCont() {
-			uint32_t num_cont_slots = 4; // 5 slots in total
-			Reservation reservation = Reservation(MacId(42), Reservation::Action::TX_CONT, num_cont_slots);
-			table->mark(0, reservation);
-			for (uint32_t t = 0; t < planning_horizon; t++) {
-				if (t == 0)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTxCont());
-				else if (t <= num_cont_slots)
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isTxCont());
-				else
-					CPPUNIT_ASSERT_EQUAL(true, table->getReservation(t).isIdle());
-			}
-		}
+		}		
 
 		void testCountReservedTxSlots() {
 			MacId id = MacId(42);
@@ -426,17 +356,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(marked, table->countReservedTxSlots(id));
 			table->mark(marked, Reservation(id, Reservation::IDLE)); // doesn't count
 			CPPUNIT_ASSERT_EQUAL(marked, table->countReservedTxSlots(id));
-			table->mark(marked + 1, Reservation(id, Reservation::BUSY)); // doesn't count
+			table->mark(marked + 1, Reservation(id, Reservation::BUSY)); // doesn't count			
 			CPPUNIT_ASSERT_EQUAL(marked, table->countReservedTxSlots(id));
-			table->mark(marked + 2, Reservation(id, Reservation::TX_CONT)); // *does* count
-			CPPUNIT_ASSERT_EQUAL(marked + 1, table->countReservedTxSlots(id));
 			// Another user's reservations shouldn't be counted.
 			MacId other_id = MacId(id.getId() + 1);
 			table->mark(marked + 3, Reservation(other_id, Reservation::TX));
-			table->mark(marked + 4, Reservation(other_id, Reservation::TX_CONT));
 			table->mark(marked + 5, Reservation(other_id, Reservation::IDLE));
 			table->mark(marked + 6, Reservation(other_id, Reservation::BUSY));
-			CPPUNIT_ASSERT_EQUAL(marked + 1, table->countReservedTxSlots(id));
+			CPPUNIT_ASSERT_EQUAL(marked, table->countReservedTxSlots(id));
 		}
 
 		void testGetTxReservations() {
@@ -494,9 +421,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			table->mark(offset, Reservation(id, Reservation::IDLE));
 			CPPUNIT_ASSERT_EQUAL(false, table->anyTxReservations(0, 2 * offset));
 			table->mark(offset, Reservation(id, Reservation::BUSY));
-			CPPUNIT_ASSERT_EQUAL(false, table->anyTxReservations(0, 2 * offset));
-			table->mark(offset, Reservation(id, Reservation::TX_CONT));
-			CPPUNIT_ASSERT_EQUAL(true, table->anyTxReservations(0, 2 * offset));
+			CPPUNIT_ASSERT_EQUAL(false, table->anyTxReservations(0, 2 * offset));			
 		}
 
 		void testAnyRxReservations() {
@@ -544,19 +469,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			table->mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX));
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());
-
-			table->mark(1, Reservation(SYMBOLIC_ID_UNSET, Reservation::TX_CONT));
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table->getReservation(1).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table_tx->getReservation(1).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());			
 
 			table->mark(2, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX));
 			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table->getReservation(1).getAction());
-			CPPUNIT_ASSERT_EQUAL(Reservation::TX_CONT, table_tx->getReservation(1).getAction());
+			CPPUNIT_ASSERT_EQUAL(Reservation::TX, table_tx->getReservation(0).getAction());			
 			// RX in own table, but RX does *not* forward to a transmitter table.
 			CPPUNIT_ASSERT_EQUAL(Reservation::RX, table->getReservation(2).getAction());
 			CPPUNIT_ASSERT_EQUAL(Reservation::IDLE, table_tx->getReservation(2).getAction());
@@ -602,23 +519,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			third_table.linkReceiverReservationTable(table_rx_2);
 			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(SYMBOLIC_ID_UNSET, Reservation::RX)), no_rx_available_error);
 			CPPUNIT_ASSERT_THROW(third_table.mark(0, Reservation(MacId(1), Reservation::RX)), no_rx_available_error);
-		}
-
-		void testLinkedRXTablesMultiSlot() {
-//			coutd.setVerbose(true);
-			unsigned int num_slots = 3;
-			Reservation res = Reservation(MacId(42), Reservation::RX, num_slots);
-			int slot_offset = 5;
-			table->mark(slot_offset, res);
-			std::vector<ReservationTable*> rx_tables = {table_rx_1, table_rx_2};
-			for (size_t t = slot_offset; t < slot_offset + num_slots; t++) {
-				CPPUNIT_ASSERT_EQUAL(true, std::any_of(rx_tables.begin(), rx_tables.end(), [t] (ReservationTable* rx_table) {
-					bool is_busy = !rx_table->isIdle(t);
-//					std::cout << "t=" << t << ": " << rx_table->getReservation(t) << " -> " << (is_busy ? "busy" : "idle") << std::endl;
-//					std::cout.flush();
-					return is_busy;
-				}));
-			}
 		}
 
 		void testDefaultReservation() {
@@ -671,12 +571,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testNumIdleSlots);
 			CPPUNIT_TEST(testFindCandidateSlotsAllIdle);
 			CPPUNIT_TEST(testFindEarliestOffset);
-			CPPUNIT_TEST(testFindCandidateSlotsRespectRX);
-			CPPUNIT_TEST(testMultiSlotTransmissionReservationTx);
-			CPPUNIT_TEST(testMultiSlotTransmissionReservationRx);
-			CPPUNIT_TEST(testMultiSlotTransmissionReservationBusy);
-			CPPUNIT_TEST(testMultiSlotTransmissionReservationIdle);
-			CPPUNIT_TEST(testMultiSlotTransmissionReservationTxCont);
+			CPPUNIT_TEST(testFindCandidateSlotsRespectRX);			
 			CPPUNIT_TEST(testCountReservedTxSlots);
 			CPPUNIT_TEST(testGetTxReservations);
 			CPPUNIT_TEST(testIntegrateTxReservations);
@@ -684,8 +579,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testAnyRxReservations);
 			CPPUNIT_TEST(testLocking);
 			CPPUNIT_TEST(testLinkedTXTable);
-			CPPUNIT_TEST(testLinkedRXTables);
-			CPPUNIT_TEST(testLinkedRXTablesMultiSlot);
+			CPPUNIT_TEST(testLinkedRXTables);			
 			CPPUNIT_TEST(testDefaultReservation);
 			CPPUNIT_TEST(testFindEarliestIdleSlots);
 		CPPUNIT_TEST_SUITE_END();

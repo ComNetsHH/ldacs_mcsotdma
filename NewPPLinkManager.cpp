@@ -11,16 +11,12 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 NewPPLinkManager::NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
-void NewPPLinkManager::onReceptionBurstStart(unsigned int burst_length) {	
+void NewPPLinkManager::onReceptionReservation(unsigned int burst_length) {	
 	coutd << *this << "::onReception";
 	communication_during_this_slot = true;
 }
 
-void NewPPLinkManager::onReceptionBurst(unsigned int remaining_burst_length) {
-	communication_during_this_slot = true;
-}
-
-L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) {
+L2Packet* NewPPLinkManager::onTransmissionReservation(unsigned int burst_length) {
 	communication_during_this_slot = true;
 	coutd << *this << "::onTransmission -> ";
 	// instantiate packet
@@ -38,10 +34,6 @@ L2Packet* NewPPLinkManager::onTransmissionBurstStart(unsigned int burst_length) 
 	// return packet
 	mac->statisticReportUnicastSent();
 	return packet;
-}
-
-void NewPPLinkManager::onTransmissionBurst(unsigned int remaining_burst_length) {
-	communication_during_this_slot = true;
 }
 
 void NewPPLinkManager::notifyOutgoing(unsigned long num_bits) {

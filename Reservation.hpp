@@ -24,27 +24,16 @@ class Reservation {
 			/** Reservation for some other user. */
 			BUSY,
 			/** Reservation for me, and I should *listen* during this slot. */
-			RX,
-			/** Reservation for me, and I should *continue listening* during this slot. */
-			RX_CONT,
+			RX,			
 			/** Reservation for me, and I should *listen* for a beacon during this slot. */
 			RX_BEACON,
 			/** Reservation for me, and I should *start to transmit* during this slot. */
-			TX,
-			/** Reservation for me, and I should *continue transmitting* during this slot. */
-			TX_CONT,
+			TX,			
 			/** Reservation for me, and i should *transmit* a beacon during this slot. */
 			TX_BEACON,
 			/** A locked reservation has been considered in a link request proposal and shouldn't be used until this negotiation has concluded. */
 			LOCKED
 		};
-
-		/**
-		 * @param target
-		 * @param action
-		 * @param num_remaining_slots For a continuous burst, the number of slots *after* this one that should also be used for this transmission burst, may be incorporated into a Reservation.
-		 */
-		Reservation(const MacId& target, Action action, unsigned int num_remaining_slots);
 
 		Reservation(const MacId& target, Action action);
 
@@ -70,21 +59,6 @@ class Reservation {
 
 		void setTarget(const MacId& target);
 
-//		/**
-//		 * @return Whether locking succeeded.
-//		 */
-//		bool lock();
-
-		/**
-		 * @return Number of remaining slots this transmission burst continues for.
-		 */
-		unsigned int getNumRemainingSlots() const;
-
-		/**
-		 * @param num_slots The number of slots this transmission burst continues for.
-		 */
-		void setNumRemainingSlots(const unsigned int& num_slots);
-
 		bool operator==(const Reservation& other) const;
 
 		bool operator!=(const Reservation& other) const;
@@ -102,12 +76,7 @@ class Reservation {
 		/**
 		 * @return Whether this denotes a reserved transmission resource.
 		 */
-		bool isTx() const;
-
-		/**
-		 * @return Whether this denotes a continued transmission resource.
-		 */
-		bool isTxCont() const;
+		bool isTx() const;		
 
 		/**
 		 * @return Whether this denotes any type of transmission.
@@ -117,12 +86,7 @@ class Reservation {
 		/**
 		 * @return Whether this denotes a reception resource.
 		 */
-		bool isRx() const;
-
-		/**
-		 * @return Whether this denotes a continued reception resource.
-		 */
-		bool isRxCont() const;
+		bool isRx() const;		
 
 		/**
 		 * @return Whether this denotes a resource for beacon reception.
@@ -154,9 +118,7 @@ class Reservation {
 	protected:
 		/** Target MAC ID. */
 		MacId target;
-		Action action;
-		/** In case of a transmission, this keeps the number of remaining slots for this transmission burst. */
-		unsigned int num_remaining_slots = 0;
+		Action action;		
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const Reservation::Action& action) {
@@ -173,11 +135,7 @@ class Reservation {
 			case Reservation::RX: {
 				str = "RX";
 				break;
-			}
-			case Reservation::RX_CONT: {
-				str = "RX_CONT";
-				break;
-			}
+			}			
 			case Reservation::RX_BEACON: {
 				str = "RX_BEACON";
 				break;
@@ -185,11 +143,7 @@ class Reservation {
 			case Reservation::TX: {
 				str = "TX";
 				break;
-			}
-			case Reservation::TX_CONT: {
-				str = "TX_CONT";
-				break;
-			}
+			}			
 			case Reservation::TX_BEACON: {
 				str = "TX_BEACON";
 				break;

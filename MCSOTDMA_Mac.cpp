@@ -115,19 +115,10 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				if (num_rxs > num_receivers)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				LinkManager *link_manager = getLinkManager(reservation.getTarget());
-				link_manager->onReceptionBurstStart(reservation.getNumRemainingSlots());
+				link_manager->onReceptionReservation(0);
 				onReceptionSlot(channel);
 				break;
-			}
-			case Reservation::RX_CONT: {
-				num_rxs++;
-				if (num_rxs > num_receivers)
-					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
-				LinkManager *link_manager = getLinkManager(reservation.getTarget());
-				link_manager->onReceptionBurst(reservation.getNumRemainingSlots());
-				onReceptionSlot(channel);
-				break;
-			}
+			}			
 			case Reservation::TX: {
 				// Ensure that we have no simultaneous transmissions scheduled.
 				num_txs++;
@@ -147,9 +138,8 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				// Find the corresponding LinkManager.
 				const MacId& id = reservation.getTarget();
 				LinkManager* link_manager = getLinkManager(id);
-				// Tell it about the transmission slot.
-				unsigned int num_tx_slots = reservation.getNumRemainingSlots();
-				L2Packet* outgoing_packet = link_manager->onTransmissionBurstStart(num_tx_slots);
+				// Tell it about the transmission slot.				
+				L2Packet* outgoing_packet = link_manager->onTransmissionReservation(0);
 				if (outgoing_packet != nullptr) {
 					outgoing_packet->notifyCallbacks();				
 					passToLower(outgoing_packet, channel->getCenterFrequency());					
@@ -161,27 +151,18 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 						this->stat_unicast_wasted_tx_opportunities.increment();
 				}
 				break;
-			}
-			case Reservation::TX_CONT: {
-				// Transmission has already started, so a transmitter is busy.
-				num_txs++;
-				if (num_txs > num_transmitters)
-					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
-				LinkManager *link_manager = getLinkManager(reservation.getTarget());
-				link_manager->onTransmissionBurst(reservation.getNumRemainingSlots());
-				break;
-			}
+			}			
 			case Reservation::TX_BEACON: {
 				num_txs++;
 				if (num_txs > num_transmitters)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
-				passToLower(getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onTransmissionBurstStart(reservation.getNumRemainingSlots()), channel->getCenterFrequency());
+				passToLower(getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onTransmissionReservation(0), channel->getCenterFrequency());
 			}
 			case Reservation::RX_BEACON: {
 				num_rxs++;
 				if (num_rxs > num_receivers)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
-				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onReceptionBurstStart(reservation.getNumRemainingSlots());
+				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onReceptionReservation(0);
 			}
 		}
 		coutd.decreaseIndent();
