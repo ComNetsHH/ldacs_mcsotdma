@@ -35,8 +35,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setUp() override {
 			own_id = MacId(42);
 			partner_id = MacId(43);
-			env_me = new TestEnvironment(own_id, partner_id);
-			env_you = new TestEnvironment(partner_id, own_id);
+			env_me = new TestEnvironment(own_id, partner_id, true);
+			env_you = new TestEnvironment(partner_id, own_id, true);
 
 			center_frequency1 = env_me->p2p_freq_1;
 			center_frequency2 = env_me->p2p_freq_2;

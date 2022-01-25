@@ -268,7 +268,7 @@ class RLCLayer : public IRlc {
 			mac_layer->setLowerLayer(phy_layer);
 		}
 
-		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id) : TestEnvironment(own_id, communication_partner_id, false) {}
+		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id) : TestEnvironment(own_id, communication_partner_id, true) {}
 
 		virtual ~TestEnvironment() {
 			delete mac_layer;
