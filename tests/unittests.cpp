@@ -18,7 +18,7 @@
 #include "BeaconModuleTests.cpp"
 #include "CongestionEstimatorTests.cpp"
 #include "ThreeUsersTests.cpp"
-#include "NewPPLinkManagerTests.cpp"
+#include "PPLinkManagerTests.cpp"
 #include "ThirdPartyLinkTests.cpp"
 
 int main() {
@@ -38,7 +38,7 @@ int main() {
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
 	runner.addTest(ThreeUsersTests::suite());
-	runner.addTest(NewPPLinkManagerTests::suite());
+	runner.addTest(PPLinkManagerTests::suite());
 	runner.addTest(ThirdPartyLinkTests::suite());
 
 	runner.run();

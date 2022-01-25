@@ -11,15 +11,15 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
-class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentPayload::Callback {
+class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentPayload::Callback {
 
-	friend class NewPPLinkManagerTests;	
+	friend class PPLinkManagerTests;	
 	friend class SystemTests;
 	friend class ThreeUsersTests;
 	friend class ThirdPartyLinkTests;
 
 	public:
-		NewPPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
+		PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
 		
 		void onReceptionReservation(unsigned int burst_length) override;		
 		L2Packet* onTransmissionReservation(unsigned int burst_length) override;		

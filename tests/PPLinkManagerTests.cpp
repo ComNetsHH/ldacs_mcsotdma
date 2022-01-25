@@ -4,16 +4,16 @@
 
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
-#include "../NewPPLinkManager.hpp"
+#include "../PPLinkManager.hpp"
 #include "../SHLinkManager.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
-	class NewPPLinkManagerTests : public CppUnit::TestFixture {
+	class PPLinkManagerTests : public CppUnit::TestFixture {
 	private:
 		TestEnvironment* env, * env_you;
 		uint32_t planning_horizon;
-		NewPPLinkManager *pp, *pp_you;
+		PPLinkManager *pp, *pp_you;
 		SHLinkManager *sh, *sh_you;
 		MacId own_id, partner_id;		
 		ReservationManager *reservation_manager, *reservation_manager_you;
@@ -29,8 +29,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env_you->phy_layer->connected_phys.push_back(env->phy_layer);
 			mac = env->mac_layer;
 			mac_you = env_you->mac_layer;
-			pp = (NewPPLinkManager*) mac->getLinkManager(partner_id);
-			pp_you = (NewPPLinkManager*) mac_you->getLinkManager(own_id);
+			pp = (PPLinkManager*) mac->getLinkManager(partner_id);
+			pp_you = (PPLinkManager*) mac_you->getLinkManager(own_id);
 			sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);			
 			sh_you = (SHLinkManager*) mac_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);						
 			reservation_manager = mac->getReservationManager();
@@ -1490,7 +1490,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
  
 
 
-	CPPUNIT_TEST_SUITE(NewPPLinkManagerTests);
+	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
 		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
 		CPPUNIT_TEST(testSlotSelection);

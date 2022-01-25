@@ -6,7 +6,7 @@
 #include <cppunit/extensions/HelperMacros.h>
 #include "MockLayers.hpp"
 #include "../LinkManager.hpp"
-#include "../NewPPLinkManager.hpp"
+#include "../PPLinkManager.hpp"
 #include "../SHLinkManager.hpp"
 
 
@@ -29,7 +29,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		PHYLayer* phy_layer_me, * phy_layer_you;
 		size_t num_outgoing_bits;
 
-		NewPPLinkManager *lm_me, *lm_you;
+		PPLinkManager *lm_me, *lm_you;
 
 	public:
 		void setUp() override {
@@ -60,8 +60,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy_layer_you->connected_phys.push_back(phy_layer_me);
 
 			num_outgoing_bits = 512;
-			lm_me = (NewPPLinkManager*) mac_layer_me->getLinkManager(partner_id);
-			lm_you = (NewPPLinkManager*) mac_layer_you->getLinkManager(own_id);
+			lm_me = (PPLinkManager*) mac_layer_me->getLinkManager(partner_id);
+			lm_you = (PPLinkManager*) mac_layer_you->getLinkManager(own_id);
 		}
 
 		void tearDown() override {

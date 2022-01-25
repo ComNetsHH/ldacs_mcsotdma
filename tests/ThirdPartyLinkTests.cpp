@@ -5,7 +5,7 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../ThirdPartyLink.hpp"
-#include "../NewPPLinkManager.hpp"
+#include "../PPLinkManager.hpp"
 #include "MockLayers.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -16,7 +16,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		TestEnvironment *env_initator, *env_recipient, *env;
 		MCSOTDMA_Mac *mac, *mac_initiator, *mac_recipient;
 		ReservationManager *reservation_manager;
-		NewPPLinkManager *pp_initiator, *pp_recipient;
+		PPLinkManager *pp_initiator, *pp_recipient;
 
 	public:
 		void setUp() override {
@@ -26,10 +26,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// these establish links
 			env_initator = new TestEnvironment(id_initiator, id_recipient);
 			mac_initiator = env_initator->mac_layer;
-			pp_initiator = (NewPPLinkManager*) mac_initiator->getLinkManager(id_recipient);
+			pp_initiator = (PPLinkManager*) mac_initiator->getLinkManager(id_recipient);
 			env_recipient = new TestEnvironment(id_recipient, id_initiator);
 			mac_recipient = env_recipient->mac_layer;
-			pp_recipient = (NewPPLinkManager*) mac_recipient->getLinkManager(id_initiator);
+			pp_recipient = (PPLinkManager*) mac_recipient->getLinkManager(id_initiator);
 			// this will be the third party
 			env = new TestEnvironment(id, id_initiator);
 			mac = env->mac_layer;
@@ -103,7 +103,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
 			// both link initiator and the third party user should agree on the slot offset where the link reply is expected
 			CPPUNIT_ASSERT_GREATER(0, link.num_slots_until_expected_link_reply);
-			CPPUNIT_ASSERT_EQUAL(link.num_slots_until_expected_link_reply, ((NewPPLinkManager*) mac_initiator->getLinkManager(id_recipient))->link_state.reply_offset);
+			CPPUNIT_ASSERT_EQUAL(link.num_slots_until_expected_link_reply, ((PPLinkManager*) mac_initiator->getLinkManager(id_recipient))->link_state.reply_offset);
 			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), reservation_manager->getBroadcastReservationTable()->getReservation(link.num_slots_until_expected_link_reply));
 			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), env_initator->mac_layer->reservation_manager->getBroadcastReservationTable()->getReservation(link.num_slots_until_expected_link_reply));
 			// drop all packets from now on => link reply will surely not be received

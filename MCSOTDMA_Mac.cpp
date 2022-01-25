@@ -5,7 +5,7 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "InetPacketPayload.hpp"
-#include "NewPPLinkManager.hpp"
+#include "PPLinkManager.hpp"
 #include "SHLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
@@ -209,8 +209,8 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {						
-			link_manager = new NewPPLinkManager(internal_id, reservation_manager, this);
-			// ((NewPPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
+			link_manager = new PPLinkManager(internal_id, reservation_manager, this);
+			// ((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
 			// Receiver tables are only set for PPLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
@@ -355,7 +355,7 @@ void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
 	// now also handle those that already exist
 	for (auto pair : link_managers) {
 		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) {			
-			((NewPPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);			
+			((PPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);			
 		}
 	}	
 }
@@ -364,7 +364,7 @@ size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 	size_t n = 0;	
 	for (const auto pair : link_managers) 
 		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-			n += ((NewPPLinkManager*) pair.second)->getNumUtilizedResources();					
+			n += ((PPLinkManager*) pair.second)->getNumUtilizedResources();					
 	return n;
 }
 
