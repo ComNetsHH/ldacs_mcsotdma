@@ -82,9 +82,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setContentionMethod(ContentionMethod method) override;
 
 		void setAlwaysScheduleNextBroadcastSlot(bool value) override;
-		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;
-
-		void setCloseP2PLinksEarly(bool flag) override;
+		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;		
 
 		void setMinBeaconOffset(unsigned int value) override;
 		void setMaxBeaconOffset(unsigned int value) override;

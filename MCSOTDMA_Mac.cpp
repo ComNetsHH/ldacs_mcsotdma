@@ -359,20 +359,6 @@ void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
 	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
 }
 
-void MCSOTDMA_Mac::setCloseP2PLinksEarly(bool flag) {	
-	if (flag)
-		throw std::runtime_error("closing P2P links early is currently broken, please don't attempt this!");
-	close_link_early_if_no_first_data_packet_comes_in = flag;
-	if (!use_new_pp_link_manager) {
-		for (auto pair : link_managers) {
-			const MacId id = pair.first;
-			auto *manager = (PPLinkManager*) pair.second;
-			if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) 
-				manager->setShouldTerminateLinksEarly(flag);
-		}
-	}
-}
-
 void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
 	active_neighbor_observer.reportActivity(id);
 }

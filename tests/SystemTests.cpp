@@ -626,9 +626,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link. */
-		void testGiveUpLinkIfFirstDataPacketDoesntComeThrough() {
-			mac_layer_me->setCloseP2PLinksEarly(true);
-			mac_layer_you->setCloseP2PLinksEarly(true);
+		void testGiveUpLinkIfFirstDataPacketDoesntComeThrough() {			
 			auto *p2p_lm_me = mac_layer_me->getLinkManager(partner_id), *p2p_lm_you = mac_layer_you->getLinkManager(own_id);			
 			// have comm. partner establish a link
 			p2p_lm_you->notifyOutgoing(512);
@@ -873,9 +871,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * When there's broadcasts going on, link requests should be base header + broadcast + link request.
 		 * */
-		void testLinkRequestPacketsWithBroadcasts() {			
-			mac_layer_me->setCloseP2PLinksEarly(false);
-			mac_layer_you->setCloseP2PLinksEarly(false);
+		void testLinkRequestPacketsWithBroadcasts() {						
 			size_t num_slots = 0, max_slots = 1000;
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_me->should_there_be_more_broadcast_data = true;
