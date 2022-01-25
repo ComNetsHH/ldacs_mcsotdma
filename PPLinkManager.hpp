@@ -150,7 +150,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		bool isLinkEstablishedAndBidirectional() const;	
 
 		/** If a link is deemed faulty due to not receiving data packets, it may be closed early. */
-		void onFaultyLink();
+		void onFaultyLink();		
 
 	protected:
 		/** Number of transmission bursts until link expiry. */

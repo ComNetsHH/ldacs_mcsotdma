@@ -297,6 +297,10 @@ void SHLinkManager::sendLinkReply(L2HeaderLinkReply* header, LinkEstablishmentPa
 	if (current_reservation_table->getReservation(time_slot_offset).isIdle()) {
 		current_reservation_table->mark(time_slot_offset, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));		
 		coutd << "reserved -> ";
+		if (!next_broadcast_scheduled) {
+			next_broadcast_scheduled = true;
+			next_broadcast_slot = time_slot_offset;
+		}
 	} else {
 		coutd << "already reserved (" << current_reservation_table->getReservation(time_slot_offset) << " ) -> ";
 	}
@@ -428,8 +432,11 @@ void SHLinkManager::scheduleBroadcastSlot() {
 }
 
 void SHLinkManager::unscheduleBroadcastSlot() {
-	if (next_broadcast_slot > 0 && current_reservation_table->getReservation(next_broadcast_slot).isTx())
+	if (next_broadcast_scheduled) {
 		current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+		next_broadcast_slot = 0;
+		next_broadcast_scheduled = false;
+	}
 }
 
 void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
