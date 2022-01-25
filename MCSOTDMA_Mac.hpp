@@ -124,10 +124,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 		void statisticReportBeaconReceived() {
 			stat_num_beacons_rcvd.increment();
-		}
-		void statisticReportLinkInfoReceived() {
-			stat_num_link_infos_rcvd.increment();
-		}
+		}		
 		void statisticReportPacketSent() {
 			stat_num_packets_sent.increment();
 		}
@@ -145,10 +142,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 		void statisticReportBeaconSent() {
 			stat_num_beacons_sent.increment();
-		}
-		void statisticReportLinkInfoSent() {
-			stat_num_link_infos_sent.increment();
-		}
+		}		
 		void statisticReportCancelledLinkRequest(size_t num_cancelled_requests) {
 			stat_num_requests_cancelled.incrementBy(num_cancelled_requests);
 		}
@@ -254,16 +248,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_third_party_requests_rcvd = Statistic("mcsotdma_statistic_num_third_party_link_requests_received", this);
 		Statistic stat_num_replies_rcvd = Statistic("mcsotdma_statistic_num_link_replies_received", this);
 		Statistic stat_num_third_party_replies_rcvd = Statistic("mcsotdma_statistic_num_third_party_replies_rcvd", this);
-		Statistic stat_num_beacons_rcvd = Statistic("mcsotdma_statistic_num_beacons_received", this);
-		Statistic stat_num_link_infos_rcvd = Statistic("mcsotdma_statistic_num_link_infos_received", this);
+		Statistic stat_num_beacons_rcvd = Statistic("mcsotdma_statistic_num_beacons_received", this);		
 		Statistic stat_num_packets_sent = Statistic("mcsotdma_statistic_num_packets_sent", this);
 		Statistic stat_num_requests_sent = Statistic("mcsotdma_statistic_num_link_requests_sent", this);
 		/** Number of non-beacon broadcast-type packets that were sent. */
 		Statistic stat_num_broadcasts_sent = Statistic("mcsotdma_statistic_num_broadcasts_sent", this);
 		Statistic stat_num_unicasts_sent = Statistic("mcsotdma_statistic_num_unicasts_sent", this);
 		Statistic stat_num_replies_sent = Statistic("mcsotdma_statistic_num_link_replies_sent", this);
-		Statistic stat_num_beacons_sent = Statistic("mcsotdma_statistic_num_beacons_sent", this);
-		Statistic stat_num_link_infos_sent = Statistic("mcsotdma_statistic_num_link_infos_sent", this);
+		Statistic stat_num_beacons_sent = Statistic("mcsotdma_statistic_num_beacons_sent", this);		
 		Statistic stat_num_requests_cancelled = Statistic("mcsotdma_statistic_num_cancelled_link_requests", this);
 		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);		
 		Statistic stat_num_channel_errors = Statistic("mcsotdma_statistic_num_channel_errors", this);		
@@ -295,15 +287,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_third_party_requests_rcvd,
 				&stat_num_replies_rcvd,
 				&stat_num_third_party_replies_rcvd,
-				&stat_num_beacons_rcvd,
-				&stat_num_link_infos_rcvd,
+				&stat_num_beacons_rcvd,				
 				&stat_num_packets_sent,
 				&stat_num_requests_sent,
 				&stat_num_broadcasts_sent,
 				&stat_num_unicasts_sent,
 				&stat_num_replies_sent,
-				&stat_num_beacons_sent,
-				&stat_num_link_infos_sent,
+				&stat_num_beacons_sent,				
 				&stat_num_requests_cancelled,
 				&stat_num_packet_collisions,	
 				&stat_num_channel_errors,			

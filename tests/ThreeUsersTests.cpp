@@ -312,12 +312,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			size_t num_packets_sent_1 = (size_t) mac_1->stat_num_packets_sent.get(), num_packets_sent_2 = (size_t) mac_2->stat_num_packets_sent.get(), num_packets_sent_3 = (size_t) mac_3->stat_num_packets_sent.get();
 			size_t num_broadcasts_sent_1 = (size_t) mac_1->stat_num_broadcasts_sent.get(), num_broadcasts_sent_2 = (size_t) mac_2->stat_num_broadcasts_sent.get(), num_broadcasts_sent_3 = (size_t) mac_3->stat_num_broadcasts_sent.get();
 			size_t num_beacons_sent_1 = (size_t) mac_1->stat_num_beacons_sent.get(), num_beacons_sent_2 = (size_t) mac_2->stat_num_beacons_sent.get(), num_beacons_sent_3 = (size_t) mac_3->stat_num_beacons_sent.get();			
-			// no unicast-type packets should've been sent
-			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
+			// no unicast-type packets should've been sent			
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_replies_sent.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_requests_sent.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_unicasts_sent.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_link_infos_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_1->stat_num_unicasts_sent.get());			
 			// now, the number of sent packets should equal the sum of broadcasts and beacons			
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_1 + num_beacons_sent_1, num_packets_sent_1);
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_2 + num_beacons_sent_2, num_packets_sent_2);

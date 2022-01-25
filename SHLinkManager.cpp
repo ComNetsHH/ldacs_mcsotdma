@@ -108,18 +108,7 @@ L2Packet* SHLinkManager::onTransmissionReservation(unsigned int remaining_burst_
 						continue;
 					}
 				}				
-				if (upper_layer_header->frame_type != L2Header::base) {
-					// link info
-					if (upper_layer_header->frame_type == L2Header::link_info) {
-						// populate
-						auto link_info_payload = (LinkInfoPayload*&) upper_layer_payload;
-						link_info_payload->populate();						
-						// check if still valid
-						if (link_info_payload->hasExpired())
-							continue; // don't add it if invalid
-						// otherwise, report to the MAC
-						mac->statisticReportLinkInfoSent();
-					}
+				if (upper_layer_header->frame_type != L2Header::base) {					
 					// copy
 					L2Header *header = upper_layer_header->copy();
 					L2Packet::Payload *payload = upper_layer_data->getPayloads().at(i)->copy();
@@ -575,18 +564,6 @@ void SHLinkManager::onPacketReception(L2Packet*& packet) {
 	if (packet->getBeaconIndex() == -1)
 		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());	
 	LinkManager::onPacketReception(packet);
-}
-
-void SHLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
-	mac->statisticReportLinkInfoReceived();
-	const LinkInfo &info = payload->getLinkInfo();
-	const MacId &tx_id = info.getTxId(), &rx_id = info.getRxId();
-	if (tx_id == mac->getMacId() || rx_id == mac->getMacId()) {
-		coutd << "involves us; discarding -> ";
-	} else {
-		coutd << "passing on to " << tx_id  << " -> ";		
-		((PPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
-	}
 }
 
 void SHLinkManager::setTargetCollisionProb(double value) {

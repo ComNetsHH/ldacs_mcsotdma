@@ -91,11 +91,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 				processLinkReplyMessage((const L2HeaderLinkReply*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
 				break;
 			}
-			case L2Header::link_info: {
-				coutd << "processing link info -> ";
-				processLinkInfoMessage((const L2HeaderLinkInfo*&) header, (const LinkInfoPayload*&) payload);				
-				break;
-			}
 			default: {
 				throw std::invalid_argument("LinkManager::onPacketReception for an unexpected header type.");
 			}
@@ -139,11 +134,6 @@ void LinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, 
 
 void LinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
 	coutd << *this << "::processLinkReplyMessage" << std::endl;
-	throw std::runtime_error("not implemented");
-}
-
-void LinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload) {
-	coutd << *this << "::processLinkInfoMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 

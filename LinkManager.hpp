@@ -13,7 +13,6 @@
 #include "FrequencyChannel.hpp"
 #include "ReservationTable.hpp"
 #include "ReservationManager.hpp"
-#include "LinkInfoPayload.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -134,8 +133,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 		
 		virtual void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
-		virtual void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
-		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);		
+		virtual void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);		
 
 	protected:
 		virtual void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
