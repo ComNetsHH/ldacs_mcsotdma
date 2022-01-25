@@ -279,7 +279,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint32_t(25), planning_horizon);
 			unsigned int min_offset = 0, num_candidates = 5, range_length = 5;
 			// At first, all slots are free.
-			std::vector<unsigned int> candidate_slots = table->findPPCandidates(num_candidates, min_offset, 0, range_length, range_length, 0);
+			std::vector<unsigned int> candidate_slots = table->findPPCandidates(num_candidates, min_offset, 0, range_length, range_length, 1);
 			// So we should have no problem finding enough candidates.
 			CPPUNIT_ASSERT_EQUAL(size_t(num_candidates), candidate_slots.size());
 			// And these should be consecutive slots starting at 0.
@@ -517,12 +517,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLocking() {
 			// Find some candidate
 			unsigned int num_candidates = 3;
-			std::vector<unsigned int> slots = table->findPPCandidates(num_candidates, 0, 0, 5, 5, 0);
+			std::vector<unsigned int> slots = table->findPPCandidates(num_candidates, 0, 0, 5, 5, 1);
 			// Now lock these slots.
 			for (auto t : slots)
 				table->lock(t, MacId(42));
 			// So these slots should *not* be considered for a further request.
-			std::vector<unsigned int> slots2 = table->findPPCandidates(num_candidates, 0, 0, 5, 5, 0);
+			std::vector<unsigned int> slots2 = table->findPPCandidates(num_candidates, 0, 0, 5, 5, 1);
 			CPPUNIT_ASSERT_EQUAL(slots.size(), slots2.size());
 
 			for (int32_t i : slots) { // for every slot out of the first set
