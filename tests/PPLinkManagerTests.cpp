@@ -1487,6 +1487,122 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_you->link_status);
 		}
+
+		/** Tests that users report the no. of TX slots they require. */
+		void testReportedTxSlots() {			
+			// make us require 3 TX slots
+			unsigned int expected_num_tx_slots = 3;
+			unsigned int num_bits = env->phy_layer->getCurrentDatarate() * expected_num_tx_slots;
+			mac->notifyOutgoing(num_bits, partner_id);
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());			
+			// make them require 2 TX slots
+			unsigned int expected_num_tx_slots_you = 2;
+			unsigned int num_bits_you = env_you->phy_layer->getCurrentDatarate() * expected_num_tx_slots_you;
+			pp_you->outgoing_traffic_estimate.put(num_bits_you);
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots_you, pp_you->getRequiredTxSlots());			
+			// send request			
+			int num_slots_until_request = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(0, num_slots_until_request);
+			for (int t = 0; t < num_slots_until_request; t++) {				
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+				mac->notifyOutgoing(num_bits, partner_id);					
+				CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());			
+				pp_you->outgoing_traffic_estimate.put(num_bits_you);
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp_you->reported_resoure_requirement);
+			// send reply
+			int num_slots_until_reply = ((SHLinkManager*) mac_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(0, num_slots_until_reply);
+			for (int t = 0; t < num_slots_until_reply; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();											
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_replies_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots_you, pp->reported_resoure_requirement);
+		}
+
+		/** Tests that if a link request proposes not enough TX slots, it is declined and a counter-offer made. */
+		void testDeclineLinkIfTxSlotsInsufficient() {
+			// make us require 3 TX slots
+			unsigned int expected_num_tx_slots = 3;
+			unsigned int num_bits = env->phy_layer->getCurrentDatarate() * expected_num_tx_slots;
+			mac->notifyOutgoing(num_bits, partner_id);
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());			
+			// make us propose zero TX slots for them
+			pp->setForceBidirectionalLinks(false);
+			pp->reported_resoure_requirement = 0;
+			CPPUNIT_ASSERT_EQUAL(uint(0), pp->getRequiredRxSlots());
+			// send request			
+			int num_slots_until_request = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(0, num_slots_until_request);
+			for (int t = 0; t < num_slots_until_request; t++) {				
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+				mac->notifyOutgoing(num_bits, partner_id);					
+				CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());							
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp_you->reported_resoure_requirement);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots.get());
+			// for the sake of this test, don't attempt to send another request (sometimes this would be quicker than the counter request...)
+			pp->cancelLink();			
+			sh->unscheduleBroadcastSlot();
+			// send counter-request
+			num_slots_until_request = ((SHLinkManager*) mac_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_slot;
+			CPPUNIT_ASSERT_GREATER(0, num_slots_until_request);
+			for (int t = 0; t < num_slots_until_request; t++) {				
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();				
+				pp->outgoing_traffic_estimate.put(num_bits);											
+				CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());							
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(pp->getRequiredTxSlots(), pp_you->reported_resoure_requirement);
+			CPPUNIT_ASSERT_EQUAL(pp_you->getRequiredTxSlots(), pp->reported_resoure_requirement);
+			// now establish link
+			int num_slots = 0, max_slots = 100;
+			while (!(pp->link_status == LinkManager::link_established && pp_you->link_status == LinkManager::link_established) && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+				pp->outgoing_traffic_estimate.put(num_bits);				
+			}			
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(pp->getRequiredTxSlots(), pp_you->reported_resoure_requirement);
+			CPPUNIT_ASSERT_EQUAL(pp_you->getRequiredTxSlots(), pp->reported_resoure_requirement);
+			CPPUNIT_ASSERT_EQUAL(pp->getRequiredTxSlots(), pp_you->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp_you->getRequiredTxSlots(), pp->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length_tx, pp_you->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length_rx, pp_you->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length, pp_you->link_state.burst_length);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset, pp_you->link_state.burst_offset);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.timeout, pp_you->link_state.timeout);
+			CPPUNIT_ASSERT_EQUAL(true, pp_you->link_state.is_link_initator);
+			CPPUNIT_ASSERT_EQUAL(false, pp->link_state.is_link_initator);
+		}
  
 
 
@@ -1526,6 +1642,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForBoth);
 		CPPUNIT_TEST(testCloseLinkEarly);
 		CPPUNIT_TEST(testCloseLinkEarlyOneSided);
+		CPPUNIT_TEST(testReportedTxSlots);
+		CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

@@ -142,6 +142,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstabl
 	unsigned int burst_length_tx = tx_rx_split.first,
 				 burst_length_rx = tx_rx_split.second,
 				 burst_length = burst_length_tx + burst_length_rx;
+	coutd << "proposing a link with a " << burst_length << "-slot burst length (" << burst_length_tx << " for us, " << burst_length_rx << " for them) -> ";
 	// select proposal resources
 	auto proposal_resources = this->slotSelection(this->proposal_num_frequency_channels, this->proposal_num_time_slots, burst_length, burst_length_tx);
 	if (proposal_resources.size() < size_t(2)) { // 1 proposal is the link reply, so we expect at least 2
@@ -362,6 +363,10 @@ void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header
 		link.processLinkRequestMessage(header, payload);
 	} else { // if we are the recipient
 		coutd << "link request from " << origin << " to us -> own link status is '" << link_status << "' -> ";		
+		// remember number of slots that the communication partner requires
+		coutd << "saving report that they require " << header->burst_length_tx << " TX slots (set to ";
+		setReportedDesiredTxSlots(header->burst_length_tx);
+		coutd << reported_resoure_requirement << ") -> ";
 		mac->statisticReportLinkRequestReceived();
 		// initial link request
 		if (this->link_status == link_not_established) {
@@ -369,8 +374,7 @@ void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header
 			this->processLinkRequestMessage_initial(header, payload);
 		// cancel the own request and process this one
 		} else if (this->link_status == awaiting_request_generation) {		
-			cancelLink();		
-			coutd << "canceling own request -> " << ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) << " requests cancelled -> ";
+			cancelLink();					
 			coutd << "processing request -> ";
 			this->processLinkRequestMessage_initial(header, payload);
 		// cancel the own reply expectation and process this request
@@ -380,19 +384,12 @@ void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header
 			this->processLinkRequestMessage_initial(header, payload);
 		// cancel the scheduled link and process this request
 		} else if (this->link_status == awaiting_data_tx) {
-			cancelLink();
-			size_t num_replies_cancelled = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
-			if (num_replies_cancelled > 0)
-				coutd << "cancelled " << num_replies_cancelled << " own link replies -> ";
+			cancelLink();			
 			coutd << "processing request -> ";
 			this->processLinkRequestMessage_initial(header, payload);
 		// link re-establishment: cancel remaining scheduled resources and process this request
 		} else if (this->link_status == link_established) {		
-			cancelLink();
-			if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id) != 0)
-				throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link request while the link is established - this shouldn't have happened!");
-			if (((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id))
-				throw std::runtime_error("PPLinkManager::processLinkRequestMessage cancelled a link reply while the link is established - this shouldn't have happened!");
+			cancelLink();			
 			coutd << "processing request -> ";
 			this->processLinkRequestMessage_initial(header, payload);
 		} else {	
@@ -401,26 +398,43 @@ void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header
 	}
 } 
 
-void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& request_header, const LinkManager::LinkEstablishmentPayload*& payload) {
-	coutd << "checking for viable resources -> ";
+void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*& request_header, const LinkManager::LinkEstablishmentPayload*& payload) {		
+	// check whether proposed link is sufficient for our own communication needs
+	unsigned int num_tx_slots = request_header->burst_length - request_header->burst_length_tx;
+	if (num_tx_slots == 0) {
+		if (force_bidirectional_links || mac->isThereMoreData(link_id)) {
+			// communication partner proposed zero transmission slots for us
+			// but we require some -> decline, start own establishment
+			coutd << "communication partner proposed zero transmission slots, but we need some -> ";
+			mac->statisticReportLinkRequestRejectedDueInsufficientTXSlots();
+			cancelLink();						
+			establishLink();
+			return;
+		}
+	}
+	coutd << "checking for viable reply slot -> ";
 	// check whether reply slot is viable	
 	bool free_to_send_reply = false;	
 	unsigned int reply_time_slot_offset = 0;
 	auto resources = payload->resources;
 	SHLinkManager *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-	for (auto it = resources.begin(); it != resources.end(); it++) {
+	for (auto it = resources.begin(); it != resources.end();) {
 		auto pair = *it;
 		if (pair.first->isSH()) {
+			if (reply_time_slot_offset != 0)
+				throw std::invalid_argument("PPLinkManager::processLinkRequestMessage_initial for >1 proposed resources on SH. It should just be the link reply offset.");
 			reply_time_slot_offset = pair.second.at(0);
 			free_to_send_reply = sh_manager->canSendLinkReply(reply_time_slot_offset);
-			// remove this item
-			resources.erase(it);
+			// remove SH resource
+			it = resources.erase(it);			
 			break;
-		}
+		} else
+			it++;
 	}	 		
 	coutd << "reply on SH in " << reply_time_slot_offset << " slots is " << (free_to_send_reply ? "viable" : "NOT viable") << " -> ";
 	if (free_to_send_reply) {		
 		try {				
+			coutd << "choosing a viable, proposed resource -> ";
 			// randomly choose a viable resource
 			// here, the header field's burst_length_tx must be used, during which a receiver must be available
 			auto chosen_resource = chooseRandomResource(resources, request_header->burst_length, request_header->burst_length_tx);
@@ -435,7 +449,7 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			// schedule the link reply
 			L2HeaderLinkReply *reply_header = new L2HeaderLinkReply();
 			reply_header->burst_length = link_state.burst_length;
-			reply_header->burst_length_tx = link_state.burst_length_tx;
+			reply_header->burst_length_tx = getRequiredTxSlots();
 			reply_header->burst_offset = burst_offset;
 			reply_header->timeout = link_state.timeout;
 			reply_header->dest_id = link_id;
@@ -518,6 +532,8 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, co
 		link.processLinkReplyMessage(header, payload, origin_id);
 	} else { // if we are the recipient
 		mac->statisticReportLinkReplyReceived();
+		// save reported, required TX slots
+		setReportedDesiredTxSlots(header->burst_length_tx);
 		// parse selected communication resource
 		const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
 		if (selected_resource_map.size() != size_t(1))
@@ -574,6 +590,14 @@ void PPLinkManager::cancelLink() {
 		// reset counter and flag
 		no_of_consecutive_empty_bursts = 0;
 		received_data_this_burst = false;
+		// cancel requests and replies
+		SHLinkManager *sh_link_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+		size_t num_cancelled_requests = sh_link_manager->cancelLinkRequest(link_id);
+		if (num_cancelled_requests > 0)
+			coutd << "cancelled " << num_cancelled_requests << " pending link requests -> ";
+		size_t num_cancelled_replies = sh_link_manager->cancelLinkReply(link_id);
+		if (num_cancelled_replies > 0)
+			coutd << "cancelled " << num_cancelled_replies << " pending link replies -> ";
 	} else
 		coutd << "link is not established -> ";	
 	coutd << "done -> ";
