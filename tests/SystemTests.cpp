@@ -845,9 +845,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * When there's no broadcasts going on, link requests should be base header + broadcast header + link request.
 		 * */
-		void testLinkRequestPacketsNoBroadcasts() {
-			mac_layer_me->setInitializeBidirectionalLinks(true);
-			mac_layer_you->setInitializeBidirectionalLinks(true);
+		void testLinkRequestPacketsNoBroadcasts() {			
 			size_t num_slots = 0, max_slots = 1000;
 			rlc_layer_me->should_there_be_more_p2p_data = true;
 			rlc_layer_me->should_there_be_more_broadcast_data = false;
@@ -875,9 +873,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * When there's broadcasts going on, link requests should be base header + broadcast + link request.
 		 * */
-		void testLinkRequestPacketsWithBroadcasts() {
-			mac_layer_me->setInitializeBidirectionalLinks(true);
-			mac_layer_you->setInitializeBidirectionalLinks(true);						
+		void testLinkRequestPacketsWithBroadcasts() {			
 			mac_layer_me->setCloseP2PLinksEarly(false);
 			mac_layer_you->setCloseP2PLinksEarly(false);
 			size_t num_slots = 0, max_slots = 1000;

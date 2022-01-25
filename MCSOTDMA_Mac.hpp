@@ -89,8 +89,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setMinBeaconOffset(unsigned int value) override;
 		void setMaxBeaconOffset(unsigned int value) override;
 
-		void setForceBidirectionalLinks(bool flag) override;
-		void setInitializeBidirectionalLinks(bool flag) override;
+		void setForceBidirectionalLinks(bool flag) override;		
 
 		void setWriteResourceUtilizationIntoBeacon(bool flag) override;
 		void setEnableBeacons(bool flag) override;

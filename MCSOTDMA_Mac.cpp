@@ -403,18 +403,6 @@ void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
 	}	
 }
 
-void MCSOTDMA_Mac::setInitializeBidirectionalLinks(bool flag) {
-	// this sets the flag which treats link managers that are created in the future
-	IMac::setInitializeBidirectionalLinks(flag);	
-	// now also handle those that already exist
-	if (flag && use_new_pp_link_manager) {
-		for (auto pair : link_managers) {
-			if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-				((PPLinkManager*) pair.second)->setInitializeBidirectionalLinks();
-		}	
-	}
-}
-
 size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 	size_t n = 0;
 	if (use_new_pp_link_manager)
