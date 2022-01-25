@@ -513,7 +513,7 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
 			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
 		// if locally, one's own transmission is scheduled...
-		} else if (res.isTx() || res.isTxCont()) {
+		} else if (res.isTx()) {
 			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
 			// ... unschedule one's own transmission
 			unscheduleBroadcastSlot();

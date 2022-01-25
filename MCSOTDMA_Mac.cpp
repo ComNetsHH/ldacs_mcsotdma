@@ -118,16 +118,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				link_manager->onReceptionBurstStart(reservation.getNumRemainingSlots());
 				onReceptionSlot(channel);
 				break;
-			}
-			case Reservation::RX_CONT: {
-				num_rxs++;
-				if (num_rxs > num_receivers)
-					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
-				LinkManager *link_manager = getLinkManager(reservation.getTarget());
-				link_manager->onReceptionBurst(reservation.getNumRemainingSlots());
-				onReceptionSlot(channel);
-				break;
-			}
+			}			
 			case Reservation::TX: {
 				// Ensure that we have no simultaneous transmissions scheduled.
 				num_txs++;
@@ -161,16 +152,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 						this->stat_unicast_wasted_tx_opportunities.increment();
 				}
 				break;
-			}
-			case Reservation::TX_CONT: {
-				// Transmission has already started, so a transmitter is busy.
-				num_txs++;
-				if (num_txs > num_transmitters)
-					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
-				LinkManager *link_manager = getLinkManager(reservation.getTarget());
-				link_manager->onTransmissionBurst(reservation.getNumRemainingSlots());
-				break;
-			}
+			}			
 			case Reservation::TX_BEACON: {
 				num_txs++;
 				if (num_txs > num_transmitters)
