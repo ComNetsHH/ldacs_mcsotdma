@@ -523,7 +523,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			int previous_num_candidate_slots = 0, first_num_candidate_slots = 0;
 			for (size_t n = 0; n < max_num_neighbors; n++) {
 				// report the activity of another neighbor
-				link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(n+100), current_slot);
+				mac->reportNeighborActivity(MacId(n+100));				
 				// fake that there's nothing scheduled yet
 				link_manager->next_broadcast_scheduled = false;
 				// notify of new data, triggering the scheduling of a next broadcast slot
@@ -868,50 +868,50 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			const double target_collision_prob = .626;
 			// zero neighbors
 			double n = 0;
-			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());
+			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			unsigned int k = link_manager->getNumCandidateSlots(target_collision_prob);			
 			unsigned int expected_k = std::max((double) link_manager->MIN_CANDIDATES, 2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, k);						
 			// one neighbor
-			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(1), 0);
+			mac->reportNeighborActivity(MacId(1));
 			n = 1;
-			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			unsigned int new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
 			k = new_k;
 			// two neighbors
-			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(2), 0);
+			mac->reportNeighborActivity(MacId(2));
 			n = 2;
-			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
 			k = new_k;
 			// three neighbors
-			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(3), 0);
+			mac->reportNeighborActivity(MacId(3));
 			n = 3;
-			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
 			k = new_k;
 			// four neighbors
-			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(4), 0);
+			mac->reportNeighborActivity(MacId(4));
 			n = 4;
-			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
 			k = new_k;
 			// five neighbors
-			link_manager->contention_estimator.reportNonBeaconBroadcast(MacId(5), 0);
+			mac->reportNeighborActivity(MacId(5));
 			n = 5;
-			CPPUNIT_ASSERT_EQUAL(uint(n), link_manager->contention_estimator.getNumActiveNeighbors());			
+			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());	
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);

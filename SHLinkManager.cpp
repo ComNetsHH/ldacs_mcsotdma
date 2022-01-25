@@ -382,7 +382,7 @@ unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	// Assume that every neighbor that has been active within the contention window will again be active.
 	} else if (contention_method == ContentionMethod::randomized_slotted_aloha) {
 		// Number of active neighbors.
-		double m = (double) contention_estimator.getNumActiveNeighbors();
+		double m = (double) mac->getNeighborObserver().getNumActiveNeighbors();
 		k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
 		coutd << "channel access method: randomized slotted ALOHA for " << m << " active neighbors -> ";
 	// Don't make use of contention estimation in any way. Just select something out of the next 100 idle slots.
