@@ -8,11 +8,9 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-Reservation::Reservation(const MacId& target, Reservation::Action action, unsigned int num_remaining_slots) : target(target), action(action), num_remaining_slots(num_remaining_slots) {}
+Reservation::Reservation(const MacId& target, Reservation::Action action) : target(target), action(action) {}
 
-Reservation::Reservation(const MacId& target, Reservation::Action action) : Reservation(target, action, 0) {}
-
-Reservation::Reservation(const Reservation& other) : target(other.target), action(other.action), num_remaining_slots(other.num_remaining_slots) {}
+Reservation::Reservation(const Reservation& other) : target(other.target), action(other.action) {}
 
 Reservation::Reservation() : Reservation(SYMBOLIC_ID_UNSET) {}
 
@@ -42,14 +40,6 @@ bool Reservation::operator==(const Reservation& other) const {
 
 bool Reservation::operator!=(const Reservation& other) const {
 	return !(*this == other);
-}
-
-unsigned int Reservation::getNumRemainingSlots() const {
-	return this->num_remaining_slots;
-}
-
-void Reservation::setNumRemainingSlots(const unsigned int& num_slots) {
-	this->num_remaining_slots = num_slots;
 }
 
 bool Reservation::isIdle() const {
@@ -97,11 +87,3 @@ std::string Reservation::toString() const {
 	stream << *this;
 	return stream.str();
 }
-
-//bool Reservation::lock() {
-//	if (!isIdle())
-//		return false;
-//	action = LOCKED;
-//	return true;
-//}
-

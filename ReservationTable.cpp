@@ -63,8 +63,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	// If a transmitter table is linked, mark it there, too.
 	if ((reservation.isAnyTx() || reservation.isIdle()) && transmitter_reservation_table != nullptr) {
 		// Need a copy here s.t. the linked table's recursive call won't set all slots now.
-		Reservation cpy = Reservation(reservation);
-		cpy.setNumRemainingSlots(0);
+		Reservation cpy = Reservation(reservation);		
 		transmitter_reservation_table->mark(slot_offset, cpy);
 	}
 	// Same for receiver tables
@@ -72,8 +71,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		for (ReservationTable* rx_table : receiver_reservation_tables) {
 			if (rx_table->getReservation(slot_offset).isIdle()) {
 				// Need a copy here s.t. the linked table's recursive call won't set all slots now.
-				Reservation cpy = Reservation(reservation);
-				cpy.setNumRemainingSlots(0);
+				Reservation cpy = Reservation(reservation);				
 				rx_table->mark(slot_offset, cpy);
 				break;
 			}
