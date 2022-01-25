@@ -5,7 +5,6 @@
 #include <sstream>
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
-#include "PPLinkManager.hpp"
 #include "NewPPLinkManager.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
