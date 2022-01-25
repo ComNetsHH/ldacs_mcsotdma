@@ -132,15 +132,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MacId getLinkId() const {
 			return link_id;
 		}
-
-		void linkTxTable(ReservationTable *tx_table) {
-			tx_tables.push_back(tx_table);
-		}
-
-		void linkRxTable(ReservationTable *rx_table) {
-			rx_tables.push_back(rx_table);
-		}
-
+		
 		virtual void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
 		virtual void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
 		virtual void processLinkInfoMessage(const L2HeaderLinkInfo*& header, const LinkInfoPayload*& payload);		
@@ -161,9 +153,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		MCSOTDMA_Mac *mac;
 		ReservationManager *reservation_manager = nullptr;
 		const FrequencyChannel *current_channel = nullptr;
-		ReservationTable *current_reservation_table = nullptr;
-		std::vector<ReservationTable*> tx_tables;
-		std::vector<ReservationTable*> rx_tables;
+		ReservationTable *current_reservation_table = nullptr;		
 		/** Link establishment status. */
 		Status link_status;
 		/** To measure the MAC delay, keep track of the number of slots in-between channel accesses. */

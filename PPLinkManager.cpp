@@ -265,26 +265,21 @@ ReservationMap PPLinkManager::lock_bursts(const std::vector<unsigned int>& start
 				bool is_tx = is_link_initiator ? t < burst_length_tx : t >= burst_length_tx;
 				// check transmitter
 				if (is_tx) {
-					if (std::any_of(tx_tables.begin(), tx_tables.end(), [slot](ReservationTable* tx_table) { return tx_table->canLock(slot); })) 
+					if (reservation_manager->getTxTable()->canLock(slot))					
 						locked_tx.emplace(slot);
 					else {
-						Reservation conflict_res = Reservation();
-						for (auto it = tx_tables.begin(); it != tx_tables.end() && conflict_res.isIdle(); it++) {
-							const auto tx_table = *it;
-							if (!tx_table->getReservation(slot).isIdle()) 
-								conflict_res = tx_table->getReservation(slot);							
-						}
+						Reservation conflict_res = reservation_manager->getTxTable()->getReservation(slot);													
 						std::stringstream ss;
 						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable for burst " << n_burst << "/" << timeout << " at t=" << slot << ", conflict with " << conflict_res << ".";
 						throw std::range_error(ss.str());
 					}
 				// check receiver
 				} else {
-					if (std::any_of(rx_tables.begin(), rx_tables.end(), [slot](ReservationTable* rx_table) { return rx_table->canLock(slot); }))
+					if (std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot](ReservationTable* rx_table) { return rx_table->canLock(slot); }))
 						locked_rx.emplace(slot);
 					else {
 						Reservation conflict_res = Reservation();
-						for (auto it = rx_tables.begin(); it != rx_tables.end() && conflict_res.isIdle(); it++) {
+						for (auto it = reservation_manager->getRxTables().begin(); it != reservation_manager->getRxTables().end() && conflict_res.isIdle(); it++) {
 							const auto rx_table = *it;
 							if (!rx_table->getReservation(slot).isIdle()) {
 								conflict_res = rx_table->getReservation(slot);
@@ -309,7 +304,7 @@ ReservationMap PPLinkManager::lock_bursts(const std::vector<unsigned int>& start
 		lock_map.add_locked_resource(reservation_manager->getTxTable(), slot);
 	}
 	for (unsigned int slot : locked_rx) {
-		for (auto* rx_table : rx_tables)
+		for (auto* rx_table : reservation_manager->getRxTables())
 			if (rx_table->canLock(slot)) {
 				table->lock(slot, link_id);
 				lock_map.add_locked_resource(rx_table, slot);

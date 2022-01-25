@@ -210,12 +210,8 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {						
 			link_manager = new PPLinkManager(internal_id, reservation_manager, this);
-			// ((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
-			// Receiver tables are only set for PPLinkManagers.
-			for (ReservationTable* rx_table : reservation_manager->getRxTables())
-				link_manager->linkRxTable(rx_table);
-		}
-		link_manager->linkTxTable(reservation_manager->getTxTable());
+			// ((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);			
+		}		
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
 			throw std::runtime_error("Attempted to insert new LinkManager, but there already was one.");
