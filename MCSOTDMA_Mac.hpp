@@ -213,9 +213,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals.increment();
 		}
 
-		unsigned int getP2PBurstOffset() const;
-
-		bool isUsingNewPPLinkManager() const;
+		unsigned int getP2PBurstOffset() const;		
 
 	protected:
 		/**
@@ -240,9 +238,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Number of transmission bursts before a P2P link expires. */
 		const unsigned int default_p2p_link_timeout = 10;
 		/** Number of slots between two transmission bursts. */
-		const unsigned int default_p2p_link_burst_offset = 20;
-		/** TODO REMOVE; while working on it, this flag creates NewPPLinkManager instances. */
-		bool use_new_pp_link_manager = true;
+		const unsigned int default_p2p_link_burst_offset = 20;		
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

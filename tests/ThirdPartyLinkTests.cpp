@@ -24,14 +24,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			id_recipient = MacId(43);
 			id = MacId(44);
 			// these establish links
-			env_initator = new TestEnvironment(id_initiator, id_recipient, true);
+			env_initator = new TestEnvironment(id_initiator, id_recipient);
 			mac_initiator = env_initator->mac_layer;
 			pp_initiator = (NewPPLinkManager*) mac_initiator->getLinkManager(id_recipient);
-			env_recipient = new TestEnvironment(id_recipient, id_initiator, true);
+			env_recipient = new TestEnvironment(id_recipient, id_initiator);
 			mac_recipient = env_recipient->mac_layer;
 			pp_recipient = (NewPPLinkManager*) mac_recipient->getLinkManager(id_initiator);
 			// this will be the third party
-			env = new TestEnvironment(id, id_initiator, true);
+			env = new TestEnvironment(id, id_initiator);
 			mac = env->mac_layer;
 			reservation_manager = mac->getReservationManager();			
 			link = new ThirdPartyLink(id_initiator, id_recipient, env->mac_layer);

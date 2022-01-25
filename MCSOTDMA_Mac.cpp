@@ -5,7 +5,6 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "InetPacketPayload.hpp"
-#include "PPLinkManager.hpp"
 #include "NewPPLinkManager.hpp"
 #include "SHLinkManager.hpp"
 #include <IPhy.hpp>
@@ -228,15 +227,9 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 		if (internal_id == SYMBOLIC_LINK_ID_BROADCAST) {
 			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
-		} else {
-			if (!use_new_pp_link_manager) {
-				link_manager = new PPLinkManager(internal_id, reservation_manager, this, default_p2p_link_timeout, default_p2p_link_burst_offset);
-				((PPLinkManager*) link_manager)->setShouldTerminateLinksEarly(close_link_early_if_no_first_data_packet_comes_in);
-				((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
-				if (this->should_initialize_bidirectional_links)
-					((PPLinkManager*) link_manager)->setInitializeBidirectionalLinks();
-			} else 
-				link_manager = new NewPPLinkManager(internal_id, reservation_manager, this);
+		} else {						
+			link_manager = new NewPPLinkManager(internal_id, reservation_manager, this);
+			// ((NewPPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);
 			// Receiver tables are only set for PPLinkManagers.
 			for (ReservationTable* rx_table : reservation_manager->getRxTables())
 				link_manager->linkRxTable(rx_table);
@@ -380,11 +373,8 @@ void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
 	IMac::setForceBidirectionalLinks(flag);	
 	// now also handle those that already exist
 	for (auto pair : link_managers) {
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) {
-			if (use_new_pp_link_manager)
-				((NewPPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
-			else
-				((PPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);
+		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) {			
+			((NewPPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);			
 		}
 	}	
 }
@@ -411,8 +401,4 @@ void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
 
 void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
 	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
-}
-
-bool MCSOTDMA_Mac::isUsingNewPPLinkManager() const {
-	return this->use_new_pp_link_manager;
 }

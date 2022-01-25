@@ -20,7 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setUp() override {
 			own_id = MacId(42);
 			partner_id = MacId(43);
-			env = new TestEnvironment(own_id, partner_id, true);
+			env = new TestEnvironment(own_id, partner_id);
 			link_manager = (PPLinkManager*) env->mac_layer->getLinkManager(partner_id);
 			reservation_manager = env->mac_layer->getReservationManager();
 			planning_horizon = env->planning_horizon;

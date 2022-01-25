@@ -547,19 +547,13 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 
 void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
 	coutd << "forwarding link request to PPLinkManager -> ";
-	// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)
-	if (!mac->isUsingNewPPLinkManager())
-		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);
-	else
-		((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);	
+	// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)	
+	((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);	
 }
 
 void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-	coutd << "forwarding link reply to PPLinkManager -> ";
-	if (!mac->isUsingNewPPLinkManager())
-		((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);
-	else
-		((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);	
+	coutd << "forwarding link reply to PPLinkManager -> ";	
+	((NewPPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);	
 }
 
 SHLinkManager::~SHLinkManager() {
@@ -592,11 +586,8 @@ void SHLinkManager::processLinkInfoMessage(const L2HeaderLinkInfo*& header, cons
 	if (tx_id == mac->getMacId() || rx_id == mac->getMacId()) {
 		coutd << "involves us; discarding -> ";
 	} else {
-		coutd << "passing on to " << tx_id  << " -> ";
-		if (!mac->isUsingNewPPLinkManager())
-			((PPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
-		else
-			((NewPPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
+		coutd << "passing on to " << tx_id  << " -> ";		
+		((NewPPLinkManager*) mac->getLinkManager(tx_id))->processLinkInfoMessage(header, payload);
 	}
 }
 

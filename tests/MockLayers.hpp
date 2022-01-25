@@ -241,10 +241,9 @@ class RLCLayer : public IRlc {
 		MACLayer* mac_layer;
 		PHYLayer* phy_layer;		 
 
-		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id, bool use_new_link_manager) : id(own_id), partner_id(communication_partner_id) {
+		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id) : id(own_id), partner_id(communication_partner_id) {
 			phy_layer = new PHYLayer(planning_horizon);
-			mac_layer = new MACLayer(own_id, planning_horizon);
-			mac_layer->use_new_pp_link_manager = true;
+			mac_layer = new MACLayer(own_id, planning_horizon);			
 			mac_layer->reservation_manager->setTransmitterReservationTable(phy_layer->getTransmitterReservationTable());
 			for (ReservationTable*& table : phy_layer->getReceiverReservationTables())
 				mac_layer->reservation_manager->addReceiverReservationTable(table);
@@ -266,9 +265,7 @@ class RLCLayer : public IRlc {
 			arq_layer->setUpperLayer(rlc_layer);
 			phy_layer->setUpperLayer(mac_layer);
 			mac_layer->setLowerLayer(phy_layer);
-		}
-
-		TestEnvironment(const MacId& own_id, const MacId& communication_partner_id) : TestEnvironment(own_id, communication_partner_id, true) {}
+		}		
 
 		virtual ~TestEnvironment() {
 			delete mac_layer;
