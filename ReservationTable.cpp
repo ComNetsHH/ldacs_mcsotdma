@@ -162,22 +162,22 @@ bool ReservationTable::isUtilized(int32_t start, uint32_t length) const {
 	return !this->isIdle(start, length);
 }
 
-bool ReservationTable::isBurstValid(int start_slot, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const {
+bool ReservationTable::isBurstValid(int start_slot, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const {	
 	// Check if local table is idle...
-	if (isIdle(start_slot, burst_length)) {
+	if (isIdle(start_slot, burst_length)) {		
 		// ... check if the transmitter is idle for the first burst_length_tx slots...
-		bool transmitter_idle = transmitter_reservation_table->isIdle(start_slot, burst_length_tx);
+		bool transmitter_idle = transmitter_reservation_table->isIdle(start_slot, burst_length_tx);		
 		// ... check if a receiver is idle for the trailing burst_length_rx slots...
-		unsigned int burst_length_rx = burst_length - burst_length_tx;
+		unsigned int burst_length_rx = burst_length - burst_length_tx;		
 		bool receiver_idle;
 		if (burst_length_rx == 0)
 			receiver_idle = true;
 		else {
-			unsigned int slot_rx = start_slot + burst_length_tx;
+			unsigned int slot_rx = start_slot + burst_length_tx;			
 			if (receiver_reservation_tables.empty())
 				receiver_idle = true;
 			else
-				receiver_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_rx, burst_length_rx](ReservationTable* table) {
+				receiver_idle = std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_rx, burst_length_rx](ReservationTable* table) {					
 					return table->isIdle(slot_rx, burst_length_rx);
 				});
 		}
@@ -192,40 +192,23 @@ bool ReservationTable::isBurstValid(int start_slot, unsigned int burst_length, u
 		return false;
 }
 
-unsigned int ReservationTable::findEarliestIdleSlotsP2P(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
-	for (unsigned int burst = 0; burst < timeout + 1; burst++)
-		if (!isValid((int) (start_offset + burst*burst_offset), burst_length))
-			throw std::invalid_argument("Invalid slot range at burst #" + std::to_string(burst+1) + "!");
-	if (transmitter_reservation_table == nullptr)
-		throw std::runtime_error("ReservationTable::findEarliestIdleSlotsP2P for unset transmitter table.");
-
-	// Go over the planning horizon...
-	for (int t = (int) start_offset; t < planning_horizon - burst_length; t++) {
-		// Check that the initial burst where a reply is expected is idle.
-		bool is_valid = isBurstValid(t, 1, 0, true);
-		if (is_valid) {
-			// ... check for every transmission burst ...
-			std::vector<int> all_slots_in_link;
-			for (int burst = 1; burst < timeout + 1; burst++)
-				all_slots_in_link.push_back((int) (t + burst * burst_offset));
-			is_valid = std::all_of(all_slots_in_link.begin(), all_slots_in_link.end(), [this, burst_length, burst_length_tx](int start_slot) { return this->isBurstValid(start_slot, burst_length, burst_length_tx, false); });
-		}
-		if (is_valid)
-			return t;
-	}
-	throw std::range_error("No idle slot range could be found.");
-}
-
 unsigned int ReservationTable::findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
+	if (burst_length == 0)
+		throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for burst_length of zero.");
+	if (timeout == 0)
+		throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for timeout of zero.");
 	// start looking
 	for (int t = (int) start_offset; t < planning_horizon - burst_length; t++) {
 		// save all starting slots of each burst
 		std::vector<int> all_slots_in_burst;
 		for (int burst = 0; burst < timeout; burst++)
 			all_slots_in_burst.push_back((int) (burst*burst_offset + t));
+		if (all_slots_in_burst.empty())
+			throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for no slots in a burst");
 		// make sure that they all denote valid bursts
-		if (std::all_of(all_slots_in_burst.begin(), all_slots_in_burst.end(), [this, burst_length, burst_length_tx](int start_slot) { return this->isBurstValid(start_slot, burst_length, burst_length_tx, false); }))
+		if (std::all_of(all_slots_in_burst.begin(), all_slots_in_burst.end(), [this, burst_length, burst_length_tx](int start_slot) { return this->isBurstValid(start_slot, burst_length, burst_length_tx, false); })) {
 			return t; // if so, we've found the earliest starting slot that can be used to initiate a PP link
+		}
 	}
 	// if going over the entire horizon didn't find something, 
 	// then there are none -> throw an error
@@ -311,28 +294,6 @@ uint64_t ReservationTable::getNumIdleSlots() const {
 	return this->num_idle_future_slots;
 }
 
-std::vector<unsigned int> ReservationTable::findCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool p2p) const {
-	std::vector<unsigned int> start_slots;
-	unsigned int last_offset = min_offset;
-	for (size_t i = 0; i < num_proposal_slots; i++) {
-		// Try to find another slot range.
-		try {
-			int32_t start_slot = p2p ? (int) findEarliestIdleSlotsP2P(last_offset, burst_length, burst_length_tx, burst_offset, timeout) : (int) findEarliestIdleSlotsBC(last_offset);
-			start_slots.push_back(start_slot);
-			last_offset = start_slot + 1; // Next attempt, look later than current one.
-		} catch (const std::range_error& e) {
-			// This is thrown if no idle range can be found.
-			coutd << "cannot find anymore after t=" << last_offset << ": " << e.what() << " -> stopping at " << start_slots.size() << " candidates -> ";
- 			break; // Stop if no more ranges can be found.
-		} catch (const std::invalid_argument& e) {
-			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
-			coutd << "cannot find anymore after t=" << last_offset << ": " << e.what() << " -> stopping at " << start_slots.size() << " candidates -> ";
-			break; // Stop if no more ranges can be found.
-		} // all other exceptions should still end execution
-	}
-	return start_slots;
-}
-
 std::vector<unsigned int> ReservationTable::findSHCandidates(unsigned int num_candidates, int min_offset) const {
 	std::vector<unsigned int> start_slots;
 	int last_offset = min_offset;
@@ -355,18 +316,22 @@ std::vector<unsigned int> ReservationTable::findSHCandidates(unsigned int num_ca
 }
 
 std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const {
+	if (burst_length == 0)
+		throw std::invalid_argument("ReservationTable::findPPCandidates for burst_length of zero.");
+	if (timeout == 0)
+		throw std::invalid_argument("ReservationTable::findPPCandidates for timeout of zero.");
 	std::vector<unsigned int> start_slot_offsets;
 	unsigned int last_offset = min_offset;
 	for (size_t i = 0; i < num_proposal_slots; i++) {
 		// Try to find another slot range.
-		try {
+		try {			
 			int32_t start_slot = (int) findEarliestIdleSlotsPP(last_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			start_slot_offsets.push_back(start_slot);
 			last_offset = start_slot + 1; // Next attempt, look later than current one.
 		} catch (const std::range_error& e) {
 			// This is thrown if no idle range can be found.
 			break; // Stop if no more ranges can be found.
-		} catch (const std::invalid_argument& e) {
+		} catch (const std::invalid_argument& e) {			
 			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
 			break; // Stop if no more ranges can be found.
 		} // all other exceptions should still end execution
