@@ -390,12 +390,10 @@ void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
 }
 
 size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
-	size_t n = 0;
-	if (use_new_pp_link_manager)
-		return n;
+	size_t n = 0;	
 	for (const auto pair : link_managers) 
 		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-			n += ((PPLinkManager*) pair.second)->getNumUtilizedResources();					
+			n += ((NewPPLinkManager*) pair.second)->getNumUtilizedResources();					
 	return n;
 }
 

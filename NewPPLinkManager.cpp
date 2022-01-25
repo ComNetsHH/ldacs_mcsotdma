@@ -698,3 +698,10 @@ void NewPPLinkManager::onTimeoutExpiry() {
 bool NewPPLinkManager::isLinkEstablishedAndBidirectional() const {
 	return link_status == link_established && link_state.burst_length_tx < link_state.burst_length;
 }
+
+unsigned int NewPPLinkManager::getNumUtilizedResources() const {
+	if (link_status == link_established)
+		return link_state.burst_length;
+	else
+		return 0;
+}

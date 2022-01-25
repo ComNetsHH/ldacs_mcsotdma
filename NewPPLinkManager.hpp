@@ -32,6 +32,7 @@ class NewPPLinkManager : public LinkManager, public LinkManager::LinkEstablishme
 		void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) override;
 		void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 		void setForceBidirectionalLinks(bool flag);
+		unsigned int getNumUtilizedResources() const;
 
 	protected:		
 		/** Keeps track of the current link state values. */
