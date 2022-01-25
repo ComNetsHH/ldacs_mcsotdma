@@ -631,25 +631,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testFindEarliestIdleSlots() {
 			unsigned int min_offset = 0, burst_length = 5, burst_length_tx = 3;
-			unsigned int burst_offset = 7, timeout = 1;
+			unsigned int burst_offset = 7, timeout = 2;
 			unsigned int start_slot = table->findEarliestIdleSlotsPP(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), start_slot);
 
 			const Reservation res = Reservation(MacId(5), Reservation::BUSY);
-			table_rx_1->mark(0, res);
+			table_rx_1->mark(burst_length_tx, res);
 			start_slot = table->findEarliestIdleSlotsPP(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(0), start_slot);
 
-			table_rx_2->mark(0, res);
+			table_rx_2->mark(burst_length_tx, res);
 			start_slot = table->findEarliestIdleSlotsPP(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(1), start_slot);
 
-			table_tx->mark(burst_offset + 1, res);
+			table_tx->mark(min_offset + 1, res);			
 			start_slot = table->findEarliestIdleSlotsPP(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(2), start_slot);
 
-			table_rx_1->mark(burst_offset + 2 + burst_length_tx, res);
-			table_rx_2->mark(burst_offset + 2 + burst_length_tx, res);
+			table_rx_1->mark(min_offset + burst_offset + burst_length_tx + 2, res);
+			table_rx_2->mark(min_offset + burst_offset + burst_length_tx + 2, res);
 			start_slot = table->findEarliestIdleSlotsPP(min_offset, burst_length, burst_length_tx, burst_offset, timeout);
 			CPPUNIT_ASSERT_EQUAL(uint32_t(3), start_slot);
 
