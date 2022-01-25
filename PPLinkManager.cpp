@@ -408,15 +408,18 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 	unsigned int reply_time_slot_offset = 0;
 	auto resources = payload->resources;
 	SHLinkManager *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-	for (auto it = resources.begin(); it != resources.end(); it++) {
+	for (auto it = resources.begin(); it != resources.end();) {
 		auto pair = *it;
 		if (pair.first->isSH()) {
+			if (reply_time_slot_offset != 0)
+				throw std::invalid_argument("PPLinkManager::processLinkRequestMessage_initial for >1 proposed resources on SH. It should just be the link reply offset.");
 			reply_time_slot_offset = pair.second.at(0);
 			free_to_send_reply = sh_manager->canSendLinkReply(reply_time_slot_offset);
-			// remove this item
-			resources.erase(it);
+			// remove SH resources
+			it = resources.erase(it);			
 			break;
-		}
+		} else
+			it++;
 	}	 		
 	coutd << "reply on SH in " << reply_time_slot_offset << " slots is " << (free_to_send_reply ? "viable" : "NOT viable") << " -> ";
 	if (free_to_send_reply) {		
