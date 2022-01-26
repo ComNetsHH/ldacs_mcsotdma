@@ -157,7 +157,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
 		/** Maximum number of slots to consider during slot selection. */
-		unsigned int MAX_CANDIDATES = 1000;
+		unsigned int MAX_CANDIDATES = 10000;
 		MovingAverage avg_num_slots_inbetween_packet_generations;
 		unsigned int num_slots_since_last_packet_generation = 0;
 		bool packet_generated_this_slot = false;
