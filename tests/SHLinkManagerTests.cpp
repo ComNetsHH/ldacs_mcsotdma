@@ -660,8 +660,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				auto *beacon_packet = new L2Packet();
 				beacon_packet->addMessage(new L2HeaderBase(MacId(100 + n), 0, 0, 0, 0), nullptr);
 				beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
-				link_manager->onPacketReception(beacon_packet);			
-				link_manager->onSlotEnd();			
+				mac->receiveFromLower(beacon_packet, env->bc_frequency);
+				mac->onSlotEnd();
 				CPPUNIT_ASSERT_EQUAL(n+1, mac->getNeighborObserver().getNumActiveNeighbors());
 			}		
 
@@ -768,6 +768,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			k = new_k;
 		}
 
+		/** During simulations, a maximum no. of candidate slots was observed, which didn't make much sense. */
+		void testNoCandidateSlotsForParticularValues() {
+			size_t num_neighbors = 30;
+			for (size_t i = 0; i < num_neighbors; i++)
+				mac->reportNeighborActivity(MacId(i));
+			CPPUNIT_ASSERT_EQUAL(num_neighbors, mac->getNeighborObserver().getNumActiveNeighbors());
+			double target_collision_prob = 0.05;			
+			CPPUNIT_ASSERT_GREATER(uint(1000), link_manager->getNumCandidateSlots(target_collision_prob));
+		}
+
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -794,6 +804,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testBeaconWithResourceUtilization);	
 		CPPUNIT_TEST(testBeaconWithoutResourceUtilization);	
 		CPPUNIT_TEST(testSHChannelAccessDelay);	
+		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);	
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);

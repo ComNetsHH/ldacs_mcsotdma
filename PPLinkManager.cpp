@@ -601,9 +601,7 @@ void PPLinkManager::cancelLink() {
 void PPLinkManager::processBaseMessage(L2HeaderBase*& header) {
 	coutd << *this << "::processBaseMessage -> ";
 	// communication partner can indicate its resource requirements through this header field
-	this->setReportedDesiredTxSlots(header->burst_length_tx);
-	// communication partner is quite obviously active
-	mac->reportNeighborActivity(header->src_id);
+	this->setReportedDesiredTxSlots(header->burst_length_tx);	
 }
 
 void PPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {

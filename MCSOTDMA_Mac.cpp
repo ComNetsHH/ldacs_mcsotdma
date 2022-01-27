@@ -265,6 +265,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			// otherwise they're received
 			} else {
 				coutd << *this << " processing packet -> ";
+				reportNeighborActivity(packet->getOrigin());
 				if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
 					getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
 				else

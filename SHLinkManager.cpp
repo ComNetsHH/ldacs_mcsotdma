@@ -555,9 +555,7 @@ void SHLinkManager::assign(const FrequencyChannel* channel) {
 }
 
 void SHLinkManager::onPacketReception(L2Packet*& packet) {
-	const MacId& id = packet->getOrigin();
-	// report any activity to the MAC
-	mac->reportNeighborActivity(id);
+	const MacId& id = packet->getOrigin();	
 	// congestion is concerned with *any* received broadcast	
 	congestion_estimator.reportBroadcast(id);		
 	// contention is only concerned with non-beacon broadcasts
