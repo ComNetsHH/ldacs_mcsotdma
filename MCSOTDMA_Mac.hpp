@@ -277,6 +277,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_reply_slot", this);
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals", this);		
 		Statistic stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unsufficient_tx_slots", this);		
+		Statistic stat_num_dme_packets_rcvd = Statistic("mcsotdma_statistic_num_num_dme_packets_rcvd", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -314,7 +315,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_pp_links_expired,
 				&stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot,
 				&stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals,
-				&stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots
+				&stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots,
+				&stat_num_dme_packets_rcvd
 		};
 	};
 

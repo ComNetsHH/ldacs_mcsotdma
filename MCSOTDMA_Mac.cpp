@@ -181,7 +181,7 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 		delete packet;
 		return;
 	}
-	if (dest_id == SYMBOLIC_ID_UNSET)
+	if (dest_id == SYMBOLIC_ID_UNSET && origin_id != SYMBOLIC_LINK_ID_DME)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");	
 	// store until slot end, then process
 	received_packets[center_frequency].push_back(packet);
@@ -265,12 +265,18 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			// otherwise they're received
 			} else {
 				coutd << *this << " processing packet -> ";
-				reportNeighborActivity(packet->getOrigin());
-				if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-					getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
-				else
-					getLinkManager(packet->getOrigin())->onPacketReception(packet);				
-				stat_num_packets_rcvd.increment();
+				if (packet->isDME()) {
+					coutd << "DME packet -> ";
+					stat_num_dme_packets_rcvd.increment();
+					coutd << "counted in statistic, no further processing -> ";
+				} else {
+					reportNeighborActivity(packet->getOrigin());
+					if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+						getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
+					else
+						getLinkManager(packet->getOrigin())->onPacketReception(packet);				
+					stat_num_packets_rcvd.increment();
+				}
 			}			
 		// several packets are cause for a collision
 		} else if (packets.size() > 1) {			
