@@ -258,6 +258,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_beacons_sent = Statistic("mcsotdma_statistic_num_beacons_sent", this);		
 		Statistic stat_num_requests_cancelled = Statistic("mcsotdma_statistic_num_cancelled_link_requests", this);
 		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);		
+		Statistic stat_num_sh_packet_collisions = Statistic("mcsotdma_statistic_num_sh_packet_collisions", this);		
+		Statistic stat_num_pp_packet_collisions = Statistic("mcsotdma_statistic_num_pp_packet_collisions", this);		
 		Statistic stat_num_channel_errors = Statistic("mcsotdma_statistic_num_channel_errors", this);		
 		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);
 		Statistic stat_min_beacon_offset = Statistic("mcsotdma_statistic_min_beacon_offset", this);
@@ -297,6 +299,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_beacons_sent,				
 				&stat_num_requests_cancelled,
 				&stat_num_packet_collisions,	
+				&stat_num_sh_packet_collisions,
+				&stat_num_pp_packet_collisions,
 				&stat_num_channel_errors,			
 				&stat_num_active_neighbors,
 				&stat_min_beacon_offset,

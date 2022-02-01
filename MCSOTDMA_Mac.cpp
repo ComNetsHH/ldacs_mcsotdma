@@ -284,6 +284,10 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			stat_num_packet_collisions.incrementBy(packets.size());
 
             for (auto *packet : packets) {
+				if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+					stat_num_sh_packet_collisions.increment();
+				else
+					stat_num_pp_packet_collisions.increment();
                 this->deletePacket(packet);
                 delete packet;
             }
