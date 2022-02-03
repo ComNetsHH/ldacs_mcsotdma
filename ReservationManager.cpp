@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "ReservationManager.hpp"
 #include "coutdebug.hpp"
+#include "SlotCalculator.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -222,74 +223,70 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 		target_id_1 = initiator_id;
 		target_id_2 = recipient_id;
 	}
-	// go over each transmission burst
-	for (int burst = 0; burst < timeout; burst++) {
-		// normalize to burst start
-		int burst_start_offset = first_burst_in + burst*burst_offset;
-		// go over link initiator's TX slots
-		for (int i = 0; i < burst_length_tx; i++) {
-			int slot_offset = burst_start_offset + i;
-			// make sure that the reservation is idle locally
-			if (!tbl->getReservation(slot_offset).isIdle()) {								
+	
+	auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+	// go over link initiator's TX slots
+	for (int &slot_offset : tx_rx_slots.first) {
+		// make sure that the reservation is idle locally
+		if (!tbl->getReservation(slot_offset).isIdle()) {								
+			std::stringstream s;
+			s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+			throw std::runtime_error(s.str());
+		}
+		// make sure that hardware is available
+		if (action_1 == Reservation::TX) {
+			const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
+			bool transmitter_available = tx_reservation.isIdle();
+			if (!transmitter_available) {
 				std::stringstream s;
-				s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+				s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 				throw std::runtime_error(s.str());
 			}
-			// make sure that hardware is available
-			if (action_1 == Reservation::TX) {
-				const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
-				bool transmitter_available = tx_reservation.isIdle();
-				if (!transmitter_available) {
-					std::stringstream s;
-					s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			} else if (action_1 == Reservation::RX) {
-				bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
-				if (!receiver_available) {
-					std::stringstream s;
-					s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
-					for (const auto *rx_table : getRxTables())
-						s << rx_table->getReservation(slot_offset) << " ";
-					s << "when at least one should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			}
-			tbl->mark(slot_offset, Reservation(target_id_1, action_1));						
-			reservation_map.add_scheduled_resource(tbl, slot_offset);			
-		}
-		// go over the link initiator's RX slots
-		for (int i = 0; i < burst_length_rx; i++) {
-			int slot_offset = burst_start_offset + burst_length_tx + i;
-			// make sure that the reservation is idle locally
-			if (!tbl->getReservation(slot_offset).isIdle()) {
+		} else if (action_1 == Reservation::RX) {
+			bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
+			if (!receiver_available) {
 				std::stringstream s;
-				s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+				s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
+				for (const auto *rx_table : getRxTables())
+					s << rx_table->getReservation(slot_offset) << " ";
+				s << "when at least one should be idle.";
 				throw std::runtime_error(s.str());
 			}
-			// make sure that hardware is available
-			if (action_2 == Reservation::TX) {
-				const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
-				bool transmitter_available = tx_reservation.isIdle();
-				if (!transmitter_available) {
-					std::stringstream s;
-					s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 <<   " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			} else if (action_2 == Reservation::RX) {
-				bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
-				if (!receiver_available) {
-					std::stringstream s;
-					s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 <<  " resource in " << slot_offset << " slots. The receivers will be busy with ";
-					for (const auto *rx_table : getRxTables())
-						s << rx_table->getReservation(slot_offset) << " ";
-					s << "when at least one should be idle.";
-					throw std::runtime_error(s.str());
-				}
-			}
-			tbl->mark(slot_offset, Reservation(target_id_2, action_2));		
-			reservation_map.add_scheduled_resource(tbl, slot_offset);			
 		}
-	}	
+		tbl->mark(slot_offset, Reservation(target_id_1, action_1));						
+		reservation_map.add_scheduled_resource(tbl, slot_offset);
+	}
+	// go over the link initiator's RX slots
+	for (int &slot_offset : tx_rx_slots.second) {
+		// make sure that the reservation is idle locally
+		if (!tbl->getReservation(slot_offset).isIdle()) {
+			std::stringstream s;
+			s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+			throw std::runtime_error(s.str());
+		}
+		// make sure that hardware is available
+		if (action_2 == Reservation::TX) {
+			const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
+			bool transmitter_available = tx_reservation.isIdle();
+			if (!transmitter_available) {
+				std::stringstream s;
+				s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 <<   " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
+				throw std::runtime_error(s.str());
+			}
+		} else if (action_2 == Reservation::RX) {
+			bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
+			if (!receiver_available) {
+				std::stringstream s;
+				s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 <<  " resource in " << slot_offset << " slots. The receivers will be busy with ";
+				for (const auto *rx_table : getRxTables())
+					s << rx_table->getReservation(slot_offset) << " ";
+				s << "when at least one should be idle.";
+				throw std::runtime_error(s.str());
+			}
+		}
+		tbl->mark(slot_offset, Reservation(target_id_2, action_2));		
+		reservation_map.add_scheduled_resource(tbl, slot_offset);	
+	}
+
 	return reservation_map;
 }

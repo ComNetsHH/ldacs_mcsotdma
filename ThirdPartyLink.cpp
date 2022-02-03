@@ -5,6 +5,7 @@
 #include "ThirdPartyLink.hpp"
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
+#include "SlotCalculator.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -105,42 +106,39 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 			continue;
 		const std::vector<unsigned int> &start_slot_offsets = pair.second;
 		ReservationTable *table = mac->getReservationManager()->getReservationTable(channel);
+		
 		// for each starting slot offset
 		for (unsigned int start_slot_offset : start_slot_offsets) {
-			// for each transmission burst
-			for (unsigned int burst = 0; burst < timeout; burst++) {
-				// for each of the link initiator's transmission slot
-				for (unsigned int tx_slot = 0; tx_slot < burst_length_tx; tx_slot++) {
-					unsigned int slot_offset = start_slot_offset + burst*burst_offset + tx_slot;
-					try {
-						table->lock_either_id(slot_offset, id_link_initiator, id_link_recipient);
-						locked_resources_for_initiator.add_locked_resource(table, slot_offset);
-					} catch (const std::invalid_argument &e) {
-						std::stringstream ss;
-						ss << " couldn't lock link initiator's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
-						coutd << ss.str() << " -> ";
-					} catch (const std::exception &e) {
-						std::stringstream ss;
-						ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
-						throw std::runtime_error(ss.str());
-					}
+			auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(start_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+			// for each of the link initiator's transmission slot
+			for (int slot_offset : tx_rx_slots.first) {
+				try {
+					table->lock_either_id(slot_offset, id_link_initiator, id_link_recipient);
+					locked_resources_for_initiator.add_locked_resource(table, slot_offset);
+				} catch (const std::invalid_argument &e) {
+					std::stringstream ss;
+					ss << " couldn't lock link initiator's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
+					coutd << ss.str() << " -> ";
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
+					throw std::runtime_error(ss.str());
 				}
-				// for each of the link recipient's transmission slot
-				for (unsigned int tx_slot = 0; tx_slot < burst_length_rx; tx_slot++) {
-					unsigned int slot_offset = start_slot_offset + burst*burst_offset + burst_length_tx + tx_slot;
-					try {
-						table->lock_either_id(slot_offset, id_link_recipient, id_link_initiator);
-						locked_resources_for_recipient.add_locked_resource(table, slot_offset);
-					} catch (const std::invalid_argument &e) {
-						std::stringstream ss;
-						ss << " couldn't lock link recipient's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
-						coutd << ss.str() << " -> ";
-					} catch (const std::exception &e) {
-						std::stringstream ss;
-						ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
-						throw std::runtime_error(ss.str());
-					}
-				}
+			}
+			// for each of the link recipient's transmission slot
+			for (int slot_offset : tx_rx_slots.second) {									
+				try {
+					table->lock_either_id(slot_offset, id_link_recipient, id_link_initiator);
+					locked_resources_for_recipient.add_locked_resource(table, slot_offset);
+				} catch (const std::invalid_argument &e) {
+					std::stringstream ss;
+					ss << " couldn't lock link recipient's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
+					coutd << ss.str() << " -> ";
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
+					throw std::runtime_error(ss.str());
+				}				
 			}
 		}
 	}
