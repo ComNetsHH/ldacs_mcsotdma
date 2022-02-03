@@ -88,7 +88,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 		}
 	}
 	// now mark the slot as RX
-	sh_manager->reportExpectedLinkReply(this->num_slots_until_expected_link_reply, id_link_recipient);
+	sh_manager->reportThirdPartyExpectedLinkReply(this->num_slots_until_expected_link_reply, id_link_recipient);
 	// parse proposed resources	
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources = payload->resources;
 	const unsigned int  &timeout = header->timeout, 
@@ -115,11 +115,15 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 					try {
 						table->lock_either_id(slot_offset, id_link_initiator, id_link_recipient);
 						locked_resources_for_initiator.add_locked_resource(table, slot_offset);
+					} catch (const std::invalid_argument &e) {
+						std::stringstream ss;
+						ss << " couldn't lock link initiator's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
+						coutd << ss.str() << " -> ";
 					} catch (const std::exception &e) {
 						std::stringstream ss;
-						ss << *mac << "::" << *this << " couldn't lock link initiator's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
+						ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
 						throw std::runtime_error(ss.str());
-					}					
+					}
 				}
 				// for each of the link recipient's transmission slot
 				for (unsigned int tx_slot = 0; tx_slot < burst_length_rx; tx_slot++) {
@@ -127,11 +131,15 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 					try {
 						table->lock_either_id(slot_offset, id_link_recipient, id_link_initiator);
 						locked_resources_for_recipient.add_locked_resource(table, slot_offset);
+					} catch (const std::invalid_argument &e) {
+						std::stringstream ss;
+						ss << " couldn't lock link recipient's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
+						coutd << ss.str() << " -> ";
 					} catch (const std::exception &e) {
 						std::stringstream ss;
-						ss << *mac << "::" << *this << " couldn't lock link recipient's (id=" << id_link_initiator << ") TX slot at t=" << slot_offset << " on f=" << *channel << ": " << e.what();
+						ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
 						throw std::runtime_error(ss.str());
-					}					
+					}
 				}
 			}
 		}
