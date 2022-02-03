@@ -361,6 +361,33 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + num_packet_collisions, num_packets_sent_to_1);
 		}
 
+		void testLinkEstablishmentThreeUsers() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			auto *p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id1), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
+			p2p_1->notifyOutgoing(num_outgoing_bits);
+			p2p_3->notifyOutgoing(num_outgoing_bits);
+			size_t num_slots = 0, max_num_slots = 100;
+			while (!(p2p_1->link_status == LinkManager::Status::link_established && p2p_2->link_status == LinkManager::Status::link_established && p2p_3->link_status == LinkManager::Status::link_established) && num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+				p2p_1->notifyOutgoing(num_outgoing_bits);
+			}			
+			CPPUNIT_ASSERT(num_slots < max_num_slots);			
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_1->stat_num_third_party_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_2->stat_num_third_party_requests_rcvd.get()); // involved in both links
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_3->stat_num_third_party_requests_rcvd.get());		
+		}
+
 
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
@@ -370,6 +397,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testCollisions);
 			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 			CPPUNIT_TEST(threeUsersNonOverlappingTest);
+			CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
