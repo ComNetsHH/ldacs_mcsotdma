@@ -383,9 +383,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_1->stat_num_third_party_requests_rcvd.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_third_party_requests_rcvd.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_2->stat_num_third_party_requests_rcvd.get()); // involved in both links
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_3->stat_num_third_party_requests_rcvd.get());		
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_third_party_requests_rcvd.get());		
 		}
 
 
