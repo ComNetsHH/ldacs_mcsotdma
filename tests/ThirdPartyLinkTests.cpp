@@ -463,6 +463,48 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_initiator->stat_num_pp_links_established.get());
 		}
 
+		/** Due to the hidden node problem, one user may receive several link requests that want to occupy the same resources. */
+		void testTwoLinkRequestsWithSameResources() {			
+			pp_initiator->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 100;
+			while(mac_initiator->stat_num_requests_sent.get() < 1 && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_requests_rcvd.get());
+			// now that one request has been received
+			// create another one for another link
+			// but with the same resources
+			L2Packet *request_packet = nullptr;
+			for (auto *packet : env_initator->phy_layer->outgoing_packets) {
+				if (packet->getRequestIndex() != -1) {
+					request_packet = packet;
+					break;
+				}
+			}
+			CPPUNIT_ASSERT(request_packet != nullptr);			
+			L2Packet *another_request_packet = request_packet->copy();
+			L2HeaderBase *base_header = (L2HeaderBase*) another_request_packet->getHeaders().at(0);
+			MacId imaginary_src_id = MacId(id.getId() + 1);
+			MacId imaginary_dest_id = MacId(id.getId() + 2);
+			base_header->src_id = imaginary_src_id;
+			auto *request_header = (L2HeaderLinkRequest*) another_request_packet->getHeaders().at(another_request_packet->getRequestIndex());
+			request_header->dest_id = imaginary_dest_id;
+			coutd << std::endl << std::endl << "now comes the request" << std::endl;
+			mac->receiveFromLower(another_request_packet, env->bc_frequency);
+			mac->onSlotEnd();
+		}
+
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
 			CPPUNIT_TEST(testGetThirdPartyLink);			
 			CPPUNIT_TEST(testLinkRequestLocks);
@@ -472,6 +514,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
 			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
 			CPPUNIT_TEST(testLinkReestablishment);
+			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
