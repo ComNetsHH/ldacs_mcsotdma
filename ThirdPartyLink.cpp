@@ -151,10 +151,13 @@ void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, Reservation
 						locks_initiator.add_locked_resource(table, slot_offset);											
 				} catch (const id_mismatch &e) {					
 					// do nothing if it couldn't be locked
-					// it may very well already be reserved/locked to another user					
+					// it may very well already be reserved/locked to another user			
+				} catch (const cannot_lock &e) {
+					// do nothing if it couldn't be locked
+					// it may very well already be reserved/locked to another user			
 				} catch (const std::exception &e) {
 					std::stringstream ss;
-					ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
+					ss << *mac << "::" << *this << "::processLinkRequestMessage error: " << e.what();
 					throw std::runtime_error(ss.str());
 				}
 			}			
@@ -167,9 +170,12 @@ void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, Reservation
 				} catch (const id_mismatch &e) {
 					// do nothing if it couldn't be locked
 					// it may very well already be reserved/locked to another user					
+				} catch (const cannot_lock &e) {
+					// do nothing if it couldn't be locked
+					// it may very well already be reserved/locked to another user			
 				} catch (const std::exception &e) {
 					std::stringstream ss;
-					ss << *mac << "::" << this << "::processLinkRequestMessage error: " << e.what();
+					ss << *mac << "::" << *this << "::processLinkRequestMessage error: " << e.what();
 					throw std::runtime_error(ss.str());
 				}				
 			}
@@ -185,8 +191,7 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	coutd << "attempting to unlock " << locked_resources_for_recipient.size() << " recipient locks: unlocked " << locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator) << " -> ";		
 	locked_resources_for_recipient.reset();	
 	// update status
-	this->status = received_reply_link_established;
-	normalization_offset = 0; // reply reception is the reference time
+	this->status = received_reply_link_established;	
 	// parse selected resource
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
 	if (selected_resource_map.size() != size_t(1))
@@ -202,7 +207,11 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 				burst_length_rx = header->burst_length - header->burst_length_tx,
 				&burst_offset = header->burst_offset;
 	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot
-	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;
+	// save link info
+	normalization_offset = 0; // reply reception is the reference time now
+	link_description.first_burst_in = first_burst_in;
+	link_description.selected_channel = selected_freq_channel;
+	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;	
 	// schedule the link's resources		
 	try {
 		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
@@ -231,6 +240,17 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 			break;
 		}
 		case received_reply_link_established: {
+			// attempt to reserve more resources
+			size_t num_reservations = this->scheduled_resources.size();
+			try {
+				int normalized_first_burst_in = link_description.first_burst_in - normalization_offset;				
+				this->scheduled_resources = mac->getReservationManager()->schedule_bursts(link_description.selected_channel, link_description.timeout, normalized_first_burst_in, link_description.burst_length, link_description.burst_length_tx, link_description.burst_length_rx, link_description.burst_offset, id_link_initiator, id_link_recipient, false, true);		
+			} catch (const std::exception &e) {
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::onAnotherThirdLinkReset couldn't schedule resources along this link: " << e.what();
+				throw std::runtime_error(ss.str());
+			}
+			coutd << "additionally marked " << this->scheduled_resources.size() - num_reservations << " as BUSY -> ";
 			break;
 		}
 		default: {

@@ -342,7 +342,7 @@ bool ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
 	if (!isIdle(slot_offset)) {
 		std::stringstream ss;
 		ss << "ReservationTable::lock for non-idle and non-locked slot: " << slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) << ".";
-		throw std::invalid_argument(ss.str());
+		throw cannot_lock(ss.str());
 	}
 	// Then lock.
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::LOCKED);

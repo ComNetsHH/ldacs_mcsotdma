@@ -576,17 +576,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			}
 			CPPUNIT_ASSERT_EQUAL(num_locks, num_locks_now);
-		}
+		}		
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			// CPPUNIT_TEST(testGetThirdPartyLink);			
-			// CPPUNIT_TEST(testLinkRequestLocks);
-			// CPPUNIT_TEST(testMissingReplyUnlocks);
-			// CPPUNIT_TEST(testExpectedReply);			
-			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			// CPPUNIT_TEST(testLinkReestablishment);
+			CPPUNIT_TEST(testGetThirdPartyLink);			
+			CPPUNIT_TEST(testLinkRequestLocks);
+			CPPUNIT_TEST(testMissingReplyUnlocks);
+			CPPUNIT_TEST(testExpectedReply);			
+			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			CPPUNIT_TEST(testLinkReestablishment);
 			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
 		CPPUNIT_TEST_SUITE_END();
 	};

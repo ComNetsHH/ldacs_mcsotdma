@@ -28,9 +28,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit id_mismatch(const std::string &arg) : std::invalid_argument(arg) {}
 	};
 
-	class already_locked : public std::invalid_argument {
+	class cannot_lock : public std::invalid_argument {
 	public:
-		explicit already_locked(const std::string &arg) : std::invalid_argument(arg) {}
+		explicit cannot_lock(const std::string &arg) : std::invalid_argument(arg) {}
 	};
 
 	/**

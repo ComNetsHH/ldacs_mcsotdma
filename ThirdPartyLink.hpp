@@ -26,8 +26,11 @@ class ThirdPartyLink {
 
 	public:
 		enum Status {
+			/** not currently in use and has not made any reservations */
 			uninitialied,
+			/** a request has been processed and resources may have been locked */
 			received_request_awaiting_reply,
+			/** a reply has been processed and resources may have been marked */
 			received_reply_link_established
 		};
 
@@ -74,8 +77,13 @@ class ThirdPartyLink {
 
 				explicit LinkDescription(const LinkDescription &other) : LinkDescription(other.proposed_resources, other.burst_length, other.burst_length_tx, other.burst_length_rx, other.burst_offset, other.timeout) {}				
 
-				std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;
+				/** Set after request reception. */
+				std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;				
 				int burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout;
+				/** Set after reply reception. */
+				const FrequencyChannel *selected_channel = nullptr;
+				/** Set after reply reception. */
+				int first_burst_in;
 		};
 
 		ThirdPartyLink::Status status = uninitialied;
