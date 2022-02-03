@@ -59,13 +59,15 @@ public:
 				continue;			
 			int slot_offset = pair.second - this->num_slots_since_creation;						
 			if (slot_offset > 0) {				
-				if (!table->getReservation(slot_offset).isLocked() && !table->getReservation(slot_offset).isIdle()) {							
-					std::stringstream ss;
-					ss << "ReservationMap::unlock cannot unlock reservation in " << slot_offset << " slots. Its status is: " << table->getReservation(slot_offset) << " when it should be locked.";
-					throw std::invalid_argument(ss.str());
-				} else {
+				try {
 					table->unlock_either_id(slot_offset, id1, id2);							
 					num_unlocked++;
+				} catch (const id_mismatch &e) {
+					// do nothing
+				} catch (const std::invalid_argument &e) {
+					// do nothing
+				} catch (const std::exception &e) {
+					throw std::runtime_error("ReservationMap::unlock_either_id error: " + std::string(e.what()));
 				}
 			}
 		}		
