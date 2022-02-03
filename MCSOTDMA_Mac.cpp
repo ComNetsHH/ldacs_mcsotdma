@@ -124,15 +124,13 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				num_txs++;
 				if (num_txs > num_transmitters) {
 					std::stringstream ss;
-					ss << "MCSOTDMA_Mac::execute for too many transmissions within this time slot: ";					
-					if (reservation_manager->getBroadcastReservationTable()->getReservation(0).isTx())
-						ss << "SHTable: " << reservation_manager->getBroadcastReservationTable()->getReservation(0) << "; ";					
+					ss << *this << "::execute(TX) error of too many transmissions (" << num_txs << "): ";										
+					ss << "SHTable: " << reservation_manager->getBroadcastReservationTable()->getReservation(0) << "; ";					
 					for (const auto *tbl : reservation_manager->getP2PReservationTables()) {													
 						if (tbl->getReservation(0).isTx())
 							ss << "PPTable(" << *tbl->getLinkedChannel() << "): " << tbl->getReservation(0) << "; ";						
-					}					
-					if (reservation_manager->getTxTable()->getReservation(0).isTx())
-						ss << "TXTable: " << reservation_manager->getTxTable()->getReservation(0) << "; ";					
+					}										
+					ss << "TXTable: " << reservation_manager->getTxTable()->getReservation(0) << "; ";					
 					throw std::runtime_error(ss.str());
 				}
 				// Find the corresponding LinkManager.
@@ -154,8 +152,19 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 			}			
 			case Reservation::TX_BEACON: {
 				num_txs++;
-				if (num_txs > num_transmitters)
-					throw std::runtime_error("MCSOTDMA_Mac::execute for too many transmissions within this time slot.");
+				if (num_txs > num_transmitters) {
+					std::stringstream ss;
+					ss << *this << "::execute(TX_BEACON) error of too many transmissions: ";					
+					if (reservation_manager->getBroadcastReservationTable()->getReservation(0).isTx())
+						ss << "SHTable: " << reservation_manager->getBroadcastReservationTable()->getReservation(0) << "; ";					
+					for (const auto *tbl : reservation_manager->getP2PReservationTables()) {													
+						if (tbl->getReservation(0).isTx())
+							ss << "PPTable(" << *tbl->getLinkedChannel() << "): " << tbl->getReservation(0) << "; ";						
+					}					
+					if (reservation_manager->getTxTable()->getReservation(0).isTx())
+						ss << "TXTable: " << reservation_manager->getTxTable()->getReservation(0) << "; ";					
+					throw std::runtime_error(ss.str());
+				}					
 				passToLower(getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onTransmissionReservation(0), channel->getCenterFrequency());
 			}
 			case Reservation::RX_BEACON: {

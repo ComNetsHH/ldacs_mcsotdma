@@ -211,10 +211,17 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 	} else
 		next_broadcast_slot = 0;
 
+	if (next_broadcast_scheduled || next_broadcast_scheduled)
+		coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";
 	if (next_broadcast_scheduled)
-		coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << "next broadcast " << (next_broadcast_slot == 0 ? "now" : "in " + std::to_string(next_broadcast_slot) + " slots") << " -> ";
+		coutd << "next broadcast " << (next_broadcast_slot == 0 ? "now" : "in " + std::to_string(next_broadcast_slot) + " slots") << " -> ";
 	else
-		coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> " << "no next broadcast scheduled -> ";
+		coutd << "no next broadcast scheduled -> ";
+	if (next_beacon_scheduled)		
+		coutd << "next beacon " << (beacon_module.getNextBeaconOffset() == 0 ? "now" : "in " + std::to_string(beacon_module.getNextBeaconOffset()) + " slots") << " -> ";
+	else
+		coutd << "no next beacon scheduled -> ";
+
 
 	// broadcast link manager should always have a ReservationTable assigned
 	if (current_reservation_table == nullptr)
