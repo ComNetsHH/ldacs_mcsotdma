@@ -328,11 +328,11 @@ std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_pr
 	return start_slot_offsets;
 }
 
-void ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
+bool ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
 	// Nothing to do if it's already locked.
 	MacId res_id = slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).getTarget();
 	if (isLocked(slot_offset) && res_id == id)
-		return;
+		return false;
 	if (isLocked(slot_offset) && res_id != id) {
 		std::stringstream ss;
 		ss << "ReservationTable::lock cannot lock resource in " << slot_offset << " slots for given ID '" << id << "' as it is already locked to '" << res_id << "'.";
@@ -347,18 +347,21 @@ void ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
 	// Then lock.
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::LOCKED);
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setTarget(id);		
+	return true;
 }
 
-void ReservationTable::lock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2) {
+bool ReservationTable::lock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2) {
+	bool success = false;
 	try {
-		lock(slot_offset, id1);		
+		success = lock(slot_offset, id1);		
 	} catch (const id_mismatch &e) {
 		try {
-			lock(slot_offset, id2);
+			success = lock(slot_offset, id2);
 		} catch (const id_mismatch &e) {
 			throw id_mismatch("Couldn't lock to either ID: " + std::string(e.what()));
 		}
 	}
+	return success;
 }
 
 void ReservationTable::unlock(unsigned int slot_offset, const MacId& id) {

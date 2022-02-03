@@ -390,3 +390,12 @@ void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
 void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
 	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
 }
+
+void MCSOTDMA_Mac::onThirdPartyLinkReset(const ThirdPartyLink* caller) {
+	for (auto &pair : third_party_links) {
+		auto &third_party_link = pair.second;
+		if (third_party_link != *caller) {
+			third_party_link.onAnotherThirdLinkReset();
+		}
+	}
+}

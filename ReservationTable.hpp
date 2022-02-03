@@ -28,6 +28,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		explicit id_mismatch(const std::string &arg) : std::invalid_argument(arg) {}
 	};
 
+	class already_locked : public std::invalid_argument {
+	public:
+		explicit already_locked(const std::string &arg) : std::invalid_argument(arg) {}
+	};
+
 	/**
 	 * A reservation table keeps track of all slots of a particular, logical frequency channel for a pre-defined planning horizon.
 	 * It is regularly updated when new information about slot utilization becomes available.
@@ -107,8 +112,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param id 
 		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
 		 * @throws id_mismatch if ID does not match
+		 * @returns whether locking succeeded
 		 */
-		void lock(unsigned int slot_offset, const MacId& id);
+		bool lock(unsigned int slot_offset, const MacId& id);
 
 		/**
 		 * When processing third-party link requests, one resource may be locked for id1's transmission or id2's transmission, as several proposals are made.
@@ -117,10 +123,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param slot_offset 
 		 * @param id1 
 		 * @param id2 
+		 * @returns whether locking succeeded
 		 * @throws std::invalid_argument if reservation at slot_offset is not locked 
-		 * @throws id_mismatch if neither ID matches
+		 * @throws id_mismatch if neither ID matches		 
 		 */
-		void lock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2);
+		bool lock_either_id(unsigned int slot_offset, const MacId& id1, const MacId& id2);
 
 		/**		 
 		 * @param slot_offset 

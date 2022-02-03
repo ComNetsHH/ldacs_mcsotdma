@@ -500,9 +500,49 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			base_header->src_id = imaginary_src_id;
 			auto *request_header = (L2HeaderLinkRequest*) another_request_packet->getHeaders().at(another_request_packet->getRequestIndex());
 			request_header->dest_id = imaginary_dest_id;
-			coutd << std::endl << std::endl << "now comes the request" << std::endl;
-			mac->receiveFromLower(another_request_packet, env->bc_frequency);
-			mac->onSlotEnd();
+			// make sure the 2nd reply is later than the first
+			int reply_slot_1 = -1, reply_slot_2;
+			auto *&proposed_resources = (LinkManager::LinkEstablishmentPayload*&) another_request_packet->getPayloads().at(another_request_packet->getRequestIndex());						
+			for (auto &pair : proposed_resources->resources) {
+				const auto *channel = pair.first;
+				if (channel->isSH()) {					
+					reply_slot_1 = pair.second.at(0);
+					reply_slot_2 = reply_slot_1 + 1;					
+					proposed_resources->resources.at(channel).at(0) = reply_slot_2;
+					break;
+				}
+			}
+			request_header->reply_offset = reply_slot_2;
+			CPPUNIT_ASSERT_GREATER(-1, reply_slot_1);			
+			coutd << std::endl << std::endl << "now comes the request" << std::endl;												
+			mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(another_request_packet);			
+			auto &third_party_link_1 = mac->getThirdPartyLink(id_initiator, id_recipient), &third_party_link_2 = mac->getThirdPartyLink(imaginary_src_id, imaginary_dest_id);
+			// locks should've been made for first link
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_1.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_1.locked_resources_for_recipient.size());
+			// but not for 2nd link
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
+			// proceed until first reply is expected
+			// but make sure it's not received
+			env_recipient->phy_layer->connected_phys.clear();
+			for (int t = 0; t < reply_slot_1; t++) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			// locks should've been undone
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_1.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_1.locked_resources_for_recipient.size());
+			// and made for the 2nd link, whose reply is still expected
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
 		}
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
