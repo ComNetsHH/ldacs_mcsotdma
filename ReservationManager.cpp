@@ -201,7 +201,7 @@ std::vector<ReservationTable*>& ReservationManager::getP2PReservationTables() {
 	return this->p2p_reservation_tables;
 }
 
-ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator, bool is_third_party_link) {
+ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *channel, const unsigned int timeout, const int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator, bool is_third_party_link) {
 	ReservationMap reservation_map;
 	ReservationTable *tbl = getReservationTable(channel);	
 	Reservation::Action action_1, action_2;
@@ -228,10 +228,14 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 	// go over link initiator's TX slots
 	for (int &slot_offset : tx_rx_slots.first) {
 		// make sure that the reservation is idle locally
-		if (!tbl->getReservation(slot_offset).isIdle()) {								
-			std::stringstream s;
-			s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
-			throw std::runtime_error(s.str());
+		if (!tbl->getReservation(slot_offset).isIdle()) {			
+			if (!is_third_party_link) { // throw an error if it's not idle for our own link
+				std::stringstream s;
+				s << *this << "::schedule_bursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+				throw std::runtime_error(s.str());
+			} else { // don't for a third party link, as there we just schedule whatever we can
+				continue;
+			}
 		}
 		// make sure that hardware is available
 		if (action_1 == Reservation::TX) {
@@ -260,9 +264,13 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 	for (int &slot_offset : tx_rx_slots.second) {
 		// make sure that the reservation is idle locally
 		if (!tbl->getReservation(slot_offset).isIdle()) {
-			std::stringstream s;
-			s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
-			throw std::runtime_error(s.str());
+			if (!is_third_party_link) { // throw an error if it's not idle for our own link
+				std::stringstream s;
+				s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
+				throw std::runtime_error(s.str());
+			} else { // don't for a third party link, as there we just schedule whatever we can
+				continue;
+			}
 		}
 		// make sure that hardware is available
 		if (action_2 == Reservation::TX) {
@@ -272,7 +280,7 @@ ReservationMap ReservationManager::schedule_bursts(const FrequencyChannel *chann
 				std::stringstream s;
 				s << *this << "::schedule_bursts couldn't schedule a " << action_2 << "@" << target_id_2 <<   " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
 				throw std::runtime_error(s.str());
-			}
+			} 
 		} else if (action_2 == Reservation::RX) {
 			bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
 			if (!receiver_available) {

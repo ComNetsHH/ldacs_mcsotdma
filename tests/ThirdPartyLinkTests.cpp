@@ -523,6 +523,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// but not for 2nd link
 			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
+			// remember which slots were locked
+			std::map<const FrequencyChannel*, std::vector<int>> locked_res;
+			size_t num_locks = 0;
+			for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (int t = 0; t < env->planning_horizon; t++) {
+					if (table->isLocked(t)) {
+						locked_res[channel].push_back(t);
+						num_locks++;
+					}
+				}
+			}	
+			CPPUNIT_ASSERT_EQUAL(third_party_link_1.locked_resources_for_initiator.size() + third_party_link_1.locked_resources_for_recipient.size(), num_locks);			
 			// proceed until first reply is expected
 			// but make sure it's not received
 			env_recipient->phy_layer->connected_phys.clear();
@@ -543,17 +556,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// and made for the 2nd link, whose reply is still expected
 			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
 			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
+			// make sure it's the same slots (normalized to current time)			
+			for (const auto &pair : locked_res) {
+				const auto *channel = pair.first;
+				const auto &slots = pair.second;
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (int t : slots) {
+					int normalized_offset = t - reply_slot_1;
+					const auto &res = table->getReservation(normalized_offset);					
+					CPPUNIT_ASSERT_EQUAL(true, res.isLocked());
+				}				
+			}	
+			size_t num_locks_now = 0;
+			for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (int t = 0; t < env->planning_horizon; t++) {
+					if (table->isLocked(t)) 						
+						num_locks_now++;					
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(num_locks, num_locks_now);
 		}
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			CPPUNIT_TEST(testGetThirdPartyLink);			
-			CPPUNIT_TEST(testLinkRequestLocks);
-			CPPUNIT_TEST(testMissingReplyUnlocks);
-			CPPUNIT_TEST(testExpectedReply);			
-			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			CPPUNIT_TEST(testLinkReestablishment);
+			// CPPUNIT_TEST(testGetThirdPartyLink);			
+			// CPPUNIT_TEST(testLinkRequestLocks);
+			// CPPUNIT_TEST(testMissingReplyUnlocks);
+			// CPPUNIT_TEST(testExpectedReply);			
+			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			// CPPUNIT_TEST(testLinkReestablishment);
 			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
 		CPPUNIT_TEST_SUITE_END();
 	};
