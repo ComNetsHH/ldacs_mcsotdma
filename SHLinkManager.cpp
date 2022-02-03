@@ -467,18 +467,28 @@ void SHLinkManager::reportCollisionWithScheduledBroadcast(const MacId& collider)
 	}		
 }
 
-void SHLinkManager::reportExpectedLinkReply(int slot_offset, const MacId& sender_id) {
-	coutd << "marking slot in " << slot_offset << " as RX (expecting a third-party link reply there) -> ";
+void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id) {
+	coutd << "marking slot in " << slot_offset << " as RX@" << sender_id << " (expecting a third-party link reply there) -> ";
 	const auto &res = current_reservation_table->getReservation(slot_offset);
-	coutd << res << "->";
-	if (res.isIdle() || (res.isBusy() && res.getTarget() == sender_id)) {
+	// check if own transmissions clash with it
+	if (res.isTx()) {
+		coutd << "re-scheduling own scheduled broadcast -> ";
+		unscheduleBroadcastSlot();
+		// mark it before scheduling s.t. it won't choose this slot
 		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
-		coutd << current_reservation_table->getReservation(slot_offset) << " -> ";
+		scheduleBroadcastSlot();
+	} else if (res.isBeaconTx()) {
+		coutd << "re-scheduling own scheduled beacon -> ";
+		unscheduleBeaconSlot();
+		// mark it before scheduling s.t. it won't choose this slot
+		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
+		scheduleBeacon();
 	} else {
-		std::stringstream ss;
-		ss << *mac << "::" << *this << "::reportExpectedLinkReply error: existing reservation " << res << " is neither idle nor BUSY@" << sender_id << ".";
-		throw std::runtime_error(ss.str());
-	}
+		// overwrite any other reservations
+		coutd << res << "->";
+		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
+		coutd << current_reservation_table->getReservation(slot_offset) << " -> ";			
+	}	
 }
 
 void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
