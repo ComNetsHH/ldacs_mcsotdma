@@ -339,8 +339,11 @@ void ReservationTable::lock(unsigned int slot_offset, const MacId& id) {
 		throw id_mismatch(ss.str());	
 	}
 	// Ensure that you *can* lock before actually doing so.
-	if (!isIdle(slot_offset))
-		throw std::invalid_argument("ReservationTable::lock for non-idle and non-locked slot.");
+	if (!isIdle(slot_offset)) {
+		std::stringstream ss;
+		ss << "ReservationTable::lock for non-idle and non-locked slot: " << slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) << ".";
+		throw std::invalid_argument(ss.str());
+	}
 	// Then lock.
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setAction(Reservation::LOCKED);
 	slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).setTarget(id);		
