@@ -53,14 +53,15 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 			throw no_rx_available_error("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
 		}
 	}
-	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
+	bool currently_idle = getReservation(slot_offset).isIdle();
 	bool can_free_transmitter;
-	if (!currently_idle && reservation.isIdle() && this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isAnyTx()) 
+	if (transmitter_reservation_table != nullptr && !currently_idle && reservation.isIdle() && getReservation(slot_offset).isAnyTx()) {
+		coutd << "pass-through to TX because res=" << reservation << " and local=" << getReservation(slot_offset) << " -> ";
 		can_free_transmitter = true;
-	else 
+	} else 
 		can_free_transmitter = false;
 	bool can_free_receiver;
-	if (!currently_idle && reservation.isIdle() && this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isAnyRx())
+	if (!receiver_reservation_tables.empty() && !currently_idle && reservation.isIdle() && getReservation(slot_offset).isAnyRx())
 		can_free_receiver = true;
 	else
 		can_free_receiver = false;
