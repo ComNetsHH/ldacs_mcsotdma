@@ -612,6 +612,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh_recipient->link_replies.size());		
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
 			auto *link_request = env->phy_layer->outgoing_packets.at(env->phy_layer->outgoing_packets.size() - 1);
 			CPPUNIT_ASSERT_GREATER(-1, link_request->getRequestIndex());
 			auto *link_request_header = (L2HeaderLinkRequest*) link_request->getHeaders().at(link_request->getRequestIndex());
@@ -620,26 +622,29 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// now receive this 
 			mac_recipient->receiveFromLower(link_request->copy(), env->sh_frequency);
 			mac_recipient->onSlotEnd();
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_broadcast_collisions_detected.get());
-			scheduled_link_reply_slot = sh_recipient->link_replies.at(0).first + 1; 			
-			for (int t = 0; t < 10; t++)
-				std::cout << "t=" << t << ": " << sh_recipient->current_reservation_table->getReservation(t) << std::endl;
-			std::cout << scheduled_link_reply_slot << std::endl;
-			CPPUNIT_ASSERT_EQUAL(Reservation(id, Reservation::RX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_broadcast_collisions_detected.get());						
+			CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
 			// so now when the supposed reply slot arrives, nothing will be sent
-
+			for (int t = 0; t < scheduled_link_reply_slot; t++) {
+				mac_recipient->update(1);
+				mac_recipient->execute();
+				mac_recipient->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh_recipient->link_replies.size());		
+			std::cout << "reply scheduled in " << sh_recipient->link_replies.at(0).first << std::endl;
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
 		}
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			CPPUNIT_TEST(testGetThirdPartyLink);			
-			CPPUNIT_TEST(testLinkRequestLocks);
-			CPPUNIT_TEST(testMissingReplyUnlocks);
-			CPPUNIT_TEST(testExpectedReply);			
-			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			CPPUNIT_TEST(testLinkReestablishment);
-			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
+			// CPPUNIT_TEST(testGetThirdPartyLink);			
+			// CPPUNIT_TEST(testLinkRequestLocks);
+			// CPPUNIT_TEST(testMissingReplyUnlocks);
+			// CPPUNIT_TEST(testExpectedReply);			
+			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			// CPPUNIT_TEST(testLinkReestablishment);
+			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
 			CPPUNIT_TEST(testLinkReplyDoesNotOverwriteBroadcast);
 		CPPUNIT_TEST_SUITE_END();
 	};
