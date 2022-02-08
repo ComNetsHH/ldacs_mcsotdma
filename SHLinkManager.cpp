@@ -422,7 +422,7 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	return selected_slot;
 }
 
-void SHLinkManager::scheduleBroadcastSlot() {
+void SHLinkManager::scheduleBroadcastSlot() {	
 	unscheduleBroadcastSlot();
 	// By default, even the next slot could be chosen.
 	unsigned int min_offset = 1;
@@ -432,7 +432,7 @@ void SHLinkManager::scheduleBroadcastSlot() {
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
-	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));	
+	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));		
 }
 
 void SHLinkManager::unscheduleBroadcastSlot() {
@@ -460,7 +460,11 @@ bool SHLinkManager::isNextBroadcastScheduled() const {
 }
 
 unsigned int SHLinkManager::getNextBroadcastSlot() const {
-	return next_broadcast_slot;
+	int earliest_transmission = next_broadcast_slot;
+	for (const auto &item : link_replies) 
+		if (item.first < earliest_transmission)
+			earliest_transmission = item.first;
+	return earliest_transmission;
 }
 
 unsigned int SHLinkManager::getNextBeaconSlot() const {
