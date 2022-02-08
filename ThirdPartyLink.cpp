@@ -197,8 +197,8 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 				&burst_length = header->burst_length,
 				&burst_length_tx = header->burst_length_tx,
 				burst_length_rx = header->burst_length - header->burst_length_tx,
-				&burst_offset = header->burst_offset;
-	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot
+				&burst_offset = header->burst_offset;	
+	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot	
 	// save link info
 	normalization_offset = 0; // reply reception is the reference time now
 	link_description.first_burst_in = first_burst_in;
@@ -238,6 +238,7 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 			size_t num_reservations = this->scheduled_resources.size();
 			try {
 				int normalized_first_burst_in = link_description.first_burst_in - normalization_offset;				
+				std::cout << "link_description.first_burst_in=" << link_description.first_burst_in << " normalization_offset=" << normalization_offset << " => " << normalized_first_burst_in << std::endl;
 				this->scheduled_resources = mac->getReservationManager()->schedule_bursts(link_description.selected_channel, link_description.timeout, normalized_first_burst_in, link_description.burst_length, link_description.burst_length_tx, link_description.burst_length_rx, link_description.burst_offset, id_link_initiator, id_link_recipient, false, true);		
 			} catch (const std::exception &e) {
 				std::stringstream ss;
