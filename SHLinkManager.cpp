@@ -442,9 +442,9 @@ void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 	coutd << "parsing incoming beacon -> ";
 	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 	if (pair.first) {
-		beaconCollisionDetected(origin_id, Reservation::BUSY);		
+		beaconCollisionDetected(origin_id, Reservation::RX);		
 	} if (pair.second) {
-		broadcastCollisionDetected(origin_id, Reservation::BUSY);
+		broadcastCollisionDetected(origin_id, Reservation::RX);
 	}
 	// pass it to the MAC layer
 	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));

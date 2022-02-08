@@ -327,7 +327,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(t));
 			bc_lm->processBeaconMessage(partner_id, pair.first, pair.second);
 			CPPUNIT_ASSERT(bc_lm->beacon_module.next_beacon_in > t);
-			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), bc_lm->current_reservation_table->getReservation(t));
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(bc_lm->beacon_module.next_beacon_in));
 		}
 
@@ -354,8 +354,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			bc_lm->processBeaconMessage(partner_id, pair.first, pair.second);
 			// and now the first user should've moved away from 't'
 			CPPUNIT_ASSERT(bc_lm->next_broadcast_slot != t);
-			// and marked the slot as BUSY
-			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), bc_lm->current_reservation_table->getReservation(t));
+			// and marked the slot as RX
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(bc_lm->next_broadcast_slot));
 		}
 
