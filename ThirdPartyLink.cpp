@@ -106,7 +106,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 		if (sh_manager->getNextBroadcastSlot() == num_slots_until_expected_link_reply) {
 			coutd << "detected collision of advertised reply slot and our own broadcast -> ";
 			// re-schedule own broadcast and mark the slot as BUSY
-			sh_manager->reportCollisionWithScheduledBroadcast(id_link_recipient);
+			sh_manager->broadcastCollisionDetected(id_link_recipient);
 		}
 	}
 	// now mark the slot as RX
@@ -214,7 +214,9 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;	
 	// schedule the link's resources		
 	try {
-		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
+		bool is_link_initiator = false;
+		bool is_third_part_link = true;
+		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, is_link_initiator, is_third_part_link);		
 	} catch (const std::exception &e) {
 		std::stringstream ss;
 		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: " << e.what();

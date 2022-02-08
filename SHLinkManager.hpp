@@ -18,6 +18,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class PPLinkManagerTests;
 		friend class SystemTests;
 		friend class ThreeUsersTests;
+		friend class ThirdPartyLinkTests;
 
 	public:
 		SHLinkManager(ReservationManager *reservation_manager, MCSOTDMA_Mac *mac, unsigned int min_beacon_gap);
@@ -95,8 +96,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool isNextBroadcastScheduled() const;
 		unsigned int getNextBroadcastSlot() const;
-		unsigned int getNextBeaconSlot() const;
-		void reportCollisionWithScheduledBroadcast(const MacId& collider);		
+		unsigned int getNextBeaconSlot() const;		
+		/** Called when slot advertisement indicates a collision of some other user's transmission with the local user's broadcast. */
+		void broadcastCollisionDetected(const MacId& collider_id);
 		void reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id);		
 
 	protected:
@@ -133,7 +135,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/**
 		 * @return Average number of slots inbetween broadcast packet generations as measured.
 		 */
-		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;		
+		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;				
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */

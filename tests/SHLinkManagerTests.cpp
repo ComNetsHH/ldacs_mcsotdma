@@ -660,7 +660,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				auto *beacon_packet = new L2Packet();
 				beacon_packet->addMessage(new L2HeaderBase(MacId(100 + n), 0, 0, 0, 0), nullptr);
 				beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
-				mac->receiveFromLower(beacon_packet, env->bc_frequency);
+				mac->receiveFromLower(beacon_packet, env->sh_frequency);
 				mac->onSlotEnd();
 				CPPUNIT_ASSERT_EQUAL(n+1, mac->getNeighborObserver().getNumActiveNeighbors());
 			}		

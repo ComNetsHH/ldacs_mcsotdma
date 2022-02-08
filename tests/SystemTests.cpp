@@ -21,7 +21,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		MacId own_id, partner_id;
 		uint32_t planning_horizon;
-		uint64_t center_frequency1, center_frequency2, center_frequency3, bc_frequency, bandwidth;
+		uint64_t center_frequency1, center_frequency2, center_frequency3, sh_frequency, bandwidth;
 		NetworkLayer* net_layer_me, * net_layer_you;
 		RLCLayer* rlc_layer_me, * rlc_layer_you;
 		ARQLayer* arq_layer_me, * arq_layer_you;
@@ -41,7 +41,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			center_frequency1 = env_me->p2p_freq_1;
 			center_frequency2 = env_me->p2p_freq_2;
 			center_frequency3 = env_me->p2p_freq_3;
-			bc_frequency = env_me->bc_frequency;
+			sh_frequency = env_me->sh_frequency;
 			bandwidth = env_me->bandwidth;
 			planning_horizon = env_me->planning_horizon;
 

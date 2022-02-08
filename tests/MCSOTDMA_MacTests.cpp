@@ -78,8 +78,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			packet1->addMessage(new L2HeaderBroadcast(), nullptr);
 			packet2->addMessage(new L2HeaderBase(MacId(11), 0, 0, 0, 0), nullptr);
 			packet2->addMessage(new L2HeaderBroadcast(), nullptr);
-			mac->receiveFromLower(packet1, env->bc_frequency);
-			mac->receiveFromLower(packet2, env->bc_frequency);
+			mac->receiveFromLower(packet1, env->sh_frequency);
+			mac->receiveFromLower(packet2, env->sh_frequency);
 			mac->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());			
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
@@ -90,7 +90,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			packet->addMessage(new L2HeaderBase(MacId(10), 0, 0, 0, 0), nullptr);
 			packet->addMessage(new L2HeaderBroadcast(), nullptr);
 			packet->hasChannelError = true;
-			mac->receiveFromLower(packet, env->bc_frequency);
+			mac->receiveFromLower(packet, env->sh_frequency);
 			mac->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_channel_errors.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
@@ -103,8 +103,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			packet1->hasChannelError = true;
 			packet2->addMessage(new L2HeaderBase(MacId(11), 0, 0, 0, 0), nullptr);
 			packet2->addMessage(new L2HeaderBroadcast(), nullptr);
-			mac->receiveFromLower(packet1, env->bc_frequency);
-			mac->receiveFromLower(packet2, env->bc_frequency);
+			mac->receiveFromLower(packet1, env->sh_frequency);
+			mac->receiveFromLower(packet2, env->sh_frequency);
 			mac->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());			
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_channel_errors.get());
