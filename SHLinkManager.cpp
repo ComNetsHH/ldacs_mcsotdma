@@ -254,11 +254,14 @@ void SHLinkManager::onSlotEnd() {
 
 	// update counters that keep track when link replies are due
 	for (auto &item : link_replies) {
-		coutd << "decrementing counter until link reply from " << item.first << " to ";
+		coutd << *mac << "::" << *this << " decrementing counter until link reply from " << item.first << " to ";
 		if (item.first > 0)
 			item.first--;
-		else
-			throw std::runtime_error("SHLinkManager::onSlotEnd for unsent link reply.");
+		else {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::onSlotEnd appears to have missed sending a link reply. sh_table=" << current_reservation_table->getReservation(0) << " tx_table=" << reservation_manager->getTxTable()->getReservation(0) << ".";
+			throw std::runtime_error(ss.str());
+		}
 		coutd << item.first << " -> ";
 	}
 
