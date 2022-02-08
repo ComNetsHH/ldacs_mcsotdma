@@ -11,12 +11,12 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 PPLinkManager::PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
-void PPLinkManager::onReceptionReservation(unsigned int burst_length) {	
+void PPLinkManager::onReceptionReservation() {	
 	coutd << *this << "::onReception";
 	communication_during_this_slot = true;
 }
 
-L2Packet* PPLinkManager::onTransmissionReservation(unsigned int burst_length) {
+L2Packet* PPLinkManager::onTransmissionReservation() {
 	communication_during_this_slot = true;
 	coutd << *this << "::onTransmission -> ";
 	// instantiate packet

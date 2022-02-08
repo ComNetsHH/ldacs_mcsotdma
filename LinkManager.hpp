@@ -97,17 +97,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		virtual void onPacketReception(L2Packet *&packet);
 
 		/**
-		 * Called when a reception burst starts.
-		 * @param burst_length Number of slots that'll be received for.
+		 * Called when a reception burst starts.		 
 		 */
-		virtual void onReceptionReservation(unsigned int burst_length) = 0;		
+		virtual void onReceptionReservation() = 0;		
 
 		/**
-		 * Called when a transmission burst starts.
-		 * @param burst_length Number of slots that'll be transmitted for.
+		 * Called when a transmission burst starts.		 
 		 * @return A packet that should be transmitted during this burst.
 		 */
-		virtual L2Packet* onTransmissionReservation(unsigned int burst_length) = 0;		
+		virtual L2Packet* onTransmissionReservation() = 0;		
 
 		/**
 		 * Called when upper layers notify the MAC of outgoing data for this link.

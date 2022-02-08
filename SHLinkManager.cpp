@@ -18,14 +18,12 @@ SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_M
 	beacon_module.setMinBeaconGap(min_beacon_gap);
 }
 
-void SHLinkManager::onReceptionReservation(unsigned int burst_length) {
+void SHLinkManager::onReceptionReservation() {
 
 }
 
-L2Packet* SHLinkManager::onTransmissionReservation(unsigned int remaining_burst_length) {
-	coutd << *mac << "::" << *this << "::onTransmissionReservation -> ";
-	if (remaining_burst_length != 0)
-		throw std::invalid_argument("SHLinkManager::onTransmissionReservation for burst_length!=0.");
+L2Packet* SHLinkManager::onTransmissionReservation() {
+	coutd << *mac << "::" << *this << "::onTransmissionReservation -> ";	
 
 	auto *packet = new L2Packet();
 	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);
@@ -213,13 +211,23 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 
 	if (next_broadcast_scheduled || next_broadcast_scheduled)
 		coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";
-	if (next_broadcast_scheduled)
+	if (next_broadcast_scheduled) {
 		coutd << "next broadcast " << (next_broadcast_slot == 0 ? "now" : "in " + std::to_string(next_broadcast_slot) + " slots") << " -> ";
-	else
+		if (reservation_manager->getTxTable()->getReservation(getNextBroadcastSlot()).getAction() != Reservation::TX || reservation_manager->getBroadcastReservationTable()->getReservation(getNextBroadcastSlot()).getAction() != Reservation::TX) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::onSlotStart for scheduled broadcast but invalid table: broadcast_in=" << getNextBroadcastSlot() << " tx_table=" << reservation_manager->getTxTable()->getReservation(getNextBroadcastSlot()) << " sh_table=" << reservation_manager->getBroadcastReservationTable()->getReservation(getNextBroadcastSlot()) << "!";			
+			throw std::runtime_error(ss.str());
+		}			
+	} else
 		coutd << "no next broadcast scheduled -> ";
-	if (next_beacon_scheduled)		
+	if (next_beacon_scheduled) {
 		coutd << "next beacon " << (getNextBeaconSlot() == 0 ? "now" : "in " + std::to_string(getNextBeaconSlot()) + " slots") << " -> ";
-	else
+		if (reservation_manager->getTxTable()->getReservation(getNextBeaconSlot()).getAction() != Reservation::TX_BEACON || reservation_manager->getBroadcastReservationTable()->getReservation(getNextBeaconSlot()).getAction() != Reservation::TX_BEACON) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::onSlotStart for scheduled beacon but invalid table: beacon_in=" << getNextBeaconSlot() << " tx_table=" << reservation_manager->getTxTable()->getReservation(getNextBeaconSlot()) << " sh_table=" << reservation_manager->getBroadcastReservationTable()->getReservation(getNextBeaconSlot()) << "!";			
+			throw std::runtime_error(ss.str());
+		}			
+	} else
 		coutd << "no next beacon scheduled -> ";
 
 

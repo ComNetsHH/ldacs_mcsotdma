@@ -271,7 +271,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			for (size_t t = 0; t < link_manager->beacon_module.min_beacon_offset*2.5; t++) {
 				link_manager->onSlotStart(1);
 				if (link_manager->beacon_module.shouldSendBeaconThisSlot()) {
-					link_manager->onTransmissionReservation(0);
+					link_manager->onTransmissionReservation();
 					num_beacons_sent++;
 				}
 				link_manager->onSlotEnd();

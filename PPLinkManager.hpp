@@ -21,8 +21,8 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 	public:
 		PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
 		
-		void onReceptionReservation(unsigned int burst_length) override;		
-		L2Packet* onTransmissionReservation(unsigned int burst_length) override;		
+		void onReceptionReservation() override;		
+		L2Packet* onTransmissionReservation() override;		
 		void notifyOutgoing(unsigned long num_bits) override;
 		void onSlotStart(uint64_t num_slots) override;
 		void onSlotEnd() override;
