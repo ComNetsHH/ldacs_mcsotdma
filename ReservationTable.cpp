@@ -54,6 +54,16 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		}
 	}
 	bool currently_idle = this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isIdle();
+	bool can_free_transmitter;
+	if (!currently_idle && reservation.isIdle() && this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isAnyTx()) 
+		can_free_transmitter = true;
+	else 
+		can_free_transmitter = false;
+	bool can_free_receiver;
+	if (!currently_idle && reservation.isIdle() && this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)).isAnyRx())
+		can_free_receiver = true;
+	else
+		can_free_receiver = false;
 	this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset)) = reservation;
 	// Update the number of idle slots.
 	if (currently_idle && !reservation.isIdle()) // idle -> non-idle
@@ -61,17 +71,23 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	else if (!currently_idle && reservation.isIdle()) // non-idle -> idle
 		num_idle_future_slots++;
 	// If a transmitter table is linked, mark it there, too.
+	if (transmitter_reservation_table != nullptr) {
+		if (reservation.isAnyTx() || can_free_transmitter)
+			transmitter_reservation_table->mark(slot_offset, reservation);	
+	}
 	if ((reservation.isAnyTx() || reservation.isIdle()) && transmitter_reservation_table != nullptr) 
 		transmitter_reservation_table->mark(slot_offset, reservation);	
 	// Same for receiver tables
-	if ((reservation.isAnyRx() || reservation.isIdle()) && !receiver_reservation_tables.empty()) {
-		for (ReservationTable* rx_table : receiver_reservation_tables) {
-			if (rx_table->getReservation(slot_offset).isIdle()) {					
-				rx_table->mark(slot_offset, reservation);
-				break;
-			}
+	if (!receiver_reservation_tables.empty()) {
+		if (reservation.isAnyRx() || can_free_receiver) {
+			for (ReservationTable* rx_table : receiver_reservation_tables) {
+				if (rx_table->getReservation(slot_offset).isIdle()) {					
+					rx_table->mark(slot_offset, reservation);
+					break;
+				}
+			}	
 		}	
-	}
+	}	
 	return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
 }
 
