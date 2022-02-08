@@ -630,21 +630,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_recipient->execute();
 				mac_recipient->onSlotEnd();
 			}
-			CPPUNIT_ASSERT_EQUAL(size_t(1), sh_recipient->link_replies.size());		
-			std::cout << "reply scheduled in " << sh_recipient->link_replies.at(0).first << std::endl;
+			CPPUNIT_ASSERT_EQUAL(size_t(0), sh_recipient->link_replies.size());					
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
 		}
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			// CPPUNIT_TEST(testGetThirdPartyLink);			
-			// CPPUNIT_TEST(testLinkRequestLocks);
-			// CPPUNIT_TEST(testMissingReplyUnlocks);
-			// CPPUNIT_TEST(testExpectedReply);			
-			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			// CPPUNIT_TEST(testLinkReestablishment);
-			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
+			CPPUNIT_TEST(testGetThirdPartyLink);			
+			CPPUNIT_TEST(testLinkRequestLocks);
+			CPPUNIT_TEST(testMissingReplyUnlocks);
+			CPPUNIT_TEST(testExpectedReply);			
+			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			CPPUNIT_TEST(testLinkReestablishment);
+			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
 			CPPUNIT_TEST(testLinkReplyDoesNotOverwriteBroadcast);
 		CPPUNIT_TEST_SUITE_END();
 	};

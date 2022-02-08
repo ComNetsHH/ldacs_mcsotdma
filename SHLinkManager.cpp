@@ -254,15 +254,20 @@ void SHLinkManager::onSlotEnd() {
 
 	// update counters that keep track when link replies are due
 	for (auto &item : link_replies) {
-		coutd << *mac << "::" << *this << " decrementing counter until link reply from " << item.first << " to ";
-		if (item.first > 0)
-			item.first--;
-		else {
-			std::stringstream ss;
-			ss << *mac << "::" << *this << "::onSlotEnd appears to have missed sending a link reply. sh_table=" << current_reservation_table->getReservation(0) << " tx_table=" << reservation_manager->getTxTable()->getReservation(0) << ".";
-			throw std::runtime_error(ss.str());
-		}
-		coutd << item.first << " -> ";
+		coutd << *mac << "::" << *this << " decrementing counter until link reply -> "; 
+		if (item.first > 0) {
+			coutd << item.first << "->";
+			item.first--;			
+			coutd << item.first << " -> ";
+		} else {			
+			coutd << "missed transmitting this reply -> ";
+			// link reply couldn't have been sent, probably because a third-party link has unscheduled the transmission
+			// erase it 
+			const MacId dest_id = item.second.first->dest_id;			 
+			cancelLinkReply(dest_id);
+			// notify the corresponding link manager
+			((PPLinkManager*) mac->getLinkManager(dest_id))->scheduledLinkReplyCouldNotHaveBeenSent();			
+		}		
 	}
 
 	// Update estimators.
