@@ -463,7 +463,7 @@ unsigned int SHLinkManager::getNextBeaconSlot() const {
 }
 
 void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
-	coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to ";
+	coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to -> ";
 	// remember current broadcast slot
 	auto current_broadcast_slot = next_broadcast_slot;
 	// unschedule it
@@ -481,7 +481,7 @@ void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reserva
 }
 
 void SHLinkManager::beaconCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
-	coutd << "re-scheduling beacon from t=" << getNextBeaconSlot() << " to ";
+	coutd << "re-scheduling beacon from t=" << getNextBeaconSlot() << " to -> ";
 	// remember current broadcast slot
 	auto current_beacon_slot = getNextBeaconSlot();
 	// unschedule it
@@ -502,18 +502,12 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 	coutd << "marking slot in " << slot_offset << " as RX@" << sender_id << " (expecting a third-party link reply there) -> ";
 	const auto &res = current_reservation_table->getReservation(slot_offset);
 	// check if own transmissions clash with it
-	if (res.isTx()) {
+	if (res.isTx()) {		
 		coutd << "re-scheduling own scheduled broadcast -> ";
-		unscheduleBroadcastSlot();
-		// mark it before scheduling s.t. it won't choose this slot
-		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
-		scheduleBroadcastSlot();
+		broadcastCollisionDetected(sender_id, Reservation::RX);		
 	} else if (res.isBeaconTx()) {
 		coutd << "re-scheduling own scheduled beacon -> ";
-		unscheduleBeaconSlot();
-		// mark it before scheduling s.t. it won't choose this slot
-		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
-		scheduleBeacon();
+		beaconCollisionDetected(sender_id, Reservation::RX);
 	} else {
 		// overwrite any other reservations
 		coutd << res << "->";

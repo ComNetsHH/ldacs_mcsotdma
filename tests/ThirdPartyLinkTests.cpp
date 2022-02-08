@@ -620,6 +620,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// now receive this 
 			mac_recipient->receiveFromLower(link_request->copy(), env->sh_frequency);
 			mac_recipient->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_broadcast_collisions_detected.get());
+			scheduled_link_reply_slot = sh_recipient->link_replies.at(0).first + 1; 			
+			for (int t = 0; t < 10; t++)
+				std::cout << "t=" << t << ": " << sh_recipient->current_reservation_table->getReservation(t) << std::endl;
+			std::cout << scheduled_link_reply_slot << std::endl;
+			CPPUNIT_ASSERT_EQUAL(Reservation(id, Reservation::RX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
+			// so now when the supposed reply slot arrives, nothing will be sent
+
 		}
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		

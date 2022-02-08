@@ -99,17 +99,9 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 	this->status = received_request_awaiting_reply;	
 	// parse expected reply slot
 	this->num_slots_until_expected_link_reply = (int) header->reply_offset; // this one is updated each slot
-	this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed
-	// check for a potential collision with our own broadcast
-	auto *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-	if (sh_manager->isNextBroadcastScheduled()) {
-		if (sh_manager->getNextBroadcastSlot() == num_slots_until_expected_link_reply) {
-			coutd << "detected collision of advertised reply slot and our own broadcast -> ";
-			// re-schedule own broadcast and mark the slot as BUSY
-			sh_manager->broadcastCollisionDetected(id_link_recipient, Reservation::RX);
-		}
-	}
-	// now mark the slot as RX
+	this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed	
+	// mark the slot as RX (collisions are handled, too)
+	auto *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);		
 	sh_manager->reportThirdPartyExpectedLinkReply(this->num_slots_until_expected_link_reply, id_link_recipient);
 	// parse proposed resources	
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources = payload->resources;
