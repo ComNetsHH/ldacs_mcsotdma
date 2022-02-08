@@ -46,7 +46,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table);
 
-		unsigned int getNextBeaconOffset() const;
+		unsigned int getNextBeaconSlot() const;
 
 		/** Resets next_beacon_in slot counter. */
 		void reset();

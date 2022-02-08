@@ -100,8 +100,8 @@ public:
 					for (const auto &a : expected_actions)
 						ss << a << " "; 
 					throw std::invalid_argument(ss.str());
-				} else {
-					table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+				} else {					
+					table->mark(slot_offset, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));					
 					num_unscheduled++;
 				}
 			}

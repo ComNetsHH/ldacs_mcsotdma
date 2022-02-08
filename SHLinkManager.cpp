@@ -46,7 +46,7 @@ L2Packet* SHLinkManager::onTransmissionReservation(unsigned int remaining_burst_
 		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable(), hostPosition, mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset()));
 		mac->statisticReportBeaconSent();
 		is_beacon = true;
-		base_header->burst_offset = beacon_module.getNextBeaconOffset();
+		base_header->burst_offset = beacon_module.getNextBeaconSlot();
 	// Non-beacon slots can be used for any other type of broadcast.
 	} else {
 		coutd << "broadcasting data -> ";		
@@ -218,7 +218,7 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 	else
 		coutd << "no next broadcast scheduled -> ";
 	if (next_beacon_scheduled)		
-		coutd << "next beacon " << (beacon_module.getNextBeaconOffset() == 0 ? "now" : "in " + std::to_string(beacon_module.getNextBeaconOffset()) + " slots") << " -> ";
+		coutd << "next beacon " << (getNextBeaconSlot() == 0 ? "now" : "in " + std::to_string(getNextBeaconSlot()) + " slots") << " -> ";
 	else
 		coutd << "no next beacon scheduled -> ";
 
@@ -439,9 +439,9 @@ void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 	coutd << "parsing incoming beacon -> ";
 	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 	if (pair.first) {
-		coutd << "re-scheduling beacon from t=" << beacon_module.getNextBeaconOffset() << " to ";		
+		coutd << "re-scheduling beacon from t=" << beacon_module.getNextBeaconSlot() << " to ";		
 		scheduleBeacon();
-		coutd << "t=" << beacon_module.getNextBeaconOffset() << " -> ";
+		coutd << "t=" << beacon_module.getNextBeaconSlot() << " -> ";
 	} if (pair.second) {
 		reportCollisionWithScheduledBroadcast(origin_id);
 	}
@@ -455,6 +455,10 @@ bool SHLinkManager::isNextBroadcastScheduled() const {
 
 unsigned int SHLinkManager::getNextBroadcastSlot() const {
 	return next_broadcast_slot;
+}
+
+unsigned int SHLinkManager::getNextBeaconSlot() const {
+	return this->beacon_module.getNextBeaconSlot();
 }
 
 void SHLinkManager::reportCollisionWithScheduledBroadcast(const MacId& collider) {
@@ -541,7 +545,7 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
 			// ... and re-schedule one's own beacon
 			scheduleBeacon();
-			coutd << "re-scheduled own beacon in " << beacon_module.getNextBeaconOffset() << " slots -> ";
+			coutd << "re-scheduled own beacon in " << beacon_module.getNextBeaconSlot() << " slots -> ";
 		} else {
 			coutd << "indicated next broadcast in " << next_broadcast << " slots is locally reserved for " << res << " (not doing anything) -> ";
 		}
@@ -607,9 +611,9 @@ void SHLinkManager::scheduleBeacon() {
 
 void SHLinkManager::unscheduleBeaconSlot() {
 	if (beacon_module.isEnabled()) {
-		if (beacon_module.getNextBeaconOffset() != 0 && next_beacon_scheduled) {
-			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconOffset()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-			current_reservation_table->mark(beacon_module.getNextBeaconOffset(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
+		if (beacon_module.getNextBeaconSlot() != 0 && next_beacon_scheduled) {
+			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconSlot()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+			current_reservation_table->mark(beacon_module.getNextBeaconSlot(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
 		}
 		next_beacon_scheduled = false;
 		beacon_module.reset();

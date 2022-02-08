@@ -1602,8 +1602,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(pp->link_state.timeout, pp_you->link_state.timeout);
 			CPPUNIT_ASSERT_EQUAL(true, pp_you->link_state.is_link_initator);
 			CPPUNIT_ASSERT_EQUAL(false, pp->link_state.is_link_initator);
-		}
- 
+		}		 
 
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
@@ -1643,7 +1642,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testCloseLinkEarly);
 		CPPUNIT_TEST(testCloseLinkEarlyOneSided);
 		CPPUNIT_TEST(testReportedTxSlots);
-		CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);
+		CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);		
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

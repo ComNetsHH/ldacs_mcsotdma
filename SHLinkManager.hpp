@@ -95,6 +95,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool isNextBroadcastScheduled() const;
 		unsigned int getNextBroadcastSlot() const;
+		unsigned int getNextBeaconSlot() const;
 		void reportCollisionWithScheduledBroadcast(const MacId& collider);		
 		void reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id);		
 

@@ -57,7 +57,7 @@ void ThirdPartyLink::onSlotEnd() {
 	}	
 	// does the link terminate now?
 	if (link_expiry_offset == 0) {
-		coutd << *this << " terminates -> resetting -> ";
+		coutd << *mac << "::" << *this << " terminates -> resetting -> ";
 		reset();
 		mac->onThirdPartyLinkReset(this); // notify MAC, which notifies all other ThirdPartyLinks, which may schedule/lock some resources that were just unscheduled/unlocked
 	} else if (link_expiry_offset != UNSET) {

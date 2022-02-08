@@ -161,7 +161,7 @@ std::pair<bool, bool> BeaconModule::parseBeacon(const MacId &sender_id, const Be
 	return {must_reschedule_beacon, must_reschedule_broadcast};
 }
 
-unsigned int BeaconModule::getNextBeaconOffset() const {
+unsigned int BeaconModule::getNextBeaconSlot() const {
 	return next_beacon_in;
 }
 

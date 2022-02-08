@@ -39,7 +39,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 		throw std::invalid_argument("ReservationTable::mark planning_horizon=" + std::to_string(planning_horizon) + " smaller than queried slot_offset=" + std::to_string(slot_offset) + "!");
 	// If the exact same reservation already exists, just return it and be done with it.
 	if (getReservation(slot_offset) == reservation)
-		return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
+		return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));	
 	// Ensure that linked hardware tables have capacity.
 	if ((reservation.isAnyTx()) && transmitter_reservation_table != nullptr)
 		if (!(transmitter_reservation_table->isIdle(slot_offset) || transmitter_reservation_table->isLocked(slot_offset)))
@@ -52,14 +52,15 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 				coutd << std::endl << "Problematic reservation: " << rx_table->getReservation(slot_offset) << std::endl;
 			throw no_rx_available_error("ReservationTable::mark(" + std::to_string(slot_offset) + ") can't forward RX reservation because none out of " + std::to_string(receiver_reservation_tables.size()) + " linked receiver tables are idle.");
 		}
-	}
+	}	
 	bool currently_idle = getReservation(slot_offset).isIdle();
+	// check if the transmitter reservation table should be free'd
 	bool can_free_transmitter;
-	if (transmitter_reservation_table != nullptr && !currently_idle && reservation.isIdle() && getReservation(slot_offset).isAnyTx()) {
-		coutd << "pass-through to TX because res=" << reservation << " and local=" << getReservation(slot_offset) << " -> ";
+	if (transmitter_reservation_table != nullptr && !currently_idle && reservation.isIdle() && getReservation(slot_offset).isAnyTx()) // if it goes TX->IDLE
 		can_free_transmitter = true;
-	} else 
+	else 
 		can_free_transmitter = false;
+	// same for receiver reservation tables
 	bool can_free_receiver;
 	if (!receiver_reservation_tables.empty() && !currently_idle && reservation.isIdle() && getReservation(slot_offset).isAnyRx())
 		can_free_receiver = true;
@@ -75,9 +76,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 	if (transmitter_reservation_table != nullptr) {
 		if (reservation.isAnyTx() || can_free_transmitter)
 			transmitter_reservation_table->mark(slot_offset, reservation);	
-	}
-	if ((reservation.isAnyTx() || reservation.isIdle()) && transmitter_reservation_table != nullptr) 
-		transmitter_reservation_table->mark(slot_offset, reservation);	
+	}	
 	// Same for receiver tables
 	if (!receiver_reservation_tables.empty()) {
 		if (reservation.isAnyRx() || can_free_receiver) {
@@ -88,7 +87,7 @@ Reservation* ReservationTable::mark(int32_t slot_offset, const Reservation& rese
 				}
 			}	
 		}	
-	}	
+	}			
 	return &this->slot_utilization_vec.at(convertOffsetToIndex(slot_offset));
 }
 
