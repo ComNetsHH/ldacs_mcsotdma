@@ -216,6 +216,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportBroadcastCollisionDetected() {
 			stat_num_broadcast_collisions_detected.increment();
 		}		
+		void statisticReportBeaconCollisionDetected() {
+			stat_num_beacon_collisions_detected.increment();
+		}				
 
 		unsigned int getP2PBurstOffset() const;		
 
@@ -287,6 +290,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unsufficient_tx_slots", this);		
 		Statistic stat_num_dme_packets_rcvd = Statistic("mcsotdma_statistic_num_num_dme_packets_rcvd", this);		
 		Statistic stat_num_broadcast_collisions_detected = Statistic("mcsotdma_statistic_num_broadcast_collisions_detected", this);		
+		Statistic stat_num_beacon_collisions_detected = Statistic("mcsotdma_statistic_num_beacon_collisions_detected", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -328,7 +332,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals,
 				&stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots,
 				&stat_num_dme_packets_rcvd,
-				&stat_num_broadcast_collisions_detected
+				&stat_num_broadcast_collisions_detected,
+				&stat_num_beacon_collisions_detected
 		};
 	};
 

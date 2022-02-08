@@ -442,11 +442,9 @@ void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 	coutd << "parsing incoming beacon -> ";
 	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 	if (pair.first) {
-		coutd << "re-scheduling beacon from t=" << beacon_module.getNextBeaconSlot() << " to ";		
-		scheduleBeacon();
-		coutd << "t=" << beacon_module.getNextBeaconSlot() << " -> ";
+		beaconCollisionDetected(origin_id, Reservation::BUSY);		
 	} if (pair.second) {
-		broadcastCollisionDetected(origin_id);
+		broadcastCollisionDetected(origin_id, Reservation::BUSY);
 	}
 	// pass it to the MAC layer
 	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));
@@ -464,22 +462,40 @@ unsigned int SHLinkManager::getNextBeaconSlot() const {
 	return this->beacon_module.getNextBeaconSlot();
 }
 
-void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id) {
+void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
 	coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to ";
 	// remember current broadcast slot
 	auto current_broadcast_slot = next_broadcast_slot;
 	// unschedule it
 	unscheduleBroadcastSlot();
 	// mark it as BUSY so it won't be scheduled again
-	current_reservation_table->mark(current_broadcast_slot, Reservation(collider_id, Reservation::BUSY));
+	current_reservation_table->mark(current_broadcast_slot, Reservation(collider_id, mark_as));
 	// find a new slot
 	try {
 		scheduleBroadcastSlot();
 		coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
 	} catch (const std::exception &e) {
-		throw std::runtime_error("Error when trying to re-schedule broadcast due to collision detected from parsing a beacon: " + std::string(e.what()));
+		throw std::runtime_error("Error when trying to re-schedule broadcast due to detected collision: " + std::string(e.what()));
 	}		
 	mac->statisticReportBroadcastCollisionDetected();
+}
+
+void SHLinkManager::beaconCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
+	coutd << "re-scheduling beacon from t=" << getNextBeaconSlot() << " to ";
+	// remember current broadcast slot
+	auto current_beacon_slot = getNextBeaconSlot();
+	// unschedule it
+	unscheduleBeaconSlot();
+	// mark it as BUSY so it won't be scheduled again
+	current_reservation_table->mark(current_beacon_slot, Reservation(collider_id, mark_as));
+	// find a new slot
+	try {
+		scheduleBeacon();
+		coutd << "next beacon in " << next_broadcast_slot << " slots -> ";
+	} catch (const std::exception &e) {
+		throw std::runtime_error("Error when trying to re-schedule beacon due to detected collision detected: " + std::string(e.what()));
+	}		
+	mac->statisticReportBeaconCollisionDetected();
 }
 
 void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id) {
@@ -528,17 +544,11 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 		// if locally, one's own transmission is scheduled...
 		} else if (res.isTx()) {
 			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
-			broadcastCollisionDetected(header->src_id);			
+			broadcastCollisionDetected(header->src_id, Reservation::RX);			
 		// if locally, one's own beacon is scheduled...
 		} else if (res.isBeaconTx()) {
 			coutd << "detected collision with own beacon in " << next_broadcast << " slots -> ";
-			// ... unschedule one's own beacon
-			unscheduleBeaconSlot();
-			// ... mark the reception of the other broadcast
-			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
-			// ... and re-schedule one's own beacon
-			scheduleBeacon();
-			coutd << "re-scheduled own beacon in " << beacon_module.getNextBeaconSlot() << " slots -> ";
+			beaconCollisionDetected(header->src_id, Reservation::RX);			
 		} else {
 			coutd << "indicated next broadcast in " << next_broadcast << " slots is locally reserved for " << res << " (not doing anything) -> ";
 		}

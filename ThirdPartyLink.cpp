@@ -106,7 +106,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 		if (sh_manager->getNextBroadcastSlot() == num_slots_until_expected_link_reply) {
 			coutd << "detected collision of advertised reply slot and our own broadcast -> ";
 			// re-schedule own broadcast and mark the slot as BUSY
-			sh_manager->broadcastCollisionDetected(id_link_recipient);
+			sh_manager->broadcastCollisionDetected(id_link_recipient, Reservation::RX);
 		}
 	}
 	// now mark the slot as RX
