@@ -80,39 +80,39 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Zero broadcast rate so far.
 			CPPUNIT_ASSERT_EQUAL(0.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 
-			link_manager->onSlotStart(1);
+			mac->update(1);
 			// Receive one packet.
 			link_manager->onPacketReception(broadcast_packet);
 			// 100% broadcasts so far
 			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
-			link_manager->onSlotEnd();
+			mac->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 
-			link_manager->onSlotStart(1);
+			mac->update(1);
 			CPPUNIT_ASSERT_EQUAL(1.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
-			link_manager->onSlotEnd();
+			mac->onSlotEnd();
 			// 50% broadcasts so far
 			CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 
-			link_manager->onSlotStart(1);
+			mac->update(1);
 			CPPUNIT_ASSERT_EQUAL(.5, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
-			link_manager->onSlotEnd();
+			mac->onSlotEnd();
 			// one broadcast in three slots so far
 			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 
-			link_manager->onSlotStart(1);
+			mac->update(1);
 			CPPUNIT_ASSERT_EQUAL(1.0/3.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
-			link_manager->onSlotEnd();
+			mac->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(1.0/4.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 
-			link_manager->onSlotStart(1);
+			mac->update(1);
 			L2Packet *copy = broadcast_packet->copy();
 			link_manager->onPacketReception(copy);
 			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
-			link_manager->onSlotEnd();
+			mac->onSlotEnd();
 			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 
-			link_manager->onSlotStart(1);
+			mac->update(1);
 			// two broadcast in five slots so far
 			CPPUNIT_ASSERT_EQUAL(2.0/5.0, link_manager->contention_estimator.getAverageNonBeaconBroadcastRate());
 		}
@@ -269,14 +269,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testScheduleNextBeacon() {
 			size_t num_beacons_sent = 0;
 			for (size_t t = 0; t < link_manager->beacon_module.min_beacon_offset*2.5; t++) {
-				link_manager->onSlotStart(1);
-				if (link_manager->beacon_module.shouldSendBeaconThisSlot()) {
-					link_manager->onTransmissionReservation();
-					num_beacons_sent++;
-				}
-				link_manager->onSlotEnd();
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();				
 			}
-			CPPUNIT_ASSERT_EQUAL(size_t(2), num_beacons_sent);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_beacons_sent.get());
 		}
 
 		void testParseBeacon() {
