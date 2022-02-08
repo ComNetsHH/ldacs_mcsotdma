@@ -519,13 +519,15 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, co
 	coutd << *this << " processing link reply -> ";	
 	// check whether this user is meant by this request
 	const MacId& dest_id = header->getDestId();		
-	if (dest_id != mac->getMacId()) { // if not
+	// if not
+	if (dest_id != mac->getMacId()) { 
 		coutd << "third-party link reply between " << origin_id << " and " << dest_id << " -> ";
 		mac->statisticReportThirdPartyLinkReplyReceived();		
 		// process it through a third part link
 		ThirdPartyLink &link = mac->getThirdPartyLink(origin_id, dest_id);
 		link.processLinkReplyMessage(header, payload, origin_id);
-	} else { // if we are the recipient
+	// if we are the recipient
+	} else { 
 		mac->statisticReportLinkReplyReceived();
 		// save reported, required TX slots
 		setReportedDesiredTxSlots(header->burst_length_tx);
