@@ -716,3 +716,9 @@ unsigned int PPLinkManager::getNumUtilizedResources() const {
 	else
 		return 0;
 }
+
+void PPLinkManager::scheduledLinkReplyCouldNotHaveBeenSent() {
+	coutd << "link reply couldn't have been sent -> ";
+	cancelLink();
+	establishLink();
+}

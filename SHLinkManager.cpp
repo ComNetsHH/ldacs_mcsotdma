@@ -213,9 +213,9 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 		coutd << *mac << "::" << *this << "::onSlotStart(" << num_slots << ") -> ";
 	if (next_broadcast_scheduled) {
 		coutd << "next broadcast " << (next_broadcast_slot == 0 ? "now" : "in " + std::to_string(next_broadcast_slot) + " slots") << " -> ";
-		if (reservation_manager->getTxTable()->getReservation(getNextBroadcastSlot()).getAction() != Reservation::TX || reservation_manager->getBroadcastReservationTable()->getReservation(getNextBroadcastSlot()).getAction() != Reservation::TX) {
+		if (reservation_manager->getTxTable()->getReservation(next_broadcast_slot).getAction() != Reservation::TX || reservation_manager->getBroadcastReservationTable()->getReservation(next_broadcast_slot).getAction() != Reservation::TX) {
 			std::stringstream ss;
-			ss << *mac << "::" << *this << "::onSlotStart for scheduled broadcast but invalid table: broadcast_in=" << getNextBroadcastSlot() << " tx_table=" << reservation_manager->getTxTable()->getReservation(getNextBroadcastSlot()) << " sh_table=" << reservation_manager->getBroadcastReservationTable()->getReservation(getNextBroadcastSlot()) << "!";			
+			ss << *mac << "::" << *this << "::onSlotStart for scheduled broadcast but invalid table: broadcast_in=" << next_broadcast_slot << " tx_table=" << reservation_manager->getTxTable()->getReservation(next_broadcast_slot) << " sh_table=" << reservation_manager->getBroadcastReservationTable()->getReservation(next_broadcast_slot) << "!";			
 			throw std::runtime_error(ss.str());
 		}			
 	} else
@@ -262,12 +262,20 @@ void SHLinkManager::onSlotEnd() {
 
 	// update counters that keep track when link replies are due
 	for (auto &item : link_replies) {
-		coutd << "decrementing counter until link reply from " << item.first << " to ";
-		if (item.first > 0)
-			item.first--;
-		else
-			throw std::runtime_error("SHLinkManager::onSlotEnd for unsent link reply.");
-		coutd << item.first << " -> ";
+		coutd << *mac << "::" << *this << " decrementing counter until link reply -> "; 
+		if (item.first > 0) {
+			coutd << item.first << "->";
+			item.first--;			
+			coutd << item.first << " -> ";
+		} else {			
+			coutd << "missed transmitting this reply -> ";
+			// link reply couldn't have been sent, probably because a third-party link has unscheduled the transmission
+			// erase it 
+			const MacId dest_id = item.second.first->dest_id;			 
+			cancelLinkReply(dest_id);
+			// notify the corresponding link manager
+			((PPLinkManager*) mac->getLinkManager(dest_id))->scheduledLinkReplyCouldNotHaveBeenSent();			
+		}		
 	}
 
 	// Update estimators.
@@ -300,8 +308,8 @@ void SHLinkManager::sendLinkReply(L2HeaderLinkReply* header, LinkEstablishmentPa
 	// schedule reply
 	if (current_reservation_table->getReservation(time_slot_offset).isIdle()) {
 		current_reservation_table->mark(time_slot_offset, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));		
-		coutd << "reserved -> ";
-		if (!next_broadcast_scheduled) {
+		coutd << "reserved t=" << time_slot_offset <<": " << current_reservation_table->getReservation(time_slot_offset) << " -> ";				
+		if (!next_broadcast_scheduled || next_broadcast_slot > time_slot_offset) {
 			next_broadcast_scheduled = true;
 			next_broadcast_slot = time_slot_offset;
 		}
@@ -422,7 +430,7 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	return selected_slot;
 }
 
-void SHLinkManager::scheduleBroadcastSlot() {
+void SHLinkManager::scheduleBroadcastSlot() {	
 	unscheduleBroadcastSlot();
 	// By default, even the next slot could be chosen.
 	unsigned int min_offset = 1;
@@ -432,7 +440,7 @@ void SHLinkManager::scheduleBroadcastSlot() {
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
-	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));	
+	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));		
 }
 
 void SHLinkManager::unscheduleBroadcastSlot() {
@@ -447,11 +455,9 @@ void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*
 	coutd << "parsing incoming beacon -> ";
 	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
 	if (pair.first) {
-		coutd << "re-scheduling beacon from t=" << beacon_module.getNextBeaconSlot() << " to ";		
-		scheduleBeacon();
-		coutd << "t=" << beacon_module.getNextBeaconSlot() << " -> ";
+		beaconCollisionDetected(origin_id, Reservation::RX);		
 	} if (pair.second) {
-		reportCollisionWithScheduledBroadcast(origin_id);
+		broadcastCollisionDetected(origin_id, Reservation::RX);
 	}
 	// pass it to the MAC layer
 	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));
@@ -462,46 +468,68 @@ bool SHLinkManager::isNextBroadcastScheduled() const {
 }
 
 unsigned int SHLinkManager::getNextBroadcastSlot() const {
-	return next_broadcast_slot;
+	int earliest_transmission = next_broadcast_slot;
+	for (const auto &item : link_replies) 
+		if (item.first < earliest_transmission)
+			earliest_transmission = item.first;
+	return earliest_transmission;
 }
 
 unsigned int SHLinkManager::getNextBeaconSlot() const {
-	return this->beacon_module.getNextBeaconSlot();
+	if (!next_beacon_scheduled || !this->beacon_module.isEnabled())
+		throw std::runtime_error("SHLinkManager::getNextBeaconSlot for unscheduled beacon.");
+	unsigned int beacon_slot = this->beacon_module.getNextBeaconSlot();
+	if (current_reservation_table->getReservation(beacon_slot) != Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON))
+		beacon_slot++; // if onSlotEnd() has recently been called, then the returned beacon_slot is off by one
+	if (current_reservation_table->getReservation(beacon_slot) != Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON))
+		throw std::runtime_error("SHLinkManager::getNextBeaconSlot cannot find beacon reservation.");
+	return beacon_slot;
 }
 
-void SHLinkManager::reportCollisionWithScheduledBroadcast(const MacId& collider) {
-	coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to ";
+void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
+	coutd << "re-scheduling broadcast from t=" << next_broadcast_slot << " to -> ";
 	// remember current broadcast slot
 	auto current_broadcast_slot = next_broadcast_slot;
 	// unschedule it
 	unscheduleBroadcastSlot();
 	// mark it as BUSY so it won't be scheduled again
-	current_reservation_table->mark(current_broadcast_slot, Reservation(collider, Reservation::BUSY));
+	current_reservation_table->mark(current_broadcast_slot, Reservation(collider_id, mark_as));
 	// find a new slot
 	try {
 		scheduleBroadcastSlot();
 		coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
 	} catch (const std::exception &e) {
-		throw std::runtime_error("Error when trying to re-schedule broadcast due to collision detected from parsing a beacon: " + std::string(e.what()));
+		throw std::runtime_error("Error when trying to re-schedule broadcast due to detected collision: " + std::string(e.what()));
 	}		
+	mac->statisticReportBroadcastCollisionDetected();
+}
+
+void SHLinkManager::beaconCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
+	auto current_beacon_slot = getNextBeaconSlot();
+	coutd << "re-scheduling beacon from t=" << current_beacon_slot << " to -> ";		
+	// unschedule it
+	unscheduleBeaconSlot();
+	// mark it as BUSY so it won't be scheduled again
+	current_reservation_table->mark(current_beacon_slot, Reservation(collider_id, mark_as));
+	// find a new slot
+	try {
+		scheduleBeacon();		
+	} catch (const std::exception &e) {
+		throw std::runtime_error("Error when trying to re-schedule beacon due to detected collision detected: " + std::string(e.what()));
+	}		
+	mac->statisticReportBeaconCollisionDetected();
 }
 
 void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id) {
 	coutd << "marking slot in " << slot_offset << " as RX@" << sender_id << " (expecting a third-party link reply there) -> ";
 	const auto &res = current_reservation_table->getReservation(slot_offset);
 	// check if own transmissions clash with it
-	if (res.isTx()) {
+	if (res.isTx()) {		
 		coutd << "re-scheduling own scheduled broadcast -> ";
-		unscheduleBroadcastSlot();
-		// mark it before scheduling s.t. it won't choose this slot
-		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
-		scheduleBroadcastSlot();
+		broadcastCollisionDetected(sender_id, Reservation::RX);		
 	} else if (res.isBeaconTx()) {
 		coutd << "re-scheduling own scheduled beacon -> ";
-		unscheduleBeaconSlot();
-		// mark it before scheduling s.t. it won't choose this slot
-		current_reservation_table->mark(slot_offset, Reservation(sender_id, Reservation::Action::RX));
-		scheduleBeacon();
+		beaconCollisionDetected(sender_id, Reservation::RX);
 	} else {
 		// overwrite any other reservations
 		coutd << res << "->";
@@ -532,28 +560,11 @@ void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {
 		// if locally, one's own transmission is scheduled...
 		} else if (res.isTx()) {
 			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
-			// ... unschedule one's own transmission
-			unscheduleBroadcastSlot();
-			// ... mark the reception of the other broadcast
-			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
-			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
-			// ... and re-schedule one's own broadcast transmission
-			try {
-				scheduleBroadcastSlot();
-				coutd << "re-scheduled own broadcast -> next broadcast in " << next_broadcast_slot << " slots -> ";
-			} catch (const std::exception &e) {
-				throw std::runtime_error("Error when trying to re-schedule broadcast due to collision detected from slot advertisement: " + std::string(e.what()));
-			}			
+			broadcastCollisionDetected(header->src_id, Reservation::RX);			
 		// if locally, one's own beacon is scheduled...
 		} else if (res.isBeaconTx()) {
 			coutd << "detected collision with own beacon in " << next_broadcast << " slots -> ";
-			// ... unschedule one's own beacon
-			unscheduleBeaconSlot();
-			// ... mark the reception of the other broadcast
-			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
-			// ... and re-schedule one's own beacon
-			scheduleBeacon();
-			coutd << "re-scheduled own beacon in " << beacon_module.getNextBeaconSlot() << " slots -> ";
+			beaconCollisionDetected(header->src_id, Reservation::RX);			
 		} else {
 			coutd << "indicated next broadcast in " << next_broadcast << " slots is locally reserved for " << res << " (not doing anything) -> ";
 		}
@@ -611,18 +622,18 @@ void SHLinkManager::scheduleBeacon() {
 		}
 		current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
 		next_beacon_scheduled = true;
-		coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";
+		coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";		
 		// Reset congestion estimator with new beacon interval.
 		congestion_estimator.reset(beacon_module.getBeaconOffset());
 	}
 }
 
-void SHLinkManager::unscheduleBeaconSlot() {
-	if (beacon_module.isEnabled()) {
-		if (beacon_module.getNextBeaconSlot() != 0 && next_beacon_scheduled) {
-			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconSlot()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-			current_reservation_table->mark(beacon_module.getNextBeaconSlot(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-		}
+void SHLinkManager::unscheduleBeaconSlot() {	
+	if (beacon_module.isEnabled() && next_beacon_scheduled) {		
+		if (current_reservation_table == nullptr)
+			throw std::runtime_error("SHLinkManager::unscheduleBeaconSlot for unset ReservationTable.");			
+		int beacon_slot = getNextBeaconSlot();				
+		current_reservation_table->mark(beacon_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));		
 		next_beacon_scheduled = false;
 		beacon_module.reset();
 	}

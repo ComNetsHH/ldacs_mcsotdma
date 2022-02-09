@@ -67,8 +67,8 @@ void BeaconModule::onSlotEnd() {
 
 unsigned int BeaconModule::scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table) {
 	this->beacon_offset = computeBeaconInterval(BC_CONGESTION_GOAL, avg_broadcast_rate, num_active_neighbors);
-	next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->b_beacon_slot_candidates, min_beacon_gap, bc_table, tx_table);
-	return next_beacon_in;
+	this->next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->b_beacon_slot_candidates, min_beacon_gap, bc_table, tx_table);
+	return this->next_beacon_in;
 }
 
 unsigned int BeaconModule::getBeaconOffset() const {
@@ -161,7 +161,7 @@ std::pair<bool, bool> BeaconModule::parseBeacon(const MacId &sender_id, const Be
 	return {must_reschedule_beacon, must_reschedule_broadcast};
 }
 
-unsigned int BeaconModule::getNextBeaconSlot() const {
+unsigned int BeaconModule::getNextBeaconSlot() const {	
 	return next_beacon_in;
 }
 
