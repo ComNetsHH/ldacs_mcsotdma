@@ -99,17 +99,9 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& heade
 	this->status = received_request_awaiting_reply;	
 	// parse expected reply slot
 	this->num_slots_until_expected_link_reply = (int) header->reply_offset; // this one is updated each slot
-	this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed
-	// check for a potential collision with our own broadcast
-	auto *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-	if (sh_manager->isNextBroadcastScheduled()) {
-		if (sh_manager->getNextBroadcastSlot() == num_slots_until_expected_link_reply) {
-			coutd << "detected collision of advertised reply slot and our own broadcast -> ";
-			// re-schedule own broadcast and mark the slot as BUSY
-			sh_manager->reportCollisionWithScheduledBroadcast(id_link_recipient);
-		}
-	}
-	// now mark the slot as RX
+	this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed	
+	// mark the slot as RX (collisions are handled, too)
+	auto *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);		
 	sh_manager->reportThirdPartyExpectedLinkReply(this->num_slots_until_expected_link_reply, id_link_recipient);
 	// parse proposed resources	
 	const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources = payload->resources;
@@ -205,8 +197,8 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 				&burst_length = header->burst_length,
 				&burst_length_tx = header->burst_length_tx,
 				burst_length_rx = header->burst_length - header->burst_length_tx,
-				&burst_offset = header->burst_offset;
-	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot
+				&burst_offset = header->burst_offset;	
+	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot	
 	// save link info
 	normalization_offset = 0; // reply reception is the reference time now
 	link_description.first_burst_in = first_burst_in;
@@ -214,7 +206,9 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;	
 	// schedule the link's resources		
 	try {
-		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, false, true);		
+		bool is_link_initiator = false;
+		bool is_third_part_link = true;
+		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, is_link_initiator, is_third_part_link);		
 	} catch (const std::exception &e) {
 		std::stringstream ss;
 		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: " << e.what();
@@ -244,6 +238,7 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 			size_t num_reservations = this->scheduled_resources.size();
 			try {
 				int normalized_first_burst_in = link_description.first_burst_in - normalization_offset;				
+				std::cout << "link_description.first_burst_in=" << link_description.first_burst_in << " normalization_offset=" << normalization_offset << " => " << normalized_first_burst_in << std::endl;
 				this->scheduled_resources = mac->getReservationManager()->schedule_bursts(link_description.selected_channel, link_description.timeout, normalized_first_burst_in, link_description.burst_length, link_description.burst_length_tx, link_description.burst_length_rx, link_description.burst_offset, id_link_initiator, id_link_recipient, false, true);		
 			} catch (const std::exception &e) {
 				std::stringstream ss;

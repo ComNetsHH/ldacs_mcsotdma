@@ -13,7 +13,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	private:
 		TestEnvironment* env1, * env2, * env3;
 		MacId id1, id2, id3;
-		uint64_t center_frequency1, center_frequency2, center_frequency3, bc_frequency, bandwidth;
+		uint64_t center_frequency1, center_frequency2, center_frequency3, sh_frequency, bandwidth;
 		uint32_t planning_horizon;
 		size_t num_outgoing_bits;
 
@@ -29,7 +29,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			center_frequency1 = env1->p2p_freq_1;
 			center_frequency2 = env1->p2p_freq_2;
 			center_frequency3 = env1->p2p_freq_3;
-			bc_frequency = env1->bc_frequency;
+			sh_frequency = env1->sh_frequency;
 			bandwidth = env1->bandwidth;
 			planning_horizon = env1->planning_horizon;
 

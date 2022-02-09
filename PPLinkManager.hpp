@@ -31,6 +31,10 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 		void setForceBidirectionalLinks(bool flag);
 		unsigned int getNumUtilizedResources() const;
+		/** Called by the SHLinkManager if a scheduled link reply couldn't have been sent.
+		 * This happens when a third-party link unschedules the transmission, for example.
+		 */
+		void scheduledLinkReplyCouldNotHaveBeenSent();
 
 	protected:		
 		/** Keeps track of the current link state values. */
