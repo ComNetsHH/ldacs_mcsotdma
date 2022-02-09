@@ -622,6 +622,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// now receive this 
 			mac_recipient->receiveFromLower(link_request->copy(), env->sh_frequency);
 			mac_recipient->onSlotEnd();
+			// broadcast slot should've been re-scheduled
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_broadcast_collisions_detected.get());						
 			CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
 			// so now when the supposed reply slot arrives, nothing will be sent
@@ -632,6 +633,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(0), sh_recipient->link_replies.size());					
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
+			// which should've re-triggered link establishment
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_recipient->link_status);
 		}
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
