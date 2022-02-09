@@ -579,7 +579,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_locks, num_locks_now);
 		}		
 
-		void testLinkReplyDoesNotOverwriteBroadcast() {			
+		void testLinkReplyOverwritesBroadcast() {			
 			// initiate link establishment
 			mac_initiator->notifyOutgoing(1, id_recipient);
 			size_t num_slots = 0, max_slots = 30;
@@ -647,7 +647,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
 			CPPUNIT_TEST(testLinkReestablishment);
 			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
-			CPPUNIT_TEST(testLinkReplyDoesNotOverwriteBroadcast);
+			CPPUNIT_TEST(testLinkReplyOverwritesBroadcast);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
