@@ -468,7 +468,14 @@ unsigned int SHLinkManager::getNextBroadcastSlot() const {
 }
 
 unsigned int SHLinkManager::getNextBeaconSlot() const {
-	return this->beacon_module.getNextBeaconSlot();
+	if (!next_beacon_scheduled || !this->beacon_module.isEnabled())
+		throw std::runtime_error("SHLinkManager::getNextBeaconSlot for unscheduled beacon.");
+	unsigned int beacon_slot = this->beacon_module.getNextBeaconSlot();
+	if (current_reservation_table->getReservation(beacon_slot) != Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON))
+		beacon_slot++; // if onSlotEnd() has recently been called, then the returned beacon_slot is off by one
+	if (current_reservation_table->getReservation(beacon_slot) != Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON))
+		throw std::runtime_error("SHLinkManager::getNextBeaconSlot cannot find beacon reservation.");
+	return beacon_slot;
 }
 
 void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
@@ -490,17 +497,15 @@ void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reserva
 }
 
 void SHLinkManager::beaconCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
-	coutd << "re-scheduling beacon from t=" << getNextBeaconSlot() << " to -> ";
-	// remember current broadcast slot
 	auto current_beacon_slot = getNextBeaconSlot();
+	coutd << "re-scheduling beacon from t=" << current_beacon_slot << " to -> ";		
 	// unschedule it
 	unscheduleBeaconSlot();
 	// mark it as BUSY so it won't be scheduled again
 	current_reservation_table->mark(current_beacon_slot, Reservation(collider_id, mark_as));
 	// find a new slot
 	try {
-		scheduleBeacon();
-		coutd << "next beacon in " << next_broadcast_slot << " slots -> ";
+		scheduleBeacon();		
 	} catch (const std::exception &e) {
 		throw std::runtime_error("Error when trying to re-schedule beacon due to detected collision detected: " + std::string(e.what()));
 	}		
@@ -609,18 +614,18 @@ void SHLinkManager::scheduleBeacon() {
 		}
 		current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
 		next_beacon_scheduled = true;
-		coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";
+		coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";		
 		// Reset congestion estimator with new beacon interval.
 		congestion_estimator.reset(beacon_module.getBeaconOffset());
 	}
 }
 
-void SHLinkManager::unscheduleBeaconSlot() {
-	if (beacon_module.isEnabled()) {
-		if (beacon_module.getNextBeaconSlot() != 0 && next_beacon_scheduled) {
-			assert(current_reservation_table != nullptr && current_reservation_table->getReservation(beacon_module.getNextBeaconSlot()) == Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-			current_reservation_table->mark(beacon_module.getNextBeaconSlot(), Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));
-		}
+void SHLinkManager::unscheduleBeaconSlot() {	
+	if (beacon_module.isEnabled() && next_beacon_scheduled) {		
+		if (current_reservation_table == nullptr)
+			throw std::runtime_error("SHLinkManager::unscheduleBeaconSlot for unset ReservationTable.");			
+		int beacon_slot = getNextBeaconSlot();				
+		current_reservation_table->mark(beacon_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));		
 		next_beacon_scheduled = false;
 		beacon_module.reset();
 	}
