@@ -66,6 +66,7 @@ class ThirdPartyLink {
 		 * @param timeout 
 		 */
 		void lockIfPossible(ReservationMap& locks_initiator, ReservationMap& locks_recipient, const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources, const int &normalization_offset, const int &burst_length, const int &burst_length_tx, const int &burst_length_rx, const int &burst_offset, const int &timeout);
+		ReservationMap scheduleIfPossible(const std::vector<std::pair<int, Reservation>>& reservations, ReservationTable *table);
 
 	protected:
 		class LinkDescription {
@@ -77,13 +78,21 @@ class ThirdPartyLink {
 
 				explicit LinkDescription(const LinkDescription &other) : LinkDescription(other.proposed_resources, other.burst_length, other.burst_length_tx, other.burst_length_rx, other.burst_offset, other.timeout) {}				
 
+				/**				 				 
+				 * Should only be called after a reply has been received.
+				 * @return Time slots and Reservations for each remaining reservation of this link.
+				 */
+				std::vector<std::pair<int, Reservation>> getRemainingLinkReservations() const;
+
 				/** Set after request reception. */
 				std::map<const FrequencyChannel*, std::vector<unsigned int>> proposed_resources;				
 				int burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout;
 				/** Set after reply reception. */
 				const FrequencyChannel *selected_channel = nullptr;
-				/** Set after reply reception. */
-				int first_burst_in;
+				/** Set after reply reception. Offset to the first transmission burst. Can be negative if this lies in the pastz. */
+				int first_burst_slot_offset;
+				bool link_established = false;
+				MacId id_link_initiator, id_link_recipient;
 		};
 
 		ThirdPartyLink::Status status = uninitialied;

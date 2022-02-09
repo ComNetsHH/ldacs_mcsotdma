@@ -80,6 +80,8 @@ void ThirdPartyLink::reset() {
 	reply_offset = UNSET;
 	link_expiry_offset = UNSET;
 	normalization_offset = UNSET;	
+	// reset description
+	link_description = LinkDescription();
 }
 
 const MacId& ThirdPartyLink::getIdLinkInitiator() const {
@@ -198,17 +200,20 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 				&burst_length_tx = header->burst_length_tx,
 				burst_length_rx = header->burst_length - header->burst_length_tx,
 				&burst_offset = header->burst_offset;	
-	unsigned int first_burst_in = selected_time_slot_offset - reply_offset; // normalize to current time slot	
+	unsigned int first_burst_slot_offset = selected_time_slot_offset - reply_offset; // normalize to current time slot	
 	// save link info
 	normalization_offset = 0; // reply reception is the reference time now
-	link_description.first_burst_in = first_burst_in;
-	link_description.selected_channel = selected_freq_channel;
+	link_description.first_burst_slot_offset = first_burst_slot_offset;
+	link_description.selected_channel = selected_freq_channel;	
 	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;	
+	link_description.id_link_initiator = initiator_id;
+	link_description.id_link_recipient = recipient_id;
+	link_description.link_established = true;
 	// schedule the link's resources		
 	try {
 		bool is_link_initiator = false;
 		bool is_third_part_link = true;
-		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, is_link_initiator, is_third_part_link);		
+		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, is_link_initiator, is_third_part_link);		
 	} catch (const std::exception &e) {
 		std::stringstream ss;
 		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: " << e.what();
@@ -218,7 +223,7 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	num_slots_until_expected_link_reply = UNSET;
 	reply_offset = UNSET;
 	// set new counter
-	link_expiry_offset = first_burst_in + (timeout-1)*burst_offset + burst_length - 1;	
+	link_expiry_offset = first_burst_slot_offset + (timeout-1)*burst_offset + burst_length - 1;	
 }
 
 void ThirdPartyLink::onAnotherThirdLinkReset() {		
@@ -236,10 +241,10 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 		case received_reply_link_established: {
 			// attempt to reserve more resources
 			size_t num_reservations = this->scheduled_resources.size();
-			try {
-				int normalized_first_burst_in = link_description.first_burst_in - normalization_offset;				
-				std::cout << "link_description.first_burst_in=" << link_description.first_burst_in << " normalization_offset=" << normalization_offset << " => " << normalized_first_burst_in << std::endl;
-				this->scheduled_resources = mac->getReservationManager()->schedule_bursts(link_description.selected_channel, link_description.timeout, normalized_first_burst_in, link_description.burst_length, link_description.burst_length_tx, link_description.burst_length_rx, link_description.burst_offset, id_link_initiator, id_link_recipient, false, true);		
+			try {				
+				auto reservations = link_description.getRemainingLinkReservations();
+				auto *table = mac->getReservationManager()->getReservationTable(link_description.selected_channel);
+				this->scheduled_resources = scheduleIfPossible(reservations, table);
 			} catch (const std::exception &e) {
 				std::stringstream ss;
 				ss << *mac << "::" << *this << "::onAnotherThirdLinkReset couldn't schedule resources along this link: " << e.what();
@@ -259,4 +264,31 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 	// then go over all resources and check whether they're already locked/scheduled
 	// do so if possible, and add them to the map
 	// oh and don't forget to normalize the slot offset (may need additional counter?)
+}
+
+std::vector<std::pair<int, Reservation>> ThirdPartyLink::LinkDescription::getRemainingLinkReservations() const {
+	if (!link_established)
+		throw std::runtime_error("ThirdPartyLink::LinkDescription::getRemainingLinkReservations for unestablished link.");
+	auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+	const auto &tx_slots = tx_rx_slots.first;
+	const auto &rx_slots = tx_rx_slots.second;
+	std::vector<std::pair<int, Reservation>> reservations;
+	for (auto tx_slot : tx_slots)
+		reservations.push_back({tx_slot, Reservation(id_link_initiator, Reservation::BUSY)});
+	for (auto rx_slot : rx_slots)
+		reservations.push_back({rx_slot, Reservation(id_link_recipient, Reservation::BUSY)});
+	return reservations;
+}
+
+ReservationMap ThirdPartyLink::scheduleIfPossible(const std::vector<std::pair<int, Reservation>>& reservations, ReservationTable *table) {
+	ReservationMap reservation_map;
+	for (const auto &pair : reservations) {
+		int slot_offset = pair.first;
+		if (table->isIdle(slot_offset)) {
+			const Reservation &res = pair.second;
+			table->mark(slot_offset, res);
+			reservation_map.add_scheduled_resource(table, slot_offset);
+		}		
+	}
+	return reservation_map;
 }
