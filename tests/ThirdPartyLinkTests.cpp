@@ -681,18 +681,111 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(beacon_slot_before != sh->getNextBeaconSlot());			
 		}
 
+		/** Tests that all locks in the current or late time slots are unlocked through the reset() function. */
+		void testResetUnlocks() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that all resource reservations in the current or late time slots are unscheduled through the reset() function. */
+		void testResetUnschedules() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon a request reception, resources are locked, but non-idle resources are not touched. */
+		void testRequestLocksWherePossible() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon a request reception, the expected reply slot is scheduled. */
+		void testRequestSchedulesExpectedReply() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon a request reception, the expected reply slot is scheduled, overwriting an existing broadcast transmission reservation. */
+		void testRequestSchedulesExpectedReplyOverwritesBroadcast() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon a request reception, the expected reply slot is scheduled, overwriting an existing beacon transmission reservation. */
+		void testRequestSchedulesExpectedReplyOverwritesBeacon() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon reply reception, all locks made after request reception are unlocked. */
+		void testReplyUnlocks() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}	
+
+		/** Tests that if an unexpected reply is received, after *no* request had indicated this reply, the link reservations are made correctly. */
+		void testUnexpectedReply() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon reply reception, all link info is saved. */
+		void testReplySavesLinkInfo() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon reply reception, the link's resource reservations are made. */
+		void testReplySchedulesBursts() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that upon reply reception, the link's resource reservations are made, not touching non-idle resources. */
+		void testReplySchedulesBurstsButDoesNotOverwrite() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that when another third party link terminates, an existing link that is awaiting a reply locks those resources that lie in the present or future. Tests an entire link duration. */
+		void testAnotherLinkResetLocksFutureResources() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that when another third party link terminates, an existing link that has received a reply schedules those resources that lie in the present or future. Tests an entire link duration. */
+		void testAnotherLinkResetSchedulesFutureResources() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			CPPUNIT_TEST(testGetThirdPartyLink);			
-			CPPUNIT_TEST(testLinkRequestLocks);
-			CPPUNIT_TEST(testMissingReplyUnlocks);
-			CPPUNIT_TEST(testExpectedReply);			
-			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			CPPUNIT_TEST(testLinkReestablishment);
-			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
-			CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
-			CPPUNIT_TEST(testLinkRequestOverwritesBeacon);
+			// CPPUNIT_TEST(testGetThirdPartyLink);			
+			// CPPUNIT_TEST(testLinkRequestLocks);
+			// CPPUNIT_TEST(testMissingReplyUnlocks);
+			// CPPUNIT_TEST(testExpectedReply);			
+			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			// CPPUNIT_TEST(testLinkReestablishment);
+			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
+			// CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
+			// CPPUNIT_TEST(testLinkRequestOverwritesBeacon);
+
+			CPPUNIT_TEST(testResetUnlocks);
+			CPPUNIT_TEST(testResetUnschedules);
+			CPPUNIT_TEST(testRequestLocksWherePossible);
+			CPPUNIT_TEST(testRequestSchedulesExpectedReply);
+			CPPUNIT_TEST(testRequestSchedulesExpectedReplyOverwritesBroadcast);
+			CPPUNIT_TEST(testRequestSchedulesExpectedReplyOverwritesBeacon);
+			CPPUNIT_TEST(testReplyUnlocks);
+			CPPUNIT_TEST(testUnexpectedReply);
+			CPPUNIT_TEST(testReplySavesLinkInfo);
+			CPPUNIT_TEST(testReplySchedulesBursts);
+			CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
+			CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
+			CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
