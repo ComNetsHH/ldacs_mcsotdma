@@ -211,9 +211,9 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	link_description.link_established = true;
 	// schedule the link's resources		
 	try {
-		bool is_link_initiator = false;
-		bool is_third_part_link = true;
-		this->scheduled_resources = mac->getReservationManager()->schedule_bursts(selected_freq_channel, timeout, first_burst_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, initiator_id, recipient_id, is_link_initiator, is_third_part_link);		
+		auto reservations = link_description.getRemainingLinkReservations();
+		auto *table = mac->getReservationManager()->getReservationTable(link_description.selected_channel);
+		this->scheduled_resources = scheduleIfPossible(reservations, table);
 	} catch (const std::exception &e) {
 		std::stringstream ss;
 		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: " << e.what();
