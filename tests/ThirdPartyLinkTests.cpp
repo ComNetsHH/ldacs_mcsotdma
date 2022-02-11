@@ -1067,9 +1067,65 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		/** Tests that upon reply reception, all link info is saved. */
-		void testReplySavesLinkInfo() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		void testRequestAndReplySaveLinkInfo() {
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			size_t num_slots = 0, max_slots = 30;
+			while (third_party_link.status != ThirdPartyLink::received_request_awaiting_reply && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_request_awaiting_reply, third_party_link.status);
+			// after receiving the request, all info should already be there
+			CPPUNIT_ASSERT_EQUAL(id_initiator, third_party_link.id_link_initiator);
+			CPPUNIT_ASSERT_EQUAL(id_recipient, third_party_link.id_link_recipient);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_length, (unsigned int) third_party_link.link_description.burst_length);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_length_tx, (unsigned int) third_party_link.link_description.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_length_rx, (unsigned int) third_party_link.link_description.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.timeout, (unsigned int) third_party_link.link_description.timeout);			
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_offset, (unsigned int) third_party_link.link_description.burst_offset);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_length, (unsigned int) third_party_link.link_description.burst_length);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_length_tx, (unsigned int) third_party_link.link_description.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_length_rx, (unsigned int) third_party_link.link_description.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.timeout, (unsigned int) third_party_link.link_description.timeout);			
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_offset, (unsigned int) third_party_link.link_description.burst_offset);
+			// proceed to after reply
+			num_slots = 0;
+			while (third_party_link.status != ThirdPartyLink::received_reply_link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);
+			// and info should still be there
+			CPPUNIT_ASSERT_EQUAL(id_initiator, third_party_link.id_link_initiator);
+			CPPUNIT_ASSERT_EQUAL(id_recipient, third_party_link.id_link_recipient);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_length, (unsigned int) third_party_link.link_description.burst_length);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_length_tx, (unsigned int) third_party_link.link_description.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_length_rx, (unsigned int) third_party_link.link_description.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.timeout, (unsigned int) third_party_link.link_description.timeout);			
+			CPPUNIT_ASSERT_EQUAL(pp_initiator->link_state.burst_offset, (unsigned int) third_party_link.link_description.burst_offset);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_length, (unsigned int) third_party_link.link_description.burst_length);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_length_tx, (unsigned int) third_party_link.link_description.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_length_rx, (unsigned int) third_party_link.link_description.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.timeout, (unsigned int) third_party_link.link_description.timeout);			
+			CPPUNIT_ASSERT_EQUAL(pp_recipient->link_state.burst_offset, (unsigned int) third_party_link.link_description.burst_offset);
 		}
 
 		/** Tests that upon reply reception, the link's resource reservations are made. */
@@ -1098,28 +1154,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			CPPUNIT_TEST(testGetThirdPartyLink);			
-			CPPUNIT_TEST(testLinkRequestLocks);
-			CPPUNIT_TEST(testMissingReplyUnlocks);
-			CPPUNIT_TEST(testExpectedReply);			
-			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			CPPUNIT_TEST(testLinkReestablishment);
-			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
+			// CPPUNIT_TEST(testGetThirdPartyLink);			
+			// CPPUNIT_TEST(testLinkRequestLocks);
+			// CPPUNIT_TEST(testMissingReplyUnlocks);
+			// CPPUNIT_TEST(testExpectedReply);			
+			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			// CPPUNIT_TEST(testLinkReestablishment);
+			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
 
-			CPPUNIT_TEST(testImmediateResetUnlocks);
-			CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
-			CPPUNIT_TEST(testImmediateResetUnschedules);
-			CPPUNIT_TEST(testIntermediateResetUnschedules);
-			CPPUNIT_TEST(testLateResetUnschedules);						
-			CPPUNIT_TEST(testRequestLocksWherePossible);
-			CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
-			CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
-			CPPUNIT_TEST(testLinkRequestOverwritesBeacon);		
-			CPPUNIT_TEST(testReplyUnlocks);
-			CPPUNIT_TEST(testUnexpectedReply);
-			// CPPUNIT_TEST(testReplySavesLinkInfo);
+			// CPPUNIT_TEST(testImmediateResetUnlocks);
+			// CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
+			// CPPUNIT_TEST(testImmediateResetUnschedules);
+			// CPPUNIT_TEST(testIntermediateResetUnschedules);
+			// CPPUNIT_TEST(testLateResetUnschedules);						
+			// CPPUNIT_TEST(testRequestLocksWherePossible);
+			// CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
+			// CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
+			// CPPUNIT_TEST(testLinkRequestOverwritesBeacon);		
+			// CPPUNIT_TEST(testReplyUnlocks);
+			// CPPUNIT_TEST(testUnexpectedReply);
+			CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
 			// CPPUNIT_TEST(testReplySchedulesBursts);
 			// CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
 			// CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
