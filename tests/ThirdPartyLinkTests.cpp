@@ -1257,8 +1257,46 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that when another third party link terminates, an existing link that is awaiting a reply locks those resources that lie in the present or future. Tests an entire link duration. */
 		void testAnotherLinkResetLocksFutureResources() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_request_awaiting_reply && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();					
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_request_awaiting_reply, third_party_link.status);			
+			// locks have been made
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link.locked_resources_for_recipient.size());
+			// receive another request that would have locked the same resources
+			auto *request = env_initator->phy_layer->outgoing_packets.at(env_initator->phy_layer->outgoing_packets.size() - 1)->copy();
+			CPPUNIT_ASSERT(request != nullptr);
+			CPPUNIT_ASSERT_GREATER(-1, request->getRequestIndex());
+			MacId id_initiator_2 = MacId(id.getId() + 100), id_recipient_2 = MacId(id.getId() + 101);
+			((L2HeaderBase*) request->getHeaders().at(0))->src_id = id_initiator_2;
+			((L2HeaderLinkRequest*) request->getHeaders().at(request->getRequestIndex()))->dest_id = id_recipient_2;			
+			mac->receiveFromLower(request, env->sh_frequency);
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).locked_resources_for_recipient.size());
+			// now terminate the first link which *has* locked resources
+			third_party_link.reset();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link.locked_resources_for_recipient.size());
+			// notify the other third party link
+			mac->onThirdPartyLinkReset(&third_party_link);						
+			CPPUNIT_ASSERT_GREATER(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_GREATER(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).locked_resources_for_recipient.size());
 		}
 
 		/** Tests that when another third party link terminates, an existing link that has received a reply schedules those resources that lie in the present or future. Tests an entire link duration. */
@@ -1292,8 +1330,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testUnexpectedReply);
 			// CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
 			// CPPUNIT_TEST(testReplySchedulesBursts);
-			CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
-			// CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
+			// CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
+			CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
 			// CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
 		CPPUNIT_TEST_SUITE_END();
 	};
