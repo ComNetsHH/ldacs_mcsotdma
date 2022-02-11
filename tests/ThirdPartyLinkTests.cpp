@@ -1301,38 +1301,73 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that when another third party link terminates, an existing link that has received a reply schedules those resources that lie in the present or future. Tests an entire link duration. */
 		void testAnotherLinkResetSchedulesFutureResources() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();					
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);			
+			// reservations have been made
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link.scheduled_resources.size());			
+			// receive another reply that would have scheduled the same resources
+			CPPUNIT_ASSERT_GREATER(size_t(0), env_recipient->phy_layer->outgoing_packets.size());
+			auto *reply = env_recipient->phy_layer->outgoing_packets.at(env_recipient->phy_layer->outgoing_packets.size() - 1)->copy();
+			CPPUNIT_ASSERT(reply != nullptr);
+			CPPUNIT_ASSERT_GREATER(-1, reply->getReplyIndex());
+			MacId id_initiator_2 = MacId(id.getId() + 100), id_recipient_2 = MacId(id.getId() + 101);
+			((L2HeaderBase*) reply->getHeaders().at(0))->src_id = id_initiator_2;
+			((L2HeaderLinkRequest*) reply->getHeaders().at(reply->getReplyIndex()))->dest_id = id_recipient_2;			
+			mac->receiveFromLower(reply, env->sh_frequency);
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).scheduled_resources.size());			
+			// now terminate the first link which *has* scheduled resources
+			third_party_link.reset();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link.scheduled_resources.size());			
+			// notify the other third party link
+			mac->onThirdPartyLinkReset(&third_party_link);						
+			CPPUNIT_ASSERT_GREATER(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).scheduled_resources.size());			
 		}
 
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			// CPPUNIT_TEST(testGetThirdPartyLink);			
-			// CPPUNIT_TEST(testLinkRequestLocks);
-			// CPPUNIT_TEST(testMissingReplyUnlocks);
-			// CPPUNIT_TEST(testExpectedReply);			
-			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			// CPPUNIT_TEST(testLinkReestablishment);
-			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
+			CPPUNIT_TEST(testGetThirdPartyLink);			
+			CPPUNIT_TEST(testLinkRequestLocks);
+			CPPUNIT_TEST(testMissingReplyUnlocks);
+			CPPUNIT_TEST(testExpectedReply);			
+			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			CPPUNIT_TEST(testLinkReestablishment);
+			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
 
-			// CPPUNIT_TEST(testImmediateResetUnlocks);
-			// CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
-			// CPPUNIT_TEST(testImmediateResetUnschedules);
-			// CPPUNIT_TEST(testIntermediateResetUnschedules);
-			// CPPUNIT_TEST(testLateResetUnschedules);						
-			// CPPUNIT_TEST(testRequestLocksWherePossible);
-			// CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
-			// CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
-			// CPPUNIT_TEST(testLinkRequestOverwritesBeacon);		
-			// CPPUNIT_TEST(testReplyUnlocks);
-			// CPPUNIT_TEST(testUnexpectedReply);
-			// CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
-			// CPPUNIT_TEST(testReplySchedulesBursts);
-			// CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
+			CPPUNIT_TEST(testImmediateResetUnlocks);
+			CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
+			CPPUNIT_TEST(testImmediateResetUnschedules);
+			CPPUNIT_TEST(testIntermediateResetUnschedules);
+			CPPUNIT_TEST(testLateResetUnschedules);						
+			CPPUNIT_TEST(testRequestLocksWherePossible);
+			CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
+			CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
+			CPPUNIT_TEST(testLinkRequestOverwritesBeacon);		
+			CPPUNIT_TEST(testReplyUnlocks);
+			CPPUNIT_TEST(testUnexpectedReply);
+			CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
+			CPPUNIT_TEST(testReplySchedulesBursts);
+			CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
 			CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
-			// CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
+			CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
