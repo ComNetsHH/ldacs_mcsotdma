@@ -200,9 +200,15 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 				&burst_length_tx = header->burst_length_tx,
 				burst_length_rx = header->burst_length - header->burst_length_tx,
 				&burst_offset = header->burst_offset;	
-	unsigned int first_burst_slot_offset = selected_time_slot_offset - reply_offset; // normalize to current time slot	
+	unsigned int first_burst_slot_offset = selected_time_slot_offset; 
+	// normalize to current time slot
+	if (reply_offset != UNSET)
+		first_burst_slot_offset -= reply_offset; 	
+	else
+		first_burst_slot_offset -= burst_length;
 	// save link info
 	normalization_offset = 0; // reply reception is the reference time now
+	this->link_description = LinkDescription({}, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
 	link_description.first_burst_slot_offset = first_burst_slot_offset;
 	link_description.selected_channel = selected_freq_channel;	
 	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;	
@@ -235,7 +241,7 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 			// attempt to add more locks
 			size_t num_locks_initiator = this->locked_resources_for_initiator.size(), num_locks_recipient = this->locked_resources_for_recipient.size();
 			this->lockIfPossible(this->locked_resources_for_initiator, this->locked_resources_for_recipient, link_description.proposed_resources, this->normalization_offset, link_description.burst_length, link_description.burst_length_tx, link_description.burst_length_rx, link_description.burst_offset, link_description.timeout);
-			coutd << "additionally locked " << this->locked_resources_for_initiator.size() - num_locks_initiator << " link initiator resources and " << this->locked_resources_for_recipient.size() - num_locks_recipient << " link recipient resources -> ";
+			coutd << "additionally locked " << this->locked_resources_for_initiator.size() - num_locks_initiator << " link initiator resources and " << this->locked_resources_for_recipient.size() - num_locks_recipient << " link recipient resources -> ";			
 			break;
 		}
 		case received_reply_link_established: {
@@ -259,11 +265,7 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 			throw std::runtime_error(ss.str()); 
 			break;
 		}		
-	}
-	// have to figure out whether it's after the link request (then lock) or after the link reply (then schedule)
-	// then go over all resources and check whether they're already locked/scheduled
-	// do so if possible, and add them to the map
-	// oh and don't forget to normalize the slot offset (may need additional counter?)
+	}		
 }
 
 std::vector<std::pair<int, Reservation>> ThirdPartyLink::LinkDescription::getRemainingLinkReservations() const {
