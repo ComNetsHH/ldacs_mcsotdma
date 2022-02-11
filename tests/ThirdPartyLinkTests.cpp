@@ -1178,8 +1178,81 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that upon reply reception, the link's resource reservations are made, not touching non-idle resources. */
 		void testReplySchedulesBurstsButDoesNotOverwrite() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// check which slots will be proposed
+			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1);
+			// schedule initial burst for all channels
+			MacId some_other_id = MacId(id.getId() + 42);			
+			size_t num_blocked = 0;
+			int latest_slot = 0;
+			for (const auto &pair : map) {
+				auto channel = pair.first;
+				if (channel->isSH())
+					continue;
+				auto slots = pair.second;
+				auto table = reservation_manager->getReservationTable(channel);				
+				for (auto slot : slots) {
+					table->mark(slot, Reservation(some_other_id, Reservation::BUSY));									
+					num_blocked++;
+					if (slot > latest_slot)
+						latest_slot = slot;
+				}
+			}						
+			CPPUNIT_ASSERT_EQUAL((size_t) (pp_initiator->proposal_num_frequency_channels * pp_initiator->proposal_num_time_slots), num_blocked);
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+				latest_slot--;
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_GREATER(0, latest_slot);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);			
+			// make sure that initial burst is not touched
+			// but later ones are scheduled		
+			latest_slot++; // latest blocked slot + 1	
+			size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0, num_scheduled_for_other_link = 0;			
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) {
+					const auto *tbl_initiator = mac_initiator->reservation_manager->getReservationTable(channel);
+					const auto *tbl_recipient = mac_recipient->reservation_manager->getReservationTable(channel);
+					const auto *tbl_thirdparty = mac->reservation_manager->getReservationTable(channel);
+					const Reservation &res_initiator = tbl_initiator->getReservation(t),
+								&res_recipient = tbl_recipient->getReservation(t),
+								&res_thirdparty = tbl_thirdparty->getReservation(t);						
+					if (t < latest_slot) {									
+						CPPUNIT_ASSERT(res_thirdparty.isIdle() || res_thirdparty == Reservation(some_other_id, Reservation::BUSY));
+						if (res_thirdparty == Reservation(some_other_id, Reservation::BUSY))
+							num_scheduled_for_other_link++;
+					} else {						
+						if (res_initiator.isTx()) {					
+							num_tx_at_initiator++;
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
+						}
+						if (res_recipient.isTx()) {
+							num_tx_at_recipient++;
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
+						}
+						if (res_thirdparty.isBusy())
+							num_busy_at_thirdparty++;							
+					}
+				}					
+			}
+			// CPPUNIT_ASSERT_GREATER(size_t(0), num_scheduled_for_other_link);
+			// CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);			
 		}
 
 		/** Tests that when another third party link terminates, an existing link that is awaiting a reply locks those resources that lie in the present or future. Tests an entire link duration. */
@@ -1218,8 +1291,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testReplyUnlocks);
 			// CPPUNIT_TEST(testUnexpectedReply);
 			// CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
-			CPPUNIT_TEST(testReplySchedulesBursts);
-			// CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
+			// CPPUNIT_TEST(testReplySchedulesBursts);
+			CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
 			// CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
 			// CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
 		CPPUNIT_TEST_SUITE_END();
