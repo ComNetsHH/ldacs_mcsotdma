@@ -89,7 +89,7 @@ public:
 		for (const auto& pair : scheduled_resources) {
 			ReservationTable *table = pair.first;
 			int slot_offset = pair.second - this->num_slots_since_creation;
-			if (slot_offset > 0) {
+			if (slot_offset >= 0) {
 				auto action = table->getReservation(slot_offset).getAction();
 				if (!std::any_of(expected_actions.begin(), expected_actions.end(), [action](const Reservation::Action &expected_action) {return expected_action == action;})) {							
 					std::stringstream ss;
