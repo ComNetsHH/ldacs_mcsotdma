@@ -519,8 +519,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			}
 			request_header->reply_offset = reply_slot_2;
-			CPPUNIT_ASSERT_GREATER(-1, reply_slot_1);			
-			coutd << std::endl << std::endl << "now comes the request" << std::endl;												
+			CPPUNIT_ASSERT_GREATER(-1, reply_slot_1);						
 			mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(another_request_packet);			
 			auto &third_party_link_1 = mac->getThirdPartyLink(id_initiator, id_recipient), &third_party_link_2 = mac->getThirdPartyLink(imaginary_src_id, imaginary_dest_id);
 			// locks should've been made for first link
@@ -895,8 +894,47 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that upon a request reception, resources are locked, but non-idle resources are not touched. */
 		void testRequestLocksWherePossible() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// check which slots will be proposed
+			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1);
+			// cherry-pick first proposed channel
+			auto it = map.begin();
+			auto cherry_picked_channel = (*it).first;
+			auto slots = (*it).second;
+			// schedule these slots for sth
+			auto table = reservation_manager->getReservationTable(cherry_picked_channel);
+			MacId some_other_id = MacId(id.getId() + 42);
+			for (auto slot : slots)
+				table->mark(slot, Reservation(some_other_id, Reservation::RX));
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_request_awaiting_reply && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_request_awaiting_reply, third_party_link.status);			
+			// make sure that all locks are set except for the channel where another reservation is already present
+			size_t num_locks = 0;
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) {
+					if (channel == cherry_picked_channel)
+						CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));
+					else if (table->getReservation(t).isLocked())
+						num_locks++;
+				}					
+			}
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_locks);
 		}
 
 		/** Tests that upon a request reception, the expected reply slot is scheduled. */
@@ -961,24 +999,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			CPPUNIT_TEST(testGetThirdPartyLink);			
-			CPPUNIT_TEST(testLinkRequestLocks);
-			CPPUNIT_TEST(testMissingReplyUnlocks);
-			CPPUNIT_TEST(testExpectedReply);			
-			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			CPPUNIT_TEST(testLinkReestablishment);
-			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
-			CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
-			CPPUNIT_TEST(testLinkRequestOverwritesBeacon);
+			// CPPUNIT_TEST(testGetThirdPartyLink);			
+			// CPPUNIT_TEST(testLinkRequestLocks);
+			// CPPUNIT_TEST(testMissingReplyUnlocks);
+			// CPPUNIT_TEST(testExpectedReply);			
+			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			// CPPUNIT_TEST(testLinkReestablishment);
+			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
+			// CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
+			// CPPUNIT_TEST(testLinkRequestOverwritesBeacon);
 
-			CPPUNIT_TEST(testImmediateResetUnlocks);
-			CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
-			CPPUNIT_TEST(testImmediateResetUnschedules);
-			CPPUNIT_TEST(testIntermediateResetUnschedules);
-			CPPUNIT_TEST(testLateResetUnschedules);						
-			// CPPUNIT_TEST(testRequestLocksWherePossible);
+			// CPPUNIT_TEST(testImmediateResetUnlocks);
+			// CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
+			// CPPUNIT_TEST(testImmediateResetUnschedules);
+			// CPPUNIT_TEST(testIntermediateResetUnschedules);
+			// CPPUNIT_TEST(testLateResetUnschedules);						
+			CPPUNIT_TEST(testRequestLocksWherePossible);
 			// CPPUNIT_TEST(testRequestSchedulesExpectedReply);
 			// CPPUNIT_TEST(testRequestSchedulesExpectedReplyOverwritesBroadcast);
 			// CPPUNIT_TEST(testRequestSchedulesExpectedReplyOverwritesBeacon);
