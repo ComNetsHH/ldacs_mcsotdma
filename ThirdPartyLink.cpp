@@ -200,9 +200,15 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 				&burst_length_tx = header->burst_length_tx,
 				burst_length_rx = header->burst_length - header->burst_length_tx,
 				&burst_offset = header->burst_offset;	
-	unsigned int first_burst_slot_offset = selected_time_slot_offset - reply_offset; // normalize to current time slot	
+	unsigned int first_burst_slot_offset = selected_time_slot_offset; 
+	// normalize to current time slot
+	if (reply_offset != UNSET)
+		first_burst_slot_offset -= reply_offset; 	
+	else
+		first_burst_slot_offset -= burst_length;
 	// save link info
 	normalization_offset = 0; // reply reception is the reference time now
+	this->link_description = LinkDescription({}, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
 	link_description.first_burst_slot_offset = first_burst_slot_offset;
 	link_description.selected_channel = selected_freq_channel;	
 	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;	

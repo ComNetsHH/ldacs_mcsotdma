@@ -581,111 +581,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				}
 			}
 			CPPUNIT_ASSERT_EQUAL(num_locks, num_locks_now);
-		}		
-
-		void testLinkRequestOverwritesBroadcast() {			
-			// initiate link establishment
-			mac_initiator->notifyOutgoing(1, id_recipient);
-			size_t num_slots = 0, max_slots = 30;
-			auto *sh_recipient = (SHLinkManager*) mac_recipient->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-			while (sh_recipient->link_replies.empty() && num_slots++ < max_slots) {
-				mac_initiator->update(1);
-				mac_recipient->update(1);
-				mac->update(1);
-				mac_initiator->execute();
-				mac_recipient->execute();
-				mac->execute();
-				mac_initiator->onSlotEnd();
-				mac_recipient->onSlotEnd();
-				mac->onSlotEnd();
-			}
-			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), sh_recipient->link_replies.size());			
-			int scheduled_link_reply_slot = sh_recipient->link_replies.at(0).first + 1; 			
-			CPPUNIT_ASSERT_GREATER(0, scheduled_link_reply_slot);			
-			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
-			// now that recipient has scheduled its link reply
-			// prepare a 3rd party link request that will overwrite this reservation
-			mac->notifyOutgoing(1, id_initiator);
-			env->phy_layer->connected_phys.clear();
-			num_slots = 0;
-			while (size_t(mac->stat_num_requests_sent.get()) < 1 && num_slots++ < max_slots) {
-				mac->update(1);
-				mac->execute();
-				mac->onSlotEnd();
-			}
-			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(1), sh_recipient->link_replies.size());		
-			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
-			auto *link_request = env->phy_layer->outgoing_packets.at(env->phy_layer->outgoing_packets.size() - 1);
-			CPPUNIT_ASSERT_GREATER(-1, link_request->getRequestIndex());
-			auto *link_request_header = (L2HeaderLinkRequest*) link_request->getHeaders().at(link_request->getRequestIndex());
-			// set to the same slot
-			link_request_header->reply_offset = scheduled_link_reply_slot;
-			// now receive this 
-			mac_recipient->receiveFromLower(link_request->copy(), env->sh_frequency);
-			mac_recipient->onSlotEnd();
-			// broadcast slot should've been re-scheduled
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_broadcast_collisions_detected.get());						
-			CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
-			sh_recipient->unscheduleBroadcastSlot(); // eliminate possible cause for collision
-			// so now when the supposed reply slot arrives, nothing will be sent
-			for (int t = 0; t < scheduled_link_reply_slot; t++) {
-				mac_recipient->update(1);
-				mac_recipient->execute();
-				mac_recipient->onSlotEnd();
-			}
-			CPPUNIT_ASSERT_EQUAL(size_t(0), sh_recipient->link_replies.size());					
-			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
-			// which should've re-triggered link establishment
-			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_recipient->link_status);
-		}
-
-		void testLinkRequestOverwritesBeacon() {			
-			// progress one slot
-			mac_initiator->update(1);
-			mac_recipient->update(1);
-			mac->update(1);
-			mac_initiator->execute();
-			mac_recipient->execute();
-			mac->execute();
-			mac_initiator->onSlotEnd();
-			mac_recipient->onSlotEnd();
-			mac->onSlotEnd();	
-			// beacon should've been scheduled
-			auto *sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);	
-			CPPUNIT_ASSERT_EQUAL(true, sh->next_beacon_scheduled);
-			CPPUNIT_ASSERT_GREATER(uint(0), sh->getNextBeaconSlot());					
-			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), sh->current_reservation_table->getReservation(sh->getNextBeaconSlot()));
-			// prepare a 3rd party link request that will overwrite this reservation
-			env_initator->phy_layer->connected_phys.clear();
-			mac_initiator->notifyOutgoing(1, id_recipient);			
-			size_t num_slots = 0, max_slots = 30;
-			while (size_t(mac_initiator->stat_num_requests_sent.get()) < 1 && num_slots++ < max_slots) {
-				mac_initiator->update(1);
-				mac_initiator->execute();
-				mac_initiator->onSlotEnd();
-			}			
-			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());			
-			CPPUNIT_ASSERT_GREATER(size_t(0), env_initator->phy_layer->outgoing_packets.size());			
-			auto *link_request = env_initator->phy_layer->outgoing_packets.at(env_initator->phy_layer->outgoing_packets.size() - 1);
-			CPPUNIT_ASSERT_GREATER(-1, link_request->getRequestIndex());
-			auto *link_request_header = (L2HeaderLinkRequest*) link_request->getHeaders().at(link_request->getRequestIndex());
-			// set to the same slot
-			unsigned int beacon_slot_before = sh->getNextBeaconSlot();			
-			link_request_header->reply_offset = beacon_slot_before;
-			// now receive this 
-			mac->receiveFromLower(link_request->copy(), env->sh_frequency);
-			mac->onSlotEnd();
-			// beacon slot should've been re-scheduled
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_beacon_collisions_detected.get());						
-			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), sh->current_reservation_table->getReservation(beacon_slot_before));
-			CPPUNIT_ASSERT(beacon_slot_before != sh->getNextBeaconSlot());			
-		}
-
-
+		}				
 
 		/** Tests that all locks in the current or later time slots are unlocked through the reset() function. */
 		void testImmediateResetUnlocks() {
@@ -939,32 +835,235 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that upon a request reception, the expected reply slot is scheduled. */
 		void testRequestSchedulesExpectedReply() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_request_awaiting_reply && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_request_awaiting_reply, third_party_link.status);		
+			// check that indicated reply slot has been scheduled
+			auto request_packet = env_initator->phy_layer->outgoing_packets.at(env_initator->phy_layer->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT_GREATER(-1, request_packet->getRequestIndex());
+			auto request_header = (L2HeaderLinkRequest*) request_packet->getHeaders().at(request_packet->getRequestIndex());
+			int reply_offset = request_header->reply_offset;
+			CPPUNIT_ASSERT_GREATER(0, reply_offset);
+			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), sh->current_reservation_table->getReservation(reply_offset));
 		}
 
-		/** Tests that upon a request reception, the expected reply slot is scheduled, overwriting an existing broadcast transmission reservation. */
-		void testRequestSchedulesExpectedReplyOverwritesBroadcast() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		void testLinkRequestOverwritesBroadcast() {			
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);
+			size_t num_slots = 0, max_slots = 30;
+			auto *sh_recipient = (SHLinkManager*) mac_recipient->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+			while (sh_recipient->link_replies.empty() && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh_recipient->link_replies.size());			
+			int scheduled_link_reply_slot = sh_recipient->link_replies.at(0).first + 1; 			
+			CPPUNIT_ASSERT_GREATER(0, scheduled_link_reply_slot);			
+			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
+			// now that recipient has scheduled its link reply
+			// prepare a 3rd party link request that will overwrite this reservation
+			mac->notifyOutgoing(1, id_initiator);
+			env->phy_layer->connected_phys.clear();
+			num_slots = 0;
+			while (size_t(mac->stat_num_requests_sent.get()) < 1 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), sh_recipient->link_replies.size());		
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
+			auto *link_request = env->phy_layer->outgoing_packets.at(env->phy_layer->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT_GREATER(-1, link_request->getRequestIndex());
+			auto *link_request_header = (L2HeaderLinkRequest*) link_request->getHeaders().at(link_request->getRequestIndex());
+			// set to the same slot
+			link_request_header->reply_offset = scheduled_link_reply_slot;
+			// now receive this 
+			mac_recipient->receiveFromLower(link_request->copy(), env->sh_frequency);
+			mac_recipient->onSlotEnd();
+			// broadcast slot should've been re-scheduled
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_broadcast_collisions_detected.get());						
+			CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), sh_recipient->current_reservation_table->getReservation(scheduled_link_reply_slot));
+			sh_recipient->unscheduleBroadcastSlot(); // eliminate possible cause for collision
+			// so now when the supposed reply slot arrives, nothing will be sent
+			for (int t = 0; t < scheduled_link_reply_slot; t++) {
+				mac_recipient->update(1);
+				mac_recipient->execute();
+				mac_recipient->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(0), sh_recipient->link_replies.size());					
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_sent.get());
+			// which should've re-triggered link establishment
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_recipient->link_status);
 		}
 
-		/** Tests that upon a request reception, the expected reply slot is scheduled, overwriting an existing beacon transmission reservation. */
-		void testRequestSchedulesExpectedReplyOverwritesBeacon() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		void testLinkRequestOverwritesBeacon() {			
+			// progress one slot
+			mac_initiator->update(1);
+			mac_recipient->update(1);
+			mac->update(1);
+			mac_initiator->execute();
+			mac_recipient->execute();
+			mac->execute();
+			mac_initiator->onSlotEnd();
+			mac_recipient->onSlotEnd();
+			mac->onSlotEnd();	
+			// beacon should've been scheduled
+			auto *sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);	
+			CPPUNIT_ASSERT_EQUAL(true, sh->next_beacon_scheduled);
+			CPPUNIT_ASSERT_GREATER(uint(0), sh->getNextBeaconSlot());					
+			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), sh->current_reservation_table->getReservation(sh->getNextBeaconSlot()));
+			// prepare a 3rd party link request that will overwrite this reservation
+			env_initator->phy_layer->connected_phys.clear();
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			while (size_t(mac_initiator->stat_num_requests_sent.get()) < 1 && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_initiator->execute();
+				mac_initiator->onSlotEnd();
+			}			
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());			
+			CPPUNIT_ASSERT_GREATER(size_t(0), env_initator->phy_layer->outgoing_packets.size());			
+			auto *link_request = env_initator->phy_layer->outgoing_packets.at(env_initator->phy_layer->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT_GREATER(-1, link_request->getRequestIndex());
+			auto *link_request_header = (L2HeaderLinkRequest*) link_request->getHeaders().at(link_request->getRequestIndex());
+			// set to the same slot
+			unsigned int beacon_slot_before = sh->getNextBeaconSlot();			
+			link_request_header->reply_offset = beacon_slot_before;
+			// now receive this 
+			mac->receiveFromLower(link_request->copy(), env->sh_frequency);
+			mac->onSlotEnd();
+			// beacon slot should've been re-scheduled
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_beacon_collisions_detected.get());						
+			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), sh->current_reservation_table->getReservation(beacon_slot_before));
+			CPPUNIT_ASSERT(beacon_slot_before != sh->getNextBeaconSlot());			
 		}
 
 		/** Tests that upon reply reception, all locks made after request reception are unlocked. */
 		void testReplyUnlocks() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);		
+			// make sure that no locks are present
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) 
+					CPPUNIT_ASSERT_EQUAL(false, table->getReservation(t).isLocked());									
+			}
 		}	
 
 		/** Tests that if an unexpected reply is received, after *no* request had indicated this reply, the link reservations are made correctly. */
 		void testUnexpectedReply() {
-			bool is_implemented = false;
-			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+			// sever connection between initiator and user-in-question
+			env_initator->phy_layer->connected_phys.clear();
+			env_initator->phy_layer->connected_phys.push_back(env_recipient->phy_layer);
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 30;
+			while (pp_initiator->link_status != LinkManager::Status::awaiting_reply && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp_initiator->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_third_party_requests_rcvd.get());
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::uninitialied, third_party_link.status);
+			// proceed until reply is sent
+			num_slots = 0;
+			while (mac_recipient->stat_num_replies_sent.get() < 1 && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			// make sure that even though the request had not been received
+			// the third party link has the right information
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);
+			CPPUNIT_ASSERT_EQUAL(id_initiator, third_party_link.id_link_initiator);
+			CPPUNIT_ASSERT_EQUAL(id_recipient, third_party_link.id_link_recipient);
+			// and that the correct reservations have been made			
+			const auto *tbl_initiator = pp_initiator->current_reservation_table;
+			const auto *tbl_recipient = pp_recipient->current_reservation_table;			
+			CPPUNIT_ASSERT(tbl_initiator != nullptr && tbl_recipient != nullptr);
+			const auto *tbl_thirdparty = reservation_manager->getReservationTable(tbl_initiator->getLinkedChannel());				
+			CPPUNIT_ASSERT(tbl_thirdparty != nullptr);
+			size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0;
+			for (int t = 0; t < env->planning_horizon; t++) {
+				const Reservation &res_initiator = tbl_initiator->getReservation(t),
+								&res_recipient = tbl_recipient->getReservation(t),
+								&res_thirdparty = tbl_thirdparty->getReservation(t);				
+				if (res_initiator.isTx()) {					
+					num_tx_at_initiator++;
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
+				}
+				if (res_recipient.isTx()) {
+					num_tx_at_recipient++;
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
+				}
+				if (res_thirdparty.isBusy())
+					num_busy_at_thirdparty++;
+			}
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_initiator);
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_recipient);
+			CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);			
 		}
 
 		/** Tests that upon reply reception, all link info is saved. */
@@ -999,29 +1098,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
-			// CPPUNIT_TEST(testGetThirdPartyLink);			
-			// CPPUNIT_TEST(testLinkRequestLocks);
-			// CPPUNIT_TEST(testMissingReplyUnlocks);
-			// CPPUNIT_TEST(testExpectedReply);			
-			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			// CPPUNIT_TEST(testLinkReestablishment);
-			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);
-			// CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
-			// CPPUNIT_TEST(testLinkRequestOverwritesBeacon);
+			CPPUNIT_TEST(testGetThirdPartyLink);			
+			CPPUNIT_TEST(testLinkRequestLocks);
+			CPPUNIT_TEST(testMissingReplyUnlocks);
+			CPPUNIT_TEST(testExpectedReply);			
+			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			CPPUNIT_TEST(testLinkReestablishment);
+			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
 
-			// CPPUNIT_TEST(testImmediateResetUnlocks);
-			// CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
-			// CPPUNIT_TEST(testImmediateResetUnschedules);
-			// CPPUNIT_TEST(testIntermediateResetUnschedules);
-			// CPPUNIT_TEST(testLateResetUnschedules);						
+			CPPUNIT_TEST(testImmediateResetUnlocks);
+			CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
+			CPPUNIT_TEST(testImmediateResetUnschedules);
+			CPPUNIT_TEST(testIntermediateResetUnschedules);
+			CPPUNIT_TEST(testLateResetUnschedules);						
 			CPPUNIT_TEST(testRequestLocksWherePossible);
-			// CPPUNIT_TEST(testRequestSchedulesExpectedReply);
-			// CPPUNIT_TEST(testRequestSchedulesExpectedReplyOverwritesBroadcast);
-			// CPPUNIT_TEST(testRequestSchedulesExpectedReplyOverwritesBeacon);
-			// CPPUNIT_TEST(testReplyUnlocks);
-			// CPPUNIT_TEST(testUnexpectedReply);
+			CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
+			CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
+			CPPUNIT_TEST(testLinkRequestOverwritesBeacon);		
+			CPPUNIT_TEST(testReplyUnlocks);
+			CPPUNIT_TEST(testUnexpectedReply);
 			// CPPUNIT_TEST(testReplySavesLinkInfo);
 			// CPPUNIT_TEST(testReplySchedulesBursts);
 			// CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
