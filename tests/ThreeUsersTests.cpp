@@ -94,7 +94,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				*table_rx = p2p_rx->current_reservation_table,
 				*table_3 = env3->mac_layer->getReservationManager()->getReservationTable(&channel);
 			coutd << "f=" << *table_tx->getLinkedChannel() << " f=" << *table_rx->getLinkedChannel() << " f=" << *table_3->getLinkedChannel() << std::endl;
-			int until = p2p_tx->link_state.timeout*p2p_tx->link_state.burst_offset + p2p_tx->burst_offset*2;
+			int until = p2p_tx->link_state.timeout*p2p_tx->link_state.burst_offset + p2p_tx->getBurstOffset()*2;
 			for (int t = 0; t < until; t++) {
 				const Reservation &res_tx = table_tx->getReservation(t),
 					&res_rx = table_rx->getReservation(t),

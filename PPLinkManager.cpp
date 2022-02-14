@@ -136,9 +136,9 @@ void PPLinkManager::onSlotEnd() {
 void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload) {
 	coutd << "populating link request -> ";
 	// determine number of slots in-between transmission bursts
-	burst_offset = getBurstOffset();
+	this->default_burst_offset = computeBurstOffset();	
 	// determine number of TX and RX slots
-	std::pair<unsigned int, unsigned int> tx_rx_split = this->getTxRxSplit(getRequiredTxSlots(), getRequiredRxSlots(), burst_offset);
+	std::pair<unsigned int, unsigned int> tx_rx_split = this->getTxRxSplit(getRequiredTxSlots(), getRequiredRxSlots(), getBurstOffset());
 	unsigned int burst_length_tx = tx_rx_split.first,
 				 burst_length_rx = tx_rx_split.second,
 				 burst_length = burst_length_tx + burst_length_rx;
@@ -154,7 +154,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstabl
 	unsigned int next_burst_in = 0; // don't know what the partner will choose
 	FrequencyChannel *chosen_freq_channel = nullptr; // don't know what the partner will choose
 	bool is_link_initiator = true; // sender of the request is the initiator by convention	
-	this->link_state = LinkState(this->timeout_before_link_expiry, burst_offset, burst_length, burst_length_tx, next_burst_in, is_link_initiator, chosen_freq_channel);
+	this->link_state = LinkState(this->timeout_before_link_expiry, getBurstOffset(), burst_length, burst_length_tx, next_burst_in, is_link_initiator, chosen_freq_channel);
 	// lock them
 	auto &locked_resources = this->link_state.reserved_resources;
 	unsigned int reply_offset = 0;
@@ -190,7 +190,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstabl
 	header->timeout = this->timeout_before_link_expiry;
 	header->burst_length = burst_length;
 	header->burst_length_tx = burst_length_tx;
-	header->burst_offset = burst_offset;
+	header->burst_offset = getBurstOffset();
 	header->reply_offset = reply_offset;
 	payload->resources = proposal_resources;
 	coutd << "request populated -> expecting reply in " << reply_offset << " slots, changing link status '" << this->link_status << "->";
@@ -227,7 +227,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> PPLinkManager::slot
 		if (table->getLinkedChannel()->isBlocked())
 			continue;
 		// find time slots to propose
-		auto candidate_slots = table->findPPCandidates(num_time_slots, reply_slot + this->min_offset_to_allow_processing, this->burst_offset, burst_length, burst_length_tx, this->timeout_before_link_expiry);
+		auto candidate_slots = table->findPPCandidates(num_time_slots, reply_slot + this->min_offset_to_allow_processing, getBurstOffset(), burst_length, burst_length_tx, this->timeout_before_link_expiry);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
 			coutd << slot << ":" << slot + burst_length - 1 << " ";
@@ -251,7 +251,7 @@ ReservationMap PPLinkManager::lock_bursts(const std::vector<unsigned int>& start
 		for (unsigned int n_burst = 0; n_burst < timeout; n_burst++) {
 			for (unsigned int t = 0; t < burst_length; t++) {
 				// normalize to actual slot offset
-				unsigned int slot = n_burst*burst_offset + start_offset + t;								
+				unsigned int slot = n_burst*getBurstOffset() + start_offset + t;								
 				// check local reservation
 				if (table->canLock(slot)) 
 					locked_local.emplace(slot);
@@ -325,10 +325,17 @@ std::pair<unsigned int, unsigned int> PPLinkManager::getTxRxSplit(unsigned int r
 	return {resource_req_me, resource_req_you};
 }
 
-unsigned int PPLinkManager::getBurstOffset() const {
-	// TODO have upper layer set a delay target?
-	// or some other way of choosing a burst offset?
-	return 20;
+unsigned int PPLinkManager::getBurstOffset() const {	
+	return this->default_burst_offset;
+}
+
+unsigned int PPLinkManager::computeBurstOffset() {	
+	if (adaptive_burst_offset) {
+		size_t num_pp_channels = reservation_manager->getP2PFreqChannels().size();
+		size_t num_neighbors = mac->getNeighborObserver().getNumActiveNeighbors();
+		return std::ceil(std::max(size_t(20), (16*num_neighbors) / num_pp_channels));
+	} else
+		return getBurstOffset();	
 }
 
 unsigned int PPLinkManager::getRequiredTxSlots() const {
@@ -445,7 +452,7 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			L2HeaderLinkReply *reply_header = new L2HeaderLinkReply();
 			reply_header->burst_length = link_state.burst_length;
 			reply_header->burst_length_tx = getRequiredTxSlots();
-			reply_header->burst_offset = burst_offset;
+			reply_header->burst_offset = getBurstOffset();
 			reply_header->timeout = link_state.timeout;
 			reply_header->dest_id = link_id;
 			LinkEstablishmentPayload *payload = new LinkEstablishmentPayload();
@@ -485,7 +492,7 @@ std::pair<const FrequencyChannel*, unsigned int> PPLinkManager::chooseRandomReso
 		for (unsigned int slot : slots) {
 			coutd << slot << "@" << *channel << " ";
 			// ... isViableProposal checks that the range is idle and hardware available
-			if (isProposalViable(table, slot, burst_length, burst_length_tx, burst_offset, this->timeout_before_link_expiry)) {
+			if (isProposalViable(table, slot, burst_length, burst_length_tx, getBurstOffset(), this->timeout_before_link_expiry)) {
 				viable_resource_channel.push_back(channel);
 				viable_resource_slot.push_back(slot);
 				coutd << "(viable), ";
@@ -726,7 +733,7 @@ void PPLinkManager::scheduledLinkReplyCouldNotHaveBeenSent() {
 }
 
 void PPLinkManager::setBurstOffset(unsigned int value) {
-	this->burst_offset = value;
+	this->default_burst_offset = value;
 }
 
 void PPLinkManager::setBurstOffsetAdaptive(bool value) {

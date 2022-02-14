@@ -157,14 +157,15 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 
 		/** If a link is deemed faulty due to not receiving data packets, it may be closed early. */
 		void onFaultyLink();		
+		unsigned int computeBurstOffset();
 
 	protected:
 		/** Number of transmission bursts until link expiry. */
 		unsigned int timeout_before_link_expiry = 20;
 		/** The number of slots in-between transmission bursts, often denoted as tau. */
-		unsigned int burst_offset = 20;
+		unsigned int default_burst_offset = 20;
 		/** Whether to use an adapting burst_offset. If false, the configured value is always used. */
-		bool adaptive_burst_offset = true;
+		bool adaptive_burst_offset = false;
 		/** Number of slots in-between request and reply to give the receiver sufficient processing time. */
 		const unsigned int min_offset_to_allow_processing = 2;
 		/** Link requests should propose this many distinct frequency channels. */
@@ -172,7 +173,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		/** Link requests should propose this many distinct time slot resources per frequency channel. */
 		unsigned int proposal_num_time_slots = 3;
 		/** Gives the average number of bits that should have been sent in-between two transmission bursts. */
-		MovingAverage outgoing_traffic_estimate = MovingAverage(burst_offset);
+		MovingAverage outgoing_traffic_estimate = MovingAverage(default_burst_offset);
 		/** The communication partner can report how many resources it'd prefer. */
 		unsigned int reported_resoure_requirement = 1;
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */

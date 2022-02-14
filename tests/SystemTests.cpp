@@ -209,7 +209,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(expected_tx_timeout, lm_me->link_state.timeout);
 
 			// Now increment time until the link expires.
-			size_t num_slots = 0, max_num_slots = lm_me->timeout_before_link_expiry * lm_me->burst_offset + lm_me->burst_offset;
+			size_t num_slots = 0, max_num_slots = lm_me->timeout_before_link_expiry * lm_me->default_burst_offset + lm_me->default_burst_offset;
 			while (lm_me->link_status != LinkManager::link_not_established && num_slots++ < max_num_slots) {
 				mac_layer_me->update(1);
 				mac_layer_you->update(1);
@@ -785,7 +785,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(num_slots < max_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, lm_me->link_status);
 			size_t num_tx_reservations = 0, num_rx_reservations = 0;
-			for (size_t t = 0; t < lm_me->burst_offset; t++) {
+			for (size_t t = 0; t < lm_me->default_burst_offset; t++) {
 				const auto& res = lm_me->current_reservation_table->getReservation(t);				
 				if (res.isAnyTx())
 					num_tx_reservations++;

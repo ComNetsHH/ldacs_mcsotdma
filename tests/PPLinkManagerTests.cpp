@@ -191,7 +191,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Calling notifyOutgoing should update the outgoing traffic estimate. */
 		void testOutgoingTrafficEstimateEverySlot() {
 			unsigned int num_bits = 512;
-			size_t num_slots = pp->burst_offset * 10;
+			size_t num_slots = pp->default_burst_offset * 10;
 			for (size_t t = 0; t < num_slots; t++) {
 				mac->update(1);
 				pp->notifyOutgoing(num_bits);				
@@ -206,7 +206,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * */
 		void testOutgoingTrafficEstimateEverySecondSlot() {
 			unsigned int num_bits = 512;
-			size_t num_slots = pp->burst_offset * 10;
+			size_t num_slots = pp->default_burst_offset * 10;
 			for (size_t t = 0; t < num_slots; t++) {
 				mac->update(1);
 				if (t % 2 == 0)
@@ -263,7 +263,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int required_tx_resources = 2;			
 			mac->notifyOutgoing(datarate * required_tx_resources, partner_id);
 			CPPUNIT_ASSERT_EQUAL(required_tx_resources, pp->getRequiredTxSlots());			
-			const auto split = pp->getTxRxSplit(pp->getRequiredTxSlots(), pp->getRequiredRxSlots(), pp->burst_offset);
+			const auto split = pp->getTxRxSplit(pp->getRequiredTxSlots(), pp->getRequiredRxSlots(), pp->default_burst_offset);
 			CPPUNIT_ASSERT_EQUAL(uint(2), split.first);
 			CPPUNIT_ASSERT_EQUAL(uint(1), split.second);
 		}
@@ -1143,7 +1143,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// now make sure that timeouts are updated as expected
 			for (size_t n_burst = pp->timeout_before_link_expiry - 1; n_burst > 1; n_burst--) {
 				CPPUNIT_ASSERT_EQUAL(n_burst, size_t(pp->link_state.timeout));
-				for (size_t t = 0; t < pp->burst_offset; t++) {
+				for (size_t t = 0; t < pp->default_burst_offset; t++) {
 					mac->update(1);
 					mac_you->update(1);
 					mac->execute();
