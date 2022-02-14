@@ -724,3 +724,7 @@ void PPLinkManager::scheduledLinkReplyCouldNotHaveBeenSent() {
 	cancelLink();
 	establishLink();
 }
+
+void PPLinkManager::setBurstOffset(unsigned int value) {
+	this->burst_offset = value;
+}

@@ -35,6 +35,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		 * This happens when a third-party link unschedules the transmission, for example.
 		 */
 		void scheduledLinkReplyCouldNotHaveBeenSent();
+		void setBurstOffset(unsigned int value);
 
 	protected:		
 		/** Keeps track of the current link state values. */

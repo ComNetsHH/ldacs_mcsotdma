@@ -219,7 +219,8 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {						
 			link_manager = new PPLinkManager(internal_id, reservation_manager, this);
-			// ((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);			
+			((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);			
+			((PPLinkManager*) link_manager)->setBurstOffset(this->pp_link_burst_offset);			
 		}		
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
@@ -407,4 +408,13 @@ void MCSOTDMA_Mac::onThirdPartyLinkReset(const ThirdPartyLink* caller) {
 			third_party_link.onAnotherThirdLinkReset();
 		}
 	}
+}
+
+void MCSOTDMA_Mac::setPPLinkBurstOffset(unsigned int value) {
+	// set variable that is used to instantiate new PPLinkManagers
+	pp_link_burst_offset = value;
+	// handle those that already exist
+	for (auto pair : link_managers) 
+		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
+			((PPLinkManager*) pair.second)->setBurstOffset(value);					
 }

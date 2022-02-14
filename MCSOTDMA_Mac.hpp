@@ -98,6 +98,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
 		void reportNeighborActivity(const MacId& id);
 		const NeighborObserver& getNeighborObserver() const;
+		void setPPLinkBurstOffset(unsigned int value) override;
 
 		void statisticReportBroadcastMessageProcessed() {
 			stat_num_broadcast_msgs_processed.increment();
@@ -245,6 +246,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int default_p2p_link_timeout = 10;
 		/** Number of slots between two transmission bursts. */
 		const unsigned int default_p2p_link_burst_offset = 20;		
+		unsigned int pp_link_burst_offset = 20;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
