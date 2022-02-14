@@ -36,6 +36,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		 */
 		void scheduledLinkReplyCouldNotHaveBeenSent();
 		void setBurstOffset(unsigned int value);
+		void setBurstOffsetAdaptive(bool value);
 
 	protected:		
 		/** Keeps track of the current link state values. */
@@ -162,6 +163,8 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		unsigned int timeout_before_link_expiry = 20;
 		/** The number of slots in-between transmission bursts, often denoted as tau. */
 		unsigned int burst_offset = 20;
+		/** Whether to use an adapting burst_offset. If false, the configured value is always used. */
+		bool adaptive_burst_offset = true;
 		/** Number of slots in-between request and reply to give the receiver sufficient processing time. */
 		const unsigned int min_offset_to_allow_processing = 2;
 		/** Link requests should propose this many distinct frequency channels. */

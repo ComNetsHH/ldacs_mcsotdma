@@ -99,6 +99,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void reportNeighborActivity(const MacId& id);
 		const NeighborObserver& getNeighborObserver() const;
 		void setPPLinkBurstOffset(unsigned int value) override;
+		void setPPLinkBurstOffsetAdaptive(bool value) override;
 
 		void statisticReportBroadcastMessageProcessed() {
 			stat_num_broadcast_msgs_processed.increment();
@@ -247,6 +248,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Number of slots between two transmission bursts. */
 		const unsigned int default_p2p_link_burst_offset = 20;		
 		unsigned int pp_link_burst_offset = 20;
+		bool adapt_burst_offset = true;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

@@ -418,3 +418,12 @@ void MCSOTDMA_Mac::setPPLinkBurstOffset(unsigned int value) {
 		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
 			((PPLinkManager*) pair.second)->setBurstOffset(value);					
 }
+
+void MCSOTDMA_Mac::setPPLinkBurstOffsetAdaptive(bool value) {
+	// set variable that is used to instantiate new PPLinkManagers
+	this->adapt_burst_offset = value;
+	// handle those that already exist
+	for (auto pair : link_managers) 
+		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
+			((PPLinkManager*) pair.second)->setBurstOffsetAdaptive(value);
+}
