@@ -613,18 +613,22 @@ void SHLinkManager::scheduleBeacon() {
 		// un-schedule current beacon slot
 		unscheduleBeaconSlot();
 		// and schedule a new one
-		int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(congestion_estimator.getCongestion(), mac->getNeighborObserver().getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
-		mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
-		if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
-			std::stringstream ss;
-			ss << *mac << "::" << *this << "::scheduleBeacon scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";
-			throw std::runtime_error(ss.str());
+		try {
+			int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(congestion_estimator.getCongestion(), mac->getNeighborObserver().getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
+			mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
+			if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::scheduleBeacon scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";
+				throw std::runtime_error(ss.str());
+			}
+			current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
+			next_beacon_scheduled = true;
+			coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";		
+			// Reset congestion estimator with new beacon interval.
+			congestion_estimator.reset(beacon_module.getBeaconOffset());
+		} catch (const std::exception &e) {
+			coutd << "couldn't schedule a next beacon: " << e.what() << " -> ";
 		}
-		current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-		next_beacon_scheduled = true;
-		coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";		
-		// Reset congestion estimator with new beacon interval.
-		congestion_estimator.reset(beacon_module.getBeaconOffset());
 	}
 }
 

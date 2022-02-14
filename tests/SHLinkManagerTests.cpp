@@ -582,6 +582,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATER(uint(1000), link_manager->getNumCandidateSlots(target_collision_prob));
 		}
 
+		/** #111 when no next beacon slot can be found, it should try again every slot until it can. */
+		void testCannotScheduleBeaconSlot() {
+			// mark everything as busy
+			for (int t = 0; t < planning_horizon; t++) 
+				link_manager->current_reservation_table->mark(t, Reservation(MacId(1), Reservation::BUSY));
+			// trying to schedule a beacon should throw an error
+			CPPUNIT_ASSERT_THROW(link_manager->beacon_module.scheduleNextBeacon(0.0, 0, link_manager->current_reservation_table, mac->reservation_manager->getTxTable()), std::runtime_error);			
+			// update one slot
+			mac->update(1);
+			link_manager->current_reservation_table->mark(planning_horizon - 1, Reservation(MacId(1), Reservation::BUSY)); // still nothing free
+			mac->execute();
+			mac->onSlotEnd();
+			// shouldn't have succeeded in scheduling a beacon
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_beacon_scheduled);
+			// update another slot, where the newest slot will be free
+			mac->update(1);
+			mac->execute();
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_beacon_scheduled);									
+			CPPUNIT_ASSERT_EQUAL(planning_horizon - 2, link_manager->beacon_module.getNextBeaconSlot()); // -2 because it's already been decremented once
+		}
+
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -607,6 +629,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testBeaconWithoutResourceUtilization);	
 		CPPUNIT_TEST(testSHChannelAccessDelay);	
 		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);	
+		CPPUNIT_TEST(testCannotScheduleBeaconSlot);			
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
