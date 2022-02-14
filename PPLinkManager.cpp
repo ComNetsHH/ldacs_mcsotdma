@@ -643,6 +643,8 @@ void PPLinkManager::setReportedDesiredTxSlots(unsigned int value) {
 }
 
 void PPLinkManager::setForceBidirectionalLinks(bool flag) {
+	if (!flag)
+		throw std::invalid_argument("Unidirectional links are currently not supported.");
 	this->force_bidirectional_links = flag;
 }
 

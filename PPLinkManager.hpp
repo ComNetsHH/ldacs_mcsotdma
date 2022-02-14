@@ -169,7 +169,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		unsigned int proposal_num_time_slots = 3;
 		/** Gives the average number of bits that should have been sent in-between two transmission bursts. */
 		MovingAverage outgoing_traffic_estimate = MovingAverage(burst_offset);
-		/** The communication partner can report how many resources it'd prefer. By default it is 1 to enable bidirectional communication. */
+		/** The communication partner can report how many resources it'd prefer. */
 		unsigned int reported_resoure_requirement = 1;
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
 		unsigned int time_when_request_was_generated = 0;

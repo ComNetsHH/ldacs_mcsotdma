@@ -1538,10 +1538,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int num_bits = env->phy_layer->getCurrentDatarate() * expected_num_tx_slots;
 			mac->notifyOutgoing(num_bits, partner_id);
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());			
-			// make us propose zero TX slots for them
-			pp->setForceBidirectionalLinks(false);
-			pp->reported_resoure_requirement = 0;
-			CPPUNIT_ASSERT_EQUAL(uint(0), pp->getRequiredRxSlots());
+			// make us propose one TX slot for them			
+			pp->reported_resoure_requirement = 1;
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->getRequiredRxSlots());
+			// make them require >=3 slots						
+			pp_you->outgoing_traffic_estimate.put(num_bits);						
 			// send request			
 			int num_slots_until_request = ((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_slot;
 			CPPUNIT_ASSERT_GREATER(0, num_slots_until_request);
@@ -1553,7 +1554,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->onSlotEnd();
 				mac_you->onSlotEnd();							
 				mac->notifyOutgoing(num_bits, partner_id);					
+				pp_you->outgoing_traffic_estimate.put(num_bits);
 				CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());							
+				CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp_you->getRequiredTxSlots());							
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp_you->reported_resoure_requirement);
@@ -1604,6 +1607,35 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(false, pp->link_state.is_link_initator);
 		}		 
 
+		/** #126 tests that not forcing bidirectional links works as expected. */
+		void testDontForceBidirectionalLinks() {
+			CPPUNIT_ASSERT_THROW(pp->setForceBidirectionalLinks(false), std::invalid_argument);					
+		}
+
+		/** #126 tests that forcing bidirectional links works as expected. */
+		void testForceBidirectionalLinks() {
+			pp->setForceBidirectionalLinks(true);
+			pp_you->setForceBidirectionalLinks(true);
+			pp->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 30;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp->link_state.burst_length);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp_you->link_state.burst_length);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_you->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_you->link_state.burst_length_rx);
+		}
+
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
@@ -1642,7 +1674,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testCloseLinkEarly);
 		CPPUNIT_TEST(testCloseLinkEarlyOneSided);
 		CPPUNIT_TEST(testReportedTxSlots);
-		CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);		
+		// CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);		
+		CPPUNIT_TEST(testDontForceBidirectionalLinks);	
+		CPPUNIT_TEST(testForceBidirectionalLinks);			
+		
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
