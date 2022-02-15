@@ -6,6 +6,7 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "SHLinkManager.hpp"
+#include "SlotCalculator.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -89,6 +90,7 @@ void PPLinkManager::onSlotStart(uint64_t num_slots) {
 		coutd << "next transmission burst start " << (link_state.next_burst_in == 0 ? "now" : "in " + std::to_string(link_state.next_burst_in) + " slots") << " -> ";		
 		if (link_state.next_burst_in == 0) 			
 			link_state.next_burst_in = link_state.burst_offset;		
+			// link_state.next_burst_in = link_state.burst_offset + link_state.burst_length - 1;		
 	}	
 	// should this resource establish the link?		
 	if (link_status == awaiting_data_tx && current_reservation_table->getReservation(0) == Reservation(link_id, Reservation::RX))
@@ -244,54 +246,59 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> PPLinkManager::slot
 ReservationMap PPLinkManager::lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table) {
 	coutd << "locking: ";
 	// remember locked resources locally, for the transmitter, and for the receiver
-	std::set<unsigned int> locked_local, locked_tx, locked_rx;
+	std::set<unsigned int> locked_local, locked_tx, locked_rx;	
 	// check that slots *can* be locked
+	unsigned int burst_length_rx = burst_length - burst_length_tx;
 	for (unsigned int start_offset : start_slots) {
-		// go over all bursts of the entire link
-		for (unsigned int n_burst = 0; n_burst < timeout; n_burst++) {
-			for (unsigned int t = 0; t < burst_length; t++) {
-				// normalize to actual slot offset
-				unsigned int slot = n_burst*getBurstOffset() + start_offset + t;								
-				// check local reservation
-				if (table->canLock(slot)) 
-					locked_local.emplace(slot);
-				else {
-					const Reservation &conflict_res = table->getReservation((int) slot);
-					std::stringstream ss;
-					ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable for burst " << n_burst << "/" << timeout << " at t=" << slot << ", conflict with " << conflict_res << ".";
-					throw std::range_error(ss.str());
-				}
-				// link initator transmits first during a burst
-				bool is_tx = is_link_initiator ? t < burst_length_tx : t >= burst_length_tx;
-				// check transmitter
-				if (is_tx) {
-					if (reservation_manager->getTxTable()->canLock(slot))					
-						locked_tx.emplace(slot);
-					else {
-						Reservation conflict_res = reservation_manager->getTxTable()->getReservation(slot);													
-						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable for burst " << n_burst << "/" << timeout << " at t=" << slot << ", conflict with " << conflict_res << ".";
-						throw std::range_error(ss.str());
-					}
-				// check receiver
-				} else {
-					if (std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot](ReservationTable* rx_table) { return rx_table->canLock(slot); }))
-						locked_rx.emplace(slot);
-					else {
-						Reservation conflict_res = Reservation();
-						for (auto it = reservation_manager->getRxTables().begin(); it != reservation_manager->getRxTables().end() && conflict_res.isIdle(); it++) {
-							const auto rx_table = *it;
-							if (!rx_table->getReservation(slot).isIdle()) {
-								conflict_res = rx_table->getReservation(slot);
-							}
-						}
-						std::stringstream ss;
-						ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable for burst " << n_burst << "/" << timeout << " at t=" << slot << ", conflict with " << conflict_res << ".";
-						throw std::range_error(ss.str());
-					}					
-				}
+		auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(start_offset, burst_length, burst_length_tx, burst_length_rx, getBurstOffset(), timeout);
+		const auto &tx_slots = tx_rx_slots.first;
+		const auto &rx_slots = tx_rx_slots.second;
+		for (auto slot : tx_slots) {
+			// check local reservation
+			if (table->canLock(slot)) 
+				locked_local.emplace(slot);
+			else {
+				const Reservation &conflict_res = table->getReservation((int) slot);
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << slot << ", conflict with " << conflict_res << ".";
+				throw std::range_error(ss.str());
+			}
+			// check transmitter
+			if (reservation_manager->getTxTable()->canLock(slot))					
+				locked_tx.emplace(slot);
+			else {
+				Reservation conflict_res = reservation_manager->getTxTable()->getReservation(slot);													
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::lock_bursts cannot lock TX ReservationTable at t=" << slot << ", conflict with " << conflict_res << ".";
+				throw std::range_error(ss.str());
 			}
 		}
+		for (auto slot : rx_slots) {
+			// check local reservation
+			if (table->canLock(slot)) 
+				locked_local.emplace(slot);
+			else {
+				const Reservation &conflict_res = table->getReservation((int) slot);
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::lock_bursts cannot lock local ReservationTable at t=" << slot << ", conflict with " << conflict_res << ".";
+				throw std::range_error(ss.str());
+			}
+			// check receiver
+			if (std::any_of(reservation_manager->getRxTables().begin(), reservation_manager->getRxTables().end(), [slot](ReservationTable* rx_table) { return rx_table->canLock(slot); }))
+				locked_rx.emplace(slot);
+			else {
+				Reservation conflict_res = Reservation();
+				for (auto it = reservation_manager->getRxTables().begin(); it != reservation_manager->getRxTables().end() && conflict_res.isIdle(); it++) {
+					const auto rx_table = *it;
+					if (!rx_table->getReservation(slot).isIdle()) {
+						conflict_res = rx_table->getReservation(slot);
+					}
+				}
+				std::stringstream ss;
+				ss << *mac << "::" << *this << "::lock_bursts cannot lock RX ReservationTable at t=" << slot << ", conflict with " << conflict_res << ".";
+				throw std::range_error(ss.str());
+			}					
+		}		
 	}
 	// actually lock them
 	auto lock_map = ReservationMap();
@@ -738,4 +745,19 @@ void PPLinkManager::setBurstOffset(unsigned int value) {
 
 void PPLinkManager::setBurstOffsetAdaptive(bool value) {
 	this->adaptive_burst_offset = value;
+}
+
+std::pair<std::vector<int>, std::vector<int>> PPLinkManager::getReservations() const {	
+	if (link_status != link_established)
+		throw std::runtime_error("PPLinkManager::getReservations for link status '" + std::to_string(link_status) + "'.");
+	if (current_reservation_table == nullptr)
+		throw std::runtime_error("PPLinkManager::getReservations for unset ReservationTable.");
+	auto tx_rx_slots = std::pair<std::vector<int>, std::vector<int>>();
+	for (int t = 0; t < link_state.timeout*(link_state.burst_length+link_state.burst_offset); t++) {
+		if (current_reservation_table->getReservation(t) == Reservation(link_id, Reservation::TX))
+			tx_rx_slots.first.push_back(t);
+		else if (current_reservation_table->getReservation(t) == Reservation(link_id, Reservation::TX))
+			tx_rx_slots.second.push_back(t);
+	}	
+	return tx_rx_slots;
 }

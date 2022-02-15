@@ -1634,6 +1634,70 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(uint(2), pp_you->link_state.burst_length);
 			CPPUNIT_ASSERT_EQUAL(uint(1), pp_you->link_state.burst_length_tx);
 			CPPUNIT_ASSERT_EQUAL(uint(1), pp_you->link_state.burst_length_rx);
+		}		
+
+		void testNextBurstIn() {
+			size_t num_slots = 0, max_slots = 30;
+			pp->notifyOutgoing(1);
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			env->rlc_layer->should_there_be_more_p2p_data = false;
+			env_you->rlc_layer->should_there_be_more_p2p_data = false;
+			max_slots = pp->link_state.timeout*(pp->link_state.burst_length + pp->link_state.burst_offset);
+			num_slots = 0;
+			while (pp->link_state.timeout > 1 && num_slots++ < max_slots) {				
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();						
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), pp->current_reservation_table->getReservation(pp->link_state.next_burst_in));
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.timeout);			
+		}
+
+		void testGetReservations() {
+			size_t num_slots = 0, max_slots = 30;
+			pp->notifyOutgoing(1);
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			env->rlc_layer->should_there_be_more_p2p_data = false;
+			env_you->rlc_layer->should_there_be_more_p2p_data = false;
+			max_slots = pp->link_state.timeout*(pp->link_state.burst_length + pp->link_state.burst_offset);
+			num_slots = 0;
+			while (pp->link_status != LinkManager::link_not_established && num_slots++ < max_slots) {												
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+				try {						
+					auto tx_rx_slots = pp->getReservations();				
+					for (auto slot : tx_rx_slots.first) 
+						CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), pp->current_reservation_table->getReservation(slot));											
+				} catch (const std::exception &e) {}
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
 		}
 
 
@@ -1677,6 +1741,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);		
 		CPPUNIT_TEST(testDontForceBidirectionalLinks);	
 		CPPUNIT_TEST(testForceBidirectionalLinks);			
+		CPPUNIT_TEST(testNextBurstIn);			
+		CPPUNIT_TEST(testGetReservations);			
 		
 	CPPUNIT_TEST_SUITE_END();
 	};

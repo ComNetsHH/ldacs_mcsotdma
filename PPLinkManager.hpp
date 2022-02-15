@@ -37,6 +37,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		void scheduledLinkReplyCouldNotHaveBeenSent();
 		void setBurstOffset(unsigned int value);
 		void setBurstOffsetAdaptive(bool value);
+		std::pair<std::vector<int>, std::vector<int>> getReservations() const;
 
 	protected:		
 		/** Keeps track of the current link state values. */

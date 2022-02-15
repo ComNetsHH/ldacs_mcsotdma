@@ -179,18 +179,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Make sure that all corresponding slots are marked as TX on our side,
 			ReservationTable* table_me = lm_me->current_reservation_table;
 			ReservationTable* table_you = lm_you->current_reservation_table;			
-			for (size_t burst_offset = lm_me->link_state.next_burst_in; burst_offset < lm_me->link_state.timeout * lm_me->link_state.burst_offset; burst_offset += lm_me->link_state.burst_offset) {
-				for (size_t t = 0; t < lm_me->link_state.burst_length_tx; t++) {
-					int slot_offset = burst_offset + t;
-					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), table_me->getReservation(slot_offset));
-					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), table_you->getReservation(slot_offset));
-				}				
-				for (size_t t = 0; t < lm_me->link_state.burst_length_rx; t++) {
-					int slot_offset = burst_offset + lm_me->link_state.burst_length_tx + t;
-					CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), table_me->getReservation(slot_offset));
-					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), table_you->getReservation(slot_offset));
-				}				
-			}						
+			auto tx_rx_slots = lm_me->getReservations();						
+			for (auto tx_slot : tx_rx_slots.first) {
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), table_me->getReservation(tx_slot));
+				CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), table_you->getReservation(tx_slot));
+			}
+			for (auto rx_slot : tx_rx_slots.second) {
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), table_me->getReservation(rx_slot));
+				CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), table_you->getReservation(rx_slot));
+			}			
 		}
 
 		/**
