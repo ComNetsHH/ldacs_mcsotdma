@@ -791,7 +791,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Tests that upon a request reception, resources are locked, but non-idle resources are not touched. */
 		void testRequestLocksWherePossible() {
 			// check which slots will be proposed
-			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1);
+			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1, pp_initiator->default_burst_offset);
 			// cherry-pick first proposed channel
 			auto it = map.begin();
 			auto cherry_picked_channel = (*it).first;
@@ -1179,7 +1179,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Tests that upon reply reception, the link's resource reservations are made, not touching non-idle resources. */
 		void testReplySchedulesBurstsButDoesNotOverwrite() {
 			// check which slots will be proposed
-			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1);
+			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1, pp_initiator->default_burst_offset);
 			// schedule initial burst for all channels
 			MacId some_other_id = MacId(id.getId() + 42);			
 			size_t num_blocked = 0;

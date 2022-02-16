@@ -89,7 +89,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		 * @return std::pair<const FrequencyChannel*, unsigned int> 
 		 * @throws std::invalid_argument if no proposal is viable
 		 */
-		std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx);
+		std::pair<const FrequencyChannel*, unsigned int> chooseRandomResource(const std::map<const FrequencyChannel*, std::vector<unsigned int>>& resources, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset);
 
 		/**
 		 * @brief Checks whether a proposed link is viable.
@@ -126,7 +126,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		 */
 		unsigned int getRequiredRxSlots() const;
 
-		std::map<const FrequencyChannel*, std::vector<unsigned int>> slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx) const;
+		std::map<const FrequencyChannel*, std::vector<unsigned int>> slotSelection(unsigned int num_channels, unsigned int num_time_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset) const;
 
 		/**
 		 * Locks all bursts in the respective ReservationTables.
@@ -158,7 +158,8 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 
 		/** If a link is deemed faulty due to not receiving data packets, it may be closed early. */
 		void onFaultyLink();		
-		unsigned int computeBurstOffset();
+		unsigned int computeBurstOffset(unsigned int burst_length, unsigned int num_neighbors, unsigned int num_pp_channels);
+		unsigned int getBurstLength() const;
 
 	protected:
 		/** Number of transmission bursts until link expiry. */

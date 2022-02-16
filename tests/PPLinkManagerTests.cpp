@@ -80,7 +80,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testSlotSelection() {
 			unsigned int burst_length = 2, burst_length_tx = 1;
-			auto proposals = pp->slotSelection(pp->proposal_num_frequency_channels, pp->proposal_num_time_slots, burst_length, burst_length_tx);
+			auto proposals = pp->slotSelection(pp->proposal_num_frequency_channels, pp->proposal_num_time_slots, burst_length, burst_length_tx, pp->default_burst_offset);
 			// proposals is a map <channel, <time slots>>
 			// so there should be as many items as channels
 			CPPUNIT_ASSERT_EQUAL(size_t(pp->proposal_num_frequency_channels + 1), proposals.size()); // +1 because of the reply slot on the SH 
@@ -1705,6 +1705,88 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
 		}
 
+		void testGetBurstLength() {
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->getRequiredTxSlots());
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->getRequiredRxSlots());
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp->getBurstLength());
+			pp->reported_resoure_requirement = pp->max_consecutive_tx_slots;
+			CPPUNIT_ASSERT_EQUAL(pp->max_consecutive_tx_slots, pp->getRequiredRxSlots());
+			CPPUNIT_ASSERT_EQUAL(pp->max_consecutive_tx_slots + 1, pp->getBurstLength());			
+			pp->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * pp->max_consecutive_tx_slots);
+			CPPUNIT_ASSERT_EQUAL(pp->max_consecutive_tx_slots, pp->getRequiredTxSlots());
+			CPPUNIT_ASSERT_EQUAL(pp->max_consecutive_tx_slots * 2, pp->getBurstLength());			
+			pp->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * 2 * pp->max_consecutive_tx_slots);
+			CPPUNIT_ASSERT_GREATER(pp->max_consecutive_tx_slots, pp->getRequiredTxSlots());
+			CPPUNIT_ASSERT_EQUAL(pp->max_consecutive_tx_slots * 2, pp->getBurstLength());			
+			pp->reported_resoure_requirement = 2 * pp->max_consecutive_tx_slots;
+			CPPUNIT_ASSERT_EQUAL(2 * pp->max_consecutive_tx_slots, pp->getRequiredRxSlots());
+			CPPUNIT_ASSERT_EQUAL(pp->max_consecutive_tx_slots * 2, pp->getBurstLength());			
+		}
+
+		/** With no neighbors and several PP channels, these users should agree on continuous transmission. */
+		void testDynamicBurstOffsetNoNeighbors() {			
+			size_t num_slots = 0, max_slots = 30;
+			pp->setBurstOffsetAdaptive(true);
+			unsigned int num_neighbors = 1, num_pp_channels = 10;
+			// continuous transmission
+			CPPUNIT_ASSERT_EQUAL(pp->getBurstLength(), pp->computeBurstOffset(pp->getBurstLength(), num_neighbors, num_pp_channels));
+			pp->notifyOutgoing(1);
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);			
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp->link_state.burst_length);
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp->link_state.burst_offset);			
+			for (int t = 0; t < (pp->link_state.timeout-1)*pp->link_state.burst_offset + pp->link_state.burst_length_tx; t++) {
+				const auto &res_tx = pp->current_reservation_table->getReservation(t), &res_rx = pp_you->current_reservation_table->getReservation(t);				
+				CPPUNIT_ASSERT(res_tx == Reservation(partner_id, Reservation::TX) || res_tx == Reservation(partner_id, Reservation::RX));
+				if (res_tx.isTx())
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), res_rx);
+				else
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), res_rx);
+			}				
+		}
+
+		/** With one neighbor and one PP channel, these users should agree to fairly share the channel. */
+		void testDynamicBurstOffsetOneNeighbor() {			
+			size_t num_slots = 0, max_slots = 15;
+			pp->setBurstOffsetAdaptive(true);
+			unsigned int num_neighbors = 2, num_pp_channels = 1;
+			mac->reportNeighborActivity(MacId(1000));
+			mac->reportNeighborActivity(MacId(1001));
+			CPPUNIT_ASSERT_EQUAL(size_t(num_neighbors), mac->getNeighborObserver().getNumActiveNeighbors());
+			// non-continuous transmission			
+			CPPUNIT_ASSERT_GREATER(pp->getBurstLength(), pp->computeBurstOffset(pp->getBurstLength(), num_neighbors, num_pp_channels));
+			CPPUNIT_ASSERT_EQUAL(uint(4*2*num_neighbors + pp->getBurstLength()), pp->computeBurstOffset(pp->getBurstLength(), num_neighbors, num_pp_channels));
+			pp->notifyOutgoing(1);
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);			
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp->link_state.burst_length);
+			CPPUNIT_ASSERT_GREATER(uint(2), pp->link_state.burst_offset);			
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset, pp_you->link_state.burst_offset);
+			for (int t = 0; t < (pp->link_state.timeout-1)*pp->link_state.burst_offset + pp->link_state.burst_length_tx; t++) {
+				const auto &res_tx = pp->current_reservation_table->getReservation(t), &res_rx = pp_you->current_reservation_table->getReservation(t);								
+				if (res_tx.isTx())
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::RX), res_rx);
+				else if (res_tx.isRx())
+					CPPUNIT_ASSERT_EQUAL(Reservation(own_id, Reservation::TX), res_rx);
+			}				
+		}
+
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
@@ -1748,6 +1830,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testForceBidirectionalLinks);			
 		CPPUNIT_TEST(testNextBurstIn);			
 		CPPUNIT_TEST(testGetReservations);			
+		CPPUNIT_TEST(testGetBurstLength);
+		CPPUNIT_TEST(testDynamicBurstOffsetNoNeighbors);	
+		CPPUNIT_TEST(testDynamicBurstOffsetOneNeighbor);	
 		
 	CPPUNIT_TEST_SUITE_END();
 	};

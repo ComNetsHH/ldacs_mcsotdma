@@ -233,7 +233,7 @@ class RLCLayer : public IRlc {
 	class TestEnvironment {
 	public:
 		MacId id, partner_id;
-		uint32_t planning_horizon = 512;
+		uint32_t planning_horizon = 4096;
 		uint64_t p2p_freq_1 = 962, p2p_freq_2 = 963, p2p_freq_3 = 964, sh_frequency = 965, bandwidth = 500;
 		NetworkLayer* net_layer;
 		RLCLayer* rlc_layer;

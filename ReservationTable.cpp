@@ -322,16 +322,20 @@ std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_pr
 		throw std::invalid_argument("ReservationTable::findPPCandidates for timeout of zero.");
 	std::vector<unsigned int> start_slot_offsets;
 	unsigned int last_offset = min_offset;
-	for (size_t i = 0; i < num_proposal_slots; i++) {
+	for (size_t i = 0; i < num_proposal_slots; i++) {		
 		// Try to find another slot range.
 		try {			
-			int32_t start_slot = (int) findEarliestIdleSlotsPP(last_offset, burst_length, burst_length_tx, burst_offset, timeout);
+			// coutd << "checking last_offset=" << last_offset << " burst_length=" << burst_length << " burst_length_tx=" << burst_length_tx << " burst_offset=" << burst_offset << ": ";
+			int32_t start_slot = (int) findEarliestIdleSlotsPP(last_offset, burst_length, burst_length_tx, burst_offset, timeout);			
 			start_slot_offsets.push_back(start_slot);
 			last_offset = start_slot + 1; // Next attempt, look later than current one.
+			// coutd << "added -> ";
 		} catch (const std::range_error& e) {
+			// coutd << e.what() << " -> ";
 			// This is thrown if no idle range can be found.
 			break; // Stop if no more ranges can be found.
 		} catch (const std::invalid_argument& e) {			
+			// coutd << e.what() << " -> ";
 			// This is thrown if the input is invalid (i.e. we are exceeding the planning horizon).
 			break; // Stop if no more ranges can be found.
 		} // all other exceptions should still end execution
