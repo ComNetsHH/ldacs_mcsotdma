@@ -218,8 +218,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		/** When in total, fewer resources than the burst offset are requested, then just those should be used. */
-		void testTxRxSplitSmallerThanBurstOffset() {
-			unsigned int tx_req = 5, rx_req = 5, burst_offset = 15;
+		void testTxRxSplitSmallerThanBurstOffset() {			
+			unsigned int tx_req = pp->max_consecutive_tx_slots / 2, rx_req = pp->max_consecutive_tx_slots / 2, burst_offset = pp->max_consecutive_tx_slots * 1.5;
 			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
 			CPPUNIT_ASSERT_EQUAL(tx_req, split.first);
 			CPPUNIT_ASSERT_EQUAL(rx_req, split.second);
@@ -227,7 +227,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When in total, as many resources as the burst offset are requested, then just those should be used. */
 		void testTxRxSplitEqualToBurstOffset() {
-			unsigned int tx_req = 5, rx_req = 5, burst_offset = 10;
+			unsigned int tx_req = pp->max_consecutive_tx_slots, 
+						 rx_req = pp->max_consecutive_tx_slots, 
+						 burst_offset = pp->max_consecutive_tx_slots * 2;
+			CPPUNIT_ASSERT_EQUAL(tx_req + rx_req, burst_offset);
 			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
 			CPPUNIT_ASSERT_EQUAL(tx_req, split.first);
 			CPPUNIT_ASSERT_EQUAL(rx_req, split.second);
@@ -235,7 +238,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When in total, more resources than the burst offset are requested, then a fair split should be used. */
 		void testTxRxSplitMoreThanBurstOffset() {
-			unsigned int tx_req = 5, rx_req = 5, burst_offset = 6;
+			unsigned int tx_req = pp->max_consecutive_tx_slots, rx_req = pp->max_consecutive_tx_slots, burst_offset = pp->max_consecutive_tx_slots + 1;
 			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
 			CPPUNIT_ASSERT_EQUAL(burst_offset/2, split.first);
 			CPPUNIT_ASSERT_EQUAL(burst_offset/2, split.second);
@@ -243,18 +246,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** When in total, more resources than the burst offset are requested, then a fair split should be used. */
 		void testTxRxSplitMoreThanBurstOffsetOneSided() {
-			unsigned int tx_req = 10, rx_req = 5, burst_offset = 6;
+			unsigned int tx_req = 4, rx_req = 2, burst_offset = 3;
+			CPPUNIT_ASSERT_GREATEREQUAL(tx_req, pp->max_consecutive_tx_slots);
 			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
-			CPPUNIT_ASSERT_EQUAL(uint(4), split.first);
-			CPPUNIT_ASSERT_EQUAL(uint(2), split.second);
+			CPPUNIT_ASSERT_EQUAL(uint(2), split.first);
+			CPPUNIT_ASSERT_EQUAL(uint(1), split.second);
 		}
 
 		/** When in total, more resources than the burst offset are requested, then a fair split should be used. */
 		void testTxRxSplitMoreThanBurstOffsetOtherSide() {
-			unsigned int tx_req = 5, rx_req = 10, burst_offset = 6;
+			unsigned int tx_req = 2, rx_req = 4, burst_offset = 3;
+			CPPUNIT_ASSERT_GREATEREQUAL(tx_req, pp->max_consecutive_tx_slots);
 			auto split = pp->getTxRxSplit(tx_req, rx_req, burst_offset);
-			CPPUNIT_ASSERT_EQUAL(uint(2), split.first);
-			CPPUNIT_ASSERT_EQUAL(uint(4), split.second);
+			CPPUNIT_ASSERT_EQUAL(uint(1), split.first);
+			CPPUNIT_ASSERT_EQUAL(uint(2), split.second);
 		}
 
 		void testTxRxSplitSeveralTxSlots() {

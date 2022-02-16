@@ -89,8 +89,7 @@ void PPLinkManager::onSlotStart(uint64_t num_slots) {
 		this->link_state.next_burst_in--;	
 		coutd << "next transmission burst start " << (link_state.next_burst_in == 0 ? "now" : "in " + std::to_string(link_state.next_burst_in) + " slots") << " -> ";		
 		if (link_state.next_burst_in == 0) 			
-			link_state.next_burst_in = link_state.burst_offset;		
-			// link_state.next_burst_in = link_state.burst_offset + link_state.burst_length - 1;		
+			link_state.next_burst_in = link_state.burst_offset;					
 	}	
 	// should this resource establish the link?		
 	if (link_status == awaiting_data_tx && current_reservation_table->getReservation(0) == Reservation(link_id, Reservation::RX))
@@ -323,6 +322,10 @@ ReservationMap PPLinkManager::lock_bursts(const std::vector<unsigned int>& start
 }
 
 std::pair<unsigned int, unsigned int> PPLinkManager::getTxRxSplit(unsigned int resource_req_me, unsigned int resource_req_you, unsigned int burst_offset) const {
+	if (resource_req_me > max_consecutive_tx_slots)
+		resource_req_me = max_consecutive_tx_slots;
+	if (resource_req_you > max_consecutive_tx_slots)
+		resource_req_you = max_consecutive_tx_slots;
 	unsigned int burst_length = resource_req_me + resource_req_you;
 	if (burst_length > burst_offset) {
 		double tx_fraction = ((double) resource_req_me) / ((double) burst_length);
