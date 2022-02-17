@@ -188,7 +188,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstabl
 	if (proposal_resources.size() < size_t(2)) { // 1 proposal is the link reply, so we expect at least 2
 		coutd << "couldn't determine any proposal resources -> will attempt again next slot -> ";
 		this->attempt_link_establishment_again = true;
-		throw std::invalid_argument("couldn't determine any proposal resources");
+		throw not_viable_error("couldn't determine any proposal resources");
 	}		
 	// remember link parameters
 	unsigned int next_burst_in = 0; // don't know what the partner will choose

@@ -75,10 +75,13 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 				throw std::invalid_argument("SHLinkManager::onTransmissionReservation has nullptr link request callback - can't populate the LinkRequest!");
 			try {
 				pair.second->callback->populateLinkRequest(pair.first, pair.second);
-			} catch (const std::invalid_argument &e) {
+			} catch (const not_viable_error &e) {
 				coutd << "ignoring invalid link request -> ";
 				link_requests.erase(link_requests.begin());
 				continue;
+			} catch (const std::exception &e) {
+				std::cerr << "error while populating link request" << e.what() << std::endl;
+				throw e;
 			}
 			// Add to the packet if it fits.
 			if (pair.first->getBits() + pair.second->getBits() <= capacity) {
