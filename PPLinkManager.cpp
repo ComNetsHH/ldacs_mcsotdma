@@ -170,8 +170,12 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstabl
 	// determine number of slots in-between transmission bursts
 	coutd << "computing burst length: ";
 	unsigned int burst_length = getBurstLength();
-	coutd << burst_length << ", burst offset: ";		
-	setBurstOffset(computeBurstOffset(burst_length, mac->getNeighborObserver().getNumActiveNeighbors(), reservation_manager->getP2PFreqChannels().size()));	
+	coutd << burst_length << ", burst offset: ";	
+	unsigned int num_neighbors = mac->getNeighborObserver().getNumActiveNeighbors();
+	// one of these neighbors is the one we're establishing a link
+	if (num_neighbors > 0)
+		num_neighbors -= 1;
+	setBurstOffset(computeBurstOffset(burst_length, num_neighbors, reservation_manager->getP2PFreqChannels().size()));	
 	coutd << getBurstOffset() << (isContinuousTransmission() ? " (continuous transmission)" : "") << " -> ";
 	// determine number of TX and RX slots
 	std::pair<unsigned int, unsigned int> tx_rx_split = this->getTxRxSplit(getRequiredTxSlots(), getRequiredRxSlots(), getBurstOffset());
@@ -514,10 +518,13 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			coutd << "updating link status '" << this->link_status << "->";
 			this->link_status = LinkManager::awaiting_data_tx;
 			coutd << this->link_status << "' -> ";
-		} catch (const std::invalid_argument &e) {
+		} catch (const not_viable_error &e) {
 			coutd << "no proposed resources were viable -> attempting own link establishment -> ";
 			mac->statisticReportLinkRequestRejectedDueToUnacceptablePPResourceProposals();
 			establishLink();
+		} catch (const std::exception &e) {
+			std::cerr << "error during request processing: " << e.what() << std::endl;
+			throw("error during request processing: " + std::string(e.what()));
 		}
 	} else { // sending reply is not viable 
 		coutd << "attempting own link establishment -> ";
@@ -551,7 +558,7 @@ std::pair<const FrequencyChannel*, unsigned int> PPLinkManager::chooseRandomReso
 	}
 	coutd << "-> ";
 	if (viable_resource_channel.empty()) {		
-		throw std::invalid_argument("No viable resources were provided.");
+		throw not_viable_error("No viable resources were provided.");
 	} else {
 		auto random_index = getRandomInt(0, viable_resource_channel.size());
 		return {viable_resource_channel.at(random_index), viable_resource_slot.at(random_index)};

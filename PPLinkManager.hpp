@@ -11,6 +11,11 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
+class not_viable_error : public std::runtime_error {
+	public:
+		explicit not_viable_error(const std::string& arg) : std::runtime_error(arg) {}
+};
+
 class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentPayload::Callback {
 
 	friend class PPLinkManagerTests;	
