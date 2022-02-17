@@ -1811,7 +1811,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(expected_num_rx_slots, pp->getRequiredRxSlots());			
 			// attempt to establish a link
 			pp->notifyOutgoing(1);
-			size_t num_slots = 0, max_slots = 100;
+			size_t num_slots = 0, max_slots = 500;
 			while (mac->stat_num_pp_requests_canceled_due_to_insufficient_resources.get() < 1 && num_slots++ < max_slots) {
 				mac->update(1);
 				mac_you->update(1);
@@ -1877,9 +1877,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				pp_you->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_rx_slots);
 			}
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_pp_links_established.get());
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_pp_links_established.get());			
 			// check that several TX and several RX slots were used			
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->link_state.burst_length_tx);
 			CPPUNIT_ASSERT_EQUAL(expected_num_rx_slots, pp->link_state.burst_length_rx);			
