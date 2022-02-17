@@ -209,19 +209,33 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_2->reportNeighborActivity(id3);
 			mac_3->reportNeighborActivity(id1);
 			mac_3->reportNeighborActivity(id2);
-			env1->rlc_layer->should_there_be_more_p2p_data = false;
-			env2->rlc_layer->should_there_be_more_p2p_data = false;
-			env3->rlc_layer->should_there_be_more_p2p_data = false;
-			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
-			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
-			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
-			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
+			env1->rlc_layer->should_there_be_more_p2p_data = true;
+			env2->rlc_layer->should_there_be_more_p2p_data = true;
+			env3->rlc_layer->should_there_be_more_p2p_data = true;			
 			auto* p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
 			p2p_1->notifyOutgoing(num_outgoing_bits);
 			p2p_2->notifyOutgoing(num_outgoing_bits);
 
 			size_t num_slots = 0, max_num_slots = 5000;
-			while ((p2p_1->link_status != LinkManager::link_established || p2p_2->link_status != LinkManager::link_established || p2p_3->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
+			while ((mac_1->stat_num_pp_links_established.get() < 1 || mac_2->stat_num_pp_links_established.get() < 1 || mac_3->stat_num_pp_links_established.get() < 1) && num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}			
+			CPPUNIT_ASSERT(num_slots < max_num_slots);			
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_established.get());
+
+			unsigned long packets_so_far_1 = (size_t) mac_1->stat_num_requests_sent.get(), packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
+			num_slots = 0;
+			while ((mac_1->stat_num_pp_links_expired.get() < 1 || mac_2->stat_num_pp_links_expired.get() < 1 || mac_3->stat_num_pp_links_expired.get() < 1) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
 				mac_3->update(1);
@@ -232,15 +246,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_2->onSlotEnd();
 				mac_3->onSlotEnd();
 			}
-			CPPUNIT_ASSERT(num_slots < max_num_slots);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_1->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_2->link_status);
-			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, p2p_3->link_status);
-			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_established.get());
-			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_established.get());
-			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT(num_slots < max_num_slots);			
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_expired.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_expired.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_expired.get());
 
-			unsigned long packets_so_far_1 = (size_t) mac_1->stat_num_requests_sent.get(), packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
 			num_slots = 0;
 			while (((size_t) mac_1->stat_num_pp_links_established.get() < 2 || (size_t) mac_2->stat_num_pp_links_established.get() < 2  || (size_t) mac_3->stat_num_pp_links_established.get() < 2 ) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
@@ -253,7 +263,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_2->onSlotEnd();
 				mac_3->onSlotEnd();
 			}
-			CPPUNIT_ASSERT(num_slots < max_num_slots && "This test is unfortunately up to chance and hence sometimes fails.");
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), (size_t) mac_1->stat_num_pp_links_established.get());
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), (size_t) mac_2->stat_num_pp_links_established.get());
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(2), (size_t) mac_3->stat_num_pp_links_established.get());
@@ -273,7 +283,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 					mac_2->onSlotEnd();
 					mac_3->onSlotEnd();
 				}				
-				CPPUNIT_ASSERT(num_slots < max_num_slots && "This test is unfortunately up to chance and hence sometimes fails.");
+				CPPUNIT_ASSERT(num_slots < max_num_slots);
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_1->stat_num_pp_links_established.get());
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_2->stat_num_pp_links_established.get());
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_3->stat_num_pp_links_established.get());
