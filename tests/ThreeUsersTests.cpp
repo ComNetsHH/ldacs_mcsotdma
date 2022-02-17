@@ -410,6 +410,59 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_established.get());				
 		}
 
+		/** #134: during simulations, it was observed that when we have A-B-C, where A doesn't see C, then the link A-B is initiated in adequate time, but B-C is not. */
+		void testHiddenNodeScenario() {
+			env1->phy_layer->connected_phys.clear();
+			env2->phy_layer->connected_phys.clear();
+			env3->phy_layer->connected_phys.clear();			
+			// A-B
+			env1->phy_layer->connected_phys.push_back(env2->phy_layer);
+			env2->phy_layer->connected_phys.push_back(env1->phy_layer);
+			// B-C
+			env2->phy_layer->connected_phys.push_back(env3->phy_layer);
+			env3->phy_layer->connected_phys.push_back(env2->phy_layer);			
+			// get pointers
+			MACLayer *mac_A = env1->mac_layer, *mac_B = env2->mac_layer, *mac_C = env3->mac_layer;
+			auto *p2p_A = (PPLinkManager*) mac_A->getLinkManager(id2), *p2p_B = (PPLinkManager*) mac_B->getLinkManager(id1), *p2p_C = (PPLinkManager*) mac_C->getLinkManager(id2);
+			// trigger establishment
+			p2p_A->notifyOutgoing(1);
+			p2p_C->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 5000;
+			size_t num_link_establishments = 20, links_A = 0, links_C = 0;
+			double avg_link_estbl_time_A = 0, avg_link_estbl_time_C = 0;
+			while ((mac_A->stat_num_pp_links_established.get() < num_link_establishments || mac_C->stat_num_pp_links_established.get() < num_link_establishments) && num_slots++ < max_slots) {
+				mac_A->update(1);
+				mac_B->update(1);
+				mac_C->update(1);
+				mac_A->execute();
+				mac_B->execute();
+				mac_C->execute();
+				mac_A->onSlotEnd();
+				mac_B->onSlotEnd();
+				mac_C->onSlotEnd();
+				if (mac_A->stat_num_pp_links_established.get() > links_A) {
+					links_A = mac_A->stat_num_pp_links_established.get();
+					avg_link_estbl_time_A += mac_A->stat_pp_link_establishment_time.get();
+					// std::cout << "slot=" << num_slots << " link A-B: " << mac_A->stat_pp_link_establishment_time.get() << std::endl;
+				}
+				if (mac_C->stat_num_pp_links_established.get() > links_C) {
+					links_C = mac_C->stat_num_pp_links_established.get();
+					avg_link_estbl_time_C += mac_C->stat_pp_link_establishment_time.get();
+					// std::cout << "slot=" << num_slots << " link C-B: " << mac_C->stat_pp_link_establishment_time.get() << std::endl;
+				}
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(num_link_establishments, (size_t) mac_A->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(num_link_establishments, (size_t) mac_B->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(num_link_establishments, (size_t) mac_C->stat_num_pp_links_established.get());
+			avg_link_estbl_time_A /= mac_A->stat_num_pp_links_established.get();
+			avg_link_estbl_time_C /= mac_C->stat_num_pp_links_established.get();
+			// link establishment time can vary a bit
+			// I just test it to be "adequately small" with an arbitrary value...
+			CPPUNIT_ASSERT_LESS(40.0, avg_link_estbl_time_A);
+			CPPUNIT_ASSERT_LESS(40.0, avg_link_estbl_time_C);			
+		}
+
 
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
@@ -420,6 +473,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 			CPPUNIT_TEST(threeUsersNonOverlappingTest);
 			CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
+			CPPUNIT_TEST(testHiddenNodeScenario);			
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
