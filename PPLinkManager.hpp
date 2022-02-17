@@ -160,6 +160,8 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		void onFaultyLink();		
 		unsigned int computeBurstOffset(unsigned int burst_length, unsigned int num_neighbors, unsigned int num_pp_channels);
 		unsigned int getBurstLength() const;
+		bool isBurstEnd() const;
+		bool isContinuousTransmission() const;
 
 	protected:
 		/** Number of transmission bursts until link expiry. */
@@ -169,7 +171,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		/** Upper limit on the number of consecutive slots for one user's transmission, e.g. burst_length_tx. Since two users are part of a link, this limits the burst_length to twice this value. */
 		unsigned int max_consecutive_tx_slots = 5;
 		/** Whether to use an adapting burst_offset. If false, the configured value is always used. */
-		bool adaptive_burst_offset = false;
+		bool adaptive_burst_offset = true;
 		/** Number of slots in-between request and reply to give the receiver sufficient processing time. */
 		const unsigned int min_offset_to_allow_processing = 2;
 		/** Link requests should propose this many distinct frequency channels. */

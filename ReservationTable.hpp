@@ -241,15 +241,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void linkReceiverReservationTable(ReservationTable* rx_table);
 
-		bool canLock(unsigned int slot_offset) const;
-
-		/**
-		 * Scans ahead and checks whether the given slot at 't' ends a communication burst with target 'id'.
-		 * @param t The time slot in question.
-		 * @param id The reservation target associated with the burst.
-		 * @return  Whether the slot at 't' ends a communication burst with 'id'.
-		 */
-		bool isBurstEnd(int t, const MacId& id) const;
+		bool canLock(unsigned int slot_offset) const;		
 
 	protected:
 		bool isValid(int32_t slot_offset) const;

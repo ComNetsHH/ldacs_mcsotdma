@@ -104,7 +104,7 @@ void PPLinkManager::onSlotStart(uint64_t num_slots) {
 
 void PPLinkManager::onSlotEnd() {
 	// decrement timeout
-	if (current_reservation_table != nullptr && communication_during_this_slot && current_reservation_table->isBurstEnd(0, link_id)) {
+	if (current_reservation_table != nullptr && communication_during_this_slot && isBurstEnd()) {
 		coutd << *mac << "::" << *this << "::onSlotEnd -> ";
 		if (decrementTimeout())
 			onTimeoutExpiry();	
@@ -134,6 +134,33 @@ void PPLinkManager::onSlotEnd() {
 	LinkManager::onSlotEnd();
 }
 
+bool PPLinkManager::isBurstEnd() const {
+	// unestablished links won't end any transmission bursts
+	if (link_status != link_established)
+		return false;
+	// if the current reservation doesn't involve either partner, then it also doesn't end a burst
+	const auto &res = current_reservation_table->getReservation(0);
+	if (res.getTarget() != mac->getMacId() && res.getTarget() != link_id)
+		return false;	
+	if (link_state.is_link_initator) {
+		// for the link initiator, a burst ends after the last slot where it *receives* data
+		if (res.isRx() && !current_reservation_table->getReservation(1).isRx())
+			return true;
+		else
+			return false;
+	} else {
+		// for the link recipient, a burst ends after the last slot where it *transmits* data
+		if (res.isTx() && !current_reservation_table->getReservation(1).isTx())
+			return true;
+		else
+			return false;
+	}
+}
+
+bool PPLinkManager::isContinuousTransmission() const {
+	return link_state.burst_length == link_state.burst_offset;
+}
+
 unsigned int PPLinkManager::getBurstLength() const {
 	return std::min(max_consecutive_tx_slots, getRequiredTxSlots()) + std::min(max_consecutive_tx_slots, getRequiredRxSlots());
 }
@@ -145,7 +172,7 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstabl
 	unsigned int burst_length = getBurstLength();
 	coutd << burst_length << ", burst offset: ";		
 	setBurstOffset(computeBurstOffset(burst_length, mac->getNeighborObserver().getNumActiveNeighbors(), reservation_manager->getP2PFreqChannels().size()));	
-	coutd << getBurstOffset() << " -> ";
+	coutd << getBurstOffset() << (isContinuousTransmission() ? " (continuous transmission)" : "") << " -> ";
 	// determine number of TX and RX slots
 	std::pair<unsigned int, unsigned int> tx_rx_split = this->getTxRxSplit(getRequiredTxSlots(), getRequiredRxSlots(), getBurstOffset());
 	unsigned int burst_length_tx = tx_rx_split.first,
@@ -481,7 +508,7 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			sh_manager->sendLinkReply(reply_header, payload, reply_time_slot_offset);			
 			// schedule resources
 			this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, request_header->burst_length_tx, request_header->burst_length - request_header->burst_length_tx, is_link_initiator);	
-			coutd << "scheduled transmission bursts, first_burst_in=" << first_burst_in << " burst_length=" << link_state.burst_length << " burst_length_tx=" << request_header->burst_length_tx << " burst_length_rx=" << request_header->burst_length - request_header->burst_length_tx << " burst_offset=" << link_state.burst_offset << " timeout=" << link_state.timeout << (link_state.burst_offset == link_state.burst_length ? " (continuous transmission) " : " ") << "-> ";
+			coutd << "scheduled transmission bursts, first_burst_in=" << first_burst_in << " burst_length=" << link_state.burst_length << " burst_length_tx=" << request_header->burst_length_tx << " burst_length_rx=" << request_header->burst_length - request_header->burst_length_tx << " burst_offset=" << link_state.burst_offset << " timeout=" << link_state.timeout << (isContinuousTransmission() ? " (continuous transmission) " : " ") << "-> ";
 			// update link status
 			coutd << "updating link status '" << this->link_status << "->";
 			this->link_status = LinkManager::awaiting_data_tx;
@@ -502,6 +529,7 @@ std::pair<const FrequencyChannel*, unsigned int> PPLinkManager::chooseRandomReso
 	std::vector<const FrequencyChannel*> viable_resource_channel;
 	std::vector<unsigned int> viable_resource_slot;
 	// For each resource...
+	coutd << "burst_length=" << burst_length << " burst_length_tx=" << burst_length_tx << " burst_offset=" << burst_offset << " -> ";
 	coutd << "checking ";
 	for (const auto &resource : resources) {
 		const FrequencyChannel *channel = resource.first;
@@ -521,9 +549,9 @@ std::pair<const FrequencyChannel*, unsigned int> PPLinkManager::chooseRandomReso
 		}
 	}
 	coutd << "-> ";
-	if (viable_resource_channel.empty())
+	if (viable_resource_channel.empty()) {		
 		throw std::invalid_argument("No viable resources were provided.");
-	else {
+	} else {
 		auto random_index = getRandomInt(0, viable_resource_channel.size());
 		return {viable_resource_channel.at(random_index), viable_resource_slot.at(random_index)};
 	}
@@ -537,7 +565,7 @@ bool PPLinkManager::isProposalViable(const ReservationTable *table, unsigned int
 		// Entire slot range must be idle && receiver during first slots && transmitter during later ones.		
 		viable = viable && table->isIdle(slot, burst_length)
 					&& mac->isAnyReceiverIdle(slot, burst_length_tx)
-					&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);
+					&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);		
 	}
 	return viable;
 }
@@ -600,9 +628,8 @@ void PPLinkManager::cancelLink() {
 		if (this->link_status == LinkManager::Status::awaiting_request_generation || this->link_status == LinkManager::Status::awaiting_reply) {
 			coutd << "unlocking -> ";
 			this->link_state.reserved_resources.unlock(link_id);		
-		} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {
-			coutd << "unscheduling -> ";
-			this->link_state.reserved_resources.unschedule({Reservation::TX, Reservation::RX});
+		} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {			
+			coutd << "unscheduling " << this->link_state.reserved_resources.unschedule({Reservation::TX, Reservation::RX}) << " reservations -> ";						
 		} else
 			throw std::runtime_error("PPLinkManager::cancelLink for unexpected link_status: " + std::to_string(link_status));
 		this->link_state.reserved_resources.reset();

@@ -475,16 +475,4 @@ void ReservationTable::linkReceiverReservationTable(ReservationTable* rx_table) 
 	this->receiver_reservation_tables.push_back(rx_table);
 }
 
-bool ReservationTable::isBurstEnd(int t, const MacId& id) const {
-	// If the slot doesn't involve 'id' at all, then it also doesn't end a communication burst.
-	if (getReservation(t).getTarget() != id)
-		return false;
-	else {
-		if (getReservation(t + 1).getTarget() == id)
-			return false; // If the next slot involves 'id', too, then 't' doesn't end a communication burst.
-		else
-			return true; // If the next slot does *not* involve 'id', then 't' *does* end a communication burst.
-	}
-}
-
 ReservationTable::~ReservationTable() = default;
