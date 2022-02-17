@@ -1345,6 +1345,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Tests that resource reservations are correct when >1 resources are used for transmission of both link initator and recipient. */
 		void testMultiSlotBurstEstablishmentForBoth() {
+			sh->beacon_module.setEnabled(false);
+			sh_you->beacon_module.setEnabled(false);
 			// make link initator require 2 TX resources
 			unsigned int datarate = mac->getCurrentDatarate();
 			unsigned int required_tx_resources = 2;									
