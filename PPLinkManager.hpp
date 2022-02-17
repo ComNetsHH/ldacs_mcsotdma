@@ -141,7 +141,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		 */
 		ReservationMap lock_bursts(const std::vector<unsigned int>& start_slots, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, bool is_link_initiator, ReservationTable* table);		
 
-		ReservationMap scheduleBursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int selected_time_slot_offset, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator);
+		ReservationMap scheduleBursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int selected_time_slot_offset, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, bool is_link_initiator);
 
 		/**		 
 		 * @return Whether the timeout expires now.

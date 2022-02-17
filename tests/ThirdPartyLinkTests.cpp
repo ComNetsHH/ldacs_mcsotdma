@@ -1351,7 +1351,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
 			CPPUNIT_TEST(testLinkReestablishment);
 			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
-
 			CPPUNIT_TEST(testImmediateResetUnlocks);
 			CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
 			CPPUNIT_TEST(testImmediateResetUnschedules);

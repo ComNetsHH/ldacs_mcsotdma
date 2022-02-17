@@ -494,6 +494,7 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			// compute the local burst_length_tx
 			unsigned int my_burst_length_tx = request_header->burst_length - request_header->burst_length_tx;
 			this->link_state = LinkState(this->timeout_before_link_expiry, request_header->burst_offset, request_header->burst_length, my_burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
+			setBurstOffset(request_header->burst_offset);
 			coutd << "randomly chose " << first_burst_in << "@" << *selected_freq_channel << " -> ";
 			// schedule the link reply
 			L2HeaderLinkReply *reply_header = new L2HeaderLinkReply();
@@ -507,7 +508,7 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			payload->resources[selected_freq_channel].push_back(first_burst_in);
 			sh_manager->sendLinkReply(reply_header, payload, reply_time_slot_offset);			
 			// schedule resources
-			this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, request_header->burst_length_tx, request_header->burst_length - request_header->burst_length_tx, is_link_initiator);	
+			this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, request_header->burst_length_tx, request_header->burst_length - request_header->burst_length_tx, link_state.burst_offset, is_link_initiator);	
 			coutd << "scheduled transmission bursts, first_burst_in=" << first_burst_in << " burst_length=" << link_state.burst_length << " burst_length_tx=" << request_header->burst_length_tx << " burst_length_rx=" << request_header->burst_length - request_header->burst_length_tx << " burst_offset=" << link_state.burst_offset << " timeout=" << link_state.timeout << (isContinuousTransmission() ? " (continuous transmission) " : " ") << "-> ";
 			// update link status
 			coutd << "updating link status '" << this->link_status << "->";
@@ -598,7 +599,8 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, co
 		unsigned int &timeout = this->link_state.timeout, 
 					&burst_length = this->link_state.burst_length,
 					&burst_length_tx = this->link_state.burst_length_tx,
-					&burst_length_rx = this->link_state.burst_length_rx;	
+					&burst_length_rx = this->link_state.burst_length_rx,
+					&burst_offset = this->link_state.burst_offset;
 		unsigned int first_burst_in = selected_time_slot_offset - this->link_state.reply_offset; // normalize to current time slot
 		link_state.next_burst_in = first_burst_in;
 		bool is_link_initiator = true;
@@ -608,8 +610,8 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, co
 		this->link_state.reserved_resources.reset();
 		coutd << "free'd locked resources -> ";	
 		// schedule resources
-		this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, is_link_initiator);	
-		coutd << "scheduled transmission bursts -> ";
+		this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, is_link_initiator);	
+		coutd << "scheduled transmission bursts (burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << ", burst_length_rx=" << burst_length_rx << ", burst_offset=" << burst_offset << ") -> ";
 		// update link status
 		coutd << "updating link status '" << this->link_status << "->";
 		this->link_status = LinkManager::awaiting_data_tx;
@@ -617,9 +619,9 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, co
 	}
 }
 
-ReservationMap PPLinkManager::scheduleBursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, bool is_link_initiator) {			
+ReservationMap PPLinkManager::scheduleBursts(const FrequencyChannel *channel, const unsigned int timeout, const unsigned int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, bool is_link_initiator) {			
 	this->assign(channel);		
-	return reservation_manager->scheduleBursts(channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, link_state.burst_offset, mac->getMacId(), link_id, is_link_initiator);
+	return reservation_manager->scheduleBursts(channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, mac->getMacId(), link_id, is_link_initiator);
 }
 
 void PPLinkManager::cancelLink() {
