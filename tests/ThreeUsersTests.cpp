@@ -287,8 +287,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_1->stat_num_pp_links_established.get());
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_2->stat_num_pp_links_established.get());
 				CPPUNIT_ASSERT_GREATEREQUAL(size_t(n), (size_t) mac_3->stat_num_pp_links_established.get());
-				CPPUNIT_ASSERT((size_t) mac_1->stat_num_packets_sent.get() > packets_so_far_1);
-				CPPUNIT_ASSERT((size_t) mac_2->stat_num_packets_sent.get() > packets_so_far_2);
+				CPPUNIT_ASSERT_GREATEREQUAL(packets_so_far_1, (size_t) mac_1->stat_num_packets_sent.get());
+				CPPUNIT_ASSERT_GREATEREQUAL(packets_so_far_2, (size_t) mac_2->stat_num_packets_sent.get());
 				packets_so_far_1 = (size_t) mac_1->stat_num_packets_sent.get();
 				packets_so_far_2 = (size_t) mac_2->stat_num_packets_sent.get();
 			}
