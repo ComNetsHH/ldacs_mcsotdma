@@ -87,6 +87,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setMinBeaconCandidateSlots(unsigned int value);
 		unsigned int getMinBeaconCandidateSlots() const;
+		unsigned int getMaxBeaconCandidateSlots() const;
 
 		void setWriteResourceUtilizationIntoBeacon(bool flag);
 
@@ -106,7 +107,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	protected:		
 		/** Number of candidate slots that should be considered when an initial beacon slot is chosen. */
-		unsigned int b_beacon_slot_candidates = 3;
+		unsigned int min_beacon_candidate_slots = 10;
 		unsigned int min_beacon_offset = 80; /* 80*12ms=960ms */
 		unsigned int max_beacon_offset = 25000; /* 25000*12ms=5min */
 		/** Minimum number of time slots to next beacon slot of any user. */

@@ -574,7 +574,7 @@ void SHLinkManager::scheduleBeacon() {
 		unscheduleBeaconSlot();
 		// and schedule a new one
 		try {
-			int num_candidates = 3; // TODO
+			int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob, beacon_module.getMinBeaconCandidateSlots(), this->MAX_CANDIDATES);
 			int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(num_candidates, mac->getNeighborObserver().getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
 			mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
 			if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {

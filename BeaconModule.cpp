@@ -64,7 +64,7 @@ void BeaconModule::onSlotEnd() {
 
 unsigned int BeaconModule::scheduleNextBeacon(unsigned int num_candidate_slots, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table) {
 	this->beacon_offset = computeBeaconInterval(num_active_neighbors);
-	this->next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->b_beacon_slot_candidates, min_beacon_gap, bc_table, tx_table);
+	this->next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, num_candidate_slots, min_beacon_gap, bc_table, tx_table);
 	return this->next_beacon_in;
 }
 
@@ -175,11 +175,11 @@ void BeaconModule::reset() {
 }
 
 void BeaconModule::setMinBeaconCandidateSlots(unsigned int value) {
-	this->b_beacon_slot_candidates = value;
+	this->min_beacon_candidate_slots = value;
 }
 
 unsigned int BeaconModule::getMinBeaconCandidateSlots() const {
-	return this->b_beacon_slot_candidates;
+	return this->min_beacon_candidate_slots;
 }
 
 void BeaconModule::setMinBeaconInterval(unsigned int value) {
