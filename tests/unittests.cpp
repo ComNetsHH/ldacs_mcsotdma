@@ -16,7 +16,6 @@
 #include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
 #include "BeaconModuleTests.cpp"
-#include "CongestionEstimatorTests.cpp"
 #include "ThreeUsersTests.cpp"
 #include "PPLinkManagerTests.cpp"
 #include "ThirdPartyLinkTests.cpp"
@@ -32,8 +31,7 @@ int main() {
 	runner.addTest(FrequencyChannelTests::suite());	
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(MCSOTDMA_PhyTests::suite());
-	runner.addTest(BeaconModuleTests::suite());
-	runner.addTest(CongestionEstimatorTests::suite());
+	runner.addTest(BeaconModuleTests::suite());	
 	runner.addTest(ContentionEstimatorTests::suite());
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());

@@ -8,7 +8,6 @@
 #include <ContentionMethod.hpp>
 #include "LinkManager.hpp"
 #include "ContentionEstimator.hpp"
-#include "CongestionEstimator.hpp"
 #include "BeaconModule.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
@@ -146,9 +145,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;
 		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
 		ContentionEstimator contention_estimator;
-		BeaconModule beacon_module;
-		/** Congestion estimation is neighbor activity regarding all broadcasts. */
-		CongestionEstimator congestion_estimator;
+		BeaconModule beacon_module;		
 		/** Target collision probability for non-beacon broadcasts. */
 		double broadcast_target_collision_prob = .626;
 		/** Whether the next broadcast slot has been scheduled. */

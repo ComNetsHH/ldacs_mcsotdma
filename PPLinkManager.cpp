@@ -7,6 +7,7 @@
 #include "coutdebug.hpp"
 #include "SHLinkManager.hpp"
 #include "SlotCalculator.hpp"
+#include <set>
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 

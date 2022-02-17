@@ -12,8 +12,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
 : LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100),
 		contention_estimator(5000),
-		beacon_module(),
-		congestion_estimator(beacon_module.getMinBeaconInterval())
+		beacon_module()		
 		{
 	beacon_module.setMinBeaconGap(min_beacon_gap);
 }
@@ -282,12 +281,9 @@ void SHLinkManager::onSlotEnd() {
 	}
 
 	// Update estimators.
-	contention_estimator.onSlotEnd(mac->getCurrentSlot());
-	congestion_estimator.onSlotEnd();
-	beacon_module.onSlotEnd();
-	mac->statisticReportCongestion(congestion_estimator.getCongestion());
+	contention_estimator.onSlotEnd(mac->getCurrentSlot());	
+	beacon_module.onSlotEnd();	
 	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());		
-
 	LinkManager::onSlotEnd();
 }
 
@@ -598,9 +594,7 @@ void SHLinkManager::assign(const FrequencyChannel* channel) {
 }
 
 void SHLinkManager::onPacketReception(L2Packet*& packet) {
-	const MacId& id = packet->getOrigin();	
-	// congestion is concerned with *any* received broadcast	
-	congestion_estimator.reportBroadcast(id);		
+	const MacId& id = packet->getOrigin();		
 	// contention is only concerned with non-beacon broadcasts
 	if (packet->getBeaconIndex() == -1)
 		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());	
@@ -617,7 +611,8 @@ void SHLinkManager::scheduleBeacon() {
 		unscheduleBeaconSlot();
 		// and schedule a new one
 		try {
-			int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(congestion_estimator.getCongestion(), mac->getNeighborObserver().getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
+			int num_candidates = 3; // TODO
+			int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(num_candidates, mac->getNeighborObserver().getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
 			mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
 			if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
 				std::stringstream ss;
@@ -626,9 +621,7 @@ void SHLinkManager::scheduleBeacon() {
 			}
 			current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
 			next_beacon_scheduled = true;
-			coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";		
-			// Reset congestion estimator with new beacon interval.
-			congestion_estimator.reset(beacon_module.getBeaconOffset());
+			coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";					
 		} catch (const std::exception &e) {
 			coutd << "couldn't schedule a next beacon: " << e.what() << " -> ";
 		}
