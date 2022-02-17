@@ -1179,7 +1179,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Tests that upon reply reception, the link's resource reservations are made, not touching non-idle resources. */
 		void testReplySchedulesBurstsButDoesNotOverwrite() {
 			// check which slots will be proposed
-			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1, pp_initiator->default_burst_offset);
+			// pp_initiator->setBurstOffset(pp_initiator->computeBurstOffset(pp_initiator->getBurstLength(), 0, reservation_manager->getP2PFreqChannels().size()));
+			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1, pp_initiator->getBurstOffset());
 			// schedule initial burst for all channels
 			MacId some_other_id = MacId(id.getId() + 42);			
 			size_t num_blocked = 0;
@@ -1219,8 +1220,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATER(0, latest_slot);
 			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);			
 			// make sure that initial burst is not touched
-			// but later ones are scheduled		
-			latest_slot++; // latest blocked slot + 1	
+			// but later ones are scheduled					
 			size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0, num_scheduled_for_other_link = 0;			
 			for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
 				const auto *table = reservation_manager->getReservationTable(channel);
@@ -1239,12 +1239,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						if (res_initiator.isTx()) {					
 							num_tx_at_initiator++;
 							CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
-							CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
+							CPPUNIT_ASSERT_EQUAL(true, res_thirdparty.isBusy());					
 						}
 						if (res_recipient.isTx()) {
 							num_tx_at_recipient++;
 							CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
-							CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
+							CPPUNIT_ASSERT_EQUAL(true, res_thirdparty.isBusy());					
 						}
 						if (res_thirdparty.isBusy())
 							num_busy_at_thirdparty++;							

@@ -88,7 +88,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(false, env1->rlc_layer->isThereMoreData(SYMBOLIC_LINK_ID_BROADCAST));
 			CPPUNIT_ASSERT_EQUAL(p2p_tx->link_status, LinkManager::Status::link_established);
 			CPPUNIT_ASSERT_EQUAL(p2p_rx->link_status, LinkManager::Status::link_established);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_3->stat_num_third_party_requests_rcvd.get());			
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_third_party_requests_rcvd.get());			
 			FrequencyChannel channel = FrequencyChannel(*p2p_tx->current_channel);
 			ReservationTable *table_tx = p2p_tx->current_reservation_table,
 				*table_rx = p2p_rx->current_reservation_table,
@@ -197,9 +197,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * Tests that three users can communicate like so: A->B B->C.
 		 * They initiate communication at exactly the same moment in time.
 		 */
-		void threeUsersNonOverlappingTest() {
+		void threeUsersNonOverlappingTest() {			
 //			coutd.setVerbose(true);
 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			((SHLinkManager*) mac_1->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.setEnabled(false);
+			((SHLinkManager*) mac_2->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.setEnabled(false);
+			((SHLinkManager*) mac_3->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->beacon_module.setEnabled(false);
+			mac_1->reportNeighborActivity(id2);
+			mac_1->reportNeighborActivity(id3);
+			mac_2->reportNeighborActivity(id1);
+			mac_2->reportNeighborActivity(id3);
+			mac_3->reportNeighborActivity(id1);
+			mac_3->reportNeighborActivity(id2);
 			env1->rlc_layer->should_there_be_more_p2p_data = false;
 			env2->rlc_layer->should_there_be_more_p2p_data = false;
 			env3->rlc_layer->should_there_be_more_p2p_data = false;
@@ -363,10 +372,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testLinkEstablishmentThreeUsers() {
 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			mac_1->reportNeighborActivity(id2);
+			mac_1->reportNeighborActivity(id3);
+			mac_2->reportNeighborActivity(id1);
+			mac_2->reportNeighborActivity(id3);
+			mac_3->reportNeighborActivity(id1);
+			mac_3->reportNeighborActivity(id2);
 			auto *p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id1), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
 			p2p_1->notifyOutgoing(num_outgoing_bits);
 			p2p_3->notifyOutgoing(num_outgoing_bits);
-			size_t num_slots = 0, max_num_slots = 100;
+			size_t num_slots = 0, max_num_slots = 200;
 			while (!(p2p_1->link_status == LinkManager::Status::link_established && p2p_2->link_status == LinkManager::Status::link_established && p2p_3->link_status == LinkManager::Status::link_established) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
