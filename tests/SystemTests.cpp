@@ -713,7 +713,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// first of, without any neighbors
 			std::vector<double> target_collision_probs = {0.01, 0.05, 0.15, 0.25};
 			for (auto p : target_collision_probs) {
-				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p);
+				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p, bc_link_manager_me->MIN_CANDIDATES, bc_link_manager_me->MAX_CANDIDATES);
 				CPPUNIT_ASSERT_EQUAL(bc_link_manager_me->MIN_CANDIDATES, num_candidate_slots);
 			}			
 			// now add a neighbor
@@ -730,7 +730,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
 			CPPUNIT_ASSERT_EQUAL(uint(1), bc_link_manager_me->contention_estimator.getNumActiveNeighbors());			
 			for (auto p : target_collision_probs) {
-				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p);
+				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p, bc_link_manager_me->MIN_CANDIDATES, bc_link_manager_me->MAX_CANDIDATES);
 				CPPUNIT_ASSERT_GREATER(bc_link_manager_me->MIN_CANDIDATES, num_candidate_slots);
 				double num_neighbors = 1.0;
 				unsigned int expected_candidate_slots = (unsigned int) std::ceil(1.0 / (1.0 - pow(1.0 - p, (1/num_neighbors))));												

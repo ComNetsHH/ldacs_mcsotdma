@@ -353,7 +353,7 @@ size_t SHLinkManager::cancelLinkReply(const MacId& id) {
 	return num_removed;
 }
 
-unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob) const {
+unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob, unsigned int min, unsigned int max) const {
 	if (target_collision_prob <= 0.0 || target_collision_prob >= 1.0)
 		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	unsigned int k;	
@@ -402,7 +402,7 @@ unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob) c
 	} else {
 		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
 	}
-	unsigned int final_candidates = std::min(MAX_CANDIDATES, std::max(MIN_CANDIDATES, k));
+	unsigned int final_candidates = std::min(max, std::max(min, k));
 	coutd << "num_candidates=" << final_candidates << " -> ";
 	return final_candidates;
 }
@@ -417,7 +417,7 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	coutd << "broadcast slot selection -> ";
 	if (current_reservation_table == nullptr)
 		throw std::runtime_error("SHLinkManager::broadcastSlotSelection for unset ReservationTable.");
-	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob);
+	unsigned int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob, this->MIN_CANDIDATES, this->MAX_CANDIDATES);
 	mac->statisticReportBroadcastCandidateSlots((size_t) num_candidates);
 	coutd << "min_offset=" << (int) min_offset << " -> ";
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findSHCandidates(num_candidates, (int) min_offset);

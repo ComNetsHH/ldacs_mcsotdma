@@ -104,7 +104,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id);		
 
 	protected:
-		unsigned int getNumCandidateSlots(double target_collision_prob) const;
+		unsigned int getNumCandidateSlots(double target_collision_prob, unsigned int min, unsigned int max) const;
 
 		unsigned long long nchoosek(unsigned long n, unsigned long k) const;
 

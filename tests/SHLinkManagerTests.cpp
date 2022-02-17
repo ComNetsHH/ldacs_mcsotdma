@@ -522,14 +522,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// zero neighbors
 			double n = 0;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
-			unsigned int k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			unsigned int k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
 			unsigned int expected_k = std::max((double) link_manager->MIN_CANDIDATES, 2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, k);						
 			// one neighbor
 			mac->reportNeighborActivity(MacId(1));
 			n = 1;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
-			unsigned int new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			unsigned int new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
@@ -538,7 +538,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->reportNeighborActivity(MacId(2));
 			n = 2;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
-			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
@@ -547,7 +547,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->reportNeighborActivity(MacId(3));
 			n = 3;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
-			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
@@ -556,7 +556,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->reportNeighborActivity(MacId(4));
 			n = 4;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
-			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
@@ -565,7 +565,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->reportNeighborActivity(MacId(5));
 			n = 5;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());	
-			new_k = link_manager->getNumCandidateSlots(target_collision_prob);			
+			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
 			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
@@ -579,7 +579,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac->reportNeighborActivity(MacId(i));
 			CPPUNIT_ASSERT_EQUAL(num_neighbors, mac->getNeighborObserver().getNumActiveNeighbors());
 			double target_collision_prob = 0.05;			
-			CPPUNIT_ASSERT_GREATER(uint(1000), link_manager->getNumCandidateSlots(target_collision_prob));
+			CPPUNIT_ASSERT_GREATER(uint(1000), link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES));
 		}
 
 		/** #111 when no next beacon slot can be found, it should try again every slot until it can. */
