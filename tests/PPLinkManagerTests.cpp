@@ -851,6 +851,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testLinkRequestWhileAwaitingReply() {
 			env->rlc_layer->should_there_be_more_broadcast_data = false;
 			// trigger link establishment
+			mac->reportNeighborActivity(partner_id);
 			mac->notifyOutgoing(100, partner_id);
 			unsigned int broadcast_slot = sh->next_broadcast_slot;
 			CPPUNIT_ASSERT_GREATER(uint(0), broadcast_slot);
@@ -962,7 +963,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// there should be no more non-idle resources than for this link (this confirms that everything's been unlocked/unscheduled properly)
 			size_t num_reservations = 0;
 			for (const auto *tbl : reservation_manager->getP2PReservationTables()) {
-				for (size_t t = 1; t < planning_horizon; t++)
+				for (size_t t = 0; t < planning_horizon; t++)
 					if (!tbl->getReservation(t).isIdle())
 						num_reservations++;
 			}
@@ -971,7 +972,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// same for the other user
 			num_reservations = 0;
 			for (const auto *tbl : reservation_manager_you->getP2PReservationTables()) {
-				for (size_t t = 1; t < planning_horizon; t++)
+				for (size_t t = 0; t < planning_horizon; t++)
 					if (!tbl->getReservation(t).isIdle())
 						num_reservations++;
 			}
