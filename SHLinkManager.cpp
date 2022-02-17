@@ -354,7 +354,7 @@ size_t SHLinkManager::cancelLinkReply(const MacId& id) {
 }
 
 unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob) const {
-	if (target_collision_prob < 0.0 || target_collision_prob > 1.0)
+	if (target_collision_prob <= 0.0 || target_collision_prob >= 1.0)
 		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
 	unsigned int k;	
 	// Estimate number of channel accesses from Binomial distribution.
