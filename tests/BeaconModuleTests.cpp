@@ -37,11 +37,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			for (unsigned int min_beacon_gap = 0; min_beacon_gap < 10; min_beacon_gap++) {
 				BeaconModule mod = BeaconModule(min_beacon_gap, .45);
-				unsigned int last_beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, 1); 
+				unsigned int last_beacon_offset = mod.computeBeaconInterval(1); 
 				for (unsigned int num_active_neighbors = 4; num_active_neighbors < 1000; num_active_neighbors++) {
-					unsigned int beacon_offset = mod.computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);										
-					CPPUNIT_ASSERT(beacon_offset >= mod.min_beacon_offset);
-					CPPUNIT_ASSERT(beacon_offset <= mod.max_beacon_offset);
+					unsigned int beacon_offset = mod.computeBeaconInterval(num_active_neighbors);										
+					CPPUNIT_ASSERT_GREATEREQUAL(mod.min_beacon_offset, beacon_offset);
+					CPPUNIT_ASSERT_LESSEQUAL(mod.max_beacon_offset, beacon_offset);
 					if (beacon_offset != mod.min_beacon_offset && beacon_offset != mod.max_beacon_offset)
 						CPPUNIT_ASSERT(beacon_offset > last_beacon_offset);					
 					last_beacon_offset = beacon_offset;
@@ -107,11 +107,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double target_congestion = .45;
 			double avg_broadcast_rate = 0.0;
 			unsigned int num_active_neighbors = 0;
-			unsigned int beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			unsigned int beacon_interval = beacon_module->computeBeaconInterval(num_active_neighbors);
 			CPPUNIT_ASSERT_EQUAL(beacon_module->min_beacon_offset, beacon_interval);
 			// change min beacon offset
 			beacon_module->setMinBeaconInterval(beacon_module->min_beacon_offset * 2);			
-			beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			beacon_interval = beacon_module->computeBeaconInterval(num_active_neighbors);
 			CPPUNIT_ASSERT_EQUAL(beacon_module->min_beacon_offset, beacon_interval);			
 		}
 
@@ -119,11 +119,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double target_congestion = .45;
 			double avg_broadcast_rate = .99;
 			unsigned int num_active_neighbors = 1000;		
-			unsigned int beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			unsigned int beacon_interval = beacon_module->computeBeaconInterval(num_active_neighbors);
 			CPPUNIT_ASSERT_GREATER(beacon_module->min_beacon_offset, beacon_interval);
 			// change max beacon offset
 			beacon_module->setMaxBeaconInterval(beacon_module->getMinBeaconInterval());
-			beacon_interval = beacon_module->computeBeaconInterval(target_congestion, avg_broadcast_rate, num_active_neighbors);
+			beacon_interval = beacon_module->computeBeaconInterval(num_active_neighbors);
 			CPPUNIT_ASSERT_EQUAL(beacon_module->min_beacon_offset, beacon_interval);			
 			CPPUNIT_ASSERT_EQUAL(beacon_module->max_beacon_offset, beacon_interval);	
 		}

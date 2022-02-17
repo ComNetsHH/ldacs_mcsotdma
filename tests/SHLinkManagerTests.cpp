@@ -455,19 +455,45 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 		}
 
-		void testBeaconInterval() {
+		void testBeaconIntervalNoNeighbors() {
+			link_manager->beacon_module.setEnabled(false);			
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->getNeighborObserver().getNumActiveNeighbors());
+			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_beacon_scheduled);
+			link_manager->beacon_module.setEnabled(true);
+			link_manager->scheduleBeacon();
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_beacon_scheduled);			
+			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
+		}
+
+		void testBeaconIntervalStillMin() {
 			link_manager->beacon_module.setEnabled(false);
 
-			size_t target_num_neighbors = 19;
+			size_t target_num_neighbors = 40;
 			for (size_t n = 0; n < target_num_neighbors; n++) {
-				link_manager->onSlotStart(1);
-				auto *beacon_packet = new L2Packet();
-				beacon_packet->addMessage(new L2HeaderBase(MacId(100 + n), 0, 0, 0, 0), nullptr);
-				beacon_packet->addMessage(new L2HeaderBeacon(), nullptr);
-				mac->receiveFromLower(beacon_packet, env->sh_frequency);
-				mac->onSlotEnd();
+				mac->reportNeighborActivity(MacId(100 + n));
 				CPPUNIT_ASSERT_EQUAL(n+1, mac->getNeighborObserver().getNumActiveNeighbors());
 			}		
+			CPPUNIT_ASSERT_EQUAL(target_num_neighbors, mac->getNeighborObserver().getNumActiveNeighbors());
+
+			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
+			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_beacon_scheduled);
+			link_manager->beacon_module.setEnabled(true);
+			link_manager->scheduleBeacon();
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_beacon_scheduled);			
+			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
+		}
+
+		void testBeaconIntervalMoreThanMin() {
+			link_manager->beacon_module.setEnabled(false);
+			CPPUNIT_ASSERT_EQUAL(uint(1), link_manager->beacon_module.min_beacon_gap);
+
+			size_t target_num_neighbors = 41;
+			for (size_t n = 0; n < target_num_neighbors; n++) {
+				mac->reportNeighborActivity(MacId(100 + n));
+				CPPUNIT_ASSERT_EQUAL(n+1, mac->getNeighborObserver().getNumActiveNeighbors());
+			}		
+			CPPUNIT_ASSERT_EQUAL(target_num_neighbors, mac->getNeighborObserver().getNumActiveNeighbors());
 
 			CPPUNIT_ASSERT_EQUAL(link_manager->beacon_module.min_beacon_offset, link_manager->beacon_module.getBeaconOffset());
 			CPPUNIT_ASSERT_EQUAL(false, link_manager->next_beacon_scheduled);
@@ -624,7 +650,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
 		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
 		CPPUNIT_TEST(testMacDelay);
-		CPPUNIT_TEST(testBeaconInterval);				
+		CPPUNIT_TEST(testBeaconIntervalNoNeighbors);		
+		CPPUNIT_TEST(testBeaconIntervalStillMin);
+		CPPUNIT_TEST(testBeaconIntervalMoreThanMin);
 		CPPUNIT_TEST(testBeaconWithResourceUtilization);	
 		CPPUNIT_TEST(testBeaconWithoutResourceUtilization);	
 		CPPUNIT_TEST(testSHChannelAccessDelay);	

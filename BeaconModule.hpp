@@ -39,12 +39,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/**
 		 * It does *not* mark the slot in the table.
-		 * @param avg_broadcast_rate
+		 * @param num_candidate_slots
 		 * @param num_active_neighbors
 		 * @param bc_table
 		 * @return A suitable slot for the next beacon transmission.
 		 */
-		unsigned int scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table);
+		unsigned int scheduleNextBeacon(unsigned int num_candidate_slots, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table);
 
 		unsigned int getNextBeaconSlot() const;
 
@@ -98,13 +98,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int chooseNextBeaconSlot(unsigned int min_beacon_offset, unsigned int num_candidates, unsigned int min_gap_to_next_beacon, const ReservationTable *bc_table, const ReservationTable *tx_table);
 
 		/**
-		 *
-		 * @param target_congestion A value 0<=r<=1 that specifies the percentage of time slots that *should* be idle between two beacon broadcasts.
-		 * @param avg_broadcast_rate A value 0<=s<=1 that specifies the average likelihood of active neighbors broadcasting within the time of two beacon broadcasts.
+		 *		 
 		 * @param num_active_neighbors
 		 * @return A value for the current beacon interval that aims to meet the congestion target.
 		 */
-		unsigned int computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const;
+		unsigned int computeBeaconInterval(unsigned int num_active_neighbors) const;
 
 	protected:
 		/** When scheduling beacon slots, aim to keep this percentage of slots idle in-between two beacon broadcasts. */

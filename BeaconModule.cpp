@@ -47,13 +47,10 @@ unsigned int BeaconModule::chooseNextBeaconSlot(unsigned int min_beacon_offset, 
 	return viable_slots.at(getRandomInt(0, viable_slots.size()));
 }
 
-unsigned int BeaconModule::computeBeaconInterval(double target_congestion, double avg_broadcast_rate, unsigned int num_active_neighbors) const {	
-	// Use same variable names as in the specification.
-	double &n = target_congestion, &r = avg_broadcast_rate, m = (double) num_active_neighbors;
-	// Find offset that meets congestion target.
-	auto tau = (unsigned int) (std::ceil(m*(1 + r) / n));	
-	// Return within allowed bounds.
-	return std::min(max_beacon_offset, std::max(min_beacon_offset, tau));
+unsigned int BeaconModule::computeBeaconInterval(unsigned int num_active_neighbors) const {	
+	// under the assumption that all neighbors will broadcast their beacon before this user does
+	// the minimum beacon offset must accommodate all of these users
+	return std::max(min_beacon_offset, std::min(max_beacon_offset, (min_beacon_gap+1) * num_active_neighbors)); // only every second (or so) slot may be used by beacons		
 }
 
 bool BeaconModule::shouldSendBeaconThisSlot() const {
@@ -65,8 +62,8 @@ void BeaconModule::onSlotEnd() {
 		next_beacon_in--;
 }
 
-unsigned int BeaconModule::scheduleNextBeacon(double avg_broadcast_rate, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table) {
-	this->beacon_offset = computeBeaconInterval(BC_CONGESTION_GOAL, avg_broadcast_rate, num_active_neighbors);
+unsigned int BeaconModule::scheduleNextBeacon(unsigned int num_candidate_slots, unsigned int num_active_neighbors, const ReservationTable *bc_table, const ReservationTable *tx_table) {
+	this->beacon_offset = computeBeaconInterval(num_active_neighbors);
 	this->next_beacon_in = chooseNextBeaconSlot(this->beacon_offset, this->b_beacon_slot_candidates, min_beacon_gap, bc_table, tx_table);
 	return this->next_beacon_in;
 }
