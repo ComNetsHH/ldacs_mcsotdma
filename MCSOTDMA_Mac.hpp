@@ -178,6 +178,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_broadcast_mac_delay.capture((double) mac_delay);
 		}
 
+		void statisticReportUnicastMacDelay(unsigned int mac_delay) {			
+			stat_unicast_mac_delay.capture((double) mac_delay);
+		}		
+
 		void statistcReportPPLinkMissedLastReplyOpportunity() {
 			stat_pp_link_missed_last_reply_opportunity.increment();
 		}
@@ -285,6 +289,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
 		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);				
+		Statistic stat_unicast_mac_delay = Statistic("mcsotdma_statistic_unicast_mac_delay", this);				
 		Statistic stat_broadcast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_broadcast_wasted_tx_opportunities", this);
 		Statistic stat_unicast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_unicast_wasted_tx_opportunities", this);
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
@@ -329,6 +334,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_selected_candidate_slots,
 				&stat_num_links_closed_early,
 				&stat_broadcast_mac_delay,
+				&stat_unicast_mac_delay,
 				&stat_broadcast_wasted_tx_opportunities,
 				&stat_unicast_wasted_tx_opportunities,
 				&stat_pp_link_missed_last_reply_opportunity,

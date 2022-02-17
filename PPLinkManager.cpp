@@ -34,6 +34,7 @@ L2Packet* PPLinkManager::onTransmissionReservation() {
 			packet->addMessage(data->getHeaders().at(i), data->getPayloads().at(i));	
 	// return packet
 	mac->statisticReportUnicastSent();
+	mac->statisticReportUnicastMacDelay(measureMacDelay());
 	return packet;
 }
 

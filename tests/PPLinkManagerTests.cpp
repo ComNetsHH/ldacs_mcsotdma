@@ -1887,6 +1887,76 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length_tx, pp_you->link_state.burst_length_rx);
 		}
 
+		void testUnicastMacDelay() {
+			pp->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 50;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);			
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);			
+			// link is established 1 slot after our first transmission
+			CPPUNIT_ASSERT_EQUAL(mac->stat_pp_link_establishment_time.get(), mac->stat_unicast_mac_delay.get() + 1);
+			num_slots = 0;
+			while (mac->stat_num_unicasts_sent.get() < 10 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length, (uint) mac->stat_unicast_mac_delay.get());
+			}			
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(10), (size_t) mac->stat_num_unicasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length, (uint) mac->stat_unicast_mac_delay.get());
+		}
+
+		void testUnicastMacDelayManyNeighbors() {
+			size_t num_neighbors = 20;
+			for (size_t i = 0; i < num_neighbors; i++) 
+				mac->reportNeighborActivity(MacId(1000 + i));
+			
+			pp->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 500;
+			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();							
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);			
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);			
+			// link is established 1 slot after our first transmission
+			CPPUNIT_ASSERT_EQUAL(mac->stat_pp_link_establishment_time.get(), mac->stat_unicast_mac_delay.get() + 1);
+			num_slots = 0;
+			size_t num_sent = mac->stat_num_unicasts_sent.get();
+			while (mac->stat_num_unicasts_sent.get() < 5 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+				if (mac->stat_num_unicasts_sent.get() > num_sent) {					
+					num_sent = mac->stat_num_unicasts_sent.get();
+					CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset, (uint) mac->stat_unicast_mac_delay.get());
+				}								
+			}			
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(5), (size_t) mac->stat_num_unicasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset, (uint) mac->stat_unicast_mac_delay.get());
+		}
+
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
@@ -1934,6 +2004,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDynamicBurstOffsetNoNeighbors);	
 		CPPUNIT_TEST(testDynamicBurstOffsetOneNeighbor);	
 		CPPUNIT_TEST(testResortToMinimumResourcesAfterCouldntFindResources);			
+		CPPUNIT_TEST(testUnicastMacDelay);
+		CPPUNIT_TEST(testUnicastMacDelayManyNeighbors);		
 		
 	CPPUNIT_TEST_SUITE_END();
 	};
