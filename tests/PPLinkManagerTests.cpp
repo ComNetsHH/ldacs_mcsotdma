@@ -1497,7 +1497,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		/** Tests that users report the no. of TX slots they require. */
-		void testReportedTxSlots() {			
+		void testReportedTxSlots() {	
+			// disable beacons which can cause a request to be rejected, which takes some effort to consider in this test			
+			sh->beacon_module.setEnabled(false);
+			sh_you->beacon_module.setEnabled(false);		
 			// make us require 3 TX slots
 			unsigned int expected_num_tx_slots = 3;
 			unsigned int num_bits = env->phy_layer->getCurrentDatarate() * expected_num_tx_slots;
@@ -1792,50 +1795,50 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		// CPPUNIT_TEST(testStartLinkEstablishment);
-		// CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
-		// CPPUNIT_TEST(testSlotSelection);
-		// CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
-		// CPPUNIT_TEST(testTwoSlotSelections);		
-		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
-		// CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
-		// CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
-		// CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
-		// CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
-		// CPPUNIT_TEST(testTxRxSplitSeveralTxSlots);				
-		// CPPUNIT_TEST(testReplySlotPassed);		
-		// CPPUNIT_TEST(testResourcesLockedAfterRequest);				
-		// CPPUNIT_TEST(testReplyReceived);		
-		// CPPUNIT_TEST(testUnlockResources);		
-		// CPPUNIT_TEST(testUnscheduleReservedResources);		
-		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
-		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
-		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
-		// CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
-		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
-		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
-		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
+		CPPUNIT_TEST(testStartLinkEstablishment);
+		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
+		CPPUNIT_TEST(testSlotSelection);
+		CPPUNIT_TEST(testSlotSelectionThroughLinkRequestTransmission);
+		CPPUNIT_TEST(testTwoSlotSelections);		
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySlot);		
+		CPPUNIT_TEST(testOutgoingTrafficEstimateEverySecondSlot);				
+		CPPUNIT_TEST(testTxRxSplitSmallerThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitEqualToBurstOffset);			
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffset);
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOneSided);		
+		CPPUNIT_TEST(testTxRxSplitMoreThanBurstOffsetOtherSide);		
+		CPPUNIT_TEST(testTxRxSplitSeveralTxSlots);				
+		CPPUNIT_TEST(testReplySlotPassed);		
+		CPPUNIT_TEST(testResourcesLockedAfterRequest);				
+		CPPUNIT_TEST(testReplyReceived);		
+		CPPUNIT_TEST(testUnlockResources);		
+		CPPUNIT_TEST(testUnscheduleReservedResources);		
+		CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
+		CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
+		CPPUNIT_TEST(testProcessRequestAndScheduleReply);
+		CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
+		CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
+		CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);		
-		// CPPUNIT_TEST(testDecrementingTimeout);
-		// CPPUNIT_TEST(testLinkExpiry);		
-		// CPPUNIT_TEST(testLinkReestablishment);
-		// CPPUNIT_TEST(testLinkEstablishmentTimeMeasurement);
-		// CPPUNIT_TEST(testMultiSlotBurstEstablishmentForInitiator);
-		// CPPUNIT_TEST(testMultiSlotBurstEstablishmentForRecipient);
-		// CPPUNIT_TEST(testMultiSlotBurstEstablishmentForBoth);
-		// CPPUNIT_TEST(testCloseLinkEarly);
-		// CPPUNIT_TEST(testCloseLinkEarlyOneSided);
-		// CPPUNIT_TEST(testReportedTxSlots);
-		// // CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);		
-		// CPPUNIT_TEST(testDontForceBidirectionalLinks);	
-		// CPPUNIT_TEST(testForceBidirectionalLinks);			
-		// CPPUNIT_TEST(testNextBurstIn);			
-		// CPPUNIT_TEST(testGetReservations);			
-		// CPPUNIT_TEST(testGetBurstLength);
-		// CPPUNIT_TEST(testDynamicBurstOffsetNoNeighbors);	
-		// CPPUNIT_TEST(testDynamicBurstOffsetOneNeighbor);	
+		CPPUNIT_TEST(testDecrementingTimeout);
+		CPPUNIT_TEST(testLinkExpiry);		
+		CPPUNIT_TEST(testLinkReestablishment);
+		CPPUNIT_TEST(testLinkEstablishmentTimeMeasurement);
+		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForInitiator);
+		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForRecipient);
+		CPPUNIT_TEST(testMultiSlotBurstEstablishmentForBoth);
+		CPPUNIT_TEST(testCloseLinkEarly);
+		CPPUNIT_TEST(testCloseLinkEarlyOneSided);
+		CPPUNIT_TEST(testReportedTxSlots);
+		// CPPUNIT_TEST(testDeclineLinkIfTxSlotsInsufficient);		
+		CPPUNIT_TEST(testDontForceBidirectionalLinks);	
+		CPPUNIT_TEST(testForceBidirectionalLinks);			
+		CPPUNIT_TEST(testNextBurstIn);			
+		CPPUNIT_TEST(testGetReservations);			
+		CPPUNIT_TEST(testGetBurstLength);
+		CPPUNIT_TEST(testDynamicBurstOffsetNoNeighbors);	
+		CPPUNIT_TEST(testDynamicBurstOffsetOneNeighbor);	
 		
 	CPPUNIT_TEST_SUITE_END();
 	};
