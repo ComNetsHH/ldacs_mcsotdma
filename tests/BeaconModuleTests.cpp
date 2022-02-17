@@ -36,7 +36,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double avg_broadcast_rate = 10.3;
 
 			for (unsigned int min_beacon_gap = 0; min_beacon_gap < 10; min_beacon_gap++) {
-				BeaconModule mod = BeaconModule(min_beacon_gap, .45);
+				BeaconModule mod = BeaconModule(min_beacon_gap);
 				unsigned int last_beacon_offset = mod.computeBeaconInterval(1); 
 				for (unsigned int num_active_neighbors = 4; num_active_neighbors < 1000; num_active_neighbors++) {
 					unsigned int beacon_offset = mod.computeBeaconInterval(num_active_neighbors);										

@@ -9,9 +9,9 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-BeaconModule::BeaconModule(unsigned int min_beacon_gap, double congestion_goal) : min_beacon_gap(min_beacon_gap), BC_CONGESTION_GOAL(congestion_goal) {}
+BeaconModule::BeaconModule(unsigned int min_beacon_gap) : min_beacon_gap(min_beacon_gap) {}
 
-BeaconModule::BeaconModule() : BeaconModule(1, .45) {}
+BeaconModule::BeaconModule() : BeaconModule(1) {}
 
 BeaconModule::~BeaconModule() {
 }

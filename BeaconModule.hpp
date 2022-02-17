@@ -24,7 +24,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class SHLinkManagerTests;
 	
 	public:
-		BeaconModule(unsigned int min_beacon_gap, double congestion_goal);
+		BeaconModule(unsigned int min_beacon_gap);
 		BeaconModule();
 		virtual ~BeaconModule();
 
@@ -104,9 +104,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int computeBeaconInterval(unsigned int num_active_neighbors) const;
 
-	protected:
-		/** When scheduling beacon slots, aim to keep this percentage of slots idle in-between two beacon broadcasts. */
-		const double BC_CONGESTION_GOAL;
+	protected:		
 		/** Number of candidate slots that should be considered when an initial beacon slot is chosen. */
 		unsigned int b_beacon_slot_candidates = 3;
 		unsigned int min_beacon_offset = 80; /* 80*12ms=960ms */
