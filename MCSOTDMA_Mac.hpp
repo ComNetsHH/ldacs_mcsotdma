@@ -154,9 +154,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 		void statisticReportMinBeaconOffset(size_t val) {
 			stat_min_beacon_offset.capture(val);
-		}
-		void statisticReportContention(double val) {
-			stat_contention.capture(val);
 		}		
 		void statisticReportBroadcastCandidateSlots(size_t val) {
 			stat_broadcast_candidate_slots.capture(val);
@@ -279,8 +276,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_pp_packet_collisions = Statistic("mcsotdma_statistic_num_pp_packet_collisions", this);		
 		Statistic stat_num_channel_errors = Statistic("mcsotdma_statistic_num_channel_errors", this);		
 		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);
-		Statistic stat_min_beacon_offset = Statistic("mcsotdma_statistic_min_beacon_offset", this);
-		Statistic stat_contention = Statistic("mcsotdma_statistic_contention", this);		
+		Statistic stat_min_beacon_offset = Statistic("mcsotdma_statistic_min_beacon_offset", this);		
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
 		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
@@ -323,8 +319,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_pp_packet_collisions,
 				&stat_num_channel_errors,			
 				&stat_num_active_neighbors,
-				&stat_min_beacon_offset,
-				&stat_contention,				
+				&stat_min_beacon_offset,				
 				&stat_broadcast_candidate_slots,
 				&stat_broadcast_selected_candidate_slots,
 				&stat_num_links_closed_early,

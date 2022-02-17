@@ -7,8 +7,8 @@
 
 #include <ContentionMethod.hpp>
 #include "LinkManager.hpp"
-#include "ContentionEstimator.hpp"
 #include "BeaconModule.hpp"
+#include "MovingAverage.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class SHLinkManager : public LinkManager {
@@ -142,9 +142,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
 		/** Collection of link replies and corresponding time slots where they should be transmitted. */
-		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;
-		/** Contention estimation is neighbor activity regarding non-beacon broadcasts. */
-		ContentionEstimator contention_estimator;
+		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;		
 		BeaconModule beacon_module;		
 		/** Target collision probability for non-beacon broadcasts. */
 		double broadcast_target_collision_prob = .626;

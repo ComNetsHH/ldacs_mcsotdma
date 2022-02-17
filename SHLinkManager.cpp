@@ -10,10 +10,7 @@
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
-: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100),
-		contention_estimator(5000),
-		beacon_module()		
-		{
+: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100), beacon_module() {
 	beacon_module.setMinBeaconGap(min_beacon_gap);
 }
 
@@ -279,11 +276,8 @@ void SHLinkManager::onSlotEnd() {
 			((PPLinkManager*) mac->getLinkManager(dest_id))->scheduledLinkReplyCouldNotHaveBeenSent();			
 		}		
 	}
-
-	// Update estimators.
-	contention_estimator.onSlotEnd(mac->getCurrentSlot());	
-	beacon_module.onSlotEnd();	
-	mac->statisticReportContention(contention_estimator.getAverageNonBeaconBroadcastRate());		
+	
+	beacon_module.onSlotEnd();		
 	LinkManager::onSlotEnd();
 }
 
@@ -352,39 +346,11 @@ size_t SHLinkManager::cancelLinkReply(const MacId& id) {
 unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob, unsigned int min, unsigned int max) const {
 	if (target_collision_prob <= 0.0 || target_collision_prob >= 1.0)
 		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots target collision probability not between 0 and 1.");
-	unsigned int k;	
-	// Estimate number of channel accesses from Binomial distribution.
+	unsigned int k;		
 	if (contention_method == ContentionMethod::binomial_estimate) {
-		// get average broadcast rate
-		double r = contention_estimator.getAverageNonBeaconBroadcastRate();
-		// get no of active neighbors
-		unsigned int m = contention_estimator.getNumActiveNeighbors();
-		double num_candidates = 0;
-		// if the broadcast rate is 100%, then assume that all m neighbors are active
-		if (r == 1.0)
-			num_candidates = (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
-		// else find through Binomial distribution
-		else {
-			// For every number n of channel accesses from 0 to all neighbors...
-			for (auto n = 0; n <= m; n++) {
-				// Probability P(X=n) of n accesses.			
-				double p = ((double) nchoosek(m, n)) * std::pow(r, n) * std::pow(1 - r, m - n);
-				// Number of slots that should be chosen if n accesses occur (see IntAirNet Deliverable AP 2.2).
-				unsigned int local_k = n == 0 ? 1 : (unsigned int) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n))) * 2;
-				num_candidates += p * local_k;
-			}
-		}
-		k = (unsigned int) std::ceil(num_candidates);
-		coutd << "channel access method: binomial estimate for " << m << " active neighbors with average broadcast rate " << r << " -> ";
-	// Estimate number of channel accesses from Poisson Binomial distribution (each neighbor's channel access is an independent Bernoulli trial with its own probability)
+		throw std::invalid_argument("binomial_estimate method no longer supported");	
 	} else if (contention_method == ContentionMethod::poisson_binomial_estimate) {
-		std::vector<MacId> active_neighbors = contention_estimator.getActiveNeighbors();
-		// sum up each neighbor's channel access probability
-		double expected_active_neighbors = 0.0;
-		for (const MacId& id : active_neighbors)
-			expected_active_neighbors += contention_estimator.getChannelAccessProbability(id, mac->getCurrentSlot());
-		k = expected_active_neighbors == 0.0 ? 1 : (unsigned int) std::round(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / expected_active_neighbors))) * 2;
-		coutd << "channel access method: poisson binomial estimate for " << expected_active_neighbors << " expected active neighbors (out of " << active_neighbors.size() << " recently active) with individual broadcast probabilities -> ";
+		throw std::invalid_argument("poisson_binomial_estimate method no longer supported");
 	// Assume that every neighbor that has been active within the contention window will again be active.
 	} else if (contention_method == ContentionMethod::randomized_slotted_aloha) {
 		// Number of active neighbors.
@@ -594,10 +560,7 @@ void SHLinkManager::assign(const FrequencyChannel* channel) {
 }
 
 void SHLinkManager::onPacketReception(L2Packet*& packet) {
-	const MacId& id = packet->getOrigin();		
-	// contention is only concerned with non-beacon broadcasts
-	if (packet->getBeaconIndex() == -1)
-		contention_estimator.reportNonBeaconBroadcast(id, mac->getCurrentSlot());	
+	const MacId& id = packet->getOrigin();			
 	LinkManager::onPacketReception(packet);
 }
 

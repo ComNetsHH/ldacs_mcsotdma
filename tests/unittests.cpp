@@ -12,7 +12,6 @@
 #include "FrequencyChannelTests.cpp"
 #include "SHLinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
-#include "ContentionEstimatorTests.cpp"
 #include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
 #include "BeaconModuleTests.cpp"
@@ -31,8 +30,7 @@ int main() {
 	runner.addTest(FrequencyChannelTests::suite());	
 	runner.addTest(MCSOTDMA_MacTests::suite());
 	runner.addTest(MCSOTDMA_PhyTests::suite());
-	runner.addTest(BeaconModuleTests::suite());	
-	runner.addTest(ContentionEstimatorTests::suite());
+	runner.addTest(BeaconModuleTests::suite());		
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
 	runner.addTest(ThreeUsersTests::suite());

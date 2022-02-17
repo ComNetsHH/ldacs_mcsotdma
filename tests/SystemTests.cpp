@@ -700,43 +700,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_me->stat_num_broadcasts_sent.get());
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts, (size_t) mac_layer_you->stat_num_broadcasts_rcvd.get());			
 			CPPUNIT_ASSERT_EQUAL(mac_layer_me->stat_broadcast_selected_candidate_slots.get(), mac_layer_me->stat_broadcast_mac_delay.get());
-		}
-
-		void testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs() {
-			rlc_layer_you->should_there_be_more_broadcast_data = true;
-			auto *bc_link_manager_me = (SHLinkManager*) mac_layer_me->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
-			bc_link_manager_me->setUseContentionMethod(ContentionMethod::binomial_estimate);
-			auto *bc_link_manager_you = (SHLinkManager*) mac_layer_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);			
-			// "you" broadcast
-			bc_link_manager_you->notifyOutgoing(1);
-			// "I" select slots
-			// first of, without any neighbors
-			std::vector<double> target_collision_probs = {0.01, 0.05, 0.15, 0.25};
-			for (auto p : target_collision_probs) {
-				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p, bc_link_manager_me->MIN_CANDIDATES, bc_link_manager_me->MAX_CANDIDATES);
-				CPPUNIT_ASSERT_EQUAL(bc_link_manager_me->MIN_CANDIDATES, num_candidate_slots);
-			}			
-			// now add a neighbor
-			size_t num_slots = 0, max_slots = 1000;
-			while (bc_link_manager_me->contention_estimator.getNumActiveNeighbors() < 1) {
-				bc_link_manager_me->notifyOutgoing(1);
-				mac_layer_you->update(1);
-				mac_layer_me->update(1);
-				mac_layer_you->execute();
-				mac_layer_me->execute();
-				mac_layer_you->onSlotEnd();
-				mac_layer_me->onSlotEnd();				
-			}
-			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
-			CPPUNIT_ASSERT_EQUAL(uint(1), bc_link_manager_me->contention_estimator.getNumActiveNeighbors());			
-			for (auto p : target_collision_probs) {
-				unsigned int num_candidate_slots = bc_link_manager_me->getNumCandidateSlots(p, bc_link_manager_me->MIN_CANDIDATES, bc_link_manager_me->MAX_CANDIDATES);
-				CPPUNIT_ASSERT_GREATER(bc_link_manager_me->MIN_CANDIDATES, num_candidate_slots);
-				double num_neighbors = 1.0;
-				unsigned int expected_candidate_slots = (unsigned int) std::ceil(1.0 / (1.0 - pow(1.0 - p, (1/num_neighbors))));												
-				CPPUNIT_ASSERT_EQUAL(expected_candidate_slots, num_candidate_slots);
-			}			
-		}
+		}		
 
 		void testLinkRequestIsCancelledWhenAnotherIsReceived() {
 			rlc_layer_me->should_there_be_more_p2p_data = false;
@@ -1031,8 +995,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testSlotAdvertisement);
 			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
 			// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
-			CPPUNIT_TEST(testMACDelays);			
-			CPPUNIT_TEST(testCompareBroadcastSlotSetSizesToAnalyticalExpectations_TargetCollisionProbs);			
+			CPPUNIT_TEST(testMACDelays);						
 			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
 			CPPUNIT_TEST(testForcedBidirectionalLinks);					
 			CPPUNIT_TEST(testNoEmptyBroadcasts);			
