@@ -519,7 +519,10 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			this->link_status = LinkManager::awaiting_data_tx;
 			coutd << this->link_status << "' -> ";
 		} catch (const not_viable_error &e) {
-			coutd << "no proposed resources were viable -> attempting own link establishment -> ";
+			coutd << "no proposed resources were viable -> attempting own link establishment -> timeout=" << link_state.timeout;
+			// link_state is not set when this error is thrown
+			// but to keep in timeout-sync, reset it now 
+			link_state.timeout = timeout_before_link_expiry;
 			mac->statisticReportLinkRequestRejectedDueToUnacceptablePPResourceProposals();
 			establishLink();
 		} catch (const std::exception &e) {
