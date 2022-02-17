@@ -173,7 +173,9 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		unsigned int timeout_before_link_expiry = 20;
 		/** The number of slots in-between transmission bursts, often denoted as tau. */
 		unsigned int default_burst_offset = 20;
-		/** Upper limit on the number of consecutive slots for one user's transmission, e.g. burst_length_tx. Since two users are part of a link, this limits the burst_length to twice this value. */
+		/** Lower limit on the number of consecutive slots for one user's transmission, e.g. burst_length_tx. Since two users are part of a link, this limits the burst_length to at least twice this value. */
+		unsigned int min_consecutive_tx_slots = 1;		
+		/** Upper limit on the number of consecutive slots for one user's transmission, e.g. burst_length_tx. Since two users are part of a link, this limits the burst_length to at most twice this value. */
 		unsigned int max_consecutive_tx_slots = 5;
 		/** Whether to use an adapting burst_offset. If false, the configured value is always used. */
 		bool adaptive_burst_offset = true;
@@ -198,6 +200,8 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		bool force_bidirectional_links = true;
 		/** Set to true if link establishment should be re-attempted next slot. */
 		bool attempt_link_establishment_again = false;
+		/** If during request population no resources could be determined, the next attempt will be made with minimum resources. */
+		bool couldnt_determine_resources_last_attempt = false;
 		LinkState link_state = LinkState();			
 		/** Whether the timeout has already been updated in this time slot. */
 		bool updated_timeout_this_slot = false;

@@ -202,6 +202,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_num_pp_links_expired.increment();
 		}
 
+		void statisticReportLinkRequestCanceledDueToInsufficientResources() {
+			stat_num_pp_requests_canceled_due_to_insufficient_resources.increment();
+		}		
+
 		void statisticReportLinkRequestRejectedDueToUnacceptableReplySlot() {
 			stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot.increment();
 		}
@@ -211,7 +215,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void statisticReportLinkRequestRejectedDueInsufficientTXSlots() {
-			stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots.increment();
+			stat_num_pp_requests_rejected_due_to_insufficient_tx_slots.increment();
 		}		
 
 		void statisticReportBroadcastCollisionDetected() {
@@ -285,12 +289,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_unicast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_unicast_wasted_tx_opportunities", this);
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
 		Statistic stat_pp_link_missed_first_data_tx = Statistic("mcsotdma_statistic_pp_link_missed_first_data_tx", this);
-		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);		
+		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);				
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
 		Statistic stat_num_pp_links_expired = Statistic("mcsotdma_statistic_num_pp_links_expired", this);
+		Statistic stat_num_pp_requests_canceled_due_to_insufficient_resources = Statistic("mcsotdma_statistic_num_pp_requests_canceled_due_to_insufficient_resources", this);
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_reply_slot", this);
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals", this);		
-		Statistic stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unsufficient_tx_slots", this);		
+		Statistic stat_num_pp_requests_rejected_due_to_insufficient_tx_slots = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_insufficient_tx_slots", this);		
 		Statistic stat_num_dme_packets_rcvd = Statistic("mcsotdma_statistic_num_num_dme_packets_rcvd", this);		
 		Statistic stat_num_broadcast_collisions_detected = Statistic("mcsotdma_statistic_num_broadcast_collisions_detected", this);		
 		Statistic stat_num_beacon_collisions_detected = Statistic("mcsotdma_statistic_num_beacon_collisions_detected", this);		
@@ -331,9 +336,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_pp_link_establishment_time,
 				&stat_num_pp_links_established,
 				&stat_num_pp_links_expired,
+				&stat_num_pp_requests_canceled_due_to_insufficient_resources,
 				&stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot,
 				&stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals,
-				&stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots,
+				&stat_num_pp_requests_rejected_due_to_insufficient_tx_slots,
 				&stat_num_dme_packets_rcvd,
 				&stat_num_broadcast_collisions_detected,
 				&stat_num_beacon_collisions_detected

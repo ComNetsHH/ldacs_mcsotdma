@@ -187,9 +187,12 @@ void PPLinkManager::populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstabl
 	auto proposal_resources = this->slotSelection(this->proposal_num_frequency_channels, this->proposal_num_time_slots, burst_length, burst_length_tx, getBurstOffset());
 	if (proposal_resources.size() < size_t(2)) { // 1 proposal is the link reply, so we expect at least 2
 		coutd << "couldn't determine any proposal resources -> will attempt again next slot -> ";
-		this->attempt_link_establishment_again = true;
+		this->attempt_link_establishment_again = true;				
+		this->couldnt_determine_resources_last_attempt = true; // next time, attempt with fewer resources
+		mac->statisticReportLinkRequestCanceledDueToInsufficientResources();
 		throw not_viable_error("couldn't determine any proposal resources");
-	}		
+	} else
+		this->couldnt_determine_resources_last_attempt = false; 
 	// remember link parameters
 	unsigned int next_burst_in = 0; // don't know what the partner will choose
 	FrequencyChannel *chosen_freq_channel = nullptr; // don't know what the partner will choose
@@ -392,16 +395,22 @@ unsigned int PPLinkManager::computeBurstOffset(unsigned int burst_length, unsign
 unsigned int PPLinkManager::getRequiredTxSlots() const {
 	if (!this->force_bidirectional_links && !mac->isThereMoreData(link_id))
 		return 0;
+	// if the last attempt failed, try with minimum resources this time
+	if (couldnt_determine_resources_last_attempt)
+		return min_consecutive_tx_slots;
 	// bits
 	unsigned int num_bits_per_burst = (unsigned int) outgoing_traffic_estimate.get();
 	// bits/slot
 	unsigned int datarate = mac->getCurrentDatarate();
 	// slots
-	return std::max(this->force_bidirectional_links ? uint(1) : uint(0), num_bits_per_burst / datarate);
+	return std::max(this->force_bidirectional_links ? min_consecutive_tx_slots : uint(0), num_bits_per_burst / datarate);
 }
 
 unsigned int PPLinkManager::getRequiredRxSlots() const {
-	return this->force_bidirectional_links ? std::max(uint(1), reported_resoure_requirement) : reported_resoure_requirement;
+	// if the last attempt failed, try with minimum resources this time
+	if (couldnt_determine_resources_last_attempt)
+		return min_consecutive_tx_slots;
+	return this->force_bidirectional_links ? std::max(uint(min_consecutive_tx_slots), reported_resoure_requirement) : reported_resoure_requirement;
 }
 
 void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin) {	

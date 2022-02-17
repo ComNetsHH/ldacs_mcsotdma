@@ -1574,7 +1574,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp_you->reported_resoure_requirement);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_requests_rejected_due_to_unsufficient_tx_slots.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_requests_rejected_due_to_insufficient_tx_slots.get());
 			// for the sake of this test, don't attempt to send another request (sometimes this would be quicker than the counter request...)
 			pp->cancelLink();			
 			sh->unscheduleBroadcastSlot();
@@ -1796,6 +1796,97 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}				
 		}
 
+		void testResortToMinimumResourcesAfterCouldntFindResources() {
+			// force one-sided link establishment (makes the test a little bit simpler)
+			env_you->rlc_layer->should_there_be_more_p2p_data = false;
+			// block all resources
+			for (auto *tbl : reservation_manager->getP2PReservationTables())
+				for (int t = 0; t < planning_horizon; t++)
+					tbl->lock(t, MacId(1000));			
+			unsigned int expected_num_tx_slots = 3, expected_num_rx_slots = 2;
+			pp->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_tx_slots);
+			pp_you->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_rx_slots);
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());
+			pp->reported_resoure_requirement = expected_num_rx_slots;
+			CPPUNIT_ASSERT_EQUAL(expected_num_rx_slots, pp->getRequiredRxSlots());			
+			// attempt to establish a link
+			pp->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 100;
+			while (mac->stat_num_pp_requests_canceled_due_to_insufficient_resources.get() < 1 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_requests_canceled_due_to_insufficient_resources.get());
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->getRequiredTxSlots());
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->getRequiredRxSlots());
+			// free resources
+			for (auto *tbl : reservation_manager->getP2PReservationTables())
+				for (int t = 0; t < planning_horizon; t++)
+					tbl->mark(t, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));				
+			// establish link
+			num_slots = 0;
+			while (mac->stat_num_pp_links_established.get() < 1 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+				pp->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_tx_slots);
+				pp_you->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_rx_slots);
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			//  check that only 1 TX slot and 1 RX slot were used
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp->link_state.burst_length_rx);			
+			// finish link
+			num_slots = 0;
+			while (mac->stat_num_pp_links_expired.get() < 1 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+				pp->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_tx_slots);
+				pp_you->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_rx_slots);
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_expired.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_expired.get());
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->getRequiredTxSlots());
+			CPPUNIT_ASSERT_EQUAL(expected_num_rx_slots, pp->getRequiredRxSlots());
+			// establish link
+			num_slots = 0;
+			while (mac->stat_num_pp_links_established.get() < 2 && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+				pp->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_tx_slots);
+				pp_you->outgoing_traffic_estimate.put(env->phy_layer->getCurrentDatarate() * expected_num_rx_slots);
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+			// check that several TX and several RX slots were used			
+			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(expected_num_rx_slots, pp->link_state.burst_length_rx);			
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length_rx, pp_you->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_length_tx, pp_you->link_state.burst_length_rx);
+		}
+
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
@@ -1842,6 +1933,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testGetBurstLength);
 		CPPUNIT_TEST(testDynamicBurstOffsetNoNeighbors);	
 		CPPUNIT_TEST(testDynamicBurstOffsetOneNeighbor);	
+		CPPUNIT_TEST(testResortToMinimumResourcesAfterCouldntFindResources);			
 		
 	CPPUNIT_TEST_SUITE_END();
 	};
