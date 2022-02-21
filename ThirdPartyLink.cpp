@@ -216,13 +216,27 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	link_description.id_link_recipient = recipient_id;
 	link_description.link_established = true;
 	// schedule the link's resources		
+	std::vector<std::pair<int, Reservation>> reservations;
 	try {
-		auto reservations = link_description.getRemainingLinkReservations();
-		auto *table = mac->getReservationManager()->getReservationTable(link_description.selected_channel);
+		reservations = link_description.getRemainingLinkReservations();		
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: error during 'getRemainingLinkReservations': " << e.what();
+		throw std::runtime_error(ss.str());
+	}
+	ReservationTable *table;
+	try {		
+		table = mac->getReservationManager()->getReservationTable(link_description.selected_channel);		
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: error getting ReservationTable: " << e.what();
+		throw std::runtime_error(ss.str());
+	}	
+	try {		
 		this->scheduled_resources = scheduleIfPossible(reservations, table);
 	} catch (const std::exception &e) {
 		std::stringstream ss;
-		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: " << e.what();
+		ss << *mac << "::" << *this << "::processLinkReplyMessage couldn't schedule resources along this link: error during 'scheduleIfPossible': " << e.what();
 		throw std::runtime_error(ss.str());
 	}
 	// reset counters
@@ -271,6 +285,8 @@ void ThirdPartyLink::onAnotherThirdLinkReset() {
 std::vector<std::pair<int, Reservation>> ThirdPartyLink::LinkDescription::getRemainingLinkReservations() const {
 	if (!link_established)
 		throw std::runtime_error("ThirdPartyLink::LinkDescription::getRemainingLinkReservations for unestablished link.");
+	if (first_burst_slot_offset == -1)
+		throw std::runtime_error("ThirdPartyLink::LinkDescription::getRemainingLinkReservations for link with unset 'first_burst_slot_offset'.");
 	auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
 	const auto &tx_slots = tx_rx_slots.first;
 	const auto &rx_slots = tx_rx_slots.second;

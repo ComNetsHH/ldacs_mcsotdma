@@ -71,12 +71,17 @@ class ThirdPartyLink {
 	protected:
 		class LinkDescription {
 			public:
-				LinkDescription() : proposed_resources(), burst_length(0), burst_length_tx(0), burst_length_rx(0), burst_offset(0), timeout(0) {}
+				LinkDescription() : proposed_resources(), burst_length(0), burst_length_tx(0), burst_length_rx(0), burst_offset(0), timeout(0), first_burst_slot_offset(-1) {}
 
 				LinkDescription(const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources, const int &burst_length, const int &burst_length_tx, const int &burst_length_rx, const int &burst_offset, const int &timeout)
-					: proposed_resources(proposed_resources), burst_length(burst_length), burst_length_tx(burst_length_tx), burst_length_rx(burst_length_rx), burst_offset(burst_offset), timeout(timeout) {}
+					: proposed_resources(proposed_resources), burst_length(burst_length), burst_length_tx(burst_length_tx), burst_length_rx(burst_length_rx), burst_offset(burst_offset), timeout(timeout), first_burst_slot_offset(-1) {}
 
-				explicit LinkDescription(const LinkDescription &other) : LinkDescription(other.proposed_resources, other.burst_length, other.burst_length_tx, other.burst_length_rx, other.burst_offset, other.timeout) {}				
+				explicit LinkDescription(const LinkDescription &other) : LinkDescription(other.proposed_resources, other.burst_length, other.burst_length_tx, other.burst_length_rx, other.burst_offset, other.timeout) {
+					first_burst_slot_offset = other.first_burst_slot_offset;
+					id_link_initiator = other.id_link_initiator;
+					id_link_recipient = other.id_link_recipient;
+					link_established = other.link_established;
+				}				
 
 				/**				 				 
 				 * Should only be called after a reply has been received.
