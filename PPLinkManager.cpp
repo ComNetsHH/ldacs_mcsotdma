@@ -53,7 +53,7 @@ void PPLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void PPLinkManager::establishLink() {	
-	coutd << "starting link establishment -> ";
+	coutd << "starting link establishment -> ";	
 	if (this->link_status == link_established) {
 		coutd << "status is '" << this->link_status << "' -> no need to establish -> ";
 		return;
@@ -70,7 +70,7 @@ void PPLinkManager::establishLink() {
 	this->link_status = awaiting_request_generation;	
 
 	// to be able to measure the link establishment time, save the current time slot
-	this->time_when_request_was_generated = mac->getCurrentSlot();
+	this->time_when_request_was_generated = mac->getCurrentSlot();		
 }
 
 void PPLinkManager::onSlotStart(uint64_t num_slots) {
@@ -432,6 +432,8 @@ void PPLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header
 		setReportedDesiredTxSlots(header->burst_length_tx);
 		coutd << reported_resoure_requirement << ") -> ";
 		mac->statisticReportLinkRequestReceived();
+		time_when_request_was_received = mac->getCurrentSlot();
+		coutd << "remembering current slot to measure link establishment time from this moment -> ";
 		// initial link request
 		if (this->link_status == link_not_established) {
 			coutd << "treating this as an initial link establishment attempt -> ";
@@ -674,7 +676,7 @@ void PPLinkManager::cancelLink() {
 			coutd << "cancelled " << num_cancelled_replies << " pending link replies -> ";
 	} else
 		coutd << "link is not established -> ";	
-	coutd << "done -> ";
+	coutd << "done -> ";		
 }
 
 void PPLinkManager::processBaseMessage(L2HeaderBase*& header) {
@@ -697,9 +699,10 @@ void PPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Pa
 			coutd << "this establishes the link -> link status changes '" << link_status << "->";			
 			link_status = link_established;
 			coutd << link_status << "' -> ";
-			mac->statisticReportPPLinkEstablished();			
-			int link_establishment_time = mac->getCurrentSlot() - this->time_when_request_was_generated;
-			mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);
+			mac->statisticReportPPLinkEstablished();						
+			int link_establishment_time = mac->getCurrentSlot() - (link_state.is_link_initator ? this->time_when_request_was_generated : this->time_when_request_was_received);			
+			mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);			
+
 			// inform upper sublayers
 			mac->notifyAboutNewLink(link_id);
 			// reset counter

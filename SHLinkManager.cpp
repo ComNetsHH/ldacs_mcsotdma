@@ -133,40 +133,25 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		for (const auto &pair : requests_to_add)
 			packet->addMessage(pair.first, pair.second);		
 
-		if (!always_schedule_next_slot) {
-			// Schedule next broadcast if there's more data to send.
-			if (!link_requests.empty() || mac->isThereMoreData(link_id)) {
-				coutd << "there's more data, so scheduling next slot -> ";
-				try {
-					scheduleBroadcastSlot();
-					coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
-				} catch (const std::exception &e) {
-					throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
-				}				
+		bool should_schedule_next_broadcast_slot = always_schedule_next_slot || !link_requests.empty() || mac->isThereMoreData(link_id);
+		if (should_schedule_next_broadcast_slot) {
+			coutd << "scheduling next broadcast slot -> ";
+			try {
+				scheduleBroadcastSlot();
+				coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
 				// Put it into the header.
 				if (this->advertise_slot_in_header) {
 					coutd << "advertising slot in header -> ";
 					base_header->burst_offset = next_broadcast_slot;
 				}
-			} else {
-				next_broadcast_scheduled = false;
-				next_broadcast_slot = 0;
-				coutd << "no more broadcast data, not scheduling a next slot -> ";
+			} catch (const std::exception &e) {
+				throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
 			}
 		} else {
-			// Schedule next broadcast.
-			coutd << "auto-schedule is on, scheduling next slot -> ";
-			try {
-				scheduleBroadcastSlot();
-				coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
-			} catch (const std::exception &e) {
-				throw std::runtime_error("Error when trying to schedule next broadcast because auto-schedule is on: " + std::string(e.what()));
-			}			
-			if (this->advertise_slot_in_header) {
-				coutd << "advertising slot in header -> ";
-				base_header->burst_offset = next_broadcast_slot;
-			}
-		}
+			next_broadcast_scheduled = false;
+			next_broadcast_slot = 0;
+			coutd << "no more broadcast data, not scheduling a next slot -> ";
+		}		
 	}
 
 	if (packet->getHeaders().size() == 1) {		
@@ -398,14 +383,11 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 void SHLinkManager::scheduleBroadcastSlot() {	
 	unscheduleBroadcastSlot();
 	// By default, even the next slot could be chosen.
-	unsigned int min_offset = 1;
-	// Unless there's currently no data to send; then, schedule one when on average the next data packet should've been generated.
-	if (!mac->isThereMoreData(link_id) && link_requests.empty() && link_replies.empty())
-		min_offset = std::max(uint(1), std::min(getAvgNumSlotsInbetweenPacketGeneration(), current_reservation_table->getPlanningHorizon() / 4));
+	unsigned int min_offset = 1;	
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
-	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));		
+	current_reservation_table->mark(next_broadcast_slot, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));			
 }
 
 void SHLinkManager::unscheduleBroadcastSlot() {

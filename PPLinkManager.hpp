@@ -190,7 +190,8 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		/** The communication partner can report how many resources it'd prefer. */
 		unsigned int reported_resoure_requirement = 1;
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */
-		unsigned int time_when_request_was_generated = 0;
+		unsigned int time_when_request_was_generated = 0;		
+		unsigned int time_when_request_was_received = 0;
 		/** Keeps track of the no. of time slots until a reply is expected, s.t. not receiving it can be handled. */
 		unsigned int time_slots_until_reply = 0;
 		/** As a failsafe for bad links, if too many transmission bursts were faulty (nothing received), a link may be terminated early. */

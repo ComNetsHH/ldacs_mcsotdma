@@ -977,33 +977,103 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_layer_me->stat_num_pp_links_established.get());			
 		}
 
+		void testManyPPLinkEstablishmentTimes() {
+			mac_layer_me->notifyOutgoing(512, partner_id);			
+			env_you->rlc_layer->should_there_be_more_p2p_data = false;
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_pp_links_established.get());
+			size_t num_slots = 0, max_slots = 512*10, num_links = 10;
+			std::vector<double> link_establishment_times_me, link_establishment_times_you;
+			while (mac_layer_me->stat_num_pp_links_established.get() < num_links && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();								
+				if (mac_layer_me->stat_num_pp_links_established.get() > link_establishment_times_me.size())
+					link_establishment_times_me.push_back(mac_layer_me->stat_pp_link_establishment_time.get());
+				if (mac_layer_you->stat_num_pp_links_established.get() > link_establishment_times_you.size())
+					link_establishment_times_you.push_back(mac_layer_you->stat_pp_link_establishment_time.get());
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(num_links, (size_t) mac_layer_me->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
+			CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
+			for (size_t i = 0; i < num_links; i++) {
+				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_me.at(i));
+				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_you.at(i));				
+			}			
+		}
+
+		/** In many simulations, the first data is not transmitted at simulation start, but later. Make sure that this works as expected. */
+		void testManyPPLinkEstablishmentTimesStartLate() {
+			size_t num_slots_before_start = 1000;
+			for (int t = 0; t < num_slots_before_start; t++) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();								
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_you->stat_num_pp_links_established.get());
+			mac_layer_me->notifyOutgoing(512, partner_id);			
+			env_you->rlc_layer->should_there_be_more_p2p_data = false;
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_layer_me->stat_num_pp_links_established.get());
+			size_t num_slots = 0, max_slots = 512*10, num_links = 10;
+			std::vector<double> link_establishment_times_me, link_establishment_times_you;
+			while (mac_layer_me->stat_num_pp_links_established.get() < num_links && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();								
+				if (mac_layer_me->stat_num_pp_links_established.get() > link_establishment_times_me.size())
+					link_establishment_times_me.push_back(mac_layer_me->stat_pp_link_establishment_time.get());
+				if (mac_layer_you->stat_num_pp_links_established.get() > link_establishment_times_you.size())
+					link_establishment_times_you.push_back(mac_layer_you->stat_pp_link_establishment_time.get());
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(num_links, (size_t) mac_layer_me->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
+			CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
+			for (size_t i = 0; i < num_links; i++) {
+				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_me.at(i));
+				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_you.at(i));				
+			}			
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
-			CPPUNIT_TEST(testLinkEstablishment);
-			CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
-			CPPUNIT_TEST(testLinkExpiry);
-			CPPUNIT_TEST(testLinkExpiryMultiSlot);
-			CPPUNIT_TEST(testReservationsUntilExpiry);
-			CPPUNIT_TEST(testLinkTermination);
-			CPPUNIT_TEST(testLinkRenewal);
-			CPPUNIT_TEST(testCommunicateInOtherDirection);
-			CPPUNIT_TEST(testCommunicateReverseOrder);
+		CPPUNIT_TEST(testLinkEstablishment);
+		CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+		CPPUNIT_TEST(testLinkExpiry);
+		CPPUNIT_TEST(testLinkExpiryMultiSlot);
+		CPPUNIT_TEST(testReservationsUntilExpiry);
+		CPPUNIT_TEST(testLinkTermination);
+		CPPUNIT_TEST(testLinkRenewal);
+		CPPUNIT_TEST(testCommunicateInOtherDirection);
+		CPPUNIT_TEST(testCommunicateReverseOrder);
 //			CPPUNIT_TEST(testPacketSize);						
-			CPPUNIT_TEST(testReestablishmentAfterDrop);
-			CPPUNIT_TEST(testSimultaneousRequests);
-			CPPUNIT_TEST(testTimeout);
-			CPPUNIT_TEST(testManyReestablishments);
-			CPPUNIT_TEST(testSlotAdvertisement);
-			CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
-			// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
-			CPPUNIT_TEST(testMACDelays);						
-			CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
-			CPPUNIT_TEST(testForcedBidirectionalLinks);					
-			CPPUNIT_TEST(testNoEmptyBroadcasts);			
-			CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
-			CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
-			CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);					
-			CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
-			CPPUNIT_TEST(testPPLinkEstablishmentTime);
+		CPPUNIT_TEST(testReestablishmentAfterDrop);
+		CPPUNIT_TEST(testSimultaneousRequests);
+		CPPUNIT_TEST(testTimeout);
+		CPPUNIT_TEST(testManyReestablishments);
+		CPPUNIT_TEST(testSlotAdvertisement);
+		CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
+		// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
+		CPPUNIT_TEST(testMACDelays);						
+		CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
+		CPPUNIT_TEST(testForcedBidirectionalLinks);					
+		CPPUNIT_TEST(testNoEmptyBroadcasts);			
+		CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
+		CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
+		CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);					
+		CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
+		CPPUNIT_TEST(testPPLinkEstablishmentTime);
+		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);	
+		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);			
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

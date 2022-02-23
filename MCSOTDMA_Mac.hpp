@@ -240,9 +240,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const size_t num_transmitters = 1, num_receivers = 2;
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;
-		std::map<uint64_t, std::vector<L2Packet*>> received_packets;
-		/** My link is established after I've sent my link reply and receive the first data packet. If that doesn't arrive within as many attempts as ARQ allows, I should close the link early if this flag is set. */
-		bool close_link_early_if_no_first_data_packet_comes_in = false;		
+		std::map<uint64_t, std::vector<L2Packet*>> received_packets;		
 		/** Keeps a list of active neighbors, which have demonstrated activity within the last 50.000 slots (10min if slot duration is 12ms). */
 		NeighborObserver active_neighbor_observer; 
 		/** Number of transmission bursts before a P2P link expires. */
