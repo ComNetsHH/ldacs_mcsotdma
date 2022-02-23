@@ -192,6 +192,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_pp_link_establishment_time.capture(num_slots);
 		}
 
+		void statisticReportPPBurstOffset(unsigned int value) {
+			stat_pp_link_burst_offset.capture(value);
+		}		
+
 		void statisticReportPPLinkEstablished() {
 			stat_num_pp_links_established.increment();
 		}
@@ -285,6 +289,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
 		Statistic stat_pp_link_missed_first_data_tx = Statistic("mcsotdma_statistic_pp_link_missed_first_data_tx", this);
 		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);				
+		Statistic stat_pp_link_burst_offset = Statistic("mcsotdma_statistic_burst_offset", this);				
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
 		Statistic stat_num_pp_links_expired = Statistic("mcsotdma_statistic_num_pp_links_expired", this);
 		Statistic stat_num_pp_requests_canceled_due_to_insufficient_resources = Statistic("mcsotdma_statistic_num_pp_requests_canceled_due_to_insufficient_resources", this);
@@ -328,6 +333,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_pp_link_missed_last_reply_opportunity,
 				&stat_pp_link_missed_first_data_tx,
 				&stat_pp_link_establishment_time,
+				&stat_pp_link_burst_offset,
 				&stat_num_pp_links_established,
 				&stat_num_pp_links_expired,
 				&stat_num_pp_requests_canceled_due_to_insufficient_resources,

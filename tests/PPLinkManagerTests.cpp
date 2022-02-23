@@ -1955,6 +1955,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(pp->link_state.burst_offset, (uint) mac->stat_unicast_mac_delay.get());
 		}
 
+		/** Tests that the burst_offset is correctly reported as a statistic to the MAC when a link is established. */
+		void testBurstOffsetReporting() {
+			pp->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 50;
+			while ((mac->stat_num_pp_links_established.get() < 1.0 || mac_you->stat_num_pp_links_established.get() < 1.0) && num_slots++ < max_slots) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(2.0, mac->stat_pp_link_burst_offset.get());
+			CPPUNIT_ASSERT_EQUAL(mac->stat_pp_link_burst_offset.get(), mac_you->stat_pp_link_burst_offset.get());			
+		}
+
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
@@ -2003,7 +2022,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDynamicBurstOffsetOneNeighbor);	
 		CPPUNIT_TEST(testResortToMinimumResourcesAfterCouldntFindResources);			
 		CPPUNIT_TEST(testUnicastMacDelay);
-		CPPUNIT_TEST(testUnicastMacDelayManyNeighbors);		
+		CPPUNIT_TEST(testUnicastMacDelayManyNeighbors);
+		CPPUNIT_TEST(testBurstOffsetReporting);		
 		
 	CPPUNIT_TEST_SUITE_END();
 	};

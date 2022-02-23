@@ -701,7 +701,8 @@ void PPLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Pa
 			coutd << link_status << "' -> ";
 			mac->statisticReportPPLinkEstablished();						
 			int link_establishment_time = mac->getCurrentSlot() - (link_state.is_link_initator ? this->time_when_request_was_generated : this->time_when_request_was_received);			
-			mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);			
+			mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);
+			mac->statisticReportPPBurstOffset(link_state.burst_offset);
 
 			// inform upper sublayers
 			mac->notifyAboutNewLink(link_id);
