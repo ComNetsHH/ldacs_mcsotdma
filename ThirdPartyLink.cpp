@@ -195,12 +195,12 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	if (selected_resource.second.size() != size_t(1)) 
 		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
 	const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
-	const unsigned int &timeout = header->timeout, 
-				&burst_length = header->burst_length,
-				&burst_length_tx = header->burst_length_tx,
-				burst_length_rx = header->burst_length - header->burst_length_tx,
-				&burst_offset = header->burst_offset;	
-	unsigned int first_burst_slot_offset = selected_time_slot_offset; 
+	const int timeout = header->timeout, 
+				burst_length = header->burst_length,
+				burst_length_tx = header->burst_length_tx,
+				burst_length_rx = burst_length - burst_length_tx,
+				burst_offset = header->burst_offset;					
+	int first_burst_slot_offset = (int) selected_time_slot_offset; 	
 	// normalize to current time slot
 	if (reply_offset != UNSET)
 		first_burst_slot_offset -= reply_offset; 	
@@ -287,14 +287,23 @@ std::vector<std::pair<int, Reservation>> ThirdPartyLink::LinkDescription::getRem
 		throw std::runtime_error("ThirdPartyLink::LinkDescription::getRemainingLinkReservations for unestablished link.");
 	if (first_burst_slot_offset == -1)
 		throw std::runtime_error("ThirdPartyLink::LinkDescription::getRemainingLinkReservations for link with unset 'first_burst_slot_offset'.");
-	auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
-	const auto &tx_slots = tx_rx_slots.first;
-	const auto &rx_slots = tx_rx_slots.second;
+	std::pair<std::vector<int>, std::vector<int>> tx_rx_slots;
+	try {		
+		tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+	} catch (const std::exception& e) {
+		throw std::runtime_error("error during calc: " + std::string(e.what()));
+	}
 	std::vector<std::pair<int, Reservation>> reservations;
-	for (auto tx_slot : tx_slots)
-		reservations.push_back({tx_slot, Reservation(id_link_initiator, Reservation::BUSY)});
-	for (auto rx_slot : rx_slots)
-		reservations.push_back({rx_slot, Reservation(id_link_recipient, Reservation::BUSY)});
+	try {
+		const auto &tx_slots = tx_rx_slots.first;
+		const auto &rx_slots = tx_rx_slots.second;	
+		for (auto tx_slot : tx_slots)
+			reservations.push_back({tx_slot, Reservation(id_link_initiator, Reservation::BUSY)});
+		for (auto rx_slot : rx_slots)
+			reservations.push_back({rx_slot, Reservation(id_link_recipient, Reservation::BUSY)});
+		} catch (const std::exception& e) {
+			throw std::runtime_error("error after calc: " + std::string(e.what()));
+		}
 	return reservations;
 }
 

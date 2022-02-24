@@ -1530,18 +1530,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots, pp_you->reported_resoure_requirement);
-			// send reply
-			int num_slots_until_reply = ((SHLinkManager*) mac_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->next_broadcast_slot;
-			CPPUNIT_ASSERT_GREATER(0, num_slots_until_reply);
-			for (int t = 0; t < num_slots_until_reply; t++) {
+			// establish link
+			size_t num_slots = 0, max_slots = 100;
+			while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
 				mac->update(1);
 				mac_you->update(1);
 				mac->execute();
 				mac_you->execute();
 				mac->onSlotEnd();
-				mac_you->onSlotEnd();											
+				mac_you->onSlotEnd();
+				pp_you->outgoing_traffic_estimate.put(num_bits_you);			
 			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_replies_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 			CPPUNIT_ASSERT_EQUAL(expected_num_tx_slots_you, pp->reported_resoure_requirement);
 		}
 
@@ -1972,8 +1975,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_established.get());
 			CPPUNIT_ASSERT_EQUAL(2.0, mac->stat_pp_link_burst_offset.get());
 			CPPUNIT_ASSERT_EQUAL(mac->stat_pp_link_burst_offset.get(), mac_you->stat_pp_link_burst_offset.get());			
-		}
-
+		}		
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);

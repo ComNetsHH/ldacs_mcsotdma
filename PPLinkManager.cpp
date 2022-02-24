@@ -516,8 +516,8 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			// schedule the link reply
 			L2HeaderLinkReply *reply_header = new L2HeaderLinkReply();
 			reply_header->burst_length = link_state.burst_length;
-			reply_header->burst_length_tx = getRequiredTxSlots();
-			reply_header->burst_offset = getBurstOffset();
+			reply_header->burst_length_tx = request_header->burst_length_tx;
+			reply_header->burst_offset = request_header->burst_offset;
 			reply_header->timeout = link_state.timeout;
 			reply_header->dest_id = link_id;
 			LinkEstablishmentPayload *payload = new LinkEstablishmentPayload();
@@ -601,15 +601,13 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, co
 	// if not
 	if (dest_id != mac->getMacId()) { 
 		coutd << "third-party link reply between " << origin_id << " and " << dest_id << " -> ";
-		mac->statisticReportThirdPartyLinkReplyReceived();		
+		mac->statisticReportThirdPartyLinkReplyReceived();				
 		// process it through a third part link
 		ThirdPartyLink &link = mac->getThirdPartyLink(origin_id, dest_id);
-		link.processLinkReplyMessage(header, payload, origin_id);
+		link.processLinkReplyMessage(header, payload, origin_id);		
 	// if we are the recipient
 	} else { 
-		mac->statisticReportLinkReplyReceived();
-		// save reported, required TX slots
-		setReportedDesiredTxSlots(header->burst_length_tx);
+		mac->statisticReportLinkReplyReceived();		
 		// parse selected communication resource
 		const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
 		if (selected_resource_map.size() != size_t(1))

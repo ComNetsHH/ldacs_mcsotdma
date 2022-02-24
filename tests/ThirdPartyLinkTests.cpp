@@ -1339,6 +1339,69 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->onThirdPartyLinkReset(&third_party_link);						
 			CPPUNIT_ASSERT_GREATER(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).scheduled_resources.size());			
 		}
+		
+		/** Encountered bug where the link reply would contain a different no. of slots than the request. This was ignored by the link initiator, but not by third parties and caused a crash due to a bad_alloc (burst_length_rx was consequently negative). */
+		void testLinkParametersDontChange() {			
+			pp_initiator->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 100;
+			size_t num_req_tx_slots_you = 2;
+			while (mac_recipient->stat_num_requests_rcvd.get() < 1 && num_slots++ < max_slots) {
+				pp_recipient->outgoing_traffic_estimate.put(env_recipient->phy_layer->getCurrentDatarate() * num_req_tx_slots_you);
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();														
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());			
+			CPPUNIT_ASSERT_EQUAL(num_req_tx_slots_you, (size_t) pp_recipient->getRequiredTxSlots());
+			num_slots = 0;
+			while (mac->stat_num_third_party_replies_rcvd.get() < 1 && num_slots++ < max_slots) {
+				pp_recipient->outgoing_traffic_estimate.put(env_recipient->phy_layer->getCurrentDatarate() * num_req_tx_slots_you);
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_replies_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_replies_rcvd.get());
+			num_slots = 0;
+			while ((pp_initiator->link_status != LinkManager::link_established || pp_recipient->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_initiator->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_recipient->link_status);			
+			const ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_initiator->link_state.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_recipient->link_state.burst_length_tx);	
+			CPPUNIT_ASSERT_EQUAL(1, link.link_description.burst_length_tx);
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp_initiator->link_state.burst_length);
+			CPPUNIT_ASSERT_EQUAL(uint(2), pp_recipient->link_state.burst_length);
+			CPPUNIT_ASSERT_EQUAL(2, link.link_description.burst_length);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_initiator->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(uint(1), pp_recipient->link_state.burst_length_rx);
+			CPPUNIT_ASSERT_EQUAL(1, link.link_description.burst_length_rx);
+		}
 
 
 		CPPUNIT_TEST_SUITE(ThirdPartyLinkTests);		
@@ -1367,6 +1430,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
 			CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
 			CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
+			CPPUNIT_TEST(testLinkParametersDontChange);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

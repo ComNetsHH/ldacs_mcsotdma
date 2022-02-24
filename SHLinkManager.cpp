@@ -57,6 +57,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 					it--;
 					capacity -= pair.second.first->getBits() + pair.second.second->getBits();
 					coutd << "added link reply for '" << pair.second.first->dest_id << "' to broadcast -> ";
+					const L2HeaderLinkReply *header = pair.second.first;					
 					mac->statisticReportLinkReplySent();
 				}
 			}

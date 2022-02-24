@@ -1,8 +1,9 @@
 #include <utility>
 #include <vector>
 #include "SlotCalculator.hpp"
+#include <iostream>
 
-std::pair<std::vector<int>, std::vector<int>> TUHH_INTAIRNET_MCSOTDMA::SlotCalculator::calculateTxRxSlots(const int &start_slot_offset, const int &burst_length, const int &burst_length_tx, const int &burst_length_rx, const int &burst_offset, const int &timeout) {	
+std::pair<std::vector<int>, std::vector<int>> TUHH_INTAIRNET_MCSOTDMA::SlotCalculator::calculateTxRxSlots(const int &start_slot_offset, const int &burst_length, const int &burst_length_tx, const int &burst_length_rx, const int &burst_offset, const int &timeout) {		
 	auto tx_rx_slots = std::pair<std::vector<int>, std::vector<int>>();
 	auto &tx_slots = tx_rx_slots.first;
 	auto &rx_slots = tx_rx_slots.second;
