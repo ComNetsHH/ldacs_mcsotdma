@@ -1775,7 +1775,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(num_neighbors), mac->getNeighborObserver().getNumActiveNeighbors());
 			// non-continuous transmission			
 			CPPUNIT_ASSERT_GREATER(pp->getBurstLength(), pp->computeBurstOffset(pp->getBurstLength(), num_neighbors, num_pp_channels));
-			CPPUNIT_ASSERT_EQUAL(uint(4*2*num_neighbors + pp->getBurstLength()), pp->computeBurstOffset(pp->getBurstLength(), num_neighbors, num_pp_channels));
+			CPPUNIT_ASSERT_EQUAL(uint(2*2*num_neighbors + pp->getBurstLength()), pp->computeBurstOffset(pp->getBurstLength(), num_neighbors, num_pp_channels));
 			pp->notifyOutgoing(1);
 			while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
 				mac->update(1);
