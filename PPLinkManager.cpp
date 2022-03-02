@@ -512,7 +512,7 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			unsigned int my_burst_length_tx = request_header->burst_length - request_header->burst_length_tx;
 			this->link_state = LinkState(this->timeout_before_link_expiry, request_header->burst_offset, request_header->burst_length, my_burst_length_tx, first_burst_in, is_link_initiator, selected_freq_channel);				
 			setBurstOffset(request_header->burst_offset);
-			coutd << "randomly chose " << first_burst_in << "@" << *selected_freq_channel << " -> ";
+			coutd << "randomly chose " << first_burst_in << "@" << *selected_freq_channel << " -> ";						
 			// schedule the link reply
 			L2HeaderLinkReply *reply_header = new L2HeaderLinkReply();
 			reply_header->burst_length = link_state.burst_length;
@@ -525,8 +525,8 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			payload->resources[selected_freq_channel].push_back(first_burst_in);
 			sh_manager->sendLinkReply(reply_header, payload, reply_time_slot_offset);			
 			// schedule resources
-			this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, request_header->burst_length_tx, request_header->burst_length - request_header->burst_length_tx, link_state.burst_offset, is_link_initiator);	
-			coutd << "scheduled transmission bursts, first_burst_in=" << first_burst_in << " burst_length=" << link_state.burst_length << " burst_length_tx=" << request_header->burst_length_tx << " burst_length_rx=" << request_header->burst_length - request_header->burst_length_tx << " burst_offset=" << link_state.burst_offset << " timeout=" << link_state.timeout << (isContinuousTransmission() ? " (continuous transmission) " : " ") << "-> ";
+			coutd << "scheduling transmission bursts, first_burst_in=" << first_burst_in << " burst_length=" << link_state.burst_length << " burst_length_tx=" << request_header->burst_length_tx << " burst_length_rx=" << request_header->burst_length - request_header->burst_length_tx << " burst_offset=" << link_state.burst_offset << " timeout=" << link_state.timeout << (isContinuousTransmission() ? " (continuous transmission) " : " ") << "-> ";
+			this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, link_state.timeout, first_burst_in, link_state.burst_length, request_header->burst_length_tx, request_header->burst_length - request_header->burst_length_tx, link_state.burst_offset, is_link_initiator);				
 			// update link status
 			coutd << "updating link status '" << this->link_status << "->";
 			this->link_status = LinkManager::awaiting_data_tx;
@@ -539,8 +539,10 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			mac->statisticReportLinkRequestRejectedDueToUnacceptablePPResourceProposals();
 			establishLink();
 		} catch (const std::exception &e) {
-			std::cerr << "error during request processing: " << e.what() << std::endl;
-			throw("error during request processing: " + std::string(e.what()));
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::processLinkRequestMessage_initial error: " << e.what() << std::endl;
+			std::cerr << ss.str() << std::endl;
+			throw(ss.str());
 		}
 	} else { // sending reply is not viable 
 		coutd << "attempting own link establishment -> ";
@@ -584,13 +586,17 @@ std::pair<const FrequencyChannel*, unsigned int> PPLinkManager::chooseRandomReso
 bool PPLinkManager::isProposalViable(const ReservationTable *table, unsigned int burst_start, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const {
 	bool viable = true;
 	unsigned int burst_length_rx = burst_length - burst_length_tx;
-	for (unsigned int burst = 0; viable && burst < timeout; burst++) {
-		int slot = (int) (burst_start + burst*burst_offset);			
-		// Entire slot range must be idle && receiver during first slots && transmitter during later ones.		
-		viable = viable && table->isIdle(slot, burst_length)
-					&& mac->isAnyReceiverIdle(slot, burst_length_tx)
-					&& mac->isTransmitterIdle(slot + burst_length_tx, burst_length_rx);		
+	auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(burst_start, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+	const auto &tx_slots = tx_rx_slots.first;
+	const auto &rx_slots = tx_rx_slots.second;
+	for (size_t i = 0; viable && i < tx_slots.size(); i++) {
+		int tx_slot = tx_slots.at(i);
+		viable = viable && table->isIdle(tx_slot) && mac->isAnyReceiverIdle(tx_slot, 1);
 	}
+	for (size_t i = 0; viable && i < rx_slots.size(); i++) {
+		int rx_slot = rx_slots.at(i);
+		viable = viable && table->isIdle(rx_slot) && mac->isTransmitterIdle(rx_slot, 1);
+	}	
 	return viable;
 }
 

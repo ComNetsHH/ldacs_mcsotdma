@@ -18,11 +18,11 @@ MCSOTDMA_Phy::MCSOTDMA_Phy(uint32_t planning_horizon) : transmitter_reservation_
 
 bool MCSOTDMA_Phy::isTransmitterIdle(unsigned int slot_offset, unsigned int num_slots) const {
 	// The transmitter is idle if there's no transmissions scheduled.
-	return !transmitter_reservation_table->anyTxReservations(slot_offset, num_slots);
+	return transmitter_reservation_table->isIdle(slot_offset, num_slots);
 }
 
 bool MCSOTDMA_Phy::isAnyReceiverIdle(unsigned int slot_offset, unsigned int num_slots) const {
-	return std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset, num_slots](const ReservationTable *rx_table) {return !rx_table->anyRxReservations(slot_offset, num_slots);});
+	return std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot_offset, num_slots](const ReservationTable *rx_table) {return rx_table->isIdle(slot_offset, num_slots);});
 }
 
 MCSOTDMA_Phy::~MCSOTDMA_Phy() {
