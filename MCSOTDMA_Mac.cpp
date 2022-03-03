@@ -280,12 +280,18 @@ void MCSOTDMA_Mac::onSlotEnd() {
 					stat_num_dme_packets_rcvd.increment();
 					coutd << "counted in statistic, no further processing -> ";
 				} else {
-					reportNeighborActivity(packet->getOrigin());
-					if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-						getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
-					else
-						getLinkManager(packet->getOrigin())->onPacketReception(packet);				
-					stat_num_packets_rcvd.increment();
+					try {
+						reportNeighborActivity(packet->getOrigin());
+						if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+							getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
+						else
+							getLinkManager(packet->getOrigin())->onPacketReception(packet);				
+						stat_num_packets_rcvd.increment();
+					} catch (const std::exception &e) {
+						std::stringstream ss;
+						ss << *this << "::onSlotEnd error processing received packet: " << e.what() << std::endl;						
+						throw std::runtime_error(ss.str());
+					}
 				}
 			}			
 		// several packets are cause for a collision
@@ -306,12 +312,24 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	received_packets.clear();
 
 	// update link managers
-	for (auto item : link_managers)
-		item.second->onSlotEnd();
+	try {
+		for (auto item : link_managers)
+			item.second->onSlotEnd();
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *this << "::onSlotEnd error updating link managers: " << e.what() << std::endl;		
+		throw std::runtime_error(ss.str());
+	}
 
 	// update third-party links
-	for (auto &item : third_party_links)
-		item.second.onSlotEnd();
+	try {
+		for (auto &item : third_party_links)
+			item.second.onSlotEnd();
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *this << "::onSlotEnd error updating third party links: " << e.what() << std::endl;		
+		throw std::runtime_error(ss.str());
+	}
 
 	// update active neighbors list
 	active_neighbor_observer.onSlotEnd();

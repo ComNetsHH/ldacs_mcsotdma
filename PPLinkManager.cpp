@@ -540,8 +540,7 @@ void PPLinkManager::processLinkRequestMessage_initial(const L2HeaderLinkRequest*
 			establishLink();
 		} catch (const std::exception &e) {
 			std::stringstream ss;
-			ss << *mac << "::" << *this << "::processLinkRequestMessage_initial error: " << e.what() << std::endl;
-			std::cerr << ss.str() << std::endl;
+			ss << *mac << "::" << *this << "::processLinkRequestMessage_initial error: " << e.what() << std::endl;			
 			throw(ss.str());
 		}
 	} else { // sending reply is not viable 
@@ -637,8 +636,14 @@ void PPLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, co
 		this->link_state.reserved_resources.reset();
 		coutd << "free'd locked resources -> ";	
 		// schedule resources
-		this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, is_link_initiator);	
-		coutd << "scheduled transmission bursts (burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << ", burst_length_rx=" << burst_length_rx << ", burst_offset=" << burst_offset << ") -> ";
+		coutd << "scheduling transmission bursts (burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << ", burst_length_rx=" << burst_length_rx << ", burst_offset=" << burst_offset << ") -> ";
+		try {			
+			this->link_state.reserved_resources = scheduleBursts(selected_freq_channel, timeout, first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, is_link_initiator);			
+		} catch (const std::exception &e) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << " error scheduling resources upon link reply: " << "(burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << ", burst_length_rx=" << burst_length_rx << ", burst_offset=" << burst_offset << ") -> " << e.what() << std::endl;			
+			throw std::runtime_error(ss.str());
+		}
 		// update link status
 		coutd << "updating link status '" << this->link_status << "->";
 		this->link_status = LinkManager::awaiting_data_tx;

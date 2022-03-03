@@ -61,34 +61,70 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::base: {
 				coutd << "processing base header -> ";
 				auto*& base_header = (L2HeaderBase*&) header;
-				processBaseMessage(base_header);						
+				try {
+					processBaseMessage(base_header);
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << *this << " error processing base message: " << e.what() << std::endl;					
+					throw std::runtime_error(ss.str());
+				}
 				break;
 			}
 			case L2Header::beacon: {
 				coutd << "processing beacon -> ";
-				processBeaconMessage(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);				
+				try {
+					processBeaconMessage(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);				
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << *this << " error processing beacon message: " << e.what() << std::endl;					
+					throw std::runtime_error(ss.str());
+				}
 				break;
 			}
 			case L2Header::broadcast: {
 				coutd << "processing broadcast -> ";
-				processBroadcastMessage(packet->getOrigin(), (L2HeaderBroadcast*&) header);
+				try {
+					processBroadcastMessage(packet->getOrigin(), (L2HeaderBroadcast*&) header);
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << *this << " error processing broadcast message: " << e.what() << std::endl;					
+					throw std::runtime_error(ss.str());
+				}
 				contains_data = true;
 				break;
 			}
 			case L2Header::unicast: {
 				coutd << "processing unicast -> ";
-				processUnicastMessage((L2HeaderUnicast*&) header, payload);
+				try {
+					processUnicastMessage((L2HeaderUnicast*&) header, payload);
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << *this << " error processing unicast message: " << e.what() << std::endl;					
+					throw std::runtime_error(ss.str());
+				}
 				contains_data = true;
 				break;
 			}
 			case L2Header::link_establishment_request: {
 				coutd << "processing link establishment request -> ";
-				processLinkRequestMessage((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
+				try {
+					processLinkRequestMessage((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << *this << " error processing link request message: " << e.what() << std::endl;			
+					throw std::runtime_error(ss.str());
+				}
 				break;
 			}
 			case L2Header::link_establishment_reply: {
 				coutd << "processing link establishment reply -> ";
-				processLinkReplyMessage((const L2HeaderLinkReply*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
+				try {
+					processLinkReplyMessage((const L2HeaderLinkReply*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *mac << "::" << *this << " error processing link reply message: " << e.what() << std::endl;					
+					throw std::runtime_error(ss.str());
+				}
 				break;
 			}
 			default: {
