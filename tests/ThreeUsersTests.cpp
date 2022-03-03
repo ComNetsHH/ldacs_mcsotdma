@@ -464,6 +464,31 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 
+		void testTwoLinksToOneUser() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			// both 1 and 2 want to establish links with 3			
+			auto *pp_1 = (PPLinkManager*) mac_1->getLinkManager(id3);
+			auto *pp_2 = (PPLinkManager*) mac_2->getLinkManager(id3);
+			pp_1->notifyOutgoing(1);
+			pp_2->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 100;
+			while ((mac_1->stat_num_pp_links_established.get() < 1 || mac_2->stat_num_pp_links_established.get() < 1) && num_slots++ < max_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_established.get());
+		}
+
+
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsers);
 			CPPUNIT_TEST(testLinkEstablishmentTwoUsersMultiSlot);
@@ -474,6 +499,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(threeUsersNonOverlappingTest);
 			CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
 			CPPUNIT_TEST(testHiddenNodeScenario);			
+			CPPUNIT_TEST(testTwoLinksToOneUser);			
 		CPPUNIT_TEST_SUITE_END();
 	};
 }
