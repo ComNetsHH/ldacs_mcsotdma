@@ -172,7 +172,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		/** Number of transmission bursts until link expiry. */
 		unsigned int timeout_before_link_expiry = 20;
 		/** The number of slots in-between transmission bursts, often denoted as tau. */
-		unsigned int default_burst_offset = 20;
+		unsigned int burst_offset = 20;
 		/** Lower limit on the number of consecutive slots for one user's transmission, e.g. burst_length_tx. Since two users are part of a link, this limits the burst_length to at least twice this value. */
 		unsigned int min_consecutive_tx_slots = 1;		
 		/** Upper limit on the number of consecutive slots for one user's transmission, e.g. burst_length_tx. Since two users are part of a link, this limits the burst_length to at most twice this value. */
@@ -186,7 +186,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		/** Link requests should propose this many distinct time slot resources per frequency channel. */
 		unsigned int proposal_num_time_slots = 3;
 		/** Gives the average number of bits that should have been sent in-between two transmission bursts. */
-		MovingAverage outgoing_traffic_estimate = MovingAverage(default_burst_offset);
+		MovingAverage outgoing_traffic_estimate = MovingAverage(burst_offset);
 		/** The communication partner can report how many resources it'd prefer. */
 		unsigned int reported_resoure_requirement = 1;
 		/** To measure the time until link establishment, the current slot number when the request is sent is saved here. */

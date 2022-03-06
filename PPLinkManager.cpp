@@ -380,7 +380,7 @@ std::pair<unsigned int, unsigned int> PPLinkManager::getTxRxSplit(unsigned int r
 }
 
 unsigned int PPLinkManager::getBurstOffset() const {	
-	return this->default_burst_offset;
+	return this->burst_offset;
 }
 
 unsigned int PPLinkManager::computeBurstOffset(unsigned int burst_length, unsigned int num_neighbors, unsigned int num_pp_channels) {	
@@ -816,7 +816,7 @@ void PPLinkManager::scheduledLinkReplyCouldNotHaveBeenSent() {
 }
 
 void PPLinkManager::setBurstOffset(unsigned int value) {
-	this->default_burst_offset = value;
+	this->burst_offset = value;
 }
 
 void PPLinkManager::setBurstOffsetAdaptive(bool value) {

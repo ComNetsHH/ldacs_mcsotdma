@@ -791,7 +791,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Tests that upon a request reception, resources are locked, but non-idle resources are not touched. */
 		void testRequestLocksWherePossible() {
 			// check which slots will be proposed
-			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1, pp_initiator->default_burst_offset);
+			auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1, pp_initiator->burst_offset);
 			// cherry-pick first proposed channel
 			auto it = map.begin();
 			auto cherry_picked_channel = (*it).first;
