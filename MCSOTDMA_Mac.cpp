@@ -404,7 +404,20 @@ size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 }
 
 unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
-	return this->default_p2p_link_burst_offset;
+	unsigned int max_burst_offset = 0;
+	if (link_managers.size() <= 1) 
+		max_burst_offset = default_p2p_link_burst_offset;
+	else {
+		for (auto pair : link_managers) {
+			MacId id = pair.first;
+			if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
+				auto *link_manager = (PPLinkManager*) pair.second;
+				if (link_manager->getBurstOffset() > max_burst_offset)
+					max_burst_offset = link_manager->getBurstOffset();
+			}
+		}
+	}
+	return max_burst_offset;
 }
 
 void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {

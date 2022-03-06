@@ -43,6 +43,10 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		void setBurstOffset(unsigned int value);
 		void setBurstOffsetAdaptive(bool value);
 		std::pair<std::vector<int>, std::vector<int>> getReservations() const;
+		/**		 
+		 * @return Number of time slots in-between two transmission bursts that should be proposed for new links.
+		 */
+		unsigned int getBurstOffset() const;
 
 	protected:		
 		/** Keeps track of the current link state values. */
@@ -114,12 +118,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		 * @param burst_offset The number of slots in-between two TX/RX bursts.
 		 * @return {no. of TX slots, no. of RX slots}
 		 */
-		std::pair<unsigned int, unsigned int> getTxRxSplit(unsigned int resource_req_me, unsigned int resource_req_you, unsigned int burst_offset) const;
-
-		/**		 
-		 * @return Number of time slots in-between two transmission bursts that should be proposed for new links.
-		 */
-		unsigned int getBurstOffset() const;
+		std::pair<unsigned int, unsigned int> getTxRxSplit(unsigned int resource_req_me, unsigned int resource_req_you, unsigned int burst_offset) const;		
 
 		/**		 
 		 * @return Number of TX slots that should be proposed for new links.
