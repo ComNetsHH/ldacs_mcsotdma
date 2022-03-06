@@ -209,78 +209,101 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 	}		
 	ReservationMap reservation_map;
 	ReservationTable *tbl = getReservationTable(channel);	
-	Reservation::Action action_1, action_2;
-	MacId target_id_1, target_id_2;	
+	Reservation::Action action_1, action_2;	
 	// we differentiate between being the link initiator or not
 	action_1 = is_link_initiator ? Reservation::TX : Reservation::RX;
 	action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
 	// and the target is always the other user
-	target_id_1 = recipient_id;
-	target_id_2 = recipient_id;	
+	MacId target_id = recipient_id;	
 	
 	auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);	
 	// go over link initiator's TX slots
+	coutd << "scheduling TX slots: ";
 	for (int &slot_offset : tx_rx_slots.first) {
-		// make sure that the reservation is idle locally
-		if (!tbl->getReservation(slot_offset).isIdle()) {						
-			std::stringstream s;
-			s << *this << "::scheduleBursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
-			throw std::runtime_error(s.str());			
-		}
+		bool can_write = false, can_overwrite = false;
+		const auto &res = tbl->getReservation(slot_offset);
+		// resource should be either idle 
+		if (res.isIdle()) 
+			can_write = true;
+		// or it is our target that is already busy (which we know e.g. through its beacon)
+		else if (res.isBusy() && res.getTarget() == target_id) 
+			can_overwrite = true;		
+
+		coutd << "t=" << slot_offset << " ";
 		// make sure that hardware is available
-		if (action_1 == Reservation::TX) {
-			const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
-			bool transmitter_available = tx_reservation.isIdle();
-			if (!transmitter_available) {
-				std::stringstream s;
-				s << *this << "::scheduleBursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
-				throw std::runtime_error(s.str());
+		if (can_write || can_overwrite) {			
+			if (action_1 == Reservation::TX) {
+				const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
+				bool transmitter_available = can_write ? tx_reservation.isIdle() : (tx_reservation.isIdle() || (tx_reservation.isBusy() && tx_reservation.getTarget() == target_id));
+				if (!transmitter_available) {					
+					coutd << "TX_NOT_AVAIL";
+					can_write = false;
+					can_overwrite = false;					
+				}
+			} else if (action_1 == Reservation::RX) {
+				bool receiver_available;
+				if (can_write)
+					receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
+				else
+					receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset, target_id](const ReservationTable *rx_table){const auto &res = rx_table->getReservation(slot_offset); return res.isIdle() || (res.isBusy() && res.getTarget() == target_id);});
+				if (!receiver_available) {
+					coutd << "RX_NOT_AVAIL";
+					can_write = false;
+					can_overwrite = false;
+				}
 			}
-		} else if (action_1 == Reservation::RX) {
-			bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
-			if (!receiver_available) {
-				std::stringstream s;
-				s << *this << "::scheduleBursts couldn't schedule a " << action_1 << "@" << target_id_1 << " resource in " << slot_offset << " slots. The receivers will be busy with ";
-				for (const auto *rx_table : getRxTables())
-					s << rx_table->getReservation(slot_offset) << " ";
-				s << "when at least one should be idle.";
-				throw std::runtime_error(s.str());
-			}
+		} 
+				
+		if (can_write || can_overwrite) {
+			tbl->mark(slot_offset, Reservation(target_id, action_1));						
+			reservation_map.add_scheduled_resource(tbl, slot_offset);
+			coutd << (can_write ? "written" : "overwritten");
 		}
-		tbl->mark(slot_offset, Reservation(target_id_1, action_1));						
-		reservation_map.add_scheduled_resource(tbl, slot_offset);
+		coutd << ", ";
 	}
+	coutd << "-> scheduling RX slots: ";
 	// go over the link initiator's RX slots
 	for (int &slot_offset : tx_rx_slots.second) {
-		// make sure that the reservation is idle locally
-		if (!tbl->getReservation(slot_offset).isIdle()) {			
-			std::stringstream s;
-			s << *this << "::scheduleBursts couldn't schedule a " << action_2 << "@" << target_id_2 << " resource in " << slot_offset << " slots. It is " << tbl->getReservation(slot_offset) << ", when it should be idle.";
-			throw std::runtime_error(s.str());			
-		}
+		bool can_write = false, can_overwrite = false;
+		const auto &res = tbl->getReservation(slot_offset);
+		// resource should be either idle 
+		if (res.isIdle()) 
+			can_write = true;
+		// or it is our target that is already busy (which we know e.g. through its beacon)
+		else if (res.isBusy() && res.getTarget() == target_id) 
+			can_overwrite = true;		
+
+		coutd << "t=" << slot_offset;
 		// make sure that hardware is available
-		if (action_2 == Reservation::TX) {
-			const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
-			bool transmitter_available = tx_reservation.isIdle();
-			if (!transmitter_available) {
-				std::stringstream s;
-				s << *this << "::scheduleBursts couldn't schedule a " << action_2 << "@" << target_id_2 <<   " resource in " << slot_offset << " slots. The transmitter will be busy with " << tx_reservation << ", when it should be idle.";
-				throw std::runtime_error(s.str());
-			} 
-		} else if (action_2 == Reservation::RX) {
-			bool receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
-			if (!receiver_available) {
-				std::stringstream s;
-				s << *this << "::scheduleBursts couldn't schedule a " << action_2 << "@" << target_id_2 <<  " resource in " << slot_offset << " slots. The receivers will be busy with ";
-				for (const auto *rx_table : getRxTables())
-					s << rx_table->getReservation(slot_offset) << " ";
-				s << "when at least one should be idle.";
-				throw std::runtime_error(s.str());
+		if (can_write || can_overwrite) {
+			if (action_2 == Reservation::TX) {
+				const auto &tx_reservation = getTxTable()->getReservation(slot_offset);
+				bool transmitter_available = can_write ? tx_reservation.isIdle() : (tx_reservation.isIdle() || (tx_reservation.isBusy() && tx_reservation.getTarget() == target_id));
+				if (!transmitter_available) {					
+					coutd << "TX_NOT_AVAIL";
+					can_write = false;
+					can_overwrite = false;					
+				}
+			} else if (action_2 == Reservation::RX) {
+				bool receiver_available;
+				if (can_write)
+					receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset](const ReservationTable *rx_table){return rx_table->getReservation(slot_offset).isIdle();});
+				else
+					receiver_available = std::any_of(getRxTables().begin(), getRxTables().end(), [slot_offset, target_id](const ReservationTable *rx_table){const auto &res = rx_table->getReservation(slot_offset); return res.isIdle() || (res.isBusy() && res.getTarget() == target_id);});
+				if (!receiver_available) {
+					coutd << "RX_NOT_AVAIL";
+					can_write = false;
+					can_overwrite = false;
+				}
 			}
 		}
-		tbl->mark(slot_offset, Reservation(target_id_2, action_2));		
-		reservation_map.add_scheduled_resource(tbl, slot_offset);	
+		if (can_write || can_overwrite) {
+			tbl->mark(slot_offset, Reservation(target_id, action_2));		
+			reservation_map.add_scheduled_resource(tbl, slot_offset);	
+			coutd << " " << (can_write ? "written" : "overwritten");
+		}
+		coutd << ", ";
 	}
-
+	coutd << "done -> ";
 	return reservation_map;
 }
