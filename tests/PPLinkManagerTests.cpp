@@ -1977,6 +1977,79 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(mac->stat_pp_link_burst_offset.get(), mac_you->stat_pp_link_burst_offset.get());			
 		}		
 
+		/** Tests that if a neighbor's beacon arrives before its link reply, then resources-to-be-scheduled are marked as BUSY. Then, upon receiving the link reply, the same resources must be overwritten. */
+		void testOverwriteBusyResourceByBeacon() {
+			pp->notifyOutgoing(1);
+			size_t num_slots = 0, max_slots = 50;
+			while ((mac->stat_num_requests_sent.get() < 1.0 && num_slots++ < max_slots)) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_requests_rcvd.get());
+			// sever connection
+			PHYLayer *phy_you = env_you->phy_layer;
+			phy_you->connected_phys.clear();
+			// send reply
+			num_slots = 0;
+			while ((mac_you->stat_num_replies_sent.get() < 1.0 && num_slots++ < max_slots)) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_replies_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_replies_rcvd.get());
+			// fetch reply packet
+			L2Packet *reply_packet = phy_you->outgoing_packets.at(phy_you->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT_GREATER(0, reply_packet->getReplyIndex());
+			auto *reply_payload = (LinkManager::LinkEstablishmentPayload*) reply_packet->getPayloads().at(reply_packet->getReplyIndex());
+			// generate a beacon
+			uint slots_until_beacon = sh_you->getNextBeaconSlot();
+			CPPUNIT_ASSERT_GREATER(uint(0), slots_until_beacon);
+			CPPUNIT_ASSERT_LESS(sh_you->beacon_module.getMaxBeaconInterval(), slots_until_beacon);
+			for (uint t = 0; t < slots_until_beacon; t++) {			
+				mac_you->update(1);				
+				mac_you->execute();				
+				mac_you->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_beacons_sent.get());
+			L2Packet *beacon_packet = phy_you->outgoing_packets.at(phy_you->outgoing_packets.size() - 1);
+			CPPUNIT_ASSERT_GREATER(0, beacon_packet->getBeaconIndex());
+			auto *beacon_payload = (BeaconPayload*) beacon_packet->getPayloads().at(beacon_packet->getBeaconIndex());
+			// make beacon indicate the resources selected earlier
+			beacon_payload->local_reservations.clear();
+			const FrequencyChannel *selected_channel;
+			uint selected_slot;
+			for (const auto &pair : reply_payload->resources) {
+				const FrequencyChannel *channel = pair.first;				
+				const std::vector<unsigned int> &slots = pair.second;				
+				if (channel->isPP()) {
+					selected_channel = channel;
+					selected_slot = slots.at(0);
+				}
+				auto &vec = beacon_payload->local_reservations[channel->getCenterFrequency()];
+				for (auto slot : slots)
+					vec.push_back({slot, Reservation::TX});
+			}			
+			// receive beacon
+			mac->receiveFromLower(beacon_packet->copy(), env->sh_frequency);			
+			mac->onSlotEnd();			
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), reservation_manager->getReservationTable(selected_channel)->getReservation(selected_slot));			
+			// receive reply
+			mac->receiveFromLower(reply_packet->copy(), env->sh_frequency);
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), reservation_manager->getReservationTable(selected_channel)->getReservation(selected_slot));			
+		}
+
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testStartLinkEstablishment);
 		CPPUNIT_TEST(testDontStartLinkEstablishmentIfNotUnestablished);		
@@ -2025,7 +2098,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testResortToMinimumResourcesAfterCouldntFindResources);			
 		CPPUNIT_TEST(testUnicastMacDelay);
 		CPPUNIT_TEST(testUnicastMacDelayManyNeighbors);
-		CPPUNIT_TEST(testBurstOffsetReporting);		
+		CPPUNIT_TEST(testBurstOffsetReporting);
+		CPPUNIT_TEST(testOverwriteBusyResourceByBeacon);
 		
 	CPPUNIT_TEST_SUITE_END();
 	};
