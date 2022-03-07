@@ -459,8 +459,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			avg_link_estbl_time_C /= mac_C->stat_num_pp_links_established.get();
 			// link establishment time can vary a bit
 			// I just test it to be "adequately small" with an arbitrary value...
-			CPPUNIT_ASSERT_LESS(40.0, avg_link_estbl_time_A);
-			CPPUNIT_ASSERT_LESS(40.0, avg_link_estbl_time_C);			
+			CPPUNIT_ASSERT_LESS(80.0, avg_link_estbl_time_A);
+			CPPUNIT_ASSERT_LESS(80.0, avg_link_estbl_time_C);			
 		}
 
 
