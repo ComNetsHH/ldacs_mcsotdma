@@ -386,7 +386,8 @@ unsigned int PPLinkManager::getBurstOffset() const {
 unsigned int PPLinkManager::computeBurstOffset(unsigned int burst_length, unsigned int num_neighbors, unsigned int num_pp_channels) {	
 	if (adaptive_burst_offset) {		
 		// to accommodate the no. of neighbors, this many slots should be left idle in-between bursts		
-		unsigned int num_slots_inbetween_bursts = (unsigned int) std::ceil((2*num_neighbors*burst_length) / num_pp_channels); // the 2 stems from trying to allow each neighbor to keep at least 2 links open (e.g. forwards/backwards)		
+		double n = (double) num_neighbors, l = (double) burst_length, pp = (double) num_pp_channels;
+		unsigned int num_slots_inbetween_bursts = (unsigned int) std::floor((2*n*l) / pp); // the 2 stems from trying to allow each neighbor to keep at least 2 links open (e.g. forwards/backwards)		
 		// the burst offset denotes the number of slots in-between the starting slot of two transmission bursts
 		// so add the burst_length		
 		return burst_length + num_slots_inbetween_bursts;
