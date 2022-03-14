@@ -21,13 +21,16 @@ void NeighborObserver::reportActivity(const MacId& id) {
 
 void NeighborObserver::onSlotEnd() {
 	// go through all active neighbors
-	for (auto &pair : active_neighbors) {
+	std::vector<std::map<MacId, unsigned int>::iterator> to_delete;
+	for (auto it = active_neighbors.begin(); it != active_neighbors.end(); ) {
 		// increment its last-seen value
-		pair.second++;
+		it->second++;
 		// and remove it if it hasn't been reported for too long
-		if (pair.second >= this->max_last_seen_val) 
-			active_neighbors.erase(pair.first);
-	}
+		if (it->second >= this->max_last_seen_val) 
+			active_neighbors.erase(it++);
+		else
+			++it;
+	}	
 }
 
 size_t NeighborObserver::getNumActiveNeighbors() const {
