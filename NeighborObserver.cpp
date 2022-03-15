@@ -27,7 +27,7 @@ void NeighborObserver::onSlotEnd() {
 		it->second++;
 		// and remove it if it hasn't been reported for too long
 		if (it->second >= this->max_last_seen_val) 
-			active_neighbors.erase(it++);
+			it = active_neighbors.erase(it);
 		else
 			++it;
 	}	
