@@ -458,3 +458,15 @@ void MCSOTDMA_Mac::setPPLinkBurstOffsetAdaptive(bool value) {
 		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
 			((PPLinkManager*) pair.second)->setBurstOffsetAdaptive(value);
 }
+
+bool MCSOTDMA_Mac::isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency) const {
+	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
+	for (const auto &pair : reservations) {
+		uint64_t freq = pair.second->getCenterFrequency();
+		if (freq == center_frequency) {
+			if (pair.first.isAnyTx())
+				return true;
+		}
+	}
+	return false;
+}

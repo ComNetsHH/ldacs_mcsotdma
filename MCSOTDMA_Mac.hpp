@@ -95,6 +95,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void onThirdPartyLinkReset(const ThirdPartyLink* caller);
 
+		virtual bool isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency) const;
+
 		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
 		void reportNeighborActivity(const MacId& id);
 		const NeighborObserver& getNeighborObserver() const;
