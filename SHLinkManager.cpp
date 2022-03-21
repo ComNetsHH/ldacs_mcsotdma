@@ -376,7 +376,13 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 			coutd << "t=" << t << ":\t" << current_reservation_table->getReservation(t) << "\t" << reservation_manager->getTxTable()->getReservation(t) << std::endl;
 		throw std::runtime_error("SHLinkManager::broadcastSlotSelection found zero candidate slots.");
 	}
-	unsigned int selected_slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));
+	unsigned int selected_slot;
+	try {
+		selected_slot = candidate_slots.at(getRandomInt(0, candidate_slots.size()));	
+	} catch (const std::exception &e) {
+		std::cerr << "error during broadcast slot selection when trying to get a random integer -> is the 'num-rngs' parameter in the .ini too small?" << std::endl;
+		throw std::runtime_error("error during broadcast slot selection when trying to get a random integer -> is the 'num-rngs' parameter in the .ini too small?");
+	}
 	mac->statisticReportSelectedBroadcastCandidateSlots(selected_slot);
 	return selected_slot;
 }

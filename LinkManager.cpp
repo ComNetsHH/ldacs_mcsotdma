@@ -127,6 +127,14 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 				}
 				break;
 			}
+			case L2Header::dme_request: {
+				coutd << "discarding DME request -> ";
+				break;
+			}
+			case L2Header::dme_response: {
+				coutd << "discarding DME response -> ";
+				break;
+			}
 			default: {
 				throw std::invalid_argument("LinkManager::onPacketReception for an unexpected header type.");
 			}
@@ -138,7 +146,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 		coutd << "passing to upper layer." << std::endl;
 		mac->passToUpper(packet);
 	} else {
-		coutd << "deleting control packet." << std::endl;
+		coutd << "deleting packet." << std::endl;
 		delete packet;
 	}
 }
