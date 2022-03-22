@@ -343,9 +343,9 @@ unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob, u
 		double m = (double) mac->getNeighborObserver().getNumActiveNeighbors();
 		k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
 		coutd << "channel access method: randomized slotted ALOHA for " << m << " active neighbors -> ";
-	// Don't make use of contention estimation in any way. Just select something out of the next 100 idle slots.
+	// Don't make use of contention estimation in any way. Just select something out of the next seven idle slots.
 	} else if (contention_method == ContentionMethod::naive_random_access) {
-		k = 100;
+		k = 7;
 		coutd << "channel access method: naive random access -> ";
 	} else {
 		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
