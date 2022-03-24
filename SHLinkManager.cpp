@@ -542,6 +542,10 @@ SHLinkManager::~SHLinkManager() {
 		delete pair.first;
 		delete pair.second;
 	}
+	for (auto pair : link_replies) {
+		delete pair.second.first;
+		delete pair.second.second;
+	}
 }
 
 void SHLinkManager::assign(const FrequencyChannel* channel) {
