@@ -664,7 +664,8 @@ void PPLinkManager::cancelLink() {
 			coutd << "unlocking -> ";
 			this->link_state.reserved_resources.unlock(link_id);		
 		} else if (this->link_status == LinkManager::Status::awaiting_data_tx || this->link_status == LinkManager::Status::link_established) {			
-			coutd << "unscheduling " << this->link_state.reserved_resources.unschedule({Reservation::TX, Reservation::RX}) << " reservations -> ";						
+			size_t num_unscheduled = this->link_state.reserved_resources.unschedule({Reservation::TX, Reservation::RX});
+			coutd << "unscheduling " << num_unscheduled << " reservations -> ";						
 		} else
 			throw std::runtime_error("PPLinkManager::cancelLink for unexpected link_status: " + std::to_string(link_status));
 		this->link_state.reserved_resources.reset();

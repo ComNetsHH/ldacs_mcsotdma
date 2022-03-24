@@ -69,9 +69,12 @@ void ThirdPartyLink::reset() {
 	coutd << *this << " resetting -> ";
 	this->status = uninitialied;
 	// unlock and unschedule everything
-	coutd << "unlocked " << locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient) << " initiator locks -> ";
-	coutd << "unlocked " << locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator) << " recipient locks -> ";
-	coutd << "unscheduled " << scheduled_resources.unschedule({Reservation::BUSY}) << " resources -> ";	
+	size_t unlocks = locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
+	coutd << "unlocked " << unlocks << " initiator locks -> ";
+	unlocks = locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);
+	coutd << "unlocked " << unlocks << " recipient locks -> ";
+	unlocks = scheduled_resources.unschedule({Reservation::BUSY});
+	coutd << "unscheduled " << unlocks << " resources -> ";	
 	locked_resources_for_initiator.reset();
 	locked_resources_for_recipient.reset();
 	scheduled_resources.reset();		
@@ -180,9 +183,15 @@ void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, Reservation
 void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
 	coutd << *this << " processing link reply -> ";			
 	// reset	
-	coutd << "attempting to unlock " << locked_resources_for_initiator.size() << " initator locks: unlocked " << locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient) << " -> ";	
+	
+	coutd << "attempting to unlock " << locked_resources_for_initiator.size() << " initator locks: ";
+	size_t unlocks = locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
+	coutd << " unlocked " << unlocks << " -> ";	
 	locked_resources_for_initiator.reset();		
-	coutd << "attempting to unlock " << locked_resources_for_recipient.size() << " recipient locks: unlocked " << locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator) << " -> ";		
+	
+	coutd << "attempting to unlock " << locked_resources_for_recipient.size() << " recipient locks: ";
+	unlocks = locked_resources_for_recipient.unlock_either_id(id_link_recipient, id_link_initiator);
+	coutd << "unlocked " << unlocks << " -> ";		
 	locked_resources_for_recipient.reset();	
 	// update status
 	this->status = received_reply_link_established;	
