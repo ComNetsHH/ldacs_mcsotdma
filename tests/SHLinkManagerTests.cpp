@@ -111,6 +111,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_1_me->getReservation(t));
 			for (auto t : slots_2)
 				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::BUSY), table_2_me->getReservation(t));
+			delete beacon_msg.first;
+			delete beacon_msg.second;
 		}
 
 		/**
@@ -133,6 +135,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT(bc_lm->beacon_module.next_beacon_in > t);
 			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON), bc_lm->current_reservation_table->getReservation(bc_lm->beacon_module.next_beacon_in));
+			delete pair.first;
+			delete pair.second;
 		}
 
 		/**
@@ -161,14 +165,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// and marked the slot as RX
 			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), bc_lm->current_reservation_table->getReservation(t));
 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX), bc_lm->current_reservation_table->getReservation(bc_lm->next_broadcast_slot));
+			delete pair.first;
+			delete pair.second;
 		}
 
 		void testBeaconDestination() {
 			auto *packet = new L2Packet();
 			auto *base_header = new L2HeaderBase(MacId(42), 0, 1, 1, 0);
 			packet->addMessage(base_header, nullptr);
-			packet->addMessage(link_manager->beacon_module.generateBeacon(link_manager->reservation_manager->getP2PReservationTables(), link_manager->reservation_manager->getBroadcastReservationTable(), mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset()));
-			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BEACON, packet->getDestination());
+			auto pair = link_manager->beacon_module.generateBeacon(link_manager->reservation_manager->getP2PReservationTables(), link_manager->reservation_manager->getBroadcastReservationTable(), mac->getHostPosition(), mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset());
+			packet->addMessage(pair);
+			CPPUNIT_ASSERT_EQUAL(SYMBOLIC_LINK_ID_BEACON, packet->getDestination());			
+			delete packet;
 		}
 
 		void testDontScheduleNextBroadcastSlot() {

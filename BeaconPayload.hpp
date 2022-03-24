@@ -53,12 +53,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			return bits;
 		}
 
-		void encode(uint64_t center_freq, const ReservationTable *table) {
-			auto &vec = local_reservations[center_freq];
+		void encode(uint64_t center_freq, const ReservationTable *table) {			
 			for (int t = 1; t < table->getPlanningHorizon(); t++) {
 				const Reservation &res = table->getReservation(t);
 				if (res.isBeaconTx() || res.isTx())
-					vec.push_back({t, res.getAction()});
+					local_reservations[center_freq].push_back({t, res.getAction()});
 			}
 		}
 
