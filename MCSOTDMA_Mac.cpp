@@ -89,15 +89,13 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	// Fetch all reservations of the current time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
-	coutd << *this << " processing " << reservations.size() << " reservations..." << std::endl;
-	coutd.increaseIndent();
+	coutd << *this << " processing " << reservations.size() << " reservations..." << std::endl;	
 	size_t num_txs = 0, num_rxs = 0;
 	for (const std::pair<Reservation, const FrequencyChannel*>& pair : reservations) {
 		const Reservation& reservation = pair.first;
 		const FrequencyChannel* channel = pair.second;
 
-		coutd << *channel << ":" << reservation << std::endl;
-		coutd.increaseIndent();
+		coutd << *channel << ":" << reservation << std::endl;		
 		switch (reservation.getAction()) {
 			case Reservation::IDLE: {
 				// No user is utilizing this slot.
@@ -173,11 +171,9 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onReceptionReservation();
 			}
-		}
-		coutd.decreaseIndent();
+		}		
 		coutd << std::endl;
-	}
-	coutd.decreaseIndent();
+	}	
 	return {num_txs, num_rxs};
 }
 

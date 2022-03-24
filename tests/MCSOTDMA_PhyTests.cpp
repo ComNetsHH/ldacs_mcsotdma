@@ -68,9 +68,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Should again be discarded - no receiver is tuned *in this time slot*.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) phy->stat_num_packets_rcvd.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) phy->stat_num_packets_missed.get());			
-
-            coutd.setVerbose(false);
+			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) phy->stat_num_packets_missed.get());			            
 		}
 
 	CPPUNIT_TEST_SUITE(MCSOTDMA_PhyTests);
