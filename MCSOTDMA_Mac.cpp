@@ -295,11 +295,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets -> ";
 			stat_num_packet_collisions.incrementBy(packets.size());
 
-            for (auto *packet : packets) {
-				if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-					stat_num_sh_packet_collisions.increment();
-				else
-					stat_num_pp_packet_collisions.increment();
+            for (auto *packet : packets) {				
                 this->deletePacket(packet);
                 delete packet;
             }
