@@ -557,32 +557,32 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double n = 0;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			unsigned int k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
-			unsigned int expected_k = std::max((double) link_manager->MIN_CANDIDATES, 2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			unsigned int expected_k = std::max((double) link_manager->MIN_CANDIDATES, 1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, k);						
 			// one neighbor
 			mac->reportNeighborActivity(MacId(1));
 			n = 1;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			unsigned int new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
-			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			expected_k = std::max(link_manager->MIN_CANDIDATES, (uint) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n))));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
-			CPPUNIT_ASSERT_GREATER(k, new_k);
+			CPPUNIT_ASSERT_GREATEREQUAL(k, new_k);
 			k = new_k;
 			// two neighbors
 			mac->reportNeighborActivity(MacId(2));
 			n = 2;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
-			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			expected_k = std::max(link_manager->MIN_CANDIDATES, (uint) std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n))));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
-			CPPUNIT_ASSERT_GREATER(k, new_k);
+			CPPUNIT_ASSERT_GREATEREQUAL(k, new_k);
 			k = new_k;
 			// three neighbors
 			mac->reportNeighborActivity(MacId(3));
 			n = 3;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
-			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			expected_k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
 			k = new_k;
@@ -591,7 +591,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			n = 4;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
-			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			expected_k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
 			k = new_k;
@@ -600,7 +600,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			n = 5;
 			CPPUNIT_ASSERT_EQUAL(size_t(n), mac->getNeighborObserver().getNumActiveNeighbors());	
 			new_k = link_manager->getNumCandidateSlots(target_collision_prob, link_manager->MIN_CANDIDATES, link_manager->MAX_CANDIDATES);			
-			expected_k = std::ceil(2.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
+			expected_k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / n)));
 			CPPUNIT_ASSERT_EQUAL(expected_k, new_k);
 			CPPUNIT_ASSERT_GREATER(k, new_k);
 			k = new_k;
@@ -608,7 +608,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** During simulations, a maximum no. of candidate slots was observed, which didn't make much sense. */
 		void testNoCandidateSlotsForParticularValues() {
-			size_t num_neighbors = 30;
+			size_t num_neighbors = 60;
 			for (size_t i = 0; i < num_neighbors; i++)
 				mac->reportNeighborActivity(MacId(i));
 			CPPUNIT_ASSERT_EQUAL(num_neighbors, mac->getNeighborObserver().getNumActiveNeighbors());

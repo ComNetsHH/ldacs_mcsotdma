@@ -81,7 +81,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->receiveFromLower(packet1, env->sh_frequency);
 			mac->receiveFromLower(packet2, env->sh_frequency);
 			mac->onSlotEnd();
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_packet_collisions.get());			
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
 		}
 
@@ -106,7 +106,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->receiveFromLower(packet1, env->sh_frequency);
 			mac->receiveFromLower(packet2, env->sh_frequency);
 			mac->onSlotEnd();
-			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_packet_collisions.get());			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_packet_collisions.get());			
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_channel_errors.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
 		}

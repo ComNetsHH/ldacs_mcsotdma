@@ -2070,10 +2070,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		// CPPUNIT_TEST(testUnlockResources);		
 		// CPPUNIT_TEST(testUnscheduleReservedResources);		
 		// CPPUNIT_TEST(testRequestReceivedButReplySlotUnsuitable);
-		CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
+		// CPPUNIT_TEST(testRequestReceivedButProposedResourcesUnsuitable);
 		// CPPUNIT_TEST(testProcessRequestAndScheduleReply);
 		// CPPUNIT_TEST(testUnscheduleOwnRequestUponRequestReception);		
-		// CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
+		CPPUNIT_TEST(testEstablishLinkUponFirstBurst);
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingReply);
 		// CPPUNIT_TEST(testLinkRequestWhileAwaitingData);
 		// CPPUNIT_TEST(testLinkRequestWhileLinkEstablished);		

@@ -19,8 +19,7 @@
 #include "PPLinkManagerTests.cpp"
 #include "ThirdPartyLinkTests.cpp"
 
-int main() {
-	coutd.setVerbose(true);
+int main() {	
 	CppUnit::TextUi::TestRunner runner;
 
 	runner.addTest(MovingAverageTests::suite());

@@ -377,7 +377,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			size_t num_packet_collisions = (size_t) mac_1->stat_num_packet_collisions.get();
 			CPPUNIT_ASSERT_GREATER(size_t(0), num_packet_collisions);
 			CPPUNIT_ASSERT_GREATER(size_t(0), num_packets_missed);			
-			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + num_packet_collisions, num_packets_sent_to_1);
+			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + (num_packet_collisions*2), num_packets_sent_to_1);
 		}
 
 		void testLinkEstablishmentThreeUsers() {
