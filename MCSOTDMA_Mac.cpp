@@ -257,6 +257,17 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		uint64_t freq = packet_freq_pair.first;
 		// these packets were received.
 		std::vector<L2Packet*> packets = packet_freq_pair.second;		
+		// remove DME packets before processing
+		for (auto it = packets.begin(); it != packets.end();) {
+			auto *packet = *it;
+			if (packet->isDME()) {
+				this->deletePacket(packet);
+				delete packet;
+				it = packets.erase(it);
+				stat_num_dme_packets_rcvd.increment();
+			} else
+				it++;
+		} 
 		
 		// single packets
 		if (packets.size() == 1) {
@@ -270,25 +281,19 @@ void MCSOTDMA_Mac::onSlotEnd() {
 				stat_num_channel_errors.increment();
 			// otherwise they're received
 			} else {
-				coutd << *this << " processing packet -> ";
-				if (packet->isDME()) {
-					coutd << "DME packet -> ";
-					stat_num_dme_packets_rcvd.increment();
-					coutd << "counted in statistic, no further processing -> ";
-				} else {
-					try {
-						reportNeighborActivity(packet->getOrigin());
-						if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-							getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
-						else
-							getLinkManager(packet->getOrigin())->onPacketReception(packet);				
-						stat_num_packets_rcvd.increment();
-					} catch (const std::exception &e) {
-						std::stringstream ss;
-						ss << *this << "::onSlotEnd error processing received packet: " << e.what() << std::endl;						
-						throw std::runtime_error(ss.str());
-					}
-				}
+				coutd << *this << " processing packet -> ";				
+				try {
+					reportNeighborActivity(packet->getOrigin());
+					if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+						getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet);
+					else
+						getLinkManager(packet->getOrigin())->onPacketReception(packet);				
+					stat_num_packets_rcvd.increment();
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *this << "::onSlotEnd error processing received packet: " << e.what() << std::endl;						
+					throw std::runtime_error(ss.str());
+				}				
 			}			
 		// several packets are cause for a collision
 		} else if (packets.size() > 1) {			
@@ -306,25 +311,19 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			}
 
 			if (packet_with_largest_snr != nullptr) {
-				coutd << *this << " processing packet with largest SNR -> ";
-				if (packet_with_largest_snr->isDME()) {
-					coutd << "DME packet -> ";
-					stat_num_dme_packets_rcvd.increment();
-					coutd << "counted in statistic, no further processing -> ";
-				} else {
-					try {
-						reportNeighborActivity(packet_with_largest_snr->getOrigin());
-						if (packet_with_largest_snr->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet_with_largest_snr->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-							getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet_with_largest_snr);
-						else
-							getLinkManager(packet_with_largest_snr->getOrigin())->onPacketReception(packet_with_largest_snr);				
-						stat_num_packets_rcvd.increment();
-					} catch (const std::exception &e) {
-						std::stringstream ss;
-						ss << *this << "::onSlotEnd error processing received packet: " << e.what() << std::endl;						
-						throw std::runtime_error(ss.str());
-					}
-				}
+				coutd << *this << " processing packet with largest SNR -> ";				
+				try {
+					reportNeighborActivity(packet_with_largest_snr->getOrigin());
+					if (packet_with_largest_snr->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet_with_largest_snr->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+						getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(packet_with_largest_snr);
+					else
+						getLinkManager(packet_with_largest_snr->getOrigin())->onPacketReception(packet_with_largest_snr);				
+					stat_num_packets_rcvd.increment();
+				} catch (const std::exception &e) {
+					std::stringstream ss;
+					ss << *this << "::onSlotEnd error processing received packet: " << e.what() << std::endl;						
+					throw std::runtime_error(ss.str());
+				}				
 			}
 
             for (auto *packet : packets) {			
