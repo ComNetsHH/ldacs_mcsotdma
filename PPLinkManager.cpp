@@ -32,7 +32,9 @@ L2Packet* PPLinkManager::onTransmissionReservation() {
 	// add payload
 	for (size_t i = 0; i < data->getPayloads().size(); i++) 
 		if (data->getHeaders().at(i)->frame_type != L2Header::base)
-			packet->addMessage(data->getHeaders().at(i), data->getPayloads().at(i));	
+			packet->addMessage(data->getHeaders().at(i), data->getPayloads().at(i));
+		else
+			delete data->getHeaders().at(i);
 	// return packet
 	mac->statisticReportUnicastSent();
 	mac->statisticReportUnicastMacDelay(measureMacDelay());
