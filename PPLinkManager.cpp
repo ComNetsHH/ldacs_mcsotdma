@@ -64,7 +64,7 @@ void PPLinkManager::establishLink() {
 	// set callback s.t. the payload can be populated just-in-time.
 	payload->callback = this;
 	// pass to SH link manager
-	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);
+	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->sendLinkRequest(header, payload);	
 	// update status
 	coutd << "changing link status '" << this->link_status << "->" << awaiting_request_generation << "' -> ";
 	this->link_status = awaiting_request_generation;	

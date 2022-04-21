@@ -267,10 +267,10 @@ void SHLinkManager::onSlotEnd() {
 	LinkManager::onSlotEnd();
 }
 
-void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest* header, LinkManager::LinkEstablishmentPayload* payload) {
+void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkEstablishmentPayload*& payload) {
 	coutd << *this << " saving link request for transmission -> ";
 	// save request
-	link_requests.emplace_back(header, payload);	
+	link_requests.push_back({header, payload});	
 	// schedule broadcast slot if necessary
 	notifyOutgoing(header->getBits() + payload->getBits());
 }
@@ -280,7 +280,7 @@ bool SHLinkManager::canSendLinkReply(unsigned int time_slot_offset) const {
 	return (res.isIdle() && mac->isTransmitterIdle(time_slot_offset, 1)) || res.isTx();
 }
 
-void SHLinkManager::sendLinkReply(L2HeaderLinkReply* header, LinkEstablishmentPayload* payload, unsigned int time_slot_offset) {
+void SHLinkManager::sendLinkReply(L2HeaderLinkReply*& header, LinkEstablishmentPayload*& payload, unsigned int time_slot_offset) {
 	coutd << *this << " saving link reply for transmission in " << time_slot_offset << " slots -> ";
 	if (!canSendLinkReply(time_slot_offset))
 		throw std::invalid_argument("SHLinkManager::sendLinkReply for a time slot offset where a reply cannot be sent.");
