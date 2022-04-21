@@ -139,7 +139,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				if (outgoing_packet != nullptr) {
 					outgoing_packet->notifyCallbacks();				
 					passToLower(outgoing_packet, channel->getCenterFrequency());					
-				} else {					
+				} else {										
 					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
 					if (id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON)
 						this->stat_broadcast_wasted_tx_opportunities.increment();

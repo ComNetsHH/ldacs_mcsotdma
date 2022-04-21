@@ -20,23 +20,15 @@ void PPLinkManager::onReceptionReservation() {
 
 L2Packet* PPLinkManager::onTransmissionReservation() {
 	communication_during_this_slot = true;
-	coutd << *this << "::onTransmission -> ";
-	// instantiate packet
-	auto *packet = new L2Packet();
-	// add base header
-	packet->addMessage(new L2HeaderBase(mac->getMacId(), link_state.burst_offset, link_state.burst_length, getRequiredTxSlots(), link_state.timeout), nullptr);
-	// request payload
-	size_t capacity = mac->getCurrentDatarate() - packet->getBits();
+	coutd << *this << "::onTransmission -> ";		
+	auto base_header = L2HeaderBase(mac->getMacId(), link_state.burst_offset, link_state.burst_length, getRequiredTxSlots(), link_state.timeout);
+	// request data
+	size_t capacity = mac->getCurrentDatarate() - base_header.getBits();
 	coutd << "requesting " << capacity << " bits from upper sublayer -> ";
-	auto *data = mac->requestSegment(capacity, link_id);
-	// add payload
-	for (size_t i = 0; i < data->getPayloads().size(); i++) 
-		if (data->getHeaders().at(i)->frame_type != L2Header::base)
-			packet->addMessage(data->getHeaders().at(i), data->getPayloads().at(i));
-		else {
-			delete data->getHeaders().at(i);
-			delete data->getPayloads().at(i);
-		}
+	L2Packet *packet = mac->requestSegment(capacity, link_id);	
+	// replace base header
+	assert(packet->getHeaders().at(0)->frame_type == L2Header::base);	
+	packet->replaceBaseHeader(0, base_header);	
 	// return packet
 	mac->statisticReportUnicastSent();
 	mac->statisticReportUnicastMacDelay(measureMacDelay());
