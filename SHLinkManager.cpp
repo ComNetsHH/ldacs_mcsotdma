@@ -73,16 +73,18 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			try {
 				pair.second->callback->populateLinkRequest(pair.first, pair.second);
 			} catch (const not_viable_error &e) {
-				coutd << "ignoring invalid link request -> ";
+				coutd << "ignoring invalid link request -> ";				
+				delete (*link_requests.begin()).first;
+				delete (*link_requests.begin()).second;
 				link_requests.erase(link_requests.begin());
 				continue;
-			} catch (const std::exception &e) {
-				std::cerr << "error while populating link request" << e.what() << std::endl;
+			} catch (const std::exception &e) {				
+				std::cerr << "error while populating link request" << e.what() << std::endl;				
 				throw e;
 			}
 			// Add to the packet if it fits.
 			if (pair.first->getBits() + pair.second->getBits() <= capacity) {
-				requests_to_add.push_back(pair);
+				requests_to_add.push_back(pair);				
 				link_requests.erase(link_requests.begin());
 				capacity -= pair.first->getBits() + pair.second->getBits();
 				coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
@@ -302,29 +304,32 @@ void SHLinkManager::sendLinkReply(L2HeaderLinkReply*& header, LinkEstablishmentP
 
 size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 	size_t num_removed = 0;
-	for (auto it = link_requests.begin(); it != link_requests.end(); it++) {
+	for (auto it = link_requests.begin(); it != link_requests.end();) {
 		const auto* header = it->first;
 		if (header->getDestId() == id) {
-			link_requests.erase(it--);
+			delete (*it).first;
+			delete (*it).second;
+			it = link_requests.erase(it);
 			num_removed++;
-		}
+		} else
+			it++;
 	}
 	return num_removed;
 }
 
 size_t SHLinkManager::cancelLinkReply(const MacId& id) {
 	size_t num_removed = 0;	
-	for (auto it = link_replies.begin(); it != link_replies.end(); it++) {
+	for (auto it = link_replies.begin(); it != link_replies.end();) {
 		const auto &pair = *it;
 		const auto &reply_msg = pair.second;
 		const auto *header = reply_msg.first;		
 		if (header->dest_id == id) {
 			delete reply_msg.first;
 			delete reply_msg.second;
-			link_replies.erase(it);
-			it--;
+			it = link_replies.erase(it);			
 			num_removed++;			
-		}
+		} else
+			it++;
 	}
 	return num_removed;
 }
