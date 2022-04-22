@@ -35,8 +35,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// Should've been discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) phy->stat_num_packets_rcvd.get());
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) phy->stat_num_packets_missed.get());
-			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
-			delete packet_empty;
+			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());			
 
 			// Now destine it to us.
 			auto *packet_destined_to_us = new L2Packet();

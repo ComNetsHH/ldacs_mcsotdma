@@ -39,7 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param header
 		 * @param payload
 		 */
-		void sendLinkRequest(L2HeaderLinkRequest* header, LinkEstablishmentPayload* payload);
+		void sendLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload);
 
 		/**
 		 * Schedules a link reply at the specified time slot offset.
@@ -48,7 +48,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param payload 
 		 * @param time_slot_offset 
 		 */
-		void sendLinkReply(L2HeaderLinkReply* header, LinkEstablishmentPayload* payload, unsigned int time_slot_offset);
+		void sendLinkReply(L2HeaderLinkReply*& header, LinkEstablishmentPayload*& payload, unsigned int time_slot_offset);
 
 		/**
 		 * Cancels all link requests towards 'id'.
