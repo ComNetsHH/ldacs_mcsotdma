@@ -260,7 +260,10 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		// remove DME packets before processing
 		for (auto it = packets.begin(); it != packets.end();) {
 			auto *packet = *it;
-			if (packet->isDME()) {
+			if (packet->isDME()) {				
+				// remember on which channel 
+				if (learn_dme_activity)
+					channel_sensing_observation[freq] = true;
 				this->deletePacket(packet);
 				delete packet;
 				it = packets.erase(it);
@@ -363,6 +366,13 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	// Statistics reporting.
 	for (auto* stat : statistics)
 		stat->update();
+
+	// Potentially train DME predictor
+	if (learn_dme_activity) {
+		// train predictor
+		// reset channel sensing
+		channel_sensing_observation.clear();
+	}
 }
 
 const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {
