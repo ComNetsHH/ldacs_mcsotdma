@@ -369,7 +369,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 
 	// Potentially train DME predictor
 	if (learn_dme_activity) {
-		// train predictor
+		// train predictor		
 		// reset channel sensing
 		channel_sensing_observation.clear();
 	}
@@ -504,4 +504,8 @@ bool MCSOTDMA_Mac::isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency)
 		}
 	}
 	return false;
+}
+
+const std::map<uint64_t, bool>& MCSOTDMA_Mac::getChannelSensingObservation() const {
+	return this->channel_sensing_observation;
 }

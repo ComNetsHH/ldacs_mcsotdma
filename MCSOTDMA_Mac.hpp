@@ -231,6 +231,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getP2PBurstOffset() const;		
 
+		const std::map<uint64_t, bool>& getChannelSensingObservation() const override;
+
 	protected:
 		/**
 		 * Define what happens when a particular FrequencyChannel should be listened on during this time slot.
