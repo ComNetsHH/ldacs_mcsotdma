@@ -257,7 +257,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int default_p2p_link_burst_offset = 20;		
 		unsigned int pp_link_burst_offset = 20;
 		bool adapt_burst_offset = true;
-		bool learn_dme_activity = false;
+		bool learn_dme_activity = true;
 		std::map<uint64_t, bool> channel_sensing_observation;		
 
 		// Statistics
