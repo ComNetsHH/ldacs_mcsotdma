@@ -84,6 +84,11 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 		}
 	}
 	coutd << std::endl;
+	
+	if (learn_dme_activity) {		
+		// reset channel sensing
+		channel_sensing_observation.clear();
+	}
 }
 
 std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
@@ -263,8 +268,10 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			if (packet->isDME()) {			
 				std::cout << std::endl << "YEAH I SAW A DME PACKET!!" << std::endl;	
 				// remember on which channel 
-				if (learn_dme_activity)
+				if (learn_dme_activity) {
 					channel_sensing_observation[freq] = true;
+					std::cout << std::endl << "SAVED TO MAP!!" << std::endl;	
+				}
 				this->deletePacket(packet);
 				delete packet;
 				it = packets.erase(it);
@@ -366,14 +373,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 
 	// Statistics reporting.
 	for (auto* stat : statistics)
-		stat->update();
-
-	// Potentially train DME predictor
-	if (learn_dme_activity) {
-		// train predictor		
-		// reset channel sensing
-		channel_sensing_observation.clear();
-	}
+		stat->update();	
 }
 
 const MCSOTDMA_Phy* MCSOTDMA_Mac::getPhy() const {
