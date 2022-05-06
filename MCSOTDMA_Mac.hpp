@@ -231,7 +231,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getP2PBurstOffset() const;		
 
-		const std::map<uint64_t, bool>& getChannelSensingObservation() const override;
+		const std::vector<int> getChannelSensingObservation() const override;
 
 	protected:
 		/**

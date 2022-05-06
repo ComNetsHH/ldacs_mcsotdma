@@ -507,6 +507,16 @@ bool MCSOTDMA_Mac::isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency)
 	return false;
 }
 
-const std::map<uint64_t, bool>& MCSOTDMA_Mac::getChannelSensingObservation() const {
-	return this->channel_sensing_observation;
+const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
+	auto observation = std::vector<int>();
+	std::vector<FrequencyChannel*> channels = reservation_manager->getP2PFreqChannels();
+	std::sort(channels.begin(), channels.end(), [](const FrequencyChannel *chn1, const FrequencyChannel *chn2) -> bool { return chn1->getCenterFrequency() < chn2->getCenterFrequency();});
+
+	for (const auto *channel : channels) {
+		if (this->channel_sensing_observation.at(channel->getCenterFrequency()) == true)
+			observation.push_back(-1);
+		else
+			observation.push_back(1);
+	}
+	return observation;
 }
