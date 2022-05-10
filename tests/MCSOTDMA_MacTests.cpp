@@ -111,6 +111,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_packets_rcvd.get());
 		}
 
+		void testDMEPacketChannelSensing() {
+			auto observation = mac->getChannelSensingObservation();
+		}
+
 
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testLinkManagerCreation);
@@ -118,6 +122,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testCollision);
 			CPPUNIT_TEST(testChannelError);			
 			CPPUNIT_TEST(testCollisionAndChannelError);			
+			CPPUNIT_TEST(testDMEPacketChannelSensing);			
 		CPPUNIT_TEST_SUITE_END();
 	};
 
