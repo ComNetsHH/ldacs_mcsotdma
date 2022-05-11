@@ -508,6 +508,8 @@ bool MCSOTDMA_Mac::isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency)
 }
 
 const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
+	if (!this->learn_dme_activity)
+		throw std::runtime_error("getChannelSensingObservation cannot be called when learn_dme_activity is false!");
 	auto observation = std::vector<int>();	
 	std::vector<FrequencyChannel*> channels = std::vector<FrequencyChannel*>(reservation_manager->getP2PFreqChannels());	
 	std::sort(channels.begin(), channels.end(), [](const FrequencyChannel *chn1, const FrequencyChannel *chn2) -> bool { return chn1->getCenterFrequency() < chn2->getCenterFrequency();});	
@@ -526,4 +528,8 @@ const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
 			observation.push_back(1);
 	}	
 	return observation;
+}
+
+void MCSOTDMA_Mac::setLearnDMEActivity(bool value) {
+	this->learn_dme_activity = value;
 }

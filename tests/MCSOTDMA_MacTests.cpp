@@ -112,7 +112,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testDMEPacketChannelSensing() {
-			auto observation = mac->getChannelSensingObservation();
+			CPPUNIT_ASSERT_THROW(mac->getChannelSensingObservation(), std::runtime_error);
+			mac->setLearnDMEActivity(true);
+			CPPUNIT_ASSERT_NO_THROW(mac->getChannelSensingObservation());			
 		}
 
 
