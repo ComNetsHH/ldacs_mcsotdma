@@ -533,3 +533,11 @@ const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
 void MCSOTDMA_Mac::setLearnDMEActivity(bool value) {
 	this->learn_dme_activity = value;
 }
+
+void MCSOTDMA_Mac::passPrediction(const std::vector<std::vector<double>>& prediction_mat) {
+	this->current_prediction_mat = prediction_mat;
+}
+
+std::vector<std::vector<double>>& MCSOTDMA_Mac::getCurrentPrediction() {
+	return this->current_prediction_mat;
+}

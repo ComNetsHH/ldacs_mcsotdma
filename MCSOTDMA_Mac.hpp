@@ -233,6 +233,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		const std::vector<int> getChannelSensingObservation() const override;
 		void setLearnDMEActivity(bool value) override;
+		void passPrediction(const std::vector<std::vector<double>>& prediction_mat) override;
+		std::vector<std::vector<double>>& getCurrentPrediction();
 
 	protected:
 		/**
@@ -259,7 +261,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int pp_link_burst_offset = 20;
 		bool adapt_burst_offset = true;
 		bool learn_dme_activity = false;
-		std::map<uint64_t, bool> channel_sensing_observation;		
+		std::map<uint64_t, bool> channel_sensing_observation;	
+		/** Holds the current prediction of DME channel accesses. */
+		std::vector<std::vector<double>> current_prediction_mat;	
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
