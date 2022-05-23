@@ -268,7 +268,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> PPLinkManager::slot
 		if (table->getLinkedChannel()->isBlocked())
 			continue;
 		// find time slots to propose
-		auto candidate_slots = table->findPPCandidates(num_time_slots, reply_slot + this->min_offset_to_allow_processing, burst_offset, burst_length, burst_length_tx, this->timeout_before_link_expiry);
+		auto candidate_slots = table->findPPCandidates(num_time_slots, reply_slot + this->min_offset_to_allow_processing, burst_offset, burst_length, burst_length_tx, this->timeout_before_link_expiry, mac->shouldLearnDmeActivity() ? mac : nullptr);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
 			coutd << slot << ":" << slot + burst_length - 1 << " ";

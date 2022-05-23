@@ -541,3 +541,7 @@ void MCSOTDMA_Mac::passPrediction(const std::vector<std::vector<double>>& predic
 std::vector<std::vector<double>>& MCSOTDMA_Mac::getCurrentPrediction() {
 	return this->current_prediction_mat;
 }
+
+bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
+	return this->learn_dme_activity;
+}

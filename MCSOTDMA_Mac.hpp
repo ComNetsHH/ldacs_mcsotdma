@@ -231,6 +231,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getP2PBurstOffset() const;		
 
+		bool shouldLearnDmeActivity() const;
+
 		const std::vector<int> getChannelSensingObservation() const override;
 		void setLearnDMEActivity(bool value) override;
 		void passPrediction(const std::vector<std::vector<double>>& prediction_mat) override;

@@ -13,6 +13,8 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
+	class MCSOTDMA_Mac;
+
 	class no_rx_available_error : public std::runtime_error {
 	public:
 		explicit no_rx_available_error(const std::string& arg) : std::runtime_error(arg) {}
@@ -105,7 +107,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param timeout 		 
 		 * @return Start slot offsets that could be used to initiate a PP link.
 		 */
-		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout) const;		
+		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, MCSOTDMA_Mac* mac) const;		
 
 		/**		 
 		 * @param slot_offset 
@@ -276,7 +278,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param timeout 
 		 * @return Start slot where a link with the given characteristics can be initiated.
 		 */
-		unsigned int findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout) const;
+		unsigned int findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout, MCSOTDMA_Mac *mac) const;
 		unsigned int findEarliestIdleSlotsBC(unsigned int start_offset) const;
 
 		/**
@@ -286,7 +288,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param rx_idle_during_first_slot
 		 * @return Whether the given transmission burst is reservable.
 		 */
-		bool isBurstValid(int start_slot, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot) const;
+		bool isBurstValid(int start_slot, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot, MCSOTDMA_Mac *mac) const;
 
 	protected:
 		/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */
