@@ -167,6 +167,9 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		bool isBurstEnd() const;
 		bool isContinuousTransmission() const;
 
+		double getNumTxPerTimeSlot() const override;
+		bool isActive() const override;
+
 	protected:
 		/** Number of transmission bursts until link expiry. */
 		unsigned int timeout_before_link_expiry = 20;

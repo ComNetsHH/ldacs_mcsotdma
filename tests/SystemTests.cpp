@@ -1045,6 +1045,40 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}			
 		}
 
+		void testDutyCycleContributions() {
+			// initially with nothing scheduled, no duty cycle contributions should be present
+			auto duty_cycle_contrib = mac_layer_me->getDutyCycleContributions();
+			CPPUNIT_ASSERT_EQUAL(0.0, duty_cycle_contrib.first);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), duty_cycle_contrib.second);
+			sh_me->setAlwaysScheduleNextBroadcastSlot(true);
+			env_me->rlc_layer->should_there_be_more_broadcast_data = true;
+			CPPUNIT_ASSERT_EQUAL(false, sh_me->next_broadcast_scheduled);			
+			// schedule broadcast
+			sh_me->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, sh_me->next_broadcast_scheduled);
+			// now the SH should contribute to the number of transmissions
+			duty_cycle_contrib = mac_layer_me->getDutyCycleContributions();						
+			CPPUNIT_ASSERT_GREATER(0.0, duty_cycle_contrib.first);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), duty_cycle_contrib.second);
+			// establish PP link
+			mac_layer_me->notifyOutgoing(512, partner_id);			
+			size_t num_slots = 0, max_slots = 512;
+			while (mac_layer_me->stat_num_pp_links_established.get() < 1.0 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();								
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), size_t(mac_layer_me->stat_num_pp_links_established.get()));
+			// now the PP should contribute to the number of transmissions
+			duty_cycle_contrib = mac_layer_me->getDutyCycleContributions();						
+			CPPUNIT_ASSERT_GREATER(0.0, duty_cycle_contrib.first);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), duty_cycle_contrib.second);
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 		CPPUNIT_TEST(testLinkEstablishment);
 		CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1074,6 +1108,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testPPLinkEstablishmentTime);
 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);	
 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);			
+		CPPUNIT_TEST(testDutyCycleContributions);					
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

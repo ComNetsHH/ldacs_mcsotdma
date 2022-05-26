@@ -835,3 +835,16 @@ std::pair<std::vector<int>, std::vector<int>> PPLinkManager::getReservations() c
 	}	
 	return tx_rx_slots;
 }
+
+double PPLinkManager::getNumTxPerTimeSlot() const {
+	// unestablished links don't transmit
+	// those awaiting request generation have not decided how much they'll transmit
+	if (link_status == LinkManager::Status::link_not_established || link_status == LinkManager::Status::awaiting_request_generation)
+		return 0.0;
+	else
+		return ((double) link_state.burst_length_tx) / ((double) link_state.burst_offset);
+}
+
+bool PPLinkManager::isActive() const {
+	return !(link_status == LinkManager::Status::link_not_established || link_status == LinkManager::Status::awaiting_request_generation);
+}

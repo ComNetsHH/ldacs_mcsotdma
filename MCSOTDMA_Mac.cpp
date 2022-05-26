@@ -18,6 +18,7 @@ MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id
 	stat_broadcast_candidate_slots.dontEmitBeforeFirstReport();
 	stat_broadcast_selected_candidate_slots.dontEmitBeforeFirstReport();
 	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();	
+	setDutyCycle(100, 0.1);
 }
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
@@ -179,6 +180,14 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 		}		
 		coutd << std::endl;
 	}	
+	// keep track of the number of transmissions w.r.t. the duty cycle
+	duty_cycle.reportNumTransmissions(num_txs);
+	// emit the duty cycle once enough values have been recorded
+	if (duty_cycle.shouldEmitStatistic()) {
+		stat_duty_cycle.capture(duty_cycle.get());
+		stat_duty_cycle.update();
+	}
+
 	return {num_txs, num_rxs};
 }
 
@@ -530,6 +539,10 @@ const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
 	return observation;
 }
 
+void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max) {
+	this->duty_cycle = DutyCycle(period, max, this);
+}
+
 void MCSOTDMA_Mac::setLearnDMEActivity(bool value) {
 	this->learn_dme_activity = value;
 }
@@ -544,4 +557,20 @@ std::vector<std::vector<double>>& MCSOTDMA_Mac::getCurrentPrediction() {
 
 bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
 	return this->learn_dme_activity;
+}
+
+std::pair<double, size_t> MCSOTDMA_Mac::getDutyCycleContributions() const {
+	auto num_txs_and_num_active_pp_links = std::pair<double, size_t>();
+	double &num_txs = num_txs_and_num_active_pp_links.first;
+	size_t &num_active_pp_links = num_txs_and_num_active_pp_links.second;
+	for (const auto &pair : link_managers) {
+		const MacId &id = pair.first;
+		const auto *link_manager = pair.second;		
+		if (id != SYMBOLIC_LINK_ID_DME) {
+			num_txs += link_manager->getNumTxPerTimeSlot();
+			if (!(id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON) && link_manager->isActive())
+				num_active_pp_links++;
+		}		
+	}
+	return num_txs_and_num_active_pp_links;
 }

@@ -640,3 +640,15 @@ void SHLinkManager::setEnableBeacons(bool flag) {
 void SHLinkManager::setAdvertiseNextSlotInCurrentHeader(bool flag) {
 	this->advertise_slot_in_header = flag;
 }
+
+double SHLinkManager::getNumTxPerTimeSlot() const {
+	if (!next_broadcast_scheduled && !next_beacon_scheduled)
+		return 0.0;
+	double num_broadcasts = next_broadcast_scheduled ? 1.0/((double) next_broadcast_slot) : 0.0;
+	double num_beacons = next_beacon_scheduled ? 1.0/((double) beacon_module.getBeaconOffset()) : 0.0;
+	return num_broadcasts + num_beacons;
+}
+
+bool SHLinkManager::isActive() const {
+	return next_broadcast_scheduled || next_beacon_scheduled;
+}
