@@ -48,7 +48,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			/**			 
 			 * @return Minimum number of time slots in-between two transmission bursts so that the duty cycle budget is maintained.
 			 */
-			unsigned int getPeriodicity() const;
+			unsigned int getPeriodicity(bool sh_channel_access) const;
 
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */

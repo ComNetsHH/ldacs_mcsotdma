@@ -574,3 +574,7 @@ std::pair<double, size_t> MCSOTDMA_Mac::getDutyCycleContributions() const {
 	}
 	return num_txs_and_num_active_pp_links;
 }
+
+const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {
+	return this->duty_cycle;
+}
