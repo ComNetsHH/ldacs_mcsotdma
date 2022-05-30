@@ -104,6 +104,6 @@ int DutyCycle::getOffsetSH(const std::vector<double>& used_budget) const {
 	if (num_active_pp_links < min_num_supported_pp_links)
 		avail_budget -= this->max_duty_cycle / ((double) min_num_supported_pp_links + 1); // leave budget to establish next PP link immediately
 	int slot_offset = std::max(1.0, 1.0 / avail_budget);
-	std::cout << "-> final=" << slot_offset << " -> ";
+	coutd << "-> final=" << slot_offset << " -> ";
 	return slot_offset;
 }

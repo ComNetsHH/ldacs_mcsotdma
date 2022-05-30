@@ -396,8 +396,7 @@ void SHLinkManager::scheduleBroadcastSlot() {
 	unscheduleBroadcastSlot();
 	// Compute minimum slot offset to adhere to duty cycle.
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
-	int min_offset = mac->getDutyCycle().getOffsetSH(contributions_and_timeouts.first);
-	std::cout << "min_offset=" << min_offset << std::endl;
+	int min_offset = mac->getDutyCycle().getOffsetSH(contributions_and_timeouts.first);	
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;

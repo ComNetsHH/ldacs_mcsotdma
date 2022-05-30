@@ -925,7 +925,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// both have stuff to send
 			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 			mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-			size_t max_slots = 100;
+			size_t max_slots = 500;
 			for (size_t t = 0; t < max_slots; t++) {
 				mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 				mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
@@ -1000,8 +1000,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
 			CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
 			for (size_t i = 0; i < num_links; i++) {
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_me.at(i));
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_you.at(i));				
+				CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_me.at(i));
+				if (link_establishment_times_you.size() > i)
+					CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_you.at(i));				
 			}			
 		}
 
@@ -1040,8 +1041,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
 			CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
 			for (size_t i = 0; i < num_links; i++) {
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_me.at(i));
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_you.at(i));				
+				CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_me.at(i));
+				if (link_establishment_times_you.size() > i)
+					CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_you.at(i));				
 			}			
 		}
 
@@ -1053,8 +1055,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			sh_me->setAlwaysScheduleNextBroadcastSlot(true);
 			env_me->rlc_layer->should_there_be_more_broadcast_data = true;
 			CPPUNIT_ASSERT_EQUAL(false, sh_me->next_broadcast_scheduled);			
-			// schedule broadcast
-			std::cout << "1" << std::endl;
+			// schedule broadcast			
 			sh_me->notifyOutgoing(1);
 			CPPUNIT_ASSERT_EQUAL(true, sh_me->next_broadcast_scheduled);
 			// SH should not contribute to the number of transmissions
@@ -1063,8 +1064,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, duty_cycle_contrib.empty());			
 			// establish PP link
 			mac_layer_me->notifyOutgoing(512, partner_id);			
-			size_t num_slots = 0, max_slots = 512;
-			std::cout << "2" << std::endl;
+			size_t num_slots = 0, max_slots = 512;			
 			while (mac_layer_me->stat_num_pp_links_established.get() < 1.0 && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -1304,48 +1304,48 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
-// 		CPPUNIT_TEST(testLinkEstablishment);
-// 		CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
-// 		CPPUNIT_TEST(testLinkExpiry);
-// 		CPPUNIT_TEST(testLinkExpiryMultiSlot);
-// 		CPPUNIT_TEST(testReservationsUntilExpiry);
-// 		CPPUNIT_TEST(testLinkTermination);
-// 		CPPUNIT_TEST(testLinkRenewal);
-// 		CPPUNIT_TEST(testCommunicateInOtherDirection);
-// 		CPPUNIT_TEST(testCommunicateReverseOrder);
-// //			CPPUNIT_TEST(testPacketSize);						
-// 		CPPUNIT_TEST(testReestablishmentAfterDrop);
-// 		CPPUNIT_TEST(testSimultaneousRequests);
-// 		CPPUNIT_TEST(testTimeout);
-// 		CPPUNIT_TEST(testManyReestablishments);
-// 		CPPUNIT_TEST(testSlotAdvertisement);
-// 		CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
-// 		// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
-// 		CPPUNIT_TEST(testMACDelays);						
-// 		CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
-// 		CPPUNIT_TEST(testForcedBidirectionalLinks);					
-// 		CPPUNIT_TEST(testNoEmptyBroadcasts);			
-// 		CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
-// 		CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
-// 		CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);					
-// 		CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
-// 		CPPUNIT_TEST(testPPLinkEstablishmentTime);
-// 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);	
-// 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);			
+		CPPUNIT_TEST(testLinkEstablishment);
+		CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
+		CPPUNIT_TEST(testLinkExpiry);
+		CPPUNIT_TEST(testLinkExpiryMultiSlot);
+		CPPUNIT_TEST(testReservationsUntilExpiry);
+		CPPUNIT_TEST(testLinkTermination);
+		CPPUNIT_TEST(testLinkRenewal);
+		CPPUNIT_TEST(testCommunicateInOtherDirection);
+		CPPUNIT_TEST(testCommunicateReverseOrder);
+//			CPPUNIT_TEST(testPacketSize);						
+		CPPUNIT_TEST(testReestablishmentAfterDrop);
+		CPPUNIT_TEST(testSimultaneousRequests);
+		CPPUNIT_TEST(testTimeout);
+		CPPUNIT_TEST(testManyReestablishments);
+		CPPUNIT_TEST(testSlotAdvertisement);
+		CPPUNIT_TEST(testScheduleAllReservationsWhenLinkReplyIsSent);
+		// CPPUNIT_TEST(testGiveUpLinkIfFirstDataPacketDoesntComeThrough);
+		CPPUNIT_TEST(testMACDelays);						
+		CPPUNIT_TEST(testLinkRequestIsCancelledWhenAnotherIsReceived);		
+		CPPUNIT_TEST(testForcedBidirectionalLinks);					
+		CPPUNIT_TEST(testNoEmptyBroadcasts);			
+		CPPUNIT_TEST(testLinkRequestPacketsNoBroadcasts);			
+		CPPUNIT_TEST(testLinkRequestPacketsWithBroadcasts);		
+		CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);					
+		CPPUNIT_TEST(testMissedAndReceivedPacketsMatch);
+		CPPUNIT_TEST(testPPLinkEstablishmentTime);
+		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);	
+		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);			
 		CPPUNIT_TEST(testDutyCycleContributions);
-		// CPPUNIT_TEST(testDutyCyclePeriodicityPP);
-		// CPPUNIT_TEST(testDutyCyclePeriodicityPPOneLinkUsed);
-		// CPPUNIT_TEST(testDutyCyclePeriodicityPPTwoLinksUsed);
-		// CPPUNIT_TEST(testDutyCyclePeriodicityPPThreeLinksUsed);
-		// CPPUNIT_TEST(testDutyCyclePeriodicityPPFourLinksUsed);		
-		// CPPUNIT_TEST(testDutyCyclePeriodicityPPNoBudget);
-		// CPPUNIT_TEST(testDutyCycleLastLink);
-		// CPPUNIT_TEST(testDutyCycleSHTakesAll);		
-		// CPPUNIT_TEST(testDutyCycleGetSHOffsetNoPPLinks);				
-		// CPPUNIT_TEST(testDutyCycleGetSHOffsetOnePPLinks);						
-		// CPPUNIT_TEST(testDutyCycleGetSHOffsetTwoPPLinks);
-		// CPPUNIT_TEST(testDutyCycleGetSHOffsetThreePPLinks);
-		// CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);		
+		CPPUNIT_TEST(testDutyCyclePeriodicityPP);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPOneLinkUsed);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPTwoLinksUsed);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPThreeLinksUsed);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPFourLinksUsed);		
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPNoBudget);
+		CPPUNIT_TEST(testDutyCycleLastLink);
+		CPPUNIT_TEST(testDutyCycleSHTakesAll);		
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetNoPPLinks);				
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetOnePPLinks);						
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetTwoPPLinks);
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetThreePPLinks);
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);		
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
