@@ -233,7 +233,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getP2PBurstOffset() const;		
 
-		void setDutyCycle(unsigned int period, double max);
+		void setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links);
 		const DutyCycle& getDutyCycle() const;
 
 		bool shouldLearnDmeActivity() const;

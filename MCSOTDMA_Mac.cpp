@@ -12,13 +12,12 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000) {
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000), duty_cycle(DutyCycle(100, 0.1, 4)) {
 	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();
 	stat_min_beacon_offset.dontEmitBeforeFirstReport();
 	stat_broadcast_candidate_slots.dontEmitBeforeFirstReport();
 	stat_broadcast_selected_candidate_slots.dontEmitBeforeFirstReport();
-	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();	
-	setDutyCycle(100, 0.1);
+	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();		
 }
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
@@ -539,8 +538,8 @@ const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
 	return observation;
 }
 
-void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max) {
-	this->duty_cycle = DutyCycle(period, max, this);
+void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) {
+	this->duty_cycle = DutyCycle(period, max, min_num_supported_pp_links);
 }
 
 void MCSOTDMA_Mac::setLearnDMEActivity(bool value) {

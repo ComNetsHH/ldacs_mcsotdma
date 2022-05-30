@@ -4,9 +4,9 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-DutyCycle::DutyCycle(unsigned int period, double max_duty_cycle, MCSOTDMA_Mac *mac) : period(period), max_duty_cycle(max_duty_cycle), duty_cycle(MovingAverage(period)), mac(mac) {}
+DutyCycle::DutyCycle(unsigned int period, double max_duty_cycle, unsigned int min_num_supported_pp_links) : period(period), max_duty_cycle(max_duty_cycle), duty_cycle(MovingAverage(period)), min_num_supported_pp_links(min_num_supported_pp_links) {}
 
-DutyCycle::DutyCycle() : DutyCycle(100, 0.1, nullptr) {}
+DutyCycle::DutyCycle() : DutyCycle(100, 0.1, 4) {}
 
 void DutyCycle::reportNumTransmissions(unsigned int num_txs) {
 	duty_cycle.put(num_txs);	
@@ -24,28 +24,32 @@ void DutyCycle::setMinNumSupportedPPLinks(unsigned int n) {
 	this->min_num_supported_pp_links = n;
 }
 
-unsigned int DutyCycle::getPeriodicity(bool sh_channel_access) const {
-	assert(mac != nullptr && "MAC unset in DutyCycle!");
-	auto num_txs_and_num_active_pp_links = mac->getDutyCycleContributions();
-	double &num_txs_per_time_slot = num_txs_and_num_active_pp_links.first;
-	size_t &num_active_pp_links = num_txs_and_num_active_pp_links.second;	
-	double used_budget = num_txs_per_time_slot * ((double) period);
+unsigned int DutyCycle::getPeriodicityPP(std::pair<double, size_t> num_txs_and_num_active_pp_links) const {	
+	double &used_budget = num_txs_and_num_active_pp_links.first;
+	std::cout << "used_budget=" << used_budget << std::endl;
+	size_t &num_active_pp_links = num_txs_and_num_active_pp_links.second;		
 	double remaining_budget = max_duty_cycle - used_budget;
-	// PP channel access must leave a fair share for the SH
-	if (!sh_channel_access)
-		remaining_budget -= this->max_duty_cycle / (min_num_supported_pp_links + 1); // hence do #PPLinks + 1
+	std::cout << "remaining_budget=" << remaining_budget << std::endl;
+	// PP channel access must leave a fair share for the SH	
+	remaining_budget -= this->max_duty_cycle / (min_num_supported_pp_links + 1); // hence do #PPLinks + 1
+	std::cout << "remaining_budget=" << remaining_budget << std::endl;
+	if (remaining_budget <= 0.001)
+		throw no_duty_cycle_budget_left_error("no duty cycle budget is left");
 	// determine maximum budget that can currently be used
 	double max_budget;
 	// if there's more PP links to support after the one being currently established...
 	if (num_active_pp_links < min_num_supported_pp_links - 1) {
 		// then they should fairly share the remaining budget		
-		max_budget = remaining_budget / (min_num_supported_pp_links - num_active_pp_links);		
-		coutd << remaining_budget << " / (" << min_num_supported_pp_links << " - " << num_active_pp_links << ") = " << max_budget << std::endl;
+		max_budget = remaining_budget / (min_num_supported_pp_links - num_active_pp_links);				
+		std::cout << "more links to support" << std::endl;
 	} else {
 		// if there's sufficiently many links, the new one can use the remaining budget
 		max_budget = remaining_budget;
+		std::cout << "last link" << std::endl;
 	}
 	// translate budget to minimum slot offset
+	std::cout << "max_budget=" << max_budget << std::endl;
 	unsigned int min_offset = 1.0/max_budget;
+	std::cout << "min_offset=" << min_offset << " " << 1.0/0.02 << std::endl;
 	return min_offset;
 }

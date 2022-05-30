@@ -6,23 +6,33 @@
 #define TUHH_INTAIRNET_MC_SOTDMA_DUTYCYCLE_HPP
 
 #include "MovingAverage.hpp"
+#include <string>
+#include <stdexcept>
 
-namespace TUHH_INTAIRNET_MCSOTDMA {
+namespace TUHH_INTAIRNET_MCSOTDMA {		
 
-	class MCSOTDMA_Mac;
+	class no_duty_cycle_budget_left_error : public std::runtime_error {
+	public:
+		explicit no_duty_cycle_budget_left_error(const std::string& arg) : std::runtime_error(arg) {}
+	};
+
 
 	/**	 
 	 * Budget calculations with regard to the duty cycle.
 	 */
 	class DutyCycle {
+
+		friend class SystemTests;
+
 		public:
 			DutyCycle();
 
 			/**			 
 			 * @param period Number of time slots to consider when computing the duty cycle.
 			 * @param max_duty_cycle Maximum duty cycle as a percentage.
+			 * @param min_num_supported_pp_links Minimum number of PP links that must be supported.
 			 */
-			DutyCycle(unsigned int period, double max_duty_cycle, MCSOTDMA_Mac *mac);
+			DutyCycle(unsigned int period, double max_duty_cycle, unsigned int min_num_supported_pp_links);
 
 			/**
 			 * During each time slot, the number of transmissions should be reported so that the DutyCycle can keep an accurate measure.
@@ -46,19 +56,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void setMinNumSupportedPPLinks(unsigned int n);
 
 			/**			 
+			 * @param num_txs_and_num_active_pp_links <No. of transmissions per slot, no. of active PP links>
 			 * @return Minimum number of time slots in-between two transmission bursts so that the duty cycle budget is maintained.
 			 */
-			unsigned int getPeriodicity(bool sh_channel_access) const;
+			unsigned int getPeriodicityPP(std::pair<double, std::size_t> num_txs_and_num_active_pp_links) const;
 
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */
 			unsigned int period;
 			/** Maximum duty cycle as a percentage. */
 			double max_duty_cycle;
-			unsigned int min_num_supported_pp_links = 4;
-			MovingAverage duty_cycle;			
-			MCSOTDMA_Mac *mac;
-	};
+			unsigned int min_num_supported_pp_links;
+			MovingAverage duty_cycle;						
+	};	
 }
 
 
