@@ -24,10 +24,12 @@ void DutyCycle::setMinNumSupportedPPLinks(unsigned int n) {
 	this->min_num_supported_pp_links = n;
 }
 
-unsigned int DutyCycle::getPeriodicityPP(std::pair<double, size_t> num_txs_and_num_active_pp_links) const {	
-	double &used_budget = num_txs_and_num_active_pp_links.first;
+unsigned int DutyCycle::getPeriodicityPP(std::vector<double> pp_duty_cycle_contribs) const {	
+	double used_budget = 0.0;
+	for (double d : pp_duty_cycle_contribs)
+		used_budget += d;
 	std::cout << "used_budget=" << used_budget << std::endl;
-	size_t &num_active_pp_links = num_txs_and_num_active_pp_links.second;		
+	size_t num_active_pp_links = pp_duty_cycle_contribs.size();
 	double remaining_budget = max_duty_cycle - used_budget;
 	std::cout << "remaining_budget=" << remaining_budget << std::endl;
 	// PP channel access must leave a fair share for the SH	

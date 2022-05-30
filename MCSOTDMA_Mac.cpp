@@ -558,20 +558,17 @@ bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
 	return this->learn_dme_activity;
 }
 
-std::pair<double, size_t> MCSOTDMA_Mac::getDutyCycleContributions() const {
-	auto num_txs_and_num_active_pp_links = std::pair<double, size_t>();
-	double &num_txs = num_txs_and_num_active_pp_links.first;
-	size_t &num_active_pp_links = num_txs_and_num_active_pp_links.second;
+std::vector<double> MCSOTDMA_Mac::getDutyCycleContributions() const {
+	std::vector<double> pp_duty_cycle_contribs;	
 	for (const auto &pair : link_managers) {
 		const MacId &id = pair.first;
 		const auto *link_manager = pair.second;		
-		if (id != SYMBOLIC_LINK_ID_DME) {
-			num_txs += link_manager->getNumTxPerTimeSlot();
+		if (id != SYMBOLIC_LINK_ID_DME) {			
 			if (!(id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON) && link_manager->isActive())
-				num_active_pp_links++;
+				pp_duty_cycle_contribs.push_back(link_manager->getNumTxPerTimeSlot());
 		}		
 	}
-	return num_txs_and_num_active_pp_links;
+	return pp_duty_cycle_contribs;
 }
 
 const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {

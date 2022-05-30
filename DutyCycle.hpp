@@ -59,7 +59,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param num_txs_and_num_active_pp_links <No. of transmissions per slot, no. of active PP links>
 			 * @return Minimum number of time slots in-between two transmission bursts so that the duty cycle budget is maintained.
 			 */
-			unsigned int getPeriodicityPP(std::pair<double, std::size_t> num_txs_and_num_active_pp_links) const;
+			unsigned int getPeriodicityPP(std::vector<double> pp_duty_cycle_contribs) const;
 
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */

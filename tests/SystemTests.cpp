@@ -1048,18 +1048,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testDutyCycleContributions() {
 			// initially with nothing scheduled, no duty cycle contributions should be present
 			auto duty_cycle_contrib = mac_layer_me->getDutyCycleContributions();
-			CPPUNIT_ASSERT_EQUAL(0.0, duty_cycle_contrib.first);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), duty_cycle_contrib.second);
+			CPPUNIT_ASSERT_EQUAL(true, duty_cycle_contrib.empty());			
 			sh_me->setAlwaysScheduleNextBroadcastSlot(true);
 			env_me->rlc_layer->should_there_be_more_broadcast_data = true;
 			CPPUNIT_ASSERT_EQUAL(false, sh_me->next_broadcast_scheduled);			
 			// schedule broadcast
 			sh_me->notifyOutgoing(1);
 			CPPUNIT_ASSERT_EQUAL(true, sh_me->next_broadcast_scheduled);
-			// now the SH should contribute to the number of transmissions
+			// SH should not contribute to the number of transmissions
 			duty_cycle_contrib = mac_layer_me->getDutyCycleContributions();						
-			CPPUNIT_ASSERT_GREATER(0.0, duty_cycle_contrib.first);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), duty_cycle_contrib.second);
+			CPPUNIT_ASSERT_EQUAL(true, duty_cycle_contrib.empty());			
 			// establish PP link
 			mac_layer_me->notifyOutgoing(512, partner_id);			
 			size_t num_slots = 0, max_slots = 512;
@@ -1075,16 +1073,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(1), size_t(mac_layer_me->stat_num_pp_links_established.get()));
 			// now the PP should contribute to the number of transmissions
 			duty_cycle_contrib = mac_layer_me->getDutyCycleContributions();						
-			CPPUNIT_ASSERT_GREATER(0.0, duty_cycle_contrib.first);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), duty_cycle_contrib.second);
+			CPPUNIT_ASSERT_EQUAL(false, duty_cycle_contrib.empty());			
+			double used_budget = 0.0;
+			for (auto d : duty_cycle_contrib)
+				used_budget += d;
+			CPPUNIT_ASSERT_GREATER(0.0, used_budget);
 		}
 
 		void testDutyCyclePeriodicityPP() {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
-			std::pair<double, std::size_t> num_txs_and_num_active_pp_links = {0.0, 0};
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(num_txs_and_num_active_pp_links);
+			std::vector<double> duty_cycle_contribs;
+			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
 			CPPUNIT_ASSERT_EQUAL(uint(50), min_offset);
 		}
 
@@ -1092,8 +1093,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
-			std::pair<double, std::size_t> num_txs_and_num_active_pp_links = {0.02, 1};
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(num_txs_and_num_active_pp_links);
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
 			CPPUNIT_ASSERT_EQUAL(uint(50), min_offset);
 		}
 
@@ -1101,8 +1103,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
-			std::pair<double, std::size_t> num_txs_and_num_active_pp_links = {0.04, 2};
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(num_txs_and_num_active_pp_links);
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
 			CPPUNIT_ASSERT_GREATEREQUAL(uint(49), min_offset);
 			CPPUNIT_ASSERT_LESSEQUAL(uint(50), min_offset);			
 		}
@@ -1111,8 +1115,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
-			std::pair<double, std::size_t> num_txs_and_num_active_pp_links = {0.06, 3};
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(num_txs_and_num_active_pp_links);
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
 			CPPUNIT_ASSERT_GREATEREQUAL(uint(49), min_offset);
 			CPPUNIT_ASSERT_LESSEQUAL(uint(50), min_offset);			
 		}
@@ -1121,16 +1128,24 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
-			std::pair<double, std::size_t> num_txs_and_num_active_pp_links = {0.08, 4};			
-			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getPeriodicityPP(num_txs_and_num_active_pp_links), no_duty_cycle_budget_left_error);
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);			
+			duty_cycle_contribs.push_back(0.02);
+			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs), no_duty_cycle_budget_left_error);
 		}
 
 		void testDutyCyclePeriodicityPPNoBudget() {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
-			std::pair<double, std::size_t> num_txs_and_num_active_pp_links = {.1, 4};
-			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getPeriodicityPP(num_txs_and_num_active_pp_links), no_duty_cycle_budget_left_error);
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.025);
+			duty_cycle_contribs.push_back(0.025);
+			duty_cycle_contribs.push_back(0.025);			
+			duty_cycle_contribs.push_back(0.025);
+			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs), no_duty_cycle_budget_left_error);			
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
@@ -1162,7 +1177,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 // 		CPPUNIT_TEST(testPPLinkEstablishmentTime);
 // 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);	
 // 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);			
-// 		CPPUNIT_TEST(testDutyCycleContributions);
+		CPPUNIT_TEST(testDutyCycleContributions);
 		CPPUNIT_TEST(testDutyCyclePeriodicityPP);
 		CPPUNIT_TEST(testDutyCyclePeriodicityPPOneLinkUsed);
 		CPPUNIT_TEST(testDutyCyclePeriodicityPPTwoLinksUsed);

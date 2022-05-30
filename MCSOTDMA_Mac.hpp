@@ -242,7 +242,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setLearnDMEActivity(bool value) override;
 		void passPrediction(const std::vector<std::vector<double>>& prediction_mat) override;
 		std::vector<std::vector<double>>& getCurrentPrediction();
-		std::pair<double, size_t> getDutyCycleContributions() const;		
+
+		/**		 
+		 * @return PP link duty cycle contributions
+		 */
+		std::vector<double> getDutyCycleContributions() const;		
 
 	protected:
 		/**
