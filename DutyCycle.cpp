@@ -60,3 +60,7 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_budget,
 	} else
 		throw no_duty_cycle_budget_left_error("no duty cycle budget is left");
 }
+
+int DutyCycle::getPeriodicitySH(std::vector<double> used_budget, std::vector<int> timeouts) const {
+	
+}

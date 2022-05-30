@@ -62,6 +62,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			std::pair<int, int> getPeriodicityPP(std::vector<double> used_budget, std::vector<int> timeouts) const;
 
+			int getPeriodicitySH(std::vector<double> used_budget, std::vector<int> timeouts) const;
+
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */
 			unsigned int period;

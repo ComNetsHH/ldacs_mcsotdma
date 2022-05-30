@@ -1172,6 +1172,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATEREQUAL(50, min_offset_and_period.second);
 		}
 
+		void testDutyCycleLastLink() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			// 3% used
+			duty_cycle_contribs.push_back(0.01);
+			duty_cycle_contribs.push_back(0.01);
+			duty_cycle_contribs.push_back(0.01);						
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);			
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts);
+			CPPUNIT_ASSERT_EQUAL(0, min_offset_and_period.first);
+			// last link can use remaining budget			
+			CPPUNIT_ASSERT_LESS(50, min_offset_and_period.second);
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 // 		CPPUNIT_TEST(testLinkEstablishment);
 // 		CPPUNIT_TEST(testLinkEstablishmentMultiSlotBurst);
@@ -1208,6 +1227,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDutyCyclePeriodicityPPThreeLinksUsed);
 		CPPUNIT_TEST(testDutyCyclePeriodicityPPFourLinksUsed);		
 		CPPUNIT_TEST(testDutyCyclePeriodicityPPNoBudget);
+		CPPUNIT_TEST(testDutyCycleLastLink);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
