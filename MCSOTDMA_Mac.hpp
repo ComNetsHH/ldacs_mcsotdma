@@ -244,9 +244,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<std::vector<double>>& getCurrentPrediction();
 
 		/**		 
-		 * @return PP link duty cycle contributions
+		 * @return PP link duty cycle contributions.
 		 */
-		std::vector<double> getDutyCycleContributions() const;		
+		std::pair<std::vector<double>, std::vector<int>> getUsedPPDutyCycleBudget() const;		
+		double getUsedSHDutyCycleBudget() const;		
+		int getSHSlotOffset() const; 
 
 	protected:
 		/**

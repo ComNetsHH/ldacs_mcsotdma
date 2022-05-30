@@ -47,6 +47,9 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		 * @return Number of time slots in-between two transmission bursts that should be proposed for new links.
 		 */
 		unsigned int getBurstOffset() const;
+		int getNumSlotsUntilExpiry() const;
+		double getNumTxPerTimeSlot() const override;
+		bool isActive() const override;
 
 	protected:		
 		/** Keeps track of the current link state values. */
@@ -165,10 +168,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 		unsigned int computeBurstOffset(unsigned int burst_length, unsigned int num_neighbors, unsigned int num_pp_channels);
 		unsigned int getBurstLength() const;
 		bool isBurstEnd() const;
-		bool isContinuousTransmission() const;
-
-		double getNumTxPerTimeSlot() const override;
-		bool isActive() const override;
+		bool isContinuousTransmission() const;		
 
 	protected:
 		/** Number of transmission bursts until link expiry. */

@@ -247,6 +247,10 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> PPLinkManager::slot
 	// choose a reply slot
 	const ReservationTable *sh_table = reservation_manager->getBroadcastReservationTable();
 	unsigned int reply_slot = 0;
+	auto contribution_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	auto min_offset_and_periodicity = mac->getDutyCycle().getPeriodicityPP(contribution_and_timeouts.first, contribution_and_timeouts.second, mac->getUsedSHDutyCycleBudget(), mac->getSHSlotOffset());
+	auto &min_offset = min_offset_and_periodicity.first;
+	auto &periodicity = min_offset_and_periodicity.second;
 	for (int t = this->min_offset_to_allow_processing; t < sh_table->getPlanningHorizon(); t++) {
 		if (sh_table->getReservation(t).isIdle()) {
 			reply_slot = t;
@@ -268,7 +272,7 @@ std::map<const FrequencyChannel*, std::vector<unsigned int>> PPLinkManager::slot
 		if (table->getLinkedChannel()->isBlocked())
 			continue;
 		// find time slots to propose
-		auto candidate_slots = table->findPPCandidates(num_time_slots, reply_slot + this->min_offset_to_allow_processing, burst_offset, burst_length, burst_length_tx, this->timeout_before_link_expiry, mac->shouldLearnDmeActivity() ? mac : nullptr);
+		auto candidate_slots = table->findPPCandidates(num_time_slots, reply_slot + this->min_offset_to_allow_processing + min_offset, burst_offset, burst_length, burst_length_tx, this->timeout_before_link_expiry, mac->shouldLearnDmeActivity() ? mac : nullptr);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
 			coutd << slot << ":" << slot + burst_length - 1 << " ";
@@ -847,4 +851,10 @@ double PPLinkManager::getNumTxPerTimeSlot() const {
 
 bool PPLinkManager::isActive() const {
 	return !(link_status == LinkManager::Status::link_not_established || link_status == LinkManager::Status::awaiting_request_generation);
+}
+
+int PPLinkManager::getNumSlotsUntilExpiry() const {
+	if (!isActive())
+		throw std::runtime_error("cannot call PPLinkManager::getNumSlotsUntilExpiry for inactive link");
+	return link_state.timeout * (link_state.burst_length + link_state.burst_offset);
 }

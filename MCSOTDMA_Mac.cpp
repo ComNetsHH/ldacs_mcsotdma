@@ -558,17 +558,30 @@ bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
 	return this->learn_dme_activity;
 }
 
-std::vector<double> MCSOTDMA_Mac::getDutyCycleContributions() const {
-	std::vector<double> pp_duty_cycle_contribs;	
+std::pair<std::vector<double>, std::vector<int>> MCSOTDMA_Mac::getUsedPPDutyCycleBudget() const {
+	std::pair<std::vector<double>, std::vector<int>> contributions;	
+	std::vector<double> &used_pp_duty_cycle_budget = contributions.first;
+	std::vector<int> &timeouts = contributions.second;
 	for (const auto &pair : link_managers) {
 		const MacId &id = pair.first;
 		const auto *link_manager = pair.second;		
-		if (id != SYMBOLIC_LINK_ID_DME) {			
-			if (!(id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON) && link_manager->isActive())
-				pp_duty_cycle_contribs.push_back(link_manager->getNumTxPerTimeSlot());
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON && id != SYMBOLIC_LINK_ID_DME) {			
+			const auto *pp = (PPLinkManager*) link_manager;
+			if (pp->isActive()) {
+				used_pp_duty_cycle_budget.push_back(link_manager->getNumTxPerTimeSlot());
+				timeouts.push_back(pp->getNumSlotsUntilExpiry());
+			}
 		}		
 	}
-	return pp_duty_cycle_contribs;
+	return contributions;
+}
+
+double MCSOTDMA_Mac::getUsedSHDutyCycleBudget() const {
+	return ((SHLinkManager*) link_managers.at(SYMBOLIC_LINK_ID_BROADCAST))->getNumTxPerTimeSlot();
+}
+
+int MCSOTDMA_Mac::getSHSlotOffset() const {
+	return ((SHLinkManager*) link_managers.at(SYMBOLIC_LINK_ID_BROADCAST))->getNextBroadcastSlot();
 }
 
 const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {

@@ -40,7 +40,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testScheduleBroadcastSlot() {
 			link_manager->scheduleBroadcastSlot();
-			CPPUNIT_ASSERT(link_manager->next_broadcast_slot >= uint32_t(1) && link_manager->next_broadcast_slot <= link_manager->MIN_CANDIDATES);
+			CPPUNIT_ASSERT_GREATEREQUAL(uint32_t(1), link_manager->next_broadcast_slot);
 		}
 
 		void testBroadcast() {
@@ -447,7 +447,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env->rlc_layer->should_there_be_more_broadcast_data = true;
 			link_manager->notifyOutgoing(512);						
 			std::vector<double> delays;
-			size_t num_slots = 0, max_num_slots = 100, num_tx = 10;
+			size_t num_slots = 0, max_num_slots = 1000, num_tx = 10;
 			while (env->mac_layer->stat_num_broadcasts_sent.get() < num_tx && num_slots++ < max_num_slots) {
 				mac->update(1);
 				mac->execute();
@@ -458,8 +458,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
 			CPPUNIT_ASSERT_EQUAL(num_tx, delays.size());
 			for (const double &d : delays) {
-				CPPUNIT_ASSERT_GREATEREQUAL(1.0, d);
-				CPPUNIT_ASSERT_LESSEQUAL((double) link_manager->MIN_CANDIDATES, d);
+				CPPUNIT_ASSERT_GREATEREQUAL(1.0, d);				
 			}
 		}
 

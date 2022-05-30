@@ -30,8 +30,8 @@ int main() {
 	// runner.addTest(MCSOTDMA_MacTests::suite());
 	// runner.addTest(MCSOTDMA_PhyTests::suite());
 	// runner.addTest(BeaconModuleTests::suite());		
-	// runner.addTest(SHLinkManagerTests::suite());
-	runner.addTest(SystemTests::suite());
+	runner.addTest(SHLinkManagerTests::suite());
+	// runner.addTest(SystemTests::suite());
 	// runner.addTest(ThreeUsersTests::suite());
 	// runner.addTest(PPLinkManagerTests::suite());
 	// runner.addTest(ThirdPartyLinkTests::suite());

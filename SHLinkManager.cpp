@@ -376,10 +376,10 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findSHCandidates(num_candidates, (int) min_offset);
 	coutd << "found " << candidate_slots.size() << " -> ";
 	if (candidate_slots.empty()) {
-		coutd << "printing reservations over entire planning horizon: " << std::endl << "t\tlocal\t\tTX" << std::endl;
-		for (size_t t = 0; t < current_reservation_table->getPlanningHorizon(); t++) 
-			coutd << "t=" << t << ":\t" << current_reservation_table->getReservation(t) << "\t" << reservation_manager->getTxTable()->getReservation(t) << std::endl;
-		throw std::runtime_error("SHLinkManager::broadcastSlotSelection found zero candidate slots.");
+		// coutd << "printing reservations over entire planning horizon: " << std::endl << "t\tlocal\t\tTX" << std::endl;
+		// for (size_t t = 0; t < current_reservation_table->getPlanningHorizon(); t++) 
+		// 	coutd << "t=" << t << ":\t" << current_reservation_table->getReservation(t) << "\t" << reservation_manager->getTxTable()->getReservation(t) << std::endl;
+		throw std::runtime_error("SHLinkManager::broadcastSlotSelection found zero candidate slots at min_offset=" + std::to_string(min_offset));
 	}
 	unsigned int selected_slot;
 	try {
@@ -394,8 +394,10 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 
 void SHLinkManager::scheduleBroadcastSlot() {	
 	unscheduleBroadcastSlot();
-	// By default, even the next slot could be chosen.
-	unsigned int min_offset = 1;	
+	// Compute minimum slot offset to adhere to duty cycle.
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	int min_offset = mac->getDutyCycle().getOffsetSH(contributions_and_timeouts.first);
+	std::cout << "min_offset=" << min_offset << std::endl;
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
@@ -644,8 +646,8 @@ void SHLinkManager::setAdvertiseNextSlotInCurrentHeader(bool flag) {
 double SHLinkManager::getNumTxPerTimeSlot() const {
 	if (!next_broadcast_scheduled && !next_beacon_scheduled)
 		return 0.0;
-	double num_broadcasts = next_broadcast_scheduled ? 1.0/((double) next_broadcast_slot) : 0.0;
-	double num_beacons = next_beacon_scheduled ? 1.0/((double) beacon_module.getBeaconOffset()) : 0.0;
+	double num_broadcasts = next_broadcast_scheduled && next_broadcast_slot > 0 ? 1.0/((double) next_broadcast_slot) : 0.0;
+	double num_beacons = next_beacon_scheduled && beacon_module.getBeaconOffset() > 0 ? 1.0/((double) beacon_module.getBeaconOffset()) : 0.0;
 	return num_broadcasts + num_beacons;
 }
 
