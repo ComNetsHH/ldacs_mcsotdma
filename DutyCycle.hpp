@@ -56,13 +56,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			void setMinNumSupportedPPLinks(unsigned int n);
 
 			/**			 
-			 * @param used_budget <used duty cycle budget per PP link>
+			 * @param used_budget <used PP duty cycle budget per link>
 			 * @param timeouts <timeout in slots per PP link>
+			 * @param used_sh_budget used SH duty cycle budget
+			 * @param sh_slot_offset offset until next SH channel access
 			 * @return <Minimum slot offset, Minimum number of time slots in-between two transmission bursts so that the duty cycle budget is maintained>
 			 */
-			std::pair<int, int> getPeriodicityPP(std::vector<double> used_budget, std::vector<int> timeouts) const;
+			std::pair<int, int> getPeriodicityPP(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const;
 
-			int getPeriodicitySH(std::vector<double> used_budget, std::vector<int> timeouts) const;
+			int getOffsetSH(std::vector<double> used_budget, std::vector<int> timeouts) const;
 
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */
