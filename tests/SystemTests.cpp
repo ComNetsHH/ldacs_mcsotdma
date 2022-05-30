@@ -1085,8 +1085,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
 			std::vector<double> duty_cycle_contribs;
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
-			CPPUNIT_ASSERT_EQUAL(uint(50), min_offset);
+			std::vector<int> timeouts;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts);
+			CPPUNIT_ASSERT_EQUAL(50, min_offset_and_period.second);
 		}
 
 		void testDutyCyclePeriodicityPPOneLinkUsed() {
@@ -1095,8 +1096,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.02);
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
-			CPPUNIT_ASSERT_EQUAL(uint(50), min_offset);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts);
+			CPPUNIT_ASSERT_EQUAL(50, min_offset_and_period.second);
 		}
 
 		void testDutyCyclePeriodicityPPTwoLinksUsed() {
@@ -1106,9 +1109,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.02);
 			duty_cycle_contribs.push_back(0.02);
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
-			CPPUNIT_ASSERT_GREATEREQUAL(uint(49), min_offset);
-			CPPUNIT_ASSERT_LESSEQUAL(uint(50), min_offset);			
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts);
+			CPPUNIT_ASSERT_GREATEREQUAL(49, min_offset_and_period.second);
+			CPPUNIT_ASSERT_LESSEQUAL(50, min_offset_and_period.second);			
 		}
 
 		void testDutyCyclePeriodicityPPThreeLinksUsed() {
@@ -1119,9 +1125,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			duty_cycle_contribs.push_back(0.02);
 			duty_cycle_contribs.push_back(0.02);
 			duty_cycle_contribs.push_back(0.02);
-			unsigned int min_offset = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs);
-			CPPUNIT_ASSERT_GREATEREQUAL(uint(49), min_offset);
-			CPPUNIT_ASSERT_LESSEQUAL(uint(50), min_offset);			
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts);
+			CPPUNIT_ASSERT_GREATEREQUAL(49, min_offset_and_period.second);
+			CPPUNIT_ASSERT_LESSEQUAL(50, min_offset_and_period.second);			
 		}
 
 		void testDutyCyclePeriodicityPPFourLinksUsed() {
@@ -1133,7 +1143,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			duty_cycle_contribs.push_back(0.02);
 			duty_cycle_contribs.push_back(0.02);			
 			duty_cycle_contribs.push_back(0.02);
-			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs), no_duty_cycle_budget_left_error);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			timeouts.push_back(103);
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts);
+			CPPUNIT_ASSERT_EQUAL(101, min_offset_and_period.first);
+			CPPUNIT_ASSERT_EQUAL(50, min_offset_and_period.second);
 		}
 
 		void testDutyCyclePeriodicityPPNoBudget() {
@@ -1145,7 +1162,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			duty_cycle_contribs.push_back(0.025);
 			duty_cycle_contribs.push_back(0.025);			
 			duty_cycle_contribs.push_back(0.025);
-			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs), no_duty_cycle_budget_left_error);			
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			timeouts.push_back(103);
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts);
+			CPPUNIT_ASSERT_EQUAL(102, min_offset_and_period.first);
+			CPPUNIT_ASSERT_GREATEREQUAL(50, min_offset_and_period.second);
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
