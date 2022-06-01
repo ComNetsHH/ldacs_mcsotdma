@@ -93,17 +93,15 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 int DutyCycle::getOffsetSH(const std::vector<double>& used_budget) const {
 	// compute available budget	
 	double avail_budget = this->max_duty_cycle;	
-	coutd << "computing duty-cycle-compliant SH slot offset -> " << avail_budget;
-	for (double d : used_budget) {
+	coutd << "computing duty-cycle-compliant SH slot offset -> ";
+	for (double d : used_budget) 
 		avail_budget -= d;
-		coutd << "-" << d;
-	}	
-	coutd << " -> avail_budget=" << avail_budget;
+	coutd << "available budget of " << avail_budget*100 << "% -> ";
 	// if not all PP links have been established yet
 	size_t num_active_pp_links = used_budget.size();
 	if (num_active_pp_links < min_num_supported_pp_links)
 		avail_budget -= this->max_duty_cycle / ((double) min_num_supported_pp_links + 1); // leave budget to establish next PP link immediately
 	int slot_offset = std::max(1.0, 1.0 / avail_budget);
-	coutd << "-> final=" << slot_offset << " -> ";
+	coutd << "minimum slot offset is " << slot_offset << " -> ";
 	return slot_offset;
 }
