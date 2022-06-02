@@ -637,6 +637,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(planning_horizon - 2, link_manager->beacon_module.getNextBeaconSlot()); // -2 because it's already been decremented once
 		}
 
+		void testDutyCycleMacDelay() {
+			env->rlc_layer->should_there_be_more_broadcast_data = true;
+			link_manager->scheduleBroadcastSlot();
+			unsigned int broadcast_slot = link_manager->getNextBroadcastSlot();
+			for (unsigned int t = 0; t < broadcast_slot; t++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_broadcasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(broadcast_slot, (uint) mac->stat_broadcast_mac_delay.get());
+		}
+
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -665,6 +678,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSHChannelAccessDelay);	
 		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);	
 		CPPUNIT_TEST(testCannotScheduleBeaconSlot);			
+		CPPUNIT_TEST(testDutyCycleMacDelay);		
 
 //			CPPUNIT_TEST(testSetBeaconHeader);
 //			CPPUNIT_TEST(testProcessIncomingBeacon);
