@@ -12,7 +12,7 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000), duty_cycle(DutyCycle(100, 0.1, 4)) {
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000), duty_cycle(DutyCycle(default_duty_cycle_period, default_max_duty_cycle, default_min_num_supported_pp_links)) {
 	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();
 	stat_min_beacon_offset.dontEmitBeforeFirstReport();
 	stat_broadcast_candidate_slots.dontEmitBeforeFirstReport();

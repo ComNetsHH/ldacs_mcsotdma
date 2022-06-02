@@ -233,7 +233,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getP2PBurstOffset() const;		
 
-		void setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links);
+		void setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) override;
 		const DutyCycle& getDutyCycle() const;
 
 		bool shouldLearnDmeActivity() const;
@@ -276,6 +276,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool adapt_burst_offset = true;
 		/** Number of time slots considered to compute the duty cycle. */
 		
+		/** Time slots. */
+		const unsigned int default_duty_cycle_period = 100;
+		const double default_max_duty_cycle = 0.1;
+		const unsigned int default_min_num_supported_pp_links = 4;
 		DutyCycle duty_cycle;
 
 		bool learn_dme_activity = false;
