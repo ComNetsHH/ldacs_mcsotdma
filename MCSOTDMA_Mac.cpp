@@ -545,3 +545,7 @@ std::vector<std::vector<double>>& MCSOTDMA_Mac::getCurrentPrediction() {
 bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
 	return this->learn_dme_activity;
 }
+
+void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) {
+	// do nothing; implementation will be merged in soon from its branch
+}

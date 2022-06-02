@@ -231,6 +231,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		unsigned int getP2PBurstOffset() const;		
 
+		void setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) override;
+
 		bool shouldLearnDmeActivity() const;
 
 		const std::vector<int> getChannelSensingObservation() const override;
