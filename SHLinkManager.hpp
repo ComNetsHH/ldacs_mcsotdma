@@ -7,7 +7,6 @@
 
 #include <ContentionMethod.hpp>
 #include "LinkManager.hpp"
-#include "BeaconModule.hpp"
 #include "MovingAverage.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {

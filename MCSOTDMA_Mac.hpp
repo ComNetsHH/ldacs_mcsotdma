@@ -143,9 +143,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 		void statisticReportNumActiveNeighbors(size_t val) {
 			stat_num_active_neighbors.capture(val);
-		}
-		void statisticReportMinBeaconOffset(size_t val) {
-			stat_min_beacon_offset.capture(val);
 		}		
 		void statisticReportBroadcastCandidateSlots(size_t val) {
 			stat_broadcast_candidate_slots.capture(val);
@@ -287,8 +284,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_third_party_replies_rcvd = Statistic("mcsotdma_statistic_num_third_party_replies_rcvd", this);
 		Statistic stat_num_beacons_rcvd = Statistic("mcsotdma_statistic_num_beacons_received", this);		
 		Statistic stat_num_packets_sent = Statistic("mcsotdma_statistic_num_packets_sent", this);
-		Statistic stat_num_requests_sent = Statistic("mcsotdma_statistic_num_link_requests_sent", this);
-		/** Number of non-beacon broadcast-type packets that were sent. */
+		Statistic stat_num_requests_sent = Statistic("mcsotdma_statistic_num_link_requests_sent", this);		
 		Statistic stat_num_broadcasts_sent = Statistic("mcsotdma_statistic_num_broadcasts_sent", this);
 		Statistic stat_num_unicasts_sent = Statistic("mcsotdma_statistic_num_unicasts_sent", this);
 		Statistic stat_num_replies_sent = Statistic("mcsotdma_statistic_num_link_replies_sent", this);
@@ -296,8 +292,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_requests_cancelled = Statistic("mcsotdma_statistic_num_cancelled_link_requests", this);
 		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);				
 		Statistic stat_num_channel_errors = Statistic("mcsotdma_statistic_num_channel_errors", this);		
-		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);
-		Statistic stat_min_beacon_offset = Statistic("mcsotdma_statistic_min_beacon_offset", this);		
+		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);		
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
 		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);
 		Statistic stat_num_links_closed_early = Statistic("mcsotdma_statistic_num_links_closed_early", this);
@@ -339,8 +334,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_requests_cancelled,
 				&stat_num_packet_collisions,					
 				&stat_num_channel_errors,			
-				&stat_num_active_neighbors,
-				&stat_min_beacon_offset,				
+				&stat_num_active_neighbors,				
 				&stat_broadcast_candidate_slots,
 				&stat_broadcast_selected_candidate_slots,
 				&stat_num_links_closed_early,
