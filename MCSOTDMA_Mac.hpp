@@ -16,6 +16,8 @@
 #include "MCSOTDMA_Phy.hpp"
 #include "NeighborObserver.hpp"
 #include "ThirdPartyLink.hpp"
+#include "DutyCycle.hpp"
+
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 
@@ -227,11 +229,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}		
 		void statisticReportBeaconCollisionDetected() {
 			stat_num_beacon_collisions_detected.increment();
-		}				
+		}
 
 		unsigned int getP2PBurstOffset() const;		
 
 		void setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) override;
+		const DutyCycle& getDutyCycle() const;
 
 		bool shouldLearnDmeActivity() const;
 
@@ -239,6 +242,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setLearnDMEActivity(bool value) override;
 		void passPrediction(const std::vector<std::vector<double>>& prediction_mat) override;
 		std::vector<std::vector<double>>& getCurrentPrediction();
+
+		/**		 
+		 * @return PP link duty cycle contributions.
+		 */
+		std::pair<std::vector<double>, std::vector<int>> getUsedPPDutyCycleBudget() const;		
+		double getUsedSHDutyCycleBudget() const;		
+		int getSHSlotOffset() const; 
 
 	protected:
 		/**
@@ -264,6 +274,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		const unsigned int default_p2p_link_burst_offset = 20;		
 		unsigned int pp_link_burst_offset = 20;
 		bool adapt_burst_offset = true;
+		/** Number of time slots considered to compute the duty cycle. */
+		
+		/** Time slots. */
+		const unsigned int default_duty_cycle_period = 100;
+		const double default_max_duty_cycle = 0.1;
+		const unsigned int default_min_num_supported_pp_links = 4;
+		DutyCycle duty_cycle;
+
 		bool learn_dme_activity = false;
 		std::map<uint64_t, bool> channel_sensing_observation;	
 		/** Holds the current prediction of DME channel accesses. */
@@ -312,6 +330,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_dme_packets_rcvd = Statistic("mcsotdma_statistic_num_num_dme_packets_rcvd", this);		
 		Statistic stat_num_broadcast_collisions_detected = Statistic("mcsotdma_statistic_num_broadcast_collisions_detected", this);		
 		Statistic stat_num_beacon_collisions_detected = Statistic("mcsotdma_statistic_num_beacon_collisions_detected", this);		
+		Statistic stat_duty_cycle = Statistic("mcsotdma_statistic_duty_cycle", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -353,6 +372,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_pp_requests_rejected_due_to_insufficient_tx_slots,
 				&stat_num_dme_packets_rcvd,
 				&stat_num_broadcast_collisions_detected,
+				&stat_num_beacon_collisions_detected,
 				&stat_num_beacon_collisions_detected
 		};
 	};

@@ -33,8 +33,8 @@ int main() {
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
 	runner.addTest(ThreeUsersTests::suite());
-	runner.addTest(PPLinkManagerTests::suite());
-	runner.addTest(ThirdPartyLinkTests::suite());
+	// runner.addTest(PPLinkManagerTests::suite());
+	// runner.addTest(ThirdPartyLinkTests::suite());
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

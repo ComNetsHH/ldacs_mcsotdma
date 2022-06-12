@@ -12,12 +12,12 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000) {
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000), duty_cycle(DutyCycle(default_duty_cycle_period, default_max_duty_cycle, default_min_num_supported_pp_links)) {
 	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();
 	stat_min_beacon_offset.dontEmitBeforeFirstReport();
 	stat_broadcast_candidate_slots.dontEmitBeforeFirstReport();
 	stat_broadcast_selected_candidate_slots.dontEmitBeforeFirstReport();
-	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();	
+	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();		
 }
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
@@ -179,6 +179,14 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 		}		
 		coutd << std::endl;
 	}	
+	// keep track of the number of transmissions w.r.t. the duty cycle
+	duty_cycle.reportNumTransmissions(num_txs);
+	// emit the duty cycle once enough values have been recorded
+	if (duty_cycle.shouldEmitStatistic()) {
+		stat_duty_cycle.capture(duty_cycle.get());
+		stat_duty_cycle.update();
+	}
+
 	return {num_txs, num_rxs};
 }
 
@@ -530,6 +538,10 @@ const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
 	return observation;
 }
 
+void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) {
+	this->duty_cycle = DutyCycle(period, max, min_num_supported_pp_links);
+}
+
 void MCSOTDMA_Mac::setLearnDMEActivity(bool value) {
 	this->learn_dme_activity = value;
 }
@@ -546,6 +558,32 @@ bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
 	return this->learn_dme_activity;
 }
 
-void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) {
-	// do nothing; implementation will be merged in soon from its branch
+std::pair<std::vector<double>, std::vector<int>> MCSOTDMA_Mac::getUsedPPDutyCycleBudget() const {
+	std::pair<std::vector<double>, std::vector<int>> contributions;	
+	std::vector<double> &used_pp_duty_cycle_budget = contributions.first;
+	std::vector<int> &timeouts = contributions.second;
+	for (const auto &pair : link_managers) {
+		const MacId &id = pair.first;
+		const auto *link_manager = pair.second;		
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON && id != SYMBOLIC_LINK_ID_DME) {			
+			const auto *pp = (PPLinkManager*) link_manager;
+			if (pp->isActive()) {
+				used_pp_duty_cycle_budget.push_back(link_manager->getNumTxPerTimeSlot());
+				timeouts.push_back(pp->getNumSlotsUntilExpiry());
+			}
+		}		
+	}
+	return contributions;
+}
+
+double MCSOTDMA_Mac::getUsedSHDutyCycleBudget() const {
+	return ((SHLinkManager*) link_managers.at(SYMBOLIC_LINK_ID_BROADCAST))->getNumTxPerTimeSlot();
+}
+
+int MCSOTDMA_Mac::getSHSlotOffset() const {
+	return ((SHLinkManager*) link_managers.at(SYMBOLIC_LINK_ID_BROADCAST))->getNextBroadcastSlot();
+}
+
+const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {
+	return this->duty_cycle;
 }

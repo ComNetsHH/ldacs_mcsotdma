@@ -1201,7 +1201,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL((size_t) (pp_initiator->proposal_num_frequency_channels * pp_initiator->proposal_num_time_slots), num_blocked);
 			// initiate link establishment
 			mac_initiator->notifyOutgoing(1, id_recipient);			
-			size_t num_slots = 0, max_slots = 30;
+			size_t num_slots = 0, max_slots = 150;
 			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
 			// proceed until request has been received
 			while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {

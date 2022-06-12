@@ -101,6 +101,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Called when slot advertisement indicates a collision of some other user's transmission with the local user's beacon. */
 		void beaconCollisionDetected(const MacId& collider_id, Reservation::Action mark_as);
 		void reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id);		
+		double getNumTxPerTimeSlot() const override;
+		bool isActive() const override;
 
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob, unsigned int min, unsigned int max) const;

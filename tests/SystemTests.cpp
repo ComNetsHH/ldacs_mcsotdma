@@ -925,7 +925,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// both have stuff to send
 			mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 			mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-			size_t max_slots = 100;
+			size_t max_slots = 1500;
 			for (size_t t = 0; t < max_slots; t++) {
 				mac_layer_me->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
 				mac_layer_you->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
@@ -1000,8 +1000,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
 			CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
 			for (size_t i = 0; i < num_links; i++) {
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_me.at(i));
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_you.at(i));				
+				CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_me.at(i));
+				if (link_establishment_times_you.size() > i)
+					CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_you.at(i));				
 			}			
 		}
 
@@ -1040,9 +1041,266 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
 			CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
 			for (size_t i = 0; i < num_links; i++) {
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_me.at(i));
-				CPPUNIT_ASSERT_LESS(20.0, link_establishment_times_you.at(i));				
+				CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_me.at(i));
+				if (link_establishment_times_you.size() > i)
+					CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_you.at(i));				
 			}			
+		}
+
+		void testDutyCycleContributions() {
+			// initially with nothing scheduled, no duty cycle contributions should be present
+			auto pair = mac_layer_me->getUsedPPDutyCycleBudget();
+			auto &duty_cycle_contrib = pair.first;
+			CPPUNIT_ASSERT_EQUAL(true, duty_cycle_contrib.empty());			
+			sh_me->setAlwaysScheduleNextBroadcastSlot(true);
+			env_me->rlc_layer->should_there_be_more_broadcast_data = true;
+			CPPUNIT_ASSERT_EQUAL(false, sh_me->next_broadcast_scheduled);			
+			// schedule broadcast			
+			sh_me->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(true, sh_me->next_broadcast_scheduled);
+			// SH should not contribute to the number of transmissions
+			pair = mac_layer_me->getUsedPPDutyCycleBudget();
+			duty_cycle_contrib = pair.first;
+			CPPUNIT_ASSERT_EQUAL(true, duty_cycle_contrib.empty());			
+			// establish PP link
+			mac_layer_me->notifyOutgoing(512, partner_id);			
+			size_t num_slots = 0, max_slots = 512;			
+			while (mac_layer_me->stat_num_pp_links_established.get() < 1.0 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();								
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), size_t(mac_layer_me->stat_num_pp_links_established.get()));
+			// now the PP should contribute to the number of transmissions
+			pair = mac_layer_me->getUsedPPDutyCycleBudget();		
+			duty_cycle_contrib = pair.first;
+			CPPUNIT_ASSERT_EQUAL(false, duty_cycle_contrib.empty());			
+			double used_budget = 0.0;
+			for (auto d : duty_cycle_contrib)
+				used_budget += d;
+			CPPUNIT_ASSERT_GREATER(0.0, used_budget);
+		}
+
+		void testDutyCyclePeriodicityPP() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			std::vector<int> timeouts;
+			double used_sh_budget = 0.0;
+			int sh_slot_offset = -1;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_EQUAL(50, min_offset_and_period.second);
+		}
+
+		void testDutyCyclePeriodicityPPOneLinkUsed() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			double used_sh_budget = 0.0;
+			int sh_slot_offset = -1;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_EQUAL(50, min_offset_and_period.second);
+		}
+
+		void testDutyCyclePeriodicityPPTwoLinksUsed() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			double used_sh_budget = 0.0;
+			int sh_slot_offset = -1;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_GREATEREQUAL(49, min_offset_and_period.second);
+			CPPUNIT_ASSERT_LESSEQUAL(50, min_offset_and_period.second);			
+		}
+
+		void testDutyCyclePeriodicityPPThreeLinksUsed() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			double used_sh_budget = 0.0;
+			int sh_slot_offset = -1;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_GREATEREQUAL(49, min_offset_and_period.second);
+			CPPUNIT_ASSERT_LESSEQUAL(50, min_offset_and_period.second);			
+		}
+
+		void testDutyCyclePeriodicityPPFourLinksUsed() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);
+			duty_cycle_contribs.push_back(0.02);			
+			duty_cycle_contribs.push_back(0.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			timeouts.push_back(103);
+			double used_sh_budget = 0.0;
+			int sh_slot_offset = -1;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_EQUAL(101, min_offset_and_period.first);
+			CPPUNIT_ASSERT_EQUAL(50, min_offset_and_period.second);
+		}
+
+		void testDutyCyclePeriodicityPPNoBudget() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.025);
+			duty_cycle_contribs.push_back(0.025);
+			duty_cycle_contribs.push_back(0.025);			
+			duty_cycle_contribs.push_back(0.025);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			timeouts.push_back(103);
+			double used_sh_budget = 0.0;
+			int sh_slot_offset = -1;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_EQUAL(102, min_offset_and_period.first);
+			CPPUNIT_ASSERT_GREATEREQUAL(50, min_offset_and_period.second);
+		}
+
+		void testDutyCycleLastLink() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			// 3% used
+			duty_cycle_contribs.push_back(0.01);
+			duty_cycle_contribs.push_back(0.01);
+			duty_cycle_contribs.push_back(0.01);						
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			double used_sh_budget = 0.0;
+			int sh_slot_offset = -1;			
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_EQUAL(0, min_offset_and_period.first);
+			// last link can use remaining budget			
+			CPPUNIT_ASSERT_LESS(50, min_offset_and_period.second);
+		}
+
+		void testDutyCycleSHTakesAll() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			// PP uses 2%
+			duty_cycle_contribs.push_back(0.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			// SH uses 8%
+			double used_sh_budget = 0.08;
+			int sh_slot_offset = 5;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_EQUAL(6, min_offset_and_period.first);
+			// last link can use remaining budget			
+			CPPUNIT_ASSERT_LESS(50, min_offset_and_period.second);
+		}
+
+		void testDutyCycleGetSHOffsetNoPPLinks() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			std::vector<int> timeouts;
+			int sh_offset = mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs);
+			// SH can use 8% as it must leave 2% for next PP link
+			CPPUNIT_ASSERT_EQUAL((int) (1.0/0.08), sh_offset);
+		}
+
+		void testDutyCycleGetSHOffsetOnePPLinks() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			int sh_offset = mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs);
+			// SH can use 6% as it must leave 2% for next PP link
+			CPPUNIT_ASSERT_EQUAL((int) (1.0/0.06), sh_offset);
+		}
+
+		void testDutyCycleGetSHOffsetTwoPPLinks() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(.02);
+			duty_cycle_contribs.push_back(.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			int sh_offset = mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs);
+			// SH can use 4% as it must leave 2% for next PP link
+			CPPUNIT_ASSERT_EQUAL((int) (1.0/0.04), sh_offset);
+		}
+
+		void testDutyCycleGetSHOffsetThreePPLinks() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(.02);
+			duty_cycle_contribs.push_back(.02);
+			duty_cycle_contribs.push_back(.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			int sh_offset = mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs);
+			// SH can use 2% as it must leave 2% for next PP link
+			CPPUNIT_ASSERT_EQUAL((int) (1.0/0.02), sh_offset);
+		}
+
+		void testDutyCycleGetSHOffsetFourPPLinks() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(.02);
+			duty_cycle_contribs.push_back(.02);
+			duty_cycle_contribs.push_back(.02);
+			duty_cycle_contribs.push_back(.02);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			int sh_offset = mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs);
+			// SH can use 2% 
+			CPPUNIT_ASSERT_EQUAL((int) (1.0/0.02), sh_offset);
 		}
 
 	CPPUNIT_TEST_SUITE(SystemTests);
@@ -1074,6 +1332,20 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testPPLinkEstablishmentTime);
 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);	
 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);			
+		CPPUNIT_TEST(testDutyCycleContributions);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPP);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPOneLinkUsed);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPTwoLinksUsed);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPThreeLinksUsed);
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPFourLinksUsed);		
+		CPPUNIT_TEST(testDutyCyclePeriodicityPPNoBudget);
+		CPPUNIT_TEST(testDutyCycleLastLink);
+		CPPUNIT_TEST(testDutyCycleSHTakesAll);		
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetNoPPLinks);				
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetOnePPLinks);						
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetTwoPPLinks);
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetThreePPLinks);
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);		
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
