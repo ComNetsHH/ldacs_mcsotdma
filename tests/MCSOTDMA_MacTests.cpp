@@ -39,17 +39,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			delete env;
 		}
 
-		void testLinkManagerCreation() {
-//				coutd.setVerbose(true);
-			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->link_managers.size());
-			MacId id = MacId(42);
-			mac->notifyOutgoing(1024, id);
-			CPPUNIT_ASSERT_EQUAL(size_t(2), mac->link_managers.size());
-			auto *link_manager = (LinkManager*) mac->link_managers.at(id);
-			CPPUNIT_ASSERT(link_manager);
-			CPPUNIT_ASSERT(id == link_manager->getLinkId());
-//				coutd.setVerbose(false);
-		}
+// 		void testLinkManagerCreation() {
+// //				coutd.setVerbose(true);
+// 			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->link_managers.size());
+// 			MacId id = MacId(42);
+// 			mac->notifyOutgoing(1024, id);
+// 			CPPUNIT_ASSERT_EQUAL(size_t(2), mac->link_managers.size());
+// 			auto *link_manager = (LinkManager*) mac->link_managers.at(id);
+// 			CPPUNIT_ASSERT(link_manager);
+// 			CPPUNIT_ASSERT(id == link_manager->getLinkId());
+// //				coutd.setVerbose(false);
+// 		}
 
 		void testPositions() {
 			// Should be able to get your own position.
@@ -119,7 +119,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
-			CPPUNIT_TEST(testLinkManagerCreation);
 			CPPUNIT_TEST(testPositions);
 			CPPUNIT_TEST(testCollision);
 			CPPUNIT_TEST(testChannelError);			

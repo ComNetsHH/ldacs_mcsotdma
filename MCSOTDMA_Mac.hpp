@@ -80,18 +80,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setBcSlotSelectionMinNumCandidateSlots(int value) override;
 		void setBcSlotSelectionMaxNumCandidateSlots(int value) override;
 
-		void setContentionMethod(ContentionMethod method) override;
-
-		void setAlwaysScheduleNextBroadcastSlot(bool value) override;
-		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;		
-
-		void setMinBeaconOffset(unsigned int value) override;
-		void setMaxBeaconOffset(unsigned int value) override;
-
-		void setForceBidirectionalLinks(bool flag) override;		
-
-		void setWriteResourceUtilizationIntoBeacon(bool flag) override;
-		void setEnableBeacons(bool flag) override;
+		void setContentionMethod(ContentionMethod method) override;		
+		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;				
 
 		size_t getNumUtilizedP2PResources() const;
 
@@ -101,9 +91,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
 		void reportNeighborActivity(const MacId& id);
-		const NeighborObserver& getNeighborObserver() const;
-		void setPPLinkBurstOffset(unsigned int value) override;
-		void setPPLinkBurstOffsetAdaptive(bool value) override;
+		const NeighborObserver& getNeighborObserver() const;		
 
 		void statisticReportBroadcastMessageProcessed() {
 			stat_num_broadcast_msgs_processed.increment();

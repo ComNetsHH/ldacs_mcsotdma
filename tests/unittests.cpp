@@ -12,12 +12,11 @@
 #include "FrequencyChannelTests.cpp"
 #include "SHLinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
-#include "SystemTests.cpp"
+// #include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
-#include "BeaconModuleTests.cpp"
-#include "ThreeUsersTests.cpp"
-#include "PPLinkManagerTests.cpp"
-#include "ThirdPartyLinkTests.cpp"
+// #include "ThreeUsersTests.cpp"
+// #include "PPLinkManagerTests.cpp"
+// #include "ThirdPartyLinkTests.cpp"
 
 int main() {	
 	CppUnit::TextUi::TestRunner runner;
@@ -28,11 +27,10 @@ int main() {
 	runner.addTest(ReservationManagerTests::suite());
 	runner.addTest(FrequencyChannelTests::suite());	
 	runner.addTest(MCSOTDMA_MacTests::suite());
-	runner.addTest(MCSOTDMA_PhyTests::suite());
-	runner.addTest(BeaconModuleTests::suite());		
+	runner.addTest(MCSOTDMA_PhyTests::suite());	
 	runner.addTest(SHLinkManagerTests::suite());
-	runner.addTest(SystemTests::suite());
-	runner.addTest(ThreeUsersTests::suite());
+	// runner.addTest(SystemTests::suite());
+	// runner.addTest(ThreeUsersTests::suite());
 	// runner.addTest(PPLinkManagerTests::suite());
 	// runner.addTest(ThirdPartyLinkTests::suite());
 

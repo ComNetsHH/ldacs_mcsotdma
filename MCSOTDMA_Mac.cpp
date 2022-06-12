@@ -5,7 +5,7 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "InetPacketPayload.hpp"
-#include "PPLinkManager.hpp"
+// #include "PPLinkManager.hpp"
 #include "SHLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
@@ -227,9 +227,9 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {						
-			link_manager = new PPLinkManager(internal_id, reservation_manager, this);
-			((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);			
-			((PPLinkManager*) link_manager)->setBurstOffset(this->pp_link_burst_offset);			
+			// link_manager = new PPLinkManager(internal_id, reservation_manager, this);
+			// ((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);			
+			// ((PPLinkManager*) link_manager)->setBurstOffset(this->pp_link_burst_offset);			
 		}		
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
@@ -408,10 +408,6 @@ void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
 	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setUseContentionMethod(method);
 }
 
-void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
-}
-
 void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
 	active_neighbor_observer.reportActivity(id);
 }
@@ -420,56 +416,29 @@ const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
 	return this->active_neighbor_observer;
 }
 
-void MCSOTDMA_Mac::setMinBeaconOffset(unsigned int value) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinBeaconInterval(value);
-}
-
-void MCSOTDMA_Mac::setMaxBeaconOffset(unsigned int value) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxBeaconInterval(value);
-}
-
-void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
-	// this sets the flag which treats link managers that are created in the future
-	IMac::setForceBidirectionalLinks(flag);	
-	// now also handle those that already exist
-	for (auto pair : link_managers) {
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) {			
-			((PPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);			
-		}
-	}	
-}
-
 size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 	size_t n = 0;	
-	for (const auto pair : link_managers) 
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-			n += ((PPLinkManager*) pair.second)->getNumUtilizedResources();					
+	// for (const auto pair : link_managers) 
+	// 	if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
+	// 		n += ((PPLinkManager*) pair.second)->getNumUtilizedResources();					
 	return n;
 }
 
 unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
 	unsigned int max_burst_offset = 0;
-	if (link_managers.size() <= 1) 
-		max_burst_offset = default_p2p_link_burst_offset;
-	else {
-		for (auto pair : link_managers) {
-			MacId id = pair.first;
-			if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
-				auto *link_manager = (PPLinkManager*) pair.second;
-				if (link_manager->getBurstOffset() > max_burst_offset)
-					max_burst_offset = link_manager->getBurstOffset();
-			}
-		}
-	}
+	// if (link_managers.size() <= 1) 
+	// 	max_burst_offset = default_p2p_link_burst_offset;
+	// else {
+	// 	for (auto pair : link_managers) {
+	// 		MacId id = pair.first;
+	// 		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
+	// 			auto *link_manager = (PPLinkManager*) pair.second;
+	// 			if (link_manager->getBurstOffset() > max_burst_offset)
+	// 				max_burst_offset = link_manager->getBurstOffset();
+	// 		}
+	// 	}
+	// }
 	return max_burst_offset;
-}
-
-void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setWriteResourceUtilizationIntoBeacon(flag);
-}
-
-void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(flag);
 }
 
 void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
@@ -483,24 +452,6 @@ void MCSOTDMA_Mac::onThirdPartyLinkReset(const ThirdPartyLink* caller) {
 			third_party_link.onAnotherThirdLinkReset();
 		}
 	}
-}
-
-void MCSOTDMA_Mac::setPPLinkBurstOffset(unsigned int value) {
-	// set variable that is used to instantiate new PPLinkManagers
-	pp_link_burst_offset = value;
-	// handle those that already exist
-	for (auto pair : link_managers) 
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
-			((PPLinkManager*) pair.second)->setBurstOffset(value);					
-}
-
-void MCSOTDMA_Mac::setPPLinkBurstOffsetAdaptive(bool value) {
-	// set variable that is used to instantiate new PPLinkManagers
-	this->adapt_burst_offset = value;
-	// handle those that already exist
-	for (auto pair : link_managers) 
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
-			((PPLinkManager*) pair.second)->setBurstOffsetAdaptive(value);
 }
 
 bool MCSOTDMA_Mac::isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency) const {
@@ -560,19 +511,19 @@ bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
 
 std::pair<std::vector<double>, std::vector<int>> MCSOTDMA_Mac::getUsedPPDutyCycleBudget() const {
 	std::pair<std::vector<double>, std::vector<int>> contributions;	
-	std::vector<double> &used_pp_duty_cycle_budget = contributions.first;
-	std::vector<int> &timeouts = contributions.second;
-	for (const auto &pair : link_managers) {
-		const MacId &id = pair.first;
-		const auto *link_manager = pair.second;		
-		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON && id != SYMBOLIC_LINK_ID_DME) {			
-			const auto *pp = (PPLinkManager*) link_manager;
-			if (pp->isActive()) {
-				used_pp_duty_cycle_budget.push_back(link_manager->getNumTxPerTimeSlot());
-				timeouts.push_back(pp->getNumSlotsUntilExpiry());
-			}
-		}		
-	}
+	// std::vector<double> &used_pp_duty_cycle_budget = contributions.first;
+	// std::vector<int> &timeouts = contributions.second;
+	// for (const auto &pair : link_managers) {
+	// 	const MacId &id = pair.first;
+	// 	const auto *link_manager = pair.second;		
+	// 	if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON && id != SYMBOLIC_LINK_ID_DME) {			
+	// 		const auto *pp = (PPLinkManager*) link_manager;
+	// 		if (pp->isActive()) {
+	// 			used_pp_duty_cycle_budget.push_back(link_manager->getNumTxPerTimeSlot());
+	// 			timeouts.push_back(pp->getNumSlotsUntilExpiry());
+	// 		}
+	// 	}		
+	// }
 	return contributions;
 }
 

@@ -39,16 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param header
 		 * @param payload
 		 */
-		void sendLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload);
-
-		/**
-		 * Schedules a link reply at the specified time slot offset.
-		 * 
-		 * @param header 
-		 * @param payload 
-		 * @param time_slot_offset 
-		 */
-		void sendLinkReply(L2HeaderLinkReply*& header, LinkEstablishmentPayload*& payload, unsigned int time_slot_offset);
+		void sendLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload);		
 
 		/**
 		 * Cancels all link requests towards 'id'.
@@ -81,17 +72,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * If 'true': advertise the next broadcast slot in the current header.		 
 		 * @param flag 
 		 */
-		void setAdvertiseNextSlotInCurrentHeader(bool flag);
+		void setAdvertiseNextSlotInCurrentHeader(bool flag);				
 
-		void setMinBeaconInterval(unsigned int value);
-		void setMaxBeaconInterval(unsigned int value);
-
-		void setWriteResourceUtilizationIntoBeacon(bool flag);
-		void setEnableBeacons(bool flag);		
-
-		void onPacketReception(L2Packet*& packet) override;
-
-		bool canSendLinkReply(unsigned int time_slot_offset) const;
+		void onPacketReception(L2Packet*& packet) override;		
 
 		bool isNextBroadcastScheduled() const;
 		unsigned int getNextBroadcastSlot() const;
@@ -118,10 +101,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void scheduleBroadcastSlot();
 
-		void unscheduleBroadcastSlot();
-		void unscheduleBeaconSlot();
-
-		void scheduleBeacon();
+		void unscheduleBroadcastSlot();		
 
 		void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 
@@ -144,18 +124,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
 		/** Collection of link replies and corresponding time slots where they should be transmitted. */
-		std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;		
-		BeaconModule beacon_module;		
+		// std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;				
 		/** Target collision probability for non-beacon broadcasts. */
 		double broadcast_target_collision_prob = .626;
 		/** Whether the next broadcast slot has been scheduled. */
-		bool next_broadcast_scheduled = false;
-		bool next_beacon_scheduled = false;
-		/** If true, always schedule the next broadcast slot and advertise it in the header. If false, only do so if there's more data to send. */
-		bool always_schedule_next_slot = false;
+		bool next_broadcast_scheduled = false;		
+		unsigned int next_broadcast_slot = 0;		
 		/** If true, the next slot is advertised in the current header if possible. */
 		bool advertise_slot_in_header = true;
-		unsigned int next_broadcast_slot = 0;		
+		
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
 		/** Maximum number of slots to consider during slot selection. */
