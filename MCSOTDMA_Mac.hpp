@@ -239,6 +239,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setLearnDMEActivity(bool value) override;
 		void passPrediction(const std::vector<std::vector<double>>& prediction_mat) override;
 		std::vector<std::vector<double>>& getCurrentPrediction();
+		virtual void notifyAboutDmeTransmission(uint64_t center_frequency) override;
 
 	protected:
 		/**

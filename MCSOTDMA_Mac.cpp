@@ -256,6 +256,11 @@ ReservationManager* MCSOTDMA_Mac::getReservationManager() {
     return this->reservation_manager;
 }
 
+void MCSOTDMA_Mac::notifyAboutDmeTransmission(uint64_t center_frequency) {
+	if (learn_dme_activity)
+		channel_sensing_observation[center_frequency] = true;
+}
+
 void MCSOTDMA_Mac::onSlotEnd() {
 	for (auto &packet_freq_pair : received_packets) {
 		// On this frequency channel,
@@ -265,13 +270,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		// remove DME packets before processing
 		for (auto it = packets.begin(); it != packets.end();) {
 			auto *packet = *it;
-			if (packet->isDME()) {			
-				std::cout << std::endl << "YEAH I SAW A DME PACKET!!" << std::endl;	
-				// remember on which channel 
-				if (learn_dme_activity) {
-					channel_sensing_observation[freq] = true;
-					std::cout << std::endl << "SAVED TO MAP!!" << std::endl;	
-				}
+			if (packet->isDME()) {							
 				this->deletePacket(packet);
 				delete packet;
 				it = packets.erase(it);
