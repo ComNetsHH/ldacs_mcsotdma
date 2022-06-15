@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#if 0
+#if 1
 	#define coutd std::cout
 #else
 	#define coutd 0 && std::cout

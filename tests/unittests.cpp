@@ -17,22 +17,24 @@
 // #include "ThreeUsersTests.cpp"
 // #include "PPLinkManagerTests.cpp"
 // #include "ThirdPartyLinkTests.cpp"
+#include "LinkProposalFinderTests.cpp"
 
 int main() {	
 	CppUnit::TextUi::TestRunner runner;
 
-	runner.addTest(MovingAverageTests::suite());
-	runner.addTest(ReservationTests::suite());
-	runner.addTest(ReservationTableTests::suite());
-	runner.addTest(ReservationManagerTests::suite());
-	runner.addTest(FrequencyChannelTests::suite());	
-	runner.addTest(MCSOTDMA_MacTests::suite());
-	runner.addTest(MCSOTDMA_PhyTests::suite());	
-	runner.addTest(SHLinkManagerTests::suite());
-	// runner.addTest(SystemTests::suite());
-	// runner.addTest(ThreeUsersTests::suite());
-	// runner.addTest(PPLinkManagerTests::suite());
-	// runner.addTest(ThirdPartyLinkTests::suite());
+	// runner.addTest(MovingAverageTests::suite());
+	// runner.addTest(ReservationTests::suite());
+	// runner.addTest(ReservationTableTests::suite());
+	// runner.addTest(ReservationManagerTests::suite());
+	// runner.addTest(FrequencyChannelTests::suite());	
+	// runner.addTest(MCSOTDMA_MacTests::suite());
+	// runner.addTest(MCSOTDMA_PhyTests::suite());	
+	// runner.addTest(SHLinkManagerTests::suite());
+//	// runner.addTest(SystemTests::suite());
+//	// runner.addTest(ThreeUsersTests::suite());
+//	// runner.addTest(PPLinkManagerTests::suite());
+//	// runner.addTest(ThirdPartyLinkTests::suite());
+	runner.addTest(LinkProposalFinderTests::suite());	
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;
