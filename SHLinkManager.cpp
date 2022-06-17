@@ -22,12 +22,11 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	unsigned long capacity = mac->getCurrentDatarate();
 	coutd << "requesting " << capacity << " bits from upper layer -> ";
 	// request data
-	L2Packet *upper_layer_packet = mac->requestSegment(capacity, link_id);
-	L2HeaderSH *header = (L2HeaderSH*) upper_layer_packet->getHeaders().at(0);	
-	coutd << "got " << upper_layer_packet->getBits() << "-bit packet -> ";
-	coutd.flush();
-	assert(upper_layer_packet->getBits() <= capacity && "got more bits than I asked for");		
-	
+	L2Packet *packet = mac->requestSegment(capacity, link_id);
+	L2HeaderSH *header = (L2HeaderSH*) packet->getHeaders().at(0);	
+	coutd << "got " << packet->getBits() << "-bit packet -> ";	
+	assert(packet->getBits() <= capacity && "got more bits than I asked for");		
+	// schedule next slot and write offset into header
 	coutd << "scheduling next broadcast slot -> ";
 	try {
 		scheduleBroadcastSlot();
@@ -41,14 +40,13 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
 	}	
 
-	// if (packet->getHeaders().size() == 1) {		
-	// 	delete packet;
-	// 	return nullptr;
-	// } else {		
-		mac->statisticReportBroadcastSent();
-		mac->statisticReportBroadcastMacDelay(measureMacDelay());				
-		return upper_layer_packet;
-	// }
+	if (packet->empty()) {		
+		delete packet;
+		return nullptr;	
+	}
+	mac->statisticReportBroadcastSent();
+	mac->statisticReportBroadcastMacDelay(measureMacDelay());				
+	return packet;	
 }
 
 void SHLinkManager::notifyOutgoing(unsigned long num_bits) {
