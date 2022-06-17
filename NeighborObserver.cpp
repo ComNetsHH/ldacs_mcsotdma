@@ -88,3 +88,17 @@ void NeighborObserver::clearAdvertisedLinkProposals(const MacId &id) {
 void NeighborObserver::addAdvertisedLinkProposal(const MacId &id, unsigned long current_slot, const LinkProposal &proposal) {	
 	advertised_link_proposals.at(id).push_back({current_slot, LinkProposal(proposal)});
 }
+
+std::vector<LinkProposal> NeighborObserver::getAdvertisedLinkProposals(const MacId &id, const unsigned long current_slot) const {
+	std::vector<LinkProposal> proposals;
+	for (const auto &item : advertised_link_proposals.at(id)) {
+		const unsigned long &slot_when_saved = item.first;
+		unsigned long num_elapsed_slots = current_slot - slot_when_saved;
+		const LinkProposal &proposal = item.second;
+		LinkProposal normalized_proposal = LinkProposal(proposal);
+		normalized_proposal.slot_offset -= num_elapsed_slots;
+		if (normalized_proposal.slot_offset > 0)
+			proposals.push_back(normalized_proposal);
+	}
+	return proposals;
+}

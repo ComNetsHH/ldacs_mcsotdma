@@ -348,6 +348,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_THROW(mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id), std::invalid_argument);
 		}
 
+		/** Tests that when there's no saved, advertised link, the SH initiates a two-way handshake. */
+		void testSendLinkRequestWithNoAdvertisedLink() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+		/** Tests that when there is an advertised link, the SH initiates a 1SHOT establishment. */
+		void testSendLinkRequestWithAdvertisedLink() {
+			bool is_implemented = false;
+			CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		}
+
+
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -366,6 +379,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
 		CPPUNIT_TEST(testRememberAdvertisedSlotOffset);		
 		CPPUNIT_TEST(testForgetAdvertisedSlotOffset);				
+		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);				
 		CPPUNIT_TEST_SUITE_END();
 	};
 

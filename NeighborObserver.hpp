@@ -24,6 +24,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<MacId> getActiveNeighbors() const;
 		void clearAdvertisedLinkProposals(const MacId &id);
 		void addAdvertisedLinkProposal(const MacId &id, unsigned long current_slot, const LinkProposal &proposal);
+		std::vector<LinkProposal> getAdvertisedLinkProposals(const MacId &id, const unsigned long current_slot) const;
  
 	protected:
 		/** Pairs of <ID, last-seen-this-many-slots-ago> */

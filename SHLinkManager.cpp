@@ -45,9 +45,12 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	}	
 
 	// add link requests
-	for (auto request : link_requests) {
+	coutd << "considering " << link_requests.size() << " pending link requests: ";
+	for (auto dest_id : link_requests) {		
+		coutd << "id=" << dest_id << " -> ";
 		// check if we know preferred links
-		
+		const auto &advertised_normalized_proposals = mac->getNeighborObserver().getAdvertisedLinkProposals(dest_id, mac->getCurrentSlot());
+
 	}
 
 	// find link proposals
