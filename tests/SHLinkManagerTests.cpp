@@ -89,8 +89,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			// check that every sent packet carries some info about the next broadcast slot
-			CPPUNIT_ASSERT_EQUAL(size_t(1), env->phy_layer->outgoing_packets.size());
-			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac->stat_broadcast_wasted_tx_opportunities.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), env->phy_layer->outgoing_packets.size());			
 			for (auto *broadcast_packet : env->phy_layer->outgoing_packets) {				
 				for (const auto *header : broadcast_packet->getHeaders()) {
 					if (header->frame_type == L2Header::broadcast) {												
@@ -187,15 +186,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			// no new broadcast slot should've been scheduled
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
-			CPPUNIT_ASSERT( link_manager->next_broadcast_slot > 0);
+			CPPUNIT_ASSERT_GREATER(uint(0), link_manager->next_broadcast_slot);
 			// make sure the header flag has been set in the broadcasted data packet
 			auto &outgoing_packets = env->phy_layer->outgoing_packets;
 			CPPUNIT_ASSERT_EQUAL(size_t(1), outgoing_packets.size());
 			auto &packet = outgoing_packets.at(0);
-			CPPUNIT_ASSERT_EQUAL(size_t(2), packet->getHeaders().size());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), packet->getHeaders().size());
 			const auto *base_header = (L2HeaderSH*) packet->getHeaders().at(0);
 			CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, base_header->frame_type);
-			CPPUNIT_ASSERT(base_header->slot_offset > 0);
+			CPPUNIT_ASSERT_GREATER(uint(0), base_header->slot_offset);
 		}
 
 		void testMacDelay() {
@@ -297,19 +296,19 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
-		// CPPUNIT_TEST(testBroadcastSlotSelection);
-		// CPPUNIT_TEST(testScheduleBroadcastSlot);
+		CPPUNIT_TEST(testBroadcastSlotSelection);
+		CPPUNIT_TEST(testScheduleBroadcastSlot);
 		CPPUNIT_TEST(testBroadcast);
-//		// CPPUNIT_TEST(testSendLinkRequestOnBC);						
-		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
-		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
-		// CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);		
-		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
-		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
-		// CPPUNIT_TEST(testMacDelay);		
-		// CPPUNIT_TEST(testSHChannelAccessDelay);	
-		// CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
-		// CPPUNIT_TEST(testDutyCycleMacDelay);		
+		// CPPUNIT_TEST(testSendLinkRequestOnBC);						
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);		
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
+		CPPUNIT_TEST(testMacDelay);		
+		CPPUNIT_TEST(testSHChannelAccessDelay);	
+		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
+		CPPUNIT_TEST(testDutyCycleMacDelay);		
 		CPPUNIT_TEST_SUITE_END();
 	};
 
