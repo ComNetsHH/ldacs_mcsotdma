@@ -15,7 +15,7 @@
 // #include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
 // #include "ThreeUsersTests.cpp"
-// #include "PPLinkManagerTests.cpp"
+#include "PPLinkManagerTests.cpp"
 // #include "ThirdPartyLinkTests.cpp"
 #include "LinkProposalFinderTests.cpp"
 
@@ -32,7 +32,7 @@ int main() {
 	runner.addTest(SHLinkManagerTests::suite());
 //	// runner.addTest(SystemTests::suite());
 //	// runner.addTest(ThreeUsersTests::suite());
-//	// runner.addTest(PPLinkManagerTests::suite());
+	runner.addTest(PPLinkManagerTests::suite());
 //	// runner.addTest(ThirdPartyLinkTests::suite());
 	// runner.addTest(LinkProposalFinderTests::suite());	
 
