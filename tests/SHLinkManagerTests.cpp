@@ -295,6 +295,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(broadcast_slot, (uint) mac->stat_broadcast_mac_delay.get());
 		}
 
+		/** Tests that an advertised broadcast transmission is marked as such. */
+		void testMarkAdvertisedBroadcastSlot() {
+			L2HeaderSH *header = new L2HeaderSH(partner_id);
+			header->slot_offset = 5;
+			// currently idle
+			CPPUNIT_ASSERT_EQUAL(Reservation(), link_manager->current_reservation_table->getReservation(header->slot_offset));
+			// receiver header
+			link_manager->processBroadcastMessage(partner_id, header);			
+			// now marked as RX
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), link_manager->current_reservation_table->getReservation(header->slot_offset));
+			delete header;
+		}
+
+		/** Tests that an advertised broadcast transmission that indicates a collision leads to the rescheduling of one's own broadcast. */
+		void testRescheduleBroadcastUponCollision() {
+			L2HeaderSH *header = new L2HeaderSH(partner_id);
+			header->slot_offset = 5;
+			// currently TX
+			link_manager->next_broadcast_scheduled = true;
+			link_manager->next_broadcast_slot = header->slot_offset;
+			link_manager->current_reservation_table->mark(header->slot_offset, Reservation(id, Reservation::TX));			
+			// receiver header
+			link_manager->processBroadcastMessage(partner_id, header);			
+			// now marked as RX
+			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), link_manager->current_reservation_table->getReservation(header->slot_offset));
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
+			CPPUNIT_ASSERT_GREATER(header->slot_offset, link_manager->next_broadcast_slot);
+			delete header;
+		}
+
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
 		CPPUNIT_TEST(testBroadcastSlotSelection);
 		CPPUNIT_TEST(testScheduleBroadcastSlot);
@@ -308,7 +338,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testMacDelay);		
 		CPPUNIT_TEST(testSHChannelAccessDelay);	
 		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
-		CPPUNIT_TEST(testDutyCycleMacDelay);		
+		CPPUNIT_TEST(testDutyCycleMacDelay);
+		// CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
+		CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
 		CPPUNIT_TEST_SUITE_END();
 	};
 

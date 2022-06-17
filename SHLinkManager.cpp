@@ -295,6 +295,24 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 
 void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {
 	mac->statisticReportBroadcastMessageProcessed();
+	// Check indicated next broadcast slot.
+	int advertised_broadcast_slot = (int) header->slot_offset;
+	if (advertised_broadcast_slot > 0) { // If it has been set ...
+		// ... check local reservation
+		const Reservation& res = current_reservation_table->getReservation(advertised_broadcast_slot);
+		// if locally the slot is IDLE, then schedule listening to this broadcast
+		if (res.isIdle()) {
+			current_reservation_table->mark(advertised_broadcast_slot, Reservation(header->src_id, Reservation::RX));
+			coutd << "marked next broadcast in " << advertised_broadcast_slot << " slots as RX -> ";
+		// if locally, one's own transmission is scheduled...
+		} else if (res.isTx()) {
+			coutd << "detected collision with own broadcast in " << advertised_broadcast_slot << " slots -> ";
+			broadcastCollisionDetected(header->src_id, Reservation::RX);							
+		} else {
+			coutd << "indicated next broadcast in " << advertised_broadcast_slot << " slots is locally reserved for " << res << " (not doing anything) -> ";
+		}
+	} else
+		coutd << "no next broadcast slot indicated -> ";
 }
 
 // void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
