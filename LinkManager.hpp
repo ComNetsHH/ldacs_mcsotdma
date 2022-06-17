@@ -137,11 +137,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		virtual bool isActive() const = 0;
 
-	protected:
-		// virtual void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
+	protected:		
 		virtual void processBroadcastMessage(const MacId& origin, L2HeaderSH*& header);
-		// virtual void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
-		// virtual void processBaseMessage(L2HeaderBase*& header);		
+		virtual void processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload);
+		
 		/** 
 		 * Called whenever a channel access is performed. Measures the number of slots since the last channel access and reports it to the MAC.
 		 * @return Number of slots since the last channel access, i.e. the current MAC delay.

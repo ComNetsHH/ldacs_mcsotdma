@@ -5,7 +5,7 @@
 #include "MCSOTDMA_Mac.hpp"
 #include "coutdebug.hpp"
 #include "InetPacketPayload.hpp"
-// #include "PPLinkManager.hpp"
+#include "PPLinkManager.hpp"
 #include "SHLinkManager.hpp"
 #include <IPhy.hpp>
 #include <cassert>
@@ -226,9 +226,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {						
-			// link_manager = new PPLinkManager(internal_id, reservation_manager, this);
-			// ((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);			
-			// ((PPLinkManager*) link_manager)->setBurstOffset(this->pp_link_burst_offset);			
+			link_manager = new PPLinkManager(internal_id, reservation_manager, this);			
 		}		
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)

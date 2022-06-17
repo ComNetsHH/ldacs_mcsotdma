@@ -362,7 +362,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSHChannelAccessDelay);	
 		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
 		CPPUNIT_TEST(testDutyCycleMacDelay);
-		// // CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
+		CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
 		CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
 		CPPUNIT_TEST(testRememberAdvertisedSlotOffset);		
 		CPPUNIT_TEST(testForgetAdvertisedSlotOffset);				

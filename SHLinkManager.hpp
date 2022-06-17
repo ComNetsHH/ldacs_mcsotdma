@@ -33,12 +33,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void onSlotEnd() override;
 
 		/**
-		 * Called by P2PLinkManagers to send link requests on the broadcast channel.
-		 * This call schedules a broadcast slot if necessary.
+		 * Called by PPLinkManagers to send link requests on the broadcast channel.		 
 		 * @param header
 		 * @param payload
 		 */
-		// void sendLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload);		
+		void sendLinkRequest(const MacId &dest_id);		
 
 		/**
 		 * Cancels all link requests towards 'id'.
@@ -122,6 +121,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		// std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
+		std::vector<MacId> link_requests;
 		/** Collection of link replies and corresponding time slots where they should be transmitted. */
 		// std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;				
 		/** Target collision probability for non-beacon broadcasts. */

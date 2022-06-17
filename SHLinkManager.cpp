@@ -135,14 +135,13 @@ void SHLinkManager::onSlotEnd() {
 	LinkManager::onSlotEnd();
 }
 
-// void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkEstablishmentPayload*& payload) {
-// 	throw std::runtime_error("sendLinkRequest not updated yet");
-// 	coutd << *this << " saving link request for transmission -> ";
-// 	// save request
-// 	link_requests.push_back({header, payload});	
-// 	// schedule broadcast slot if necessary
-// 	notifyOutgoing(header->getBits() + payload->getBits());
-// }
+void SHLinkManager::sendLinkRequest(const MacId &dest_id) {	
+	coutd << *this << " will send link request to " << dest_id << " with next transmission -> ";	
+	// save request
+	link_requests.push_back(dest_id);	
+	// schedule broadcast slot if necessary
+	notifyOutgoing(1);
+}
 
 // size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 // 	size_t num_removed = 0;

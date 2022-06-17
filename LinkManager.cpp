@@ -161,10 +161,10 @@ void LinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& head
 	throw std::runtime_error("not implemented");
 }
 
-// void LinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
-// 	coutd << *this << "::processUnicastMessage" << std::endl;
-// 	throw std::runtime_error("not implemented");
-// }
+void LinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) {
+	coutd << *this << "::processUnicastMessage" << std::endl;
+	throw std::runtime_error("not implemented");
+}
 
 // void LinkManager::processBaseMessage(L2HeaderBase*& header) {
 // 	coutd << *this << "::processBaseMessage" << std::endl;
