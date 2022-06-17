@@ -537,3 +537,8 @@ int MCSOTDMA_Mac::getSHSlotOffset() const {
 const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {
 	return this->duty_cycle;
 }
+
+
+unsigned int MCSOTDMA_Mac::getDefaultPpLinkTimeout() const {
+	return this->default_pp_link_timeout;
+}

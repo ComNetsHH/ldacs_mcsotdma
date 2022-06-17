@@ -6,6 +6,7 @@
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 // #include "PPLinkManager.hpp"
+#include "LinkProposalFinder.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -21,11 +22,13 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	coutd << *mac << "::" << *this << "::onTransmissionReservation -> ";	
 	unsigned long capacity = mac->getCurrentDatarate();
 	coutd << "requesting " << capacity << " bits from upper layer -> ";
+
 	// request data
 	L2Packet *packet = mac->requestSegment(capacity, link_id);
 	L2HeaderSH *header = (L2HeaderSH*) packet->getHeaders().at(0);	
 	coutd << "got " << packet->getBits() << "-bit packet -> ";	
 	assert(packet->getBits() <= capacity && "got more bits than I asked for");		
+
 	// schedule next slot and write offset into header
 	coutd << "scheduling next broadcast slot -> ";
 	try {
@@ -40,7 +43,24 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
 	}	
 
+	// find link proposals
+	size_t num_proposals = 3;
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
+	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;	
+	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
+	auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
+	int min_offset = pair.first;
+	int min_period = pair.second;
+	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, min_period, 1, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
+	// write proposals into header
+	for (LinkProposal proposal : proposable_links) 
+		header->link_proposals.push_back(L2HeaderSH::LinkProposalMessage(proposal));	
+	coutd << "wrote " << header->link_proposals.size() << " link proposals into header -> ";
+
+	// discard empty packet
 	if (packet->empty()) {		
+		mac->statisticReportWastedSHTransmission();
 		delete packet;
 		return nullptr;	
 	}

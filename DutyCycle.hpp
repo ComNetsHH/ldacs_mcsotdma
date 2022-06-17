@@ -64,7 +64,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			std::pair<int, int> getPeriodicityPP(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const;
 
-			int getOffsetSH(const std::vector<double>&) const;
+			double getSHBudget(const std::vector<double>& used_budget) const;
+
+			int getOffsetSH(const std::vector<double>& used_budget) const;
 
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */

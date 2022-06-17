@@ -215,6 +215,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportBeaconCollisionDetected() {
 			stat_num_beacon_collisions_detected.increment();
 		}
+		void statisticReportWastedSHTransmission() {
+			stat_broadcast_wasted_tx_opportunities.increment();
+		}
+		void statisticReportWastedPPTransmission() {
+			stat_unicast_wasted_tx_opportunities.increment();
+		}
 
 		unsigned int getP2PBurstOffset() const;		
 
@@ -229,11 +235,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::vector<std::vector<double>>& getCurrentPrediction();
 
 		/**		 
-		 * @return PP link duty cycle contributions.
+		 * @return <used budget per link, timeout per link>
 		 */
 		std::pair<std::vector<double>, std::vector<int>> getUsedPPDutyCycleBudget() const;		
 		double getUsedSHDutyCycleBudget() const;		
 		int getSHSlotOffset() const; 
+		unsigned int getDefaultPpLinkTimeout() const;
 
 	protected:
 		/**
@@ -260,6 +267,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int pp_link_burst_offset = 20;
 		bool adapt_burst_offset = true;
 		/** Number of time slots considered to compute the duty cycle. */
+
+		unsigned int default_pp_link_timeout = 20;
 		
 		/** Time slots. */
 		const unsigned int default_duty_cycle_period = 100;
