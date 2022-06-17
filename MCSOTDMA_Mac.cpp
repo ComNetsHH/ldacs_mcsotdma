@@ -415,7 +415,7 @@ void MCSOTDMA_Mac::reportBroadcastSlotAdvertisement(const MacId& id, unsigned in
 
 
 
-const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
+NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() {
 	return this->active_neighbor_observer;
 }
 

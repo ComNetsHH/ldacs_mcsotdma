@@ -20,14 +20,15 @@ void SHLinkManager::onReceptionReservation() {
 
 L2Packet* SHLinkManager::onTransmissionReservation() {
 	coutd << *mac << "::" << *this << "::onTransmissionReservation -> ";	
-	unsigned long capacity = mac->getCurrentDatarate();
+	size_t capacity = mac->getCurrentDatarate();
 	coutd << "requesting " << capacity << " bits from upper layer -> ";
 
 	// request data
 	L2Packet *packet = mac->requestSegment(capacity, link_id);
 	L2HeaderSH *header = (L2HeaderSH*) packet->getHeaders().at(0);	
-	coutd << "got " << packet->getBits() << "-bit packet -> ";	
+	coutd << "got " << packet->getBits() << "-bit packet -> ";		
 	assert(packet->getBits() <= capacity && "got more bits than I asked for");		
+	capacity -= packet->getBits();
 
 	// schedule next slot and write offset into header
 	coutd << "scheduling next broadcast slot -> ";
@@ -43,6 +44,12 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
 	}	
 
+	// add link requests
+	for (auto request : link_requests) {
+		// check if we know preferred links
+		
+	}
+
 	// find link proposals
 	size_t num_proposals = 3;
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
@@ -54,9 +61,9 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	int min_period = pair.second;
 	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, min_period, 1, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
 	// write proposals into header
-	for (LinkProposal proposal : proposable_links) 
+	for (const LinkProposal &proposal : proposable_links) 
 		header->link_proposals.push_back(L2HeaderSH::LinkProposalMessage(proposal));	
-	coutd << "wrote " << header->link_proposals.size() << " link proposals into header -> ";
+	coutd << "wrote " << header->link_proposals.size() << " link proposals into header -> ";	
 
 	// discard empty packet
 	if (packet->empty()) {		
@@ -294,7 +301,8 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 
 void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {
 	mac->statisticReportBroadcastMessageProcessed();
-	// Check indicated next broadcast slot.
+
+	// check advertised next transmission slot
 	unsigned int advertised_broadcast_slot = header->slot_offset;
 	if (advertised_broadcast_slot > 0) { // If it has been set ...
 		// remember the advertised slot offset
@@ -314,6 +322,14 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 		}
 	} else
 		coutd << "no next broadcast slot indicated -> ";
+
+	// save link proposals		
+	coutd << "saving " << header->link_proposals.size() << " advertised link proposals -> ";
+	if (!header->link_proposals.empty()) {
+		mac->getNeighborObserver().clearAdvertisedLinkProposals(header->src_id);
+		for (const auto &proposal : header->link_proposals) 
+			mac->getNeighborObserver().addAdvertisedLinkProposal(header->src_id, mac->getCurrentSlot(), proposal.proposed_link);	
+	}
 }
 
 // void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {

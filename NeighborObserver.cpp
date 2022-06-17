@@ -80,3 +80,11 @@ unsigned int NeighborObserver::getNextExpectedBroadcastSlotOffset(const MacId &i
 	else  
 		throw std::invalid_argument("no saved next broadcast slot for ID " + std::to_string(id.getId()));
 }
+
+void NeighborObserver::clearAdvertisedLinkProposals(const MacId &id) {
+	advertised_link_proposals.at(id).clear();
+}
+
+void NeighborObserver::addAdvertisedLinkProposal(const MacId &id, unsigned long current_slot, const LinkProposal &proposal) {	
+	advertised_link_proposals.at(id).push_back({current_slot, LinkProposal(proposal)});
+}
