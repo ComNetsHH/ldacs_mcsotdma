@@ -15,6 +15,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		NeighborObserver(unsigned int max_time_slots_until_neighbor_not_active_anymore);
 
 		void reportActivity(const MacId& id);
+		void reportBroadcastSlotAdvertisement(const MacId& id, unsigned int advertised_slot_offset);
+		unsigned int getNextExpectedBroadcastSlotOffset(const MacId &id) const;
 		void onSlotEnd();
 		size_t getNumActiveNeighbors() const;
 		bool isActive(const MacId& id) const;
@@ -23,6 +25,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 		/** Pairs of <ID, last-seen-this-many-slots-ago> */
 		std::map<MacId, unsigned int> active_neighbors;
+		/** Pairs of <ID, next-broadcast> */
+		std::map<MacId, unsigned int> advertised_broadcast_slots;
 
 		unsigned int max_last_seen_val;
 	};

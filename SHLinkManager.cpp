@@ -296,8 +296,10 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {
 	mac->statisticReportBroadcastMessageProcessed();
 	// Check indicated next broadcast slot.
-	int advertised_broadcast_slot = (int) header->slot_offset;
+	unsigned int advertised_broadcast_slot = header->slot_offset;
 	if (advertised_broadcast_slot > 0) { // If it has been set ...
+		// remember the advertised slot offset
+		mac->reportBroadcastSlotAdvertisement(origin, advertised_broadcast_slot);
 		// ... check local reservation
 		const Reservation& res = current_reservation_table->getReservation(advertised_broadcast_slot);
 		// if locally the slot is IDLE, then schedule listening to this broadcast

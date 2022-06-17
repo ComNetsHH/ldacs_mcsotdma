@@ -5,6 +5,7 @@
  */
 
 #include "NeighborObserver.hpp"
+#include <iostream>
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -25,10 +26,25 @@ void NeighborObserver::onSlotEnd() {
 	for (auto it = active_neighbors.begin(); it != active_neighbors.end(); ) {
 		// increment its last-seen value
 		it->second++;
+		// decrement its next advertised broadcast
+		const MacId &id = it->first;
+		auto broadcast_slot_it = advertised_broadcast_slots.find(id);
+		bool erased_broadcast_element = false;
+		if (broadcast_slot_it != advertised_broadcast_slots.end()) {									
+			// decrement
+			if (broadcast_slot_it->second > 0) 
+				(*broadcast_slot_it).second--;				
+			else { // or erase if it goes beyond zero
+				advertised_broadcast_slots.erase(broadcast_slot_it);			
+				erased_broadcast_element = true;
+			}
+		}
 		// and remove it if it hasn't been reported for too long
-		if (it->second >= this->max_last_seen_val) 
+		if (it->second >= this->max_last_seen_val) {
 			it = active_neighbors.erase(it);
-		else
+			if (!erased_broadcast_element)
+				advertised_broadcast_slots.erase(broadcast_slot_it);
+		} else
 			++it;
 	}	
 }
@@ -46,4 +62,21 @@ std::vector<MacId> NeighborObserver::getActiveNeighbors() const {
 	for (const auto& pair : active_neighbors)		
 		ids.push_back(pair.first);
 	return ids;
+}
+
+void NeighborObserver::reportBroadcastSlotAdvertisement(const MacId& id, unsigned int advertised_slot_offset) {
+	auto it = advertised_broadcast_slots.find(id);
+	// if id does not exist
+	if (it == advertised_broadcast_slots.end())
+		advertised_broadcast_slots.insert({id, advertised_slot_offset}); // add it
+	else  // if it does
+		(*it).second = advertised_slot_offset;  // then set the advertised value
+}
+
+unsigned int NeighborObserver::getNextExpectedBroadcastSlotOffset(const MacId &id) const {
+	auto it = advertised_broadcast_slots.find(id);	
+	if (it != advertised_broadcast_slots.end())
+		return (*it).second;
+	else  
+		throw std::invalid_argument("no saved next broadcast slot for ID " + std::to_string(id.getId()));
 }

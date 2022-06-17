@@ -411,6 +411,12 @@ void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
 	active_neighbor_observer.reportActivity(id);
 }
 
+void MCSOTDMA_Mac::reportBroadcastSlotAdvertisement(const MacId& id, unsigned int advertised_slot_offset) {
+	active_neighbor_observer.reportBroadcastSlotAdvertisement(id, advertised_slot_offset);
+}
+
+
+
 const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
 	return this->active_neighbor_observer;
 }

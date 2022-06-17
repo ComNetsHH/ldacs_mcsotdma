@@ -91,6 +91,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** Link managers call this to report broadcast or unicast activity from a neighbor. This is used to update the recently active neighbors. */
 		void reportNeighborActivity(const MacId& id);
+		void reportBroadcastSlotAdvertisement(const MacId& id, unsigned int advertised_slot_offset);
 		const NeighborObserver& getNeighborObserver() const;		
 
 		void statisticReportBroadcastMessageProcessed() {

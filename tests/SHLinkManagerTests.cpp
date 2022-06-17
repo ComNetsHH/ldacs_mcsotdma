@@ -301,7 +301,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			header->slot_offset = 5;
 			// currently idle
 			CPPUNIT_ASSERT_EQUAL(Reservation(), link_manager->current_reservation_table->getReservation(header->slot_offset));
-			// receiver header
+			// receive header
 			link_manager->processBroadcastMessage(partner_id, header);			
 			// now marked as RX
 			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), link_manager->current_reservation_table->getReservation(header->slot_offset));
@@ -316,13 +316,36 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			link_manager->next_broadcast_scheduled = true;
 			link_manager->next_broadcast_slot = header->slot_offset;
 			link_manager->current_reservation_table->mark(header->slot_offset, Reservation(id, Reservation::TX));			
-			// receiver header
+			// receive header
 			link_manager->processBroadcastMessage(partner_id, header);			
 			// now marked as RX
 			CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), link_manager->current_reservation_table->getReservation(header->slot_offset));
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->next_broadcast_scheduled);
 			CPPUNIT_ASSERT_GREATER(header->slot_offset, link_manager->next_broadcast_slot);
 			delete header;
+		}
+
+		void testRememberAdvertisedSlotOffset() {
+			CPPUNIT_ASSERT_THROW(mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id), std::invalid_argument);
+			L2HeaderSH *header = new L2HeaderSH(partner_id);
+			header->slot_offset = 5;
+			link_manager->processBroadcastMessage(partner_id, header);
+			CPPUNIT_ASSERT_EQUAL(header->slot_offset, mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id));
+		}
+
+		void testForgetAdvertisedSlotOffset() {
+			CPPUNIT_ASSERT_THROW(mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id), std::invalid_argument);
+			L2HeaderSH *header = new L2HeaderSH(partner_id);
+			header->slot_offset = 5;
+			link_manager->processBroadcastMessage(partner_id, header);
+			mac->reportNeighborActivity(partner_id);
+			CPPUNIT_ASSERT_EQUAL(header->slot_offset, mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id));
+			for (size_t t = 0; t < header->slot_offset + 1; t++) {
+				mac->active_neighbor_observer.onSlotEnd();
+				if (t < header->slot_offset)
+					CPPUNIT_ASSERT_EQUAL((unsigned int) (header->slot_offset - (t+1)), mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id));				
+			}
+			CPPUNIT_ASSERT_THROW(mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id), std::invalid_argument);
 		}
 
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
@@ -339,8 +362,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testSHChannelAccessDelay);	
 		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
 		CPPUNIT_TEST(testDutyCycleMacDelay);
-		// CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
+		// // CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
 		CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
+		CPPUNIT_TEST(testRememberAdvertisedSlotOffset);		
+		CPPUNIT_TEST(testForgetAdvertisedSlotOffset);				
 		CPPUNIT_TEST_SUITE_END();
 	};
 
