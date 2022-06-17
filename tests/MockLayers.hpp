@@ -160,26 +160,22 @@ class RLCLayer : public IRlc {
 				if (mac_id == SYMBOLIC_LINK_ID_BROADCAST) {
 					coutd << "returning new broadcast -> ";
 					segment = new L2Packet();
-					auto* base_header = new L2HeaderBase();
-					auto* broadcast_header = new L2HeaderBroadcast();
-					segment->addMessage(base_header, nullptr);
-					if (num_remaining_broadcast_packets > 0) {
-						num_remaining_broadcast_packets--;
-						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
-					} else if (should_there_be_more_broadcast_data || always_return_broadcast_payload) {
-						segment->addMessage(broadcast_header, new RLCPayload(num_bits));
+					auto *sh_header = new L2HeaderSH();										
+					if (num_remaining_broadcast_packets > 0 || should_there_be_more_broadcast_data || always_return_broadcast_payload) {
+						if (num_remaining_broadcast_packets > 0)
+							num_remaining_broadcast_packets--;
+						int remaining_num_bits = num_bits - sh_header->getBits();												
+						segment->addMessage(sh_header, new RLCPayload(remaining_num_bits > 0 ? remaining_num_bits : 0));					
 					} else {
 						coutd << "just the header and no payload -> ";
-						segment->addMessage(broadcast_header, nullptr);
+						segment->addMessage(sh_header, nullptr);
 					}
 					
 				} else {
 					coutd << "returning new unicast -> ";
 					segment = new L2Packet();
-					auto* base_header = new L2HeaderBase(own_id, 0, 0, 0, 0);
-					auto* unicast_header = new L2HeaderUnicast(mac_id, true, SequenceNumber(0), SequenceNumber(0));
-					segment->addMessage(base_header, new RLCPayload(0));
-					segment->addMessage(unicast_header, new RLCPayload(num_bits));
+					auto* base_header = new L2HeaderSH(mac_id);					
+					segment->addMessage(base_header, new RLCPayload(0));					
 				}
 			} else {
 				coutd << "returning injection -> ";

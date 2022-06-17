@@ -38,7 +38,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param header
 		 * @param payload
 		 */
-		void sendLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload);		
+		// void sendLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload*& payload);		
 
 		/**
 		 * Cancels all link requests towards 'id'.
@@ -102,17 +102,17 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void unscheduleBroadcastSlot();		
 
-		void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
+	// void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) override;
 
-		void processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) override;
+		void processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) override;
 
-		void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
+		// void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) override;
 
-		void processBaseMessage(L2HeaderBase*& header) override;
+		// void processBaseMessage(L2HeaderBase*& header) override;
 
-		void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
+		// void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;
 
-		void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;		
+		// void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) override;		
 
 		/**
 		 * @return Average number of slots inbetween broadcast packet generations as measured.
@@ -121,7 +121,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
-		std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
+		// std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
 		/** Collection of link replies and corresponding time slots where they should be transmitted. */
 		// std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;				
 		/** Target collision probability for non-beacon broadcasts. */

@@ -66,8 +66,8 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 			item.second->onSlotStart(num_slots);
 	}
 	// Notify the third-party links.
-	for (auto &item : third_party_links) 
-		item.second.onSlotStart(num_slots);
+	// for (auto &item : third_party_links) 
+	// 	item.second.onSlotStart(num_slots);
 	
 	// Notify the PHY about the channels to which receivers are tuned to in this time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
@@ -238,22 +238,22 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 	return link_manager;
 }
 
-ThirdPartyLink& MCSOTDMA_Mac::getThirdPartyLink(const MacId& id1, const MacId& id2) {
-	// look for an existing link
-	auto it = third_party_links.find({id1, id2});
-	if (it == third_party_links.end())
-		it = third_party_links.find({id2, id1});	
-	// if found, return it
-	if (it != third_party_links.end()) 
-		return (*it).second;
-	// else, create one
-	else {
-		auto it_success = third_party_links.emplace(std::piecewise_construct, std::make_tuple(id1, id2), std::make_tuple(id1, id2, this));
-		if (!it_success.second)
-			throw std::runtime_error("couldn't emplace third-party link");		
-		return it_success.first->second;
-	}
-}
+// ThirdPartyLink& MCSOTDMA_Mac::getThirdPartyLink(const MacId& id1, const MacId& id2) {
+// 	// look for an existing link
+// 	auto it = third_party_links.find({id1, id2});
+// 	if (it == third_party_links.end())
+// 		it = third_party_links.find({id2, id1});	
+// 	// if found, return it
+// 	if (it != third_party_links.end()) 
+// 		return (*it).second;
+// 	// else, create one
+// 	else {
+// 		auto it_success = third_party_links.emplace(std::piecewise_construct, std::make_tuple(id1, id2), std::make_tuple(id1, id2, this));
+// 		if (!it_success.second)
+// 			throw std::runtime_error("couldn't emplace third-party link");		
+// 		return it_success.first->second;
+// 	}
+// }
 
 void MCSOTDMA_Mac::onReceptionSlot(const FrequencyChannel* channel) {
 	// Do nothing.
@@ -365,14 +365,14 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	}
 
 	// update third-party links
-	try {
-		for (auto &item : third_party_links)
-			item.second.onSlotEnd();
-	} catch (const std::exception &e) {
-		std::stringstream ss;
-		ss << *this << "::onSlotEnd error updating third party links: " << e.what() << std::endl;		
-		throw std::runtime_error(ss.str());
-	}
+	// try {
+	// 	for (auto &item : third_party_links)
+	// 		item.second.onSlotEnd();
+	// } catch (const std::exception &e) {
+	// 	std::stringstream ss;
+	// 	ss << *this << "::onSlotEnd error updating third party links: " << e.what() << std::endl;		
+	// 	throw std::runtime_error(ss.str());
+	// }
 
 	// update active neighbors list
 	active_neighbor_observer.onSlotEnd();
@@ -444,14 +444,14 @@ void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
 	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAdvertiseNextSlotInCurrentHeader(flag);
 }
 
-void MCSOTDMA_Mac::onThirdPartyLinkReset(const ThirdPartyLink* caller) {
-	for (auto &pair : third_party_links) {
-		auto &third_party_link = pair.second;
-		if (third_party_link != *caller) {
-			third_party_link.onAnotherThirdLinkReset();
-		}
-	}
-}
+// void MCSOTDMA_Mac::onThirdPartyLinkReset(const ThirdPartyLink* caller) {
+// 	for (auto &pair : third_party_links) {
+// 		auto &third_party_link = pair.second;
+// 		if (third_party_link != *caller) {
+// 			third_party_link.onAnotherThirdLinkReset();
+// 		}
+// 	}
+// }
 
 bool MCSOTDMA_Mac::isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency) const {
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();

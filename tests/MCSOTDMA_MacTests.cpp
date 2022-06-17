@@ -74,10 +74,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testCollision() {
 			auto *packet1 = new L2Packet(), *packet2 = new L2Packet();
-			packet1->addMessage(new L2HeaderBase(MacId(10), 0, 0, 0, 0), nullptr);
-			packet1->addMessage(new L2HeaderBroadcast(), nullptr);
-			packet2->addMessage(new L2HeaderBase(MacId(11), 0, 0, 0, 0), nullptr);
-			packet2->addMessage(new L2HeaderBroadcast(), nullptr);
+			packet1->addMessage(new L2HeaderSH(MacId(10)), nullptr);			
+			packet2->addMessage(new L2HeaderSH(MacId(11)), nullptr);			
 			mac->receiveFromLower(packet1, env->sh_frequency);
 			mac->receiveFromLower(packet2, env->sh_frequency);
 			mac->onSlotEnd();
@@ -87,8 +85,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testChannelError() {
 			auto *packet = new L2Packet();
-			packet->addMessage(new L2HeaderBase(MacId(10), 0, 0, 0, 0), nullptr);
-			packet->addMessage(new L2HeaderBroadcast(), nullptr);
+			packet->addMessage(new L2HeaderSH(MacId(10)), nullptr);			
 			packet->hasChannelError = true;
 			mac->receiveFromLower(packet, env->sh_frequency);
 			mac->onSlotEnd();
@@ -98,11 +95,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testCollisionAndChannelError() {
 			auto *packet1 = new L2Packet(), *packet2 = new L2Packet();
-			packet1->addMessage(new L2HeaderBase(MacId(10), 0, 0, 0, 0), nullptr);
-			packet1->addMessage(new L2HeaderBroadcast(), nullptr);
+			packet1->addMessage(new L2HeaderSH(MacId(10)), nullptr);			
 			packet1->hasChannelError = true;
-			packet2->addMessage(new L2HeaderBase(MacId(11), 0, 0, 0, 0), nullptr);
-			packet2->addMessage(new L2HeaderBroadcast(), nullptr);
+			packet2->addMessage(new L2HeaderSH(MacId(11)), nullptr);			
 			mac->receiveFromLower(packet1, env->sh_frequency);
 			mac->receiveFromLower(packet2, env->sh_frequency);
 			mac->onSlotEnd();

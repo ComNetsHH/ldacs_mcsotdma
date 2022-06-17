@@ -41,48 +41,48 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			awaiting_data_tx
 		};
 
-		class LinkEstablishmentPayload : public L2Packet::Payload {
-		public:
-			class Callback {
-			public:
-				virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload *&payload) = 0;
-			};
+		// class LinkEstablishmentPayload : public L2Packet::Payload {
+		// public:
+		// 	class Callback {
+		// 	public:
+		// 		virtual void populateLinkRequest(L2HeaderLinkRequest*& header, LinkEstablishmentPayload *&payload) = 0;
+		// 	};
 
-			LinkEstablishmentPayload() = default;
+		// 	LinkEstablishmentPayload() = default;
 
-			/** Copy constructor. */
-			LinkEstablishmentPayload(const LinkEstablishmentPayload& other) : resources(other.resources) {}
-			Payload* copy() const override {
-				return new LinkEstablishmentPayload(*this);
-			}
+		// 	/** Copy constructor. */
+		// 	LinkEstablishmentPayload(const LinkEstablishmentPayload& other) : resources(other.resources) {}
+		// 	Payload* copy() const override {
+		// 		return new LinkEstablishmentPayload(*this);
+		// 	}
 
-			unsigned int getBits() const override {
-				unsigned int num_bits = 0;
-				for (const auto& item : resources) {
-					num_bits += 8; // +1B per frequency channel
-					num_bits += 8 * item.second.size(); // +1B per slot
-				}
-				return num_bits;
-			}
+		// 	unsigned int getBits() const override {
+		// 		unsigned int num_bits = 0;
+		// 		for (const auto& item : resources) {
+		// 			num_bits += 8; // +1B per frequency channel
+		// 			num_bits += 8 * item.second.size(); // +1B per slot
+		// 		}
+		// 		return num_bits;
+		// 	}
 
-			/**
-			 * @return Proposed slot offset that is farthest in the future, i.e. the 'latest'.
-			 */
-			unsigned int getLatestProposedSlot() const {
-				unsigned int latest_slot = 0;
-				for (const auto &item : resources) {
-					for (const auto &slot : item.second) {
-						if (slot > latest_slot)
-							latest_slot = slot;
-					}
-				}
-				return latest_slot;
-			}
+		// 	/**
+		// 	 * @return Proposed slot offset that is farthest in the future, i.e. the 'latest'.
+		// 	 */
+		// 	unsigned int getLatestProposedSlot() const {
+		// 		unsigned int latest_slot = 0;
+		// 		for (const auto &item : resources) {
+		// 			for (const auto &slot : item.second) {
+		// 				if (slot > latest_slot)
+		// 					latest_slot = slot;
+		// 			}
+		// 		}
+		// 		return latest_slot;
+		// 	}
 
-			/** <channel, <start slots>>-map of proposed resources. */
-			std::map<const FrequencyChannel*, std::vector<unsigned int>> resources;
-			Callback *callback = nullptr;
-		};
+		// 	/** <channel, <start slots>>-map of proposed resources. */
+		// 	std::map<const FrequencyChannel*, std::vector<unsigned int>> resources;
+		// 	Callback *callback = nullptr;
+		// };
 
 		LinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : link_id(link_id), reservation_manager(reservation_manager), mac(mac),
 		                                                                                                link_status((link_id == SYMBOLIC_LINK_ID_BROADCAST || link_id == SYMBOLIC_LINK_ID_BEACON) ? Status::link_established : Status::link_not_established) /* broadcast links are always established */ {
@@ -130,18 +130,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			return link_id;
 		}
 		
-		virtual void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
-		virtual void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);		
+		// virtual void processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);
+		// virtual void processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id);		
 
 		virtual double getNumTxPerTimeSlot() const = 0;
 
 		virtual bool isActive() const = 0;
 
 	protected:
-		virtual void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
-		virtual void processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header);
-		virtual void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
-		virtual void processBaseMessage(L2HeaderBase*& header);		
+		// virtual void processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload);
+		virtual void processBroadcastMessage(const MacId& origin, L2HeaderSH*& header);
+		// virtual void processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload);
+		// virtual void processBaseMessage(L2HeaderBase*& header);		
 		/** 
 		 * Called whenever a channel access is performed. Measures the number of slots since the last channel access and reports it to the MAC.
 		 * @return Number of slots since the last channel access, i.e. the current MAC delay.

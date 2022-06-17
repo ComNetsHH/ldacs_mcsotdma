@@ -15,7 +15,7 @@
 #include "LinkManager.hpp"
 #include "MCSOTDMA_Phy.hpp"
 #include "NeighborObserver.hpp"
-#include "ThirdPartyLink.hpp"
+// #include "ThirdPartyLink.hpp"
 #include "DutyCycle.hpp"
 
 
@@ -49,7 +49,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		LinkManager* getLinkManager(const MacId& id);
 
-		ThirdPartyLink& getThirdPartyLink(const MacId& id1, const MacId& id2);
+		// ThirdPartyLink& getThirdPartyLink(const MacId& id1, const MacId& id2);
 
 		void passToUpper(L2Packet* packet) override;
 
@@ -85,7 +85,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		size_t getNumUtilizedP2PResources() const;
 
-		void onThirdPartyLinkReset(const ThirdPartyLink* caller);
+		// void onThirdPartyLinkReset(const ThirdPartyLink* caller);
 
 		virtual bool isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency) const;
 
@@ -246,7 +246,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ReservationManager* reservation_manager;
 		/** Maps links to their link managers. */
 		std::map<MacId, LinkManager*> link_managers;
-		std::map<std::pair<MacId, MacId>, ThirdPartyLink> third_party_links;
+		// std::map<std::pair<MacId, MacId>, ThirdPartyLink> third_party_links;
 		const size_t num_transmitters = 1, num_receivers = 2;
 		/** Holds the current belief of neighbor positions. */
 		std::map<MacId, CPRPosition> position_map;

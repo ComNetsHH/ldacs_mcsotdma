@@ -39,8 +39,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			// Now destine it to us.
 			auto *packet_destined_to_us = new L2Packet();
-			packet_destined_to_us->addMessage(new L2HeaderBase(communication_partner_id, 0, 0, 0, 0), nullptr);
-			packet_destined_to_us->addMessage(new L2HeaderUnicast(own_id, false, 0, 0), nullptr);
+			packet_destined_to_us->addMessage(new L2HeaderSH(communication_partner_id), nullptr);			
 			phy->onReception(packet_destined_to_us, center_freq1);
 			// Should still be discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) phy->stat_num_packets_rcvd.get());
@@ -53,8 +52,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			phy->tuneReceiver(center_freq1);
 			CPPUNIT_ASSERT_EQUAL(false, phy->rx_frequencies.empty());
 			auto *packet_destined_to_us2 = new L2Packet();
-			packet_destined_to_us2->addMessage(new L2HeaderBase(communication_partner_id, 0, 0, 0, 0), nullptr);
-			packet_destined_to_us2->addMessage(new L2HeaderUnicast(own_id, false, 0, 0), nullptr);
+			packet_destined_to_us2->addMessage(new L2HeaderSH(communication_partner_id), nullptr);			
 			phy->onReception(packet_destined_to_us2, center_freq1);
 			// Should *not* have been discarded.
 			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) phy->stat_num_packets_rcvd.get());			
