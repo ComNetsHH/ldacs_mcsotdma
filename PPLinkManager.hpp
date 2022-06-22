@@ -4,6 +4,7 @@
 #include "LinkManager.hpp"
 #include "FrequencyChannel.hpp"
 #include "ReservationMap.hpp"
+#include "LinkProposal.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {	
 	class PPLinkManager : public LinkManager {
@@ -22,22 +23,27 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void establishLink();
 
 	protected:
-		/** Keeps track of the link state. */
-		class LinkState {
-		public:
-			LinkState(unsigned int burst_offset, unsigned int offset_until_first_burst, unsigned int timeout, bool is_link_initiator, const FrequencyChannel *channel)
-				: burst_offset(burst_offset), next_burst_in(offset_until_first_burst), is_link_initiator(is_link_initiator), channel(channel), timeout(timeout) {}
-			LinkState() : LinkState(0, 0, 0, false, nullptr) {}
-
-			unsigned int burst_offset; 
-			unsigned int next_burst_in; 
-			bool is_link_initiator; 
-			unsigned int timeout;
-			const FrequencyChannel *channel;
-			ReservationMap reserved_resources;			
-		};
-
-		LinkState link_state;
+		/** Holds the number of slots until the next transmission opportunity. */
+		int next_tx_in; 
+		/** Holds the number of slots until the next reception opportunity. */
+		int next_rx_in;
+		/** Whether this user has initiated this link and gets to transmit first during one exchange. */
+		bool is_link_initiator; 
+		/** Holds the communication opportunity (TX or RX) periodicity as 5*2^n. */
+		int period;
+		/** Number of transmissions per exchange for the link initiator. */
+		int num_initiator_tx;
+		/** Number of transmissions per exchange for the link recipient. */
+		int num_recipient_rx;
+		/** Remaining number of exchanges until link termination. */
+		int timeout;
+		/** Holds the slot duration that has been negotiated upon. */
+		LinkProposal::SlotDuration slot_duration;
+		/** Currently-used frequency channel. */
+		const FrequencyChannel *channel;
+		/** Stores locked and reserved communication resources. */
+		ReservationMap reserved_resources;
+		/** Holds the absolute slot number at which link establishment was initiated, s.t. the link establishment time can be measured. */
 		int stat_link_establishment_start;
 	};
 }
