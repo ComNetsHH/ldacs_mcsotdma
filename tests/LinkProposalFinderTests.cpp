@@ -25,7 +25,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testFind() {
 			size_t num_proposals = 3;
 			int min_offset = 1;
-			std::vector<LinkProposal> proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_offset, 2, 2, 20, false, reservation_manager, env->mac_layer);
+			int num_bursts_forward = 1, num_bursts_reverse = 1, period = 1, timeout = 3;
+			std::vector<LinkProposal> proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_offset, num_bursts_forward, num_bursts_reverse, period, timeout, false, env->mac_layer->getReservationManager(), env->mac_layer);
 			CPPUNIT_ASSERT_EQUAL(num_proposals, proposals.size());						
 			for (size_t i = 0; i < proposals.size() - 1; i++) 
 				CPPUNIT_ASSERT_LESS(proposals.at(i+1).center_frequency, proposals.at(i).center_frequency);

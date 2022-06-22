@@ -8,7 +8,7 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	class LinkProposalFinder {
 	public:
-		static std::vector<LinkProposal> findLinkProposals(size_t num_proposals, int min_time_slot_offset, int burst_offset, int burst_length, int timeout, bool should_learn_dme_activity, const ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
+		static std::vector<LinkProposal> findLinkProposals(size_t num_proposals, int min_time_slot_offset, int num_forward_bursts, int num_reverse_bursts, int period, int timeout, bool should_learn_dme_activity, const ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
 	};
 }
 

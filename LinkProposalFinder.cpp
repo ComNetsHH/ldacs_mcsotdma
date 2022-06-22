@@ -1,6 +1,6 @@
 #include "LinkProposalFinder.hpp"
 
-std::vector<LinkProposal> LinkProposalFinder::findLinkProposals(size_t num_proposals, int min_time_slot_offset, int burst_offset, int burst_length, int timeout, bool should_learn_dme_activity, const ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) {
+std::vector<LinkProposal> LinkProposalFinder::findLinkProposals(size_t num_proposals, int min_time_slot_offset, int num_forward_bursts, int num_reverse_bursts, int period, int timeout, bool should_learn_dme_activity, const ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) {
 	std::vector<LinkProposal> proposals;	
 	// get reservation tables sorted by their numbers of idle slots
 	auto tables_queue = reservation_manager->getSortedP2PReservationTables();
@@ -14,16 +14,16 @@ std::vector<LinkProposal> LinkProposalFinder::findLinkProposals(size_t num_propo
 		if (table->getLinkedChannel()->isBlocked())
 			continue;
 		// find time slots to propose
-		auto candidate_slots = table->findPPCandidates(1, min_time_slot_offset, burst_offset, burst_length, 1, timeout, (should_learn_dme_activity ? mac : nullptr));
+		auto candidate_slots = table->findPPCandidates(1, min_time_slot_offset, num_forward_bursts, num_reverse_bursts, period, timeout);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
-			coutd << slot << ":" << slot + burst_length - 1 << " ";
+			coutd << slot << " ";
 		coutd << " -> ";
 		if (!candidate_slots.empty()) {
 			// save it
 			LinkProposal proposal;
 			proposal.center_frequency = table->getLinkedChannel()->getCenterFrequency();
-			proposal.period = burst_offset;		
+			proposal.period = period;		
 			proposal.slot_offset = (int) candidate_slots.at(0);
 			proposals.push_back(proposal);		
 			// increment number of channels that have been considered

@@ -76,7 +76,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 				min_time_slot_offset = next_broadcast_slot;
 				coutd << "using own next broadcast in " << min_time_slot_offset << " slots as minimum offset -> ";
 			}
-			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_time_slot_offset, min_period, 1, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
+			int num_forward_bursts = 1, num_reverse_bursts = 1;
+			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_time_slot_offset, num_forward_bursts, num_reverse_bursts, min_period, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
 		// propose advertised links if we know of some
 		} else {
 			mac->statisticReportSentSavedProposals();
@@ -87,7 +88,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			// save request
 			header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
 			// lock resources
-			
+
 		}
 	}
 
@@ -100,7 +101,9 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
 	int min_offset = pair.first;
 	int min_period = pair.second;
-	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, min_period, 1, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
+	int num_forward_bursts = 1, num_reverse_bursts = 1;
+	int period = 1;
+	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
 	// write proposals into header
 	for (const LinkProposal &proposal : proposable_links) 
 		header->link_proposals.push_back(L2HeaderSH::LinkProposalMessage(proposal));	

@@ -10,6 +10,7 @@
 #include "ReservationTable.hpp"
 #include "coutdebug.hpp"
 #include "MCSOTDMA_Mac.hpp"
+#include "SlotCalculator.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -197,21 +198,27 @@ bool ReservationTable::isBurstValid(int start_slot, unsigned int burst_length, u
 		return false;
 }
 
-unsigned int ReservationTable::findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout, MCSOTDMA_Mac *mac) const {
-	if (burst_length == 0)
-		throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for burst_length of zero.");
-	if (timeout == 0)
-		throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for timeout of zero.");
+bool ReservationTable::isTxValid(int slot) const {
+	return isIdle(slot) && transmitter_reservation_table->isIdle(slot);
+}
+
+bool ReservationTable::isRxValid(int slot) const {
+	return isIdle(slot) && std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot](ReservationTable* table) {return table->isIdle(slot);});
+}
+
+unsigned int ReservationTable::findEarliestIdleSlotsPP(int start_offset, int num_forward_bursts, int num_reverse_bursts, int period, int timeout) const {	
 	// start looking
-	for (int t = (int) start_offset; t < planning_horizon - burst_length; t++) {
+	for (int t = (int) start_offset; t < planning_horizon; t++) {
 		// save all starting slots of each burst
-		std::vector<int> all_slots_in_burst;
-		for (int burst = 0; burst < timeout; burst++)
-			all_slots_in_burst.push_back((int) (burst*burst_offset + t));
-		if (all_slots_in_burst.empty())
-			throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for no slots in a burst");
-		// make sure that they all denote valid bursts
-		if (std::all_of(all_slots_in_burst.begin(), all_slots_in_burst.end(), [this, burst_length, burst_length_tx, mac](int start_slot) { return this->isBurstValid(start_slot, burst_length, burst_length_tx, false, mac); })) {
+		const auto tx_rx_slots = SlotCalculator::calculateAlternatingBursts(t, num_forward_bursts, num_reverse_bursts, period, timeout);		
+		const auto &tx_slots = tx_rx_slots.first;
+		const auto &rx_slots = tx_rx_slots.second;
+		if (tx_slots.empty())
+			throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for no TX slots");
+		if (rx_slots.empty())
+			throw std::invalid_argument("ReservationTable::findEarliestIdleSlotsPP for no RX slots");
+		// make sure that they are all valid
+		if (std::all_of(tx_slots.begin(), tx_slots.end(), [this](int slot){return this->isTxValid(slot);}) && std::all_of(rx_slots.begin(), rx_slots.end(), [this](int slot){return this->isRxValid(slot);})) {
 			return t; // if so, we've found the earliest starting slot that can be used to initiate a PP link
 		}
 	}
@@ -320,18 +327,14 @@ std::vector<unsigned int> ReservationTable::findSHCandidates(unsigned int num_ca
 	return start_slots;
 }
 
-std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, MCSOTDMA_Mac* mac) const {
-	if (burst_length == 0)
-		throw std::invalid_argument("ReservationTable::findPPCandidates for burst_length of zero.");
-	if (timeout == 0)
-		throw std::invalid_argument("ReservationTable::findPPCandidates for timeout of zero.");
+std::vector<unsigned int> ReservationTable::findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, int num_forward_bursts, int num_reverse_bursts, int period, int timeout) const {
 	std::vector<unsigned int> start_slot_offsets;
 	unsigned int last_offset = min_offset;
 	for (size_t i = 0; i < num_proposal_slots; i++) {		
 		// Try to find another slot range.
 		try {			
 			// coutd << "checking last_offset=" << last_offset << " burst_length=" << burst_length << " burst_length_tx=" << burst_length_tx << " burst_offset=" << burst_offset << ": ";
-			int32_t start_slot = (int) findEarliestIdleSlotsPP(last_offset, burst_length, burst_length_tx, burst_offset, timeout, mac);			
+			int32_t start_slot = (int) findEarliestIdleSlotsPP(last_offset, num_forward_bursts, num_reverse_bursts, period, timeout);			
 			start_slot_offsets.push_back(start_slot);
 			last_offset = start_slot + 1; // Next attempt, look later than current one.
 			// coutd << "added -> ";
