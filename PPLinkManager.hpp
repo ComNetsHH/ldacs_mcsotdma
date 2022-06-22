@@ -19,6 +19,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		double getNumTxPerTimeSlot() const override;
 		bool isActive() const override;		
 
+		void lockProposedResources(const LinkProposal& proposed_link);
+
 	protected:
 		void establishLink();
 

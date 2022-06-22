@@ -5,7 +5,7 @@
 #include <sstream>
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
-// #include "PPLinkManager.hpp"
+#include "PPLinkManager.hpp"
 #include "LinkProposalFinder.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
@@ -63,9 +63,11 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
 			const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;
 			double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
+			coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
 			auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
-			int min_offset = pair.first;
+			int min_offset = pair.first;			
 			int min_period = pair.second;			
+			coutd << "min_offset=" << min_offset << " min_period=" << min_period << " -> ";
 			unsigned int min_time_slot_offset;
 			try {
 				// the proposal should be after the other user's next broadcast slot 
@@ -84,11 +86,14 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			throw std::runtime_error("using saved proposals not yet implemented");
 		}
 		coutd << "determined " << link_proposals.size() << " link proposals -> ";
+		coutd.flush();
+		assert(!link_proposals.empty() && "SHLinkManager couldn't propose links during link request");
 		for (auto proposal : link_proposals) {
 			// save request
 			header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
 			// lock resources
-
+			auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
+			pp->lockProposedResources(proposal);
 		}
 	}
 

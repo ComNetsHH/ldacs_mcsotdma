@@ -81,8 +81,8 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 		// 	// if there's sufficiently many links, the new one can use the remaining budget
 		// 	max_budget = avail_budget;		
 		// }		
-		// translate budget to minimum slot offset	
-		unsigned int min_period = std::max(0.0, 1.0/avail_budget);	
+		// translate budget to minimum period n, where periodicity is 5*2^n	
+		unsigned int min_period = std::max(0.0, std::ceil(std::log2(1.0/(5.0*avail_budget))));	
 		coutd << "max_budget=" << avail_budget << " -> min_period=" << min_period << " -> ";
 		return {min_offset, min_period};
 	} else
@@ -90,11 +90,9 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 }
 
 double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {
-	double avail_budget = this->max_duty_cycle;	
-	coutd << "computing duty-cycle-compliant SH slot offset -> ";
+	double avail_budget = this->max_duty_cycle;		
 	for (double d : used_budget) 
-		avail_budget -= d;
-	coutd << "available budget of " << avail_budget*100 << "% -> ";
+		avail_budget -= d;	
 	// if not all PP links have been established yet
 	size_t num_active_pp_links = used_budget.size();
 	if (num_active_pp_links < min_num_supported_pp_links)
@@ -105,7 +103,6 @@ double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {
 int DutyCycle::getOffsetSH(const std::vector<double>& used_budget) const {
 	// compute available budget	
 	double avail_budget = getSHBudget(used_budget);
-	int slot_offset = std::max(1.0, 1.0 / avail_budget);
-	coutd << "minimum slot offset is " << slot_offset << " -> ";
+	int slot_offset = std::max(1.0, 1.0 / avail_budget);	
 	return slot_offset;
 }
