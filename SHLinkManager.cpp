@@ -50,7 +50,45 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		coutd << "id=" << dest_id << " -> ";
 		// check if we know preferred links
 		const auto &advertised_normalized_proposals = mac->getNeighborObserver().getAdvertisedLinkProposals(dest_id, mac->getCurrentSlot());
+		coutd << advertised_normalized_proposals.size() << " proposals -> ";
+		// propose locally-usable links if no proposals are saved or none are valid
+		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
+		std::vector<LinkProposal> link_proposals;
+		if (must_propose_something_new) {
+			coutd << "finding locally-usable links -> ";
+			mac->statisticReportSentOwnProposals();
 
+			size_t num_proposals = 3;
+			auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+			const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
+			const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;
+			double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
+			auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
+			int min_offset = pair.first;
+			int min_period = pair.second;			
+			unsigned int min_time_slot_offset;
+			try {
+				// the proposal should be after the other user's next broadcast slot 
+				min_time_slot_offset = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
+				coutd << "using saved neighbor's next broadcast in " << min_time_slot_offset << " slots as minimum offset -> ";
+			} catch (const std::exception &e) {
+				// if that is unknown, use own next broadcast slot
+				min_time_slot_offset = next_broadcast_slot;
+				coutd << "using own next broadcast in " << min_time_slot_offset << " slots as minimum offset -> ";
+			}
+			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_time_slot_offset, min_period, 1, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
+		// propose advertised links if we know of some
+		} else {
+			mac->statisticReportSentSavedProposals();
+			throw std::runtime_error("using saved proposals not yet implemented");
+		}
+		coutd << "determined " << link_proposals.size() << " link proposals -> ";
+		for (auto proposal : link_proposals) {
+			// save request
+			header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
+			// lock resources
+			
+		}
 	}
 
 	// find link proposals

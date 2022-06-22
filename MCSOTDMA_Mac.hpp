@@ -222,6 +222,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportWastedPPTransmission() {
 			stat_unicast_wasted_tx_opportunities.increment();
 		}
+		void statisticReportSentOwnProposals() {
+			stat_num_own_proposals_sent.increment();
+		}
+		void statisticReportSentSavedProposals() {
+			stat_num_saved_proposals_sent.increment();
+		}		
 
 		unsigned int getP2PBurstOffset() const;		
 
@@ -324,6 +330,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_broadcast_collisions_detected = Statistic("mcsotdma_statistic_num_broadcast_collisions_detected", this);		
 		Statistic stat_num_beacon_collisions_detected = Statistic("mcsotdma_statistic_num_beacon_collisions_detected", this);		
 		Statistic stat_duty_cycle = Statistic("mcsotdma_statistic_duty_cycle", this);		
+		Statistic stat_num_own_proposals_sent = Statistic("stat_num_own_proposals_sent", this);		
+		Statistic stat_num_saved_proposals_sent = Statistic("stat_num_saved_proposals_sent", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,

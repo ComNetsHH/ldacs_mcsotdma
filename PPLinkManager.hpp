@@ -16,7 +16,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void onSlotEnd() override;
 		void processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) override;
 		double getNumTxPerTimeSlot() const override;
-		bool isActive() const override;
+		bool isActive() const override;		
 
 	protected:
 		void establishLink();

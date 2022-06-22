@@ -43,11 +43,29 @@ public:
 		CPPUNIT_ASSERT_EQUAL(partner_id, sh->link_requests.at(0));
 	}
 
-	
+	/** Tests that when there's no saved, advertised link, the SH initiates a two-way handshake. */
+	void testSendLinkRequestWithNoAdvertisedLink() {
+		mac->notifyOutgoing(1, partner_id);
+		CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_requests.size());
+		size_t request_tx_slot = sh->next_broadcast_slot;
+		for (size_t t = 0; t < request_tx_slot; t++) {
+			mac->update(1);
+			mac->execute();
+			mac->onSlotEnd();
+		}
+	}
+
+	/** Tests that when there is an advertised link, the SH initiates a 1SHOT establishment. */
+	void testSendLinkRequestWithAdvertisedLink() {
+		bool is_implemented = false;
+		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		CPPUNIT_TEST(testGet);		
-		CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		// CPPUNIT_TEST(testGet);		
+		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);					
 	CPPUNIT_TEST_SUITE_END();
 };
 }
