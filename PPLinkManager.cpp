@@ -142,7 +142,7 @@ void PPLinkManager::lockProposedResources(const LinkProposal& proposed_link) {
 	reserved_resources.merge(lock_map);	
 }
 
-void PPLinkManager::notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period) {
+void PPLinkManager::notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period, int expected_link_start) {
 	coutd << *this << " updating status " << link_status << " -> ";
 	link_status = awaiting_reply;
 	coutd << link_status << " -> ";
@@ -150,8 +150,9 @@ void PPLinkManager::notifyLinkRequestSent(int num_initiator_tx, int num_recipien
 	this->num_recipient_tx = num_recipient_tx;
 	this->period = period;
 	this->timeout = mac->getDefaultPPLinkTimeout();
+	this->next_tx_in = expected_link_start;
 }
 
 int PPLinkManager::getRemainingTimeout() const {
-	return this->timeout;
+	return this->timeout + (link_status == awaiting_reply ? next_tx_in : 0);
 }

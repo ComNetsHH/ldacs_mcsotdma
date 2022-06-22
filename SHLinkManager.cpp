@@ -55,7 +55,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
 		std::vector<LinkProposal> link_proposals;
 		int num_forward_bursts = 1, num_reverse_bursts = 1;
-		int period;
+		int period, min_offset;
 		if (must_propose_something_new) {
 			coutd << "finding locally-usable links -> ";
 			mac->statisticReportSentOwnProposals();
@@ -67,20 +67,20 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
 			coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
 			auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
-			int min_offset = pair.first;			
+			min_offset = pair.first;						
 			period = pair.second;			
-			coutd << "min_offset=" << min_offset << " min_period=" << period << " -> ";
-			unsigned int min_time_slot_offset;
+			coutd << " min_period=" << period << " -> ";			
 			try {
 				// the proposal should be after the other user's next broadcast slot 
-				min_time_slot_offset = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
-				coutd << "using saved neighbor's next broadcast in " << min_time_slot_offset << " slots as minimum offset -> ";
+				int next_expected_broadcast = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
+				min_offset = std::max(min_offset, next_expected_broadcast + 1);
+				coutd << "using saved neighbor's next broadcast in " << min_offset << " slots as minimum offset -> ";
 			} catch (const std::exception &e) {
 				// if that is unknown, use own next broadcast slot
-				min_time_slot_offset = next_broadcast_slot;
-				coutd << "using own next broadcast in " << min_time_slot_offset << " slots as minimum offset -> ";
+				min_offset = std::max(min_offset, (int) next_broadcast_slot);
+				coutd << "using own next broadcast in " << min_offset << " slots as minimum offset -> ";
 			}			
-			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_time_slot_offset, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
+			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_offset, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
 		// propose advertised links if we know of some
 		} else {
 			mac->statisticReportSentSavedProposals();
@@ -98,10 +98,9 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			pp->lockProposedResources(proposal);
 			if (!notified_pp) {
 				notified_pp = true;
-				pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period);
+				pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period, min_offset);
 			}
-		}
-		// block the duty cycle budget of the new link
+		}		
 	}
 
 	// find link proposals

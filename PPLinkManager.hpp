@@ -20,7 +20,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool isActive() const override;		
 
 		void lockProposedResources(const LinkProposal& proposed_link);
-		void notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period);
+		void notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period, int expected_link_start);
 		int getRemainingTimeout() const;
 
 	protected:
