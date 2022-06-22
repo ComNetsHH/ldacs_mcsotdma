@@ -247,7 +247,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::pair<std::vector<double>, std::vector<int>> getUsedPPDutyCycleBudget() const;		
 		double getUsedSHDutyCycleBudget() const;		
 		int getSHSlotOffset() const; 
-		unsigned int getDefaultPpLinkTimeout() const;
+		unsigned int getDefaultPPLinkTimeout() const;
 
 	protected:
 		/**

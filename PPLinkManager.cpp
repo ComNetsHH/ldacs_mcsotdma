@@ -58,8 +58,7 @@ void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload
 double PPLinkManager::getNumTxPerTimeSlot() const {
 	if (!isActive())
 		throw std::runtime_error("cannot call PPLinkManager::getNumSlotsUntilExpiry for inactive link");
-	double num_tx = is_link_initiator ? num_initiator_tx : num_recipient_rx;
-	return ((double) timeout) * num_tx;
+	return 1.0 / (5.0 * std::pow(2.0, period));
 }
 
 bool PPLinkManager::isActive() const {
@@ -67,7 +66,7 @@ bool PPLinkManager::isActive() const {
 }
 
 void PPLinkManager::lockProposedResources(const LinkProposal& proposed_link) {	
-	auto slots = SlotCalculator::calculateAlternatingBursts(proposed_link.slot_offset, proposed_link.num_tx_initiator, proposed_link.num_tx_recipient, proposed_link.period, mac->getDefaultPpLinkTimeout());
+	auto slots = SlotCalculator::calculateAlternatingBursts(proposed_link.slot_offset, proposed_link.num_tx_initiator, proposed_link.num_tx_recipient, proposed_link.period, mac->getDefaultPPLinkTimeout());
 	const auto &tx_slots = slots.first;
 	const auto &rx_slots = slots.second;
 	ReservationTable *table = mac->getReservationManager()->getReservationTable(mac->getReservationManager()->getFreqChannelByCenterFreq(proposed_link.center_frequency));
@@ -141,4 +140,18 @@ void PPLinkManager::lockProposedResources(const LinkProposal& proposed_link) {
 	}
 	coutd << locked_local.size() << " local + " << locked_rx.size() << " receiver + " << locked_tx.size() << " transmitter resources on f=" << proposed_link.center_frequency << " -> ";
 	reserved_resources.merge(lock_map);	
+}
+
+void PPLinkManager::notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period) {
+	coutd << *this << " updating status " << link_status << " -> ";
+	link_status = awaiting_reply;
+	coutd << link_status << " -> ";
+	this->num_initiator_tx = num_initiator_tx;
+	this->num_recipient_tx = num_recipient_tx;
+	this->period = period;
+	this->timeout = mac->getDefaultPPLinkTimeout();
+}
+
+int PPLinkManager::getRemainingTimeout() const {
+	return this->timeout;
 }

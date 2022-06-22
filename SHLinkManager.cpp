@@ -54,6 +54,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		// propose locally-usable links if no proposals are saved or none are valid
 		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
 		std::vector<LinkProposal> link_proposals;
+		int num_forward_bursts = 1, num_reverse_bursts = 1;
+		int period;
 		if (must_propose_something_new) {
 			coutd << "finding locally-usable links -> ";
 			mac->statisticReportSentOwnProposals();
@@ -66,8 +68,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
 			auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
 			int min_offset = pair.first;			
-			int min_period = pair.second;			
-			coutd << "min_offset=" << min_offset << " min_period=" << min_period << " -> ";
+			period = pair.second;			
+			coutd << "min_offset=" << min_offset << " min_period=" << period << " -> ";
 			unsigned int min_time_slot_offset;
 			try {
 				// the proposal should be after the other user's next broadcast slot 
@@ -77,9 +79,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 				// if that is unknown, use own next broadcast slot
 				min_time_slot_offset = next_broadcast_slot;
 				coutd << "using own next broadcast in " << min_time_slot_offset << " slots as minimum offset -> ";
-			}
-			int num_forward_bursts = 1, num_reverse_bursts = 1;
-			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_time_slot_offset, num_forward_bursts, num_reverse_bursts, min_period, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
+			}			
+			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_time_slot_offset, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
 		// propose advertised links if we know of some
 		} else {
 			mac->statisticReportSentSavedProposals();
@@ -88,13 +89,19 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		coutd << "determined " << link_proposals.size() << " link proposals -> ";
 		coutd.flush();
 		assert(!link_proposals.empty() && "SHLinkManager couldn't propose links during link request");
+		bool notified_pp = false;
 		for (auto proposal : link_proposals) {
 			// save request
 			header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
 			// lock resources
 			auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
 			pp->lockProposedResources(proposal);
+			if (!notified_pp) {
+				notified_pp = true;
+				pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period);
+			}
 		}
+		// block the duty cycle budget of the new link
 	}
 
 	// find link proposals
@@ -108,7 +115,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	int min_period = pair.second;
 	int num_forward_bursts = 1, num_reverse_bursts = 1;
 	int period = 1;
-	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPpLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
+	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
 	// write proposals into header
 	for (const LinkProposal &proposal : proposable_links) 
 		header->link_proposals.push_back(L2HeaderSH::LinkProposalMessage(proposal));	

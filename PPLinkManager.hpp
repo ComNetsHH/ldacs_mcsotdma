@@ -20,6 +20,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool isActive() const override;		
 
 		void lockProposedResources(const LinkProposal& proposed_link);
+		void notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period);
+		int getRemainingTimeout() const;
 
 	protected:
 		void establishLink();
@@ -36,7 +38,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Number of transmissions per exchange for the link initiator. */
 		int num_initiator_tx;
 		/** Number of transmissions per exchange for the link recipient. */
-		int num_recipient_rx;
+		int num_recipient_tx;
 		/** Remaining number of exchanges until link termination. */
 		int timeout;
 		/** Holds the slot duration that has been negotiated upon. */
