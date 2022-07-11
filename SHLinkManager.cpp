@@ -100,7 +100,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 					notified_pp = true;
 					pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period, min_offset);
 				}
-			}		
+			}
+			mac->statisticReportLinkRequestSent();		
 		} else {
 			coutd << "empty proposals, couldn't propose links during link request -> ";
 		}

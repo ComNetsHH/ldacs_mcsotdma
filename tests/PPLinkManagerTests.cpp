@@ -20,7 +20,7 @@ public:
 		partner_id = MacId(43);
 		env = new TestEnvironment(id, partner_id);
 		planning_horizon = env->planning_horizon;
-		mac = env->mac_layer;
+		mac = env->mac_layer;		
 		pp = (PPLinkManager*) mac->getLinkManager(partner_id);
 		sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 	}
@@ -53,6 +53,7 @@ public:
 			mac->execute();
 			mac->onSlotEnd();
 		}
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
 	}
 
 	/** Tests that when there is an advertised link, the SH initiates a 1SHOT establishment. */
