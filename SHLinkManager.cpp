@@ -31,8 +31,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	capacity -= packet->getBits();
 
 	// write source iD
-	header->src_id = mac->getMacId();
-	coutd << "set src_id=" << header->src_id << " -> ";	
+	header->src_id = mac->getMacId();	
 
 	// add link requests
 	coutd << "considering " << link_requests.size() << " pending link requests: ";
@@ -41,12 +40,14 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		// check if we know preferred links
 		const auto &advertised_normalized_proposals = mac->getNeighborObserver().getAdvertisedLinkProposals(dest_id, mac->getCurrentSlot());
 		coutd << advertised_normalized_proposals.size() << " proposals -> ";
-		// propose locally-usable links if no proposals are saved or none are valid
+
+		// propose locally-usable links if no proposals are saved or none are valid		
 		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
 		std::vector<LinkProposal> link_proposals;
 		
 		int period, min_offset;
 		int num_forward_bursts = 1, num_reverse_bursts = 1;
+		// propose something that works locally
 		if (must_propose_something_new) {
 			mac->statisticReportSentOwnProposals();
 			coutd << "finding locally-usable links -> ";
@@ -58,14 +59,15 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			mac->statisticReportSentSavedProposals();
 			try {
 			link_proposals.push_back(proposeRemoteLinks(dest_id, num_forward_bursts, num_reverse_bursts));			
-			} catch (const std::runtime_error &e) {
-				coutd << "finding locally-usable links instead -> ";
-				size_t num_proposals = 3;			
-				link_proposals = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals);			
-			}
+		// fall-back to locally-usable links of the advertised ones don't fit
+		} catch (const std::runtime_error &e) {
+			coutd << "finding locally-usable links instead -> ";
+			size_t num_proposals = 3;			
+			link_proposals = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals);			
+		}
 		}
 		coutd << "determined " << link_proposals.size() << " link proposals -> ";
-		coutd.flush();		
+		coutd.flush();
 		if (!link_proposals.empty()) {			
 			bool notified_pp = false;
 			for (auto proposal : link_proposals) {
@@ -151,7 +153,7 @@ LinkProposal SHLinkManager::proposeRemoteLinks(const MacId& dest_id, int num_for
 	for (const auto possible_link : advertisements) {
 		const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(possible_link.center_frequency));
 		bool is_valid = table->isLinkValid(possible_link.slot_offset, possible_link.period, num_forward_bursts, num_reverse_bursts, mac->getDefaultPPLinkTimeout());
-		coutd << "link at t=" << possible_link.slot_offset << "@" << possible_link.center_frequency << " is " << (is_valid ? "valid" : "invalid") << " -> ";
+		coutd << "link at t=" << possible_link.slot_offset << "@" << possible_link.center_frequency << "kHz is " << (is_valid ? "valid" : "invalid") << " -> ";
 		if (is_valid)
 			valid_links.push_back(possible_link);
 	}		
@@ -166,7 +168,7 @@ LinkProposal SHLinkManager::proposeRemoteLinks(const MacId& dest_id, int num_for
 			earliest_offset = valid_link.slot_offset;
 		}
 	}
-	coutd << "earliest link is at t=" << earliest_link.slot_offset << "@" << earliest_link.center_frequency << " -> ";
+	coutd << "earliest link is at t=" << earliest_link.slot_offset << "@" << earliest_link.center_frequency << "kHz -> ";
 	return earliest_link;
 }
 
