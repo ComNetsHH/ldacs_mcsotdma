@@ -87,20 +87,23 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			throw std::runtime_error("using saved proposals not yet implemented");
 		}
 		coutd << "determined " << link_proposals.size() << " link proposals -> ";
-		coutd.flush();
-		assert(!link_proposals.empty() && "SHLinkManager couldn't propose links during link request");
-		bool notified_pp = false;
-		for (auto proposal : link_proposals) {
-			// save request
-			header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
-			// lock resources
-			auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
-			pp->lockProposedResources(proposal);
-			if (!notified_pp) {
-				notified_pp = true;
-				pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period, min_offset);
-			}
-		}		
+		coutd.flush();		
+		if (!link_proposals.empty()) {			
+			bool notified_pp = false;
+			for (auto proposal : link_proposals) {
+				// save request
+				header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
+				// lock resources
+				auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
+				pp->lockProposedResources(proposal);
+				if (!notified_pp) {
+					notified_pp = true;
+					pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period, min_offset);
+				}
+			}		
+		} else {
+			coutd << "empty proposals, couldn't propose links during link request -> ";
+		}
 	}
 
 	// find link proposals
