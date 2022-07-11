@@ -25,23 +25,25 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 
 	// request data
 	L2Packet *packet = mac->requestSegment(capacity, link_id);
-	L2HeaderSH *header = (L2HeaderSH*) packet->getHeaders().at(0);	
+	L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);		
 	coutd << "got " << packet->getBits() << "-bit packet -> ";		
 	assert(packet->getBits() <= capacity && "got more bits than I asked for");		
 	capacity -= packet->getBits();
 
+	// write source iD
+	header->src_id = mac->getMacId();
+	coutd << "set src_id=" << header->src_id << " -> ";
 	// schedule next slot and write offset into header
 	coutd << "scheduling next broadcast slot -> ";
 	try {
-		scheduleBroadcastSlot();
-		coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
+		scheduleBroadcastSlot();		
 		// Put it into the header.
-		if (this->advertise_slot_in_header) {
-			coutd << "advertising slot in header -> ";
+		if (this->advertise_slot_in_header) {			
 			header->slot_offset = next_broadcast_slot;
+			coutd << "advertising next broadcast in " << header->slot_offset << " slots -> ";
 		}
 	} catch (const std::exception &e) {
-		throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
+		throw std::runtime_error("Error when trying to schedule next broadcast: " + std::string(e.what()));
 	}	
 
 	// add link requests
@@ -352,37 +354,38 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 	}	
 }
 
-void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {
+void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {	
 	mac->statisticReportBroadcastMessageProcessed();
 
-	// check advertised next transmission slot
-	unsigned int advertised_broadcast_slot = header->slot_offset;
-	if (advertised_broadcast_slot > 0) { // If it has been set ...
+	// check advertised next transmission slot	
+	if (header->slot_offset > 0) { // If it has been set ...
+		coutd << "checking advertised next broadcast slot in " << header->slot_offset << " slots -> ";
 		// remember the advertised slot offset
-		mac->reportBroadcastSlotAdvertisement(origin, advertised_broadcast_slot);
-		// ... check local reservation
-		const Reservation& res = current_reservation_table->getReservation(advertised_broadcast_slot);
+		mac->reportBroadcastSlotAdvertisement(origin, header->slot_offset);
+		// ... check local reservation				
+		const Reservation& res = current_reservation_table->getReservation(header->slot_offset);		
 		// if locally the slot is IDLE, then schedule listening to this broadcast
 		if (res.isIdle()) {
-			current_reservation_table->mark(advertised_broadcast_slot, Reservation(header->src_id, Reservation::RX));
-			coutd << "marked next broadcast in " << advertised_broadcast_slot << " slots as RX -> ";
+			current_reservation_table->mark(header->slot_offset, Reservation(header->src_id, Reservation::RX));
+			coutd << "marked next broadcast in " << header->slot_offset << " slots as RX -> ";
 		// if locally, one's own transmission is scheduled...
 		} else if (res.isTx()) {
-			coutd << "detected collision with own broadcast in " << advertised_broadcast_slot << " slots -> ";
+			coutd << "detected collision with own broadcast in " << header->slot_offset << " slots -> ";
 			broadcastCollisionDetected(header->src_id, Reservation::RX);							
 		} else {
-			coutd << "indicated next broadcast in " << advertised_broadcast_slot << " slots is locally reserved for " << res << " (not doing anything) -> ";
+			coutd << "indicated next broadcast in " << header->slot_offset << " slots is locally reserved for " << res << " (not doing anything) -> ";
 		}
 	} else
 		coutd << "no next broadcast slot indicated -> ";
 
 	// save link proposals		
-	coutd << "saving " << header->link_proposals.size() << " advertised link proposals -> ";
 	if (!header->link_proposals.empty()) {
+		coutd << "saving " << header->link_proposals.size() << " advertised link proposals -> ";	
 		mac->getNeighborObserver().clearAdvertisedLinkProposals(header->src_id);
 		for (const auto &proposal : header->link_proposals) 
 			mac->getNeighborObserver().addAdvertisedLinkProposal(header->src_id, mac->getCurrentSlot(), proposal.proposed_link);	
 	}
+	coutd << "done -> ";
 }
 
 // void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {

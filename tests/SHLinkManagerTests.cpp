@@ -120,6 +120,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				for (const auto *header : broadcast_packet->getHeaders()) {
 					if (header->frame_type == L2Header::broadcast) {						
 						CPPUNIT_ASSERT_GREATER(uint(0), ((L2HeaderSH*) header)->slot_offset);
+						CPPUNIT_ASSERT_LESS(uint(1000), ((L2HeaderSH*) header)->slot_offset);						
 					}
 				}				
 			}
@@ -358,7 +359,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(true, link_manager->isNextBroadcastScheduled());
 			}
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->isNextBroadcastScheduled());
-		}
+		}		
 
 
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);

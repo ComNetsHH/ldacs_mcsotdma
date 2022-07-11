@@ -25,7 +25,7 @@ void LinkManager::assign(const FrequencyChannel* channel) {
 }
 
 void LinkManager::onPacketReception(L2Packet*& packet) {
-	coutd << *mac << "::" << *this << "::onPacketReception... ";
+	coutd << *mac << "::" << *this << "::onPacketReception: ";
 	coutd << "a packet from '" << packet->getOrigin() << "' ";
 	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
 		coutd << "to '" << packet->getDestination() << "";
@@ -52,7 +52,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
 	bool contains_data = false;
-	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
+	for (size_t i = 0; i < packet->getHeaders().size(); i++) {		
 		auto*& header = (L2Header*&) packet->getHeaders().at(i);
 		auto*& payload = (L2Packet::Payload*&) packet->getPayloads().at(i);
 		switch (header->frame_type) {
@@ -81,8 +81,8 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			// }
 			case L2Header::broadcast: {
 				coutd << "processing broadcast -> ";
-				try {
-					processBroadcastMessage(packet->getOrigin(), (L2HeaderSH*&) header);
+				try {					
+					processBroadcastMessage(((L2HeaderSH*) header)->src_id, (L2HeaderSH*&) header);
 				} catch (const std::exception &e) {
 					std::stringstream ss;
 					ss << *mac << "::" << *this << " error processing broadcast message: " << e.what() << std::endl;					
