@@ -11,18 +11,23 @@ private:
 	SHLinkManager *sh;
 	MacId id, partner_id;
 	uint32_t planning_horizon;
-	MACLayer *mac;
-	TestEnvironment *env;
+	MACLayer *mac, *mac_you;
+	TestEnvironment *env, *env_you;
 
 public:
 	void setUp() override {
 		id = MacId(42);
 		partner_id = MacId(43);
 		env = new TestEnvironment(id, partner_id);
+		env_you = new TestEnvironment(partner_id, id);
 		planning_horizon = env->planning_horizon;
 		mac = env->mac_layer;		
+		mac_you = env_you->mac_layer;
 		pp = (PPLinkManager*) mac->getLinkManager(partner_id);
 		sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+
+		env->phy_layer->connected_phys.push_back(env_you->phy_layer);
+		env_you->phy_layer->connected_phys.push_back(env->phy_layer);		
 	}
 
 	void tearDown() override {
@@ -59,15 +64,25 @@ public:
 
 	/** Tests that when there is an advertised link, the SH initiates a 1SHOT establishment. */
 	void testSendLinkRequestWithAdvertisedLink() {
-		bool is_implemented = false;
-		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		size_t num_slots = 0, max_slots = 50;
+		while (mac->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_broadcasts_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_broadcasts_rcvd.get());
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		// CPPUNIT_TEST(testGet);		
 		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);					
+		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);					
 	CPPUNIT_TEST_SUITE_END();
 };
 }

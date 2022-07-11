@@ -34,10 +34,8 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			mac->statisticReportUnicastReceived();
 		} else {
 			coutd << "' -> ";
-			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST)
-				mac->statisticReportBroadcastReceived();
-			else if (packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-				mac->statisticReportBeaconReceived();
+			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+				mac->statisticReportBroadcastReceived();			
 			else {
 				std::stringstream ss;
 				ss << *mac << "::" << *this << "::onPacketReception(unsupported destination): " << packet->getDestination();

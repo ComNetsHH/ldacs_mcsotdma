@@ -17,7 +17,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	 */
 	class SystemTests : public CppUnit::TestFixture {
 	private:
-		TestEnvironment* env_me, * env_you;
+		TestEnvironment *env_me, *env_you;
 
 		MacId own_id, partner_id;
 		uint32_t planning_horizon;

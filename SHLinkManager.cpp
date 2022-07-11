@@ -164,8 +164,10 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 			ss << *mac << "::" << *this << "::onSlotStart for scheduled broadcast but invalid table: broadcast_in=" << next_broadcast_slot << " tx_table=" << reservation_manager->getTxTable()->getReservation(next_broadcast_slot) << " sh_table=" << reservation_manager->getBroadcastReservationTable()->getReservation(next_broadcast_slot) << "!";			
 			throw std::runtime_error(ss.str());
 		}			
-	} else
-		coutd << "no next broadcast scheduled -> ";	
+	} else {
+		coutd << "scheduling next broadcast slot -> ";	
+		scheduleBroadcastSlot();
+	}
 
 	// broadcast link manager should always have a ReservationTable assigned
 	if (current_reservation_table == nullptr)

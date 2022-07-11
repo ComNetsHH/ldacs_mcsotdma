@@ -348,25 +348,38 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_THROW(mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id), std::invalid_argument);
 		}		
 
+		/** Make sure that broadcasts are automatically scheduled. */
+		void testAutoStartBroadcasts() {
+			size_t max_slots = 1000;
+			for (size_t num_slots = 0; num_slots < max_slots; num_slots++) {
+				mac->update(1);
+				mac->execute();
+				mac->onSlotEnd();
+				CPPUNIT_ASSERT_EQUAL(true, link_manager->isNextBroadcastScheduled());
+			}
+			CPPUNIT_ASSERT_EQUAL(true, link_manager->isNextBroadcastScheduled());
+		}
+
 
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
-		// CPPUNIT_TEST(testBroadcastSlotSelection);
-		// CPPUNIT_TEST(testScheduleBroadcastSlot);
-		// CPPUNIT_TEST(testBroadcast);
-		// // CPPUNIT_TEST(testSendLinkRequestOnBC);						
-		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
-		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
-		// CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);		
-		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
-		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
-		// CPPUNIT_TEST(testMacDelay);		
-		// CPPUNIT_TEST(testSHChannelAccessDelay);	
-		// CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
-		// CPPUNIT_TEST(testDutyCycleMacDelay);
-		// CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
-		// CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
-		// CPPUNIT_TEST(testRememberAdvertisedSlotOffset);		
-		// CPPUNIT_TEST(testForgetAdvertisedSlotOffset);						
+		CPPUNIT_TEST(testBroadcastSlotSelection);
+		CPPUNIT_TEST(testScheduleBroadcastSlot);
+		CPPUNIT_TEST(testBroadcast);
+		// CPPUNIT_TEST(testSendLinkRequestOnBC);						
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
+		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
+		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);		
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
+		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
+		CPPUNIT_TEST(testMacDelay);		
+		CPPUNIT_TEST(testSHChannelAccessDelay);	
+		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
+		CPPUNIT_TEST(testDutyCycleMacDelay);
+		CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
+		CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
+		CPPUNIT_TEST(testRememberAdvertisedSlotOffset);		
+		CPPUNIT_TEST(testForgetAdvertisedSlotOffset);						
+		CPPUNIT_TEST(testAutoStartBroadcasts);
 		CPPUNIT_TEST_SUITE_END();
 	};
 
