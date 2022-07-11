@@ -381,11 +381,10 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 	// save link proposals		
 	if (!header->link_proposals.empty()) {
 		coutd << "saving " << header->link_proposals.size() << " advertised link proposals -> ";	
-		mac->getNeighborObserver().clearAdvertisedLinkProposals(header->src_id);
+		mac->getNeighborObserver().clearAdvertisedLinkProposals(header->src_id);		
 		for (const auto &proposal : header->link_proposals) 
 			mac->getNeighborObserver().addAdvertisedLinkProposal(header->src_id, mac->getCurrentSlot(), proposal.proposed_link);	
-	}
-	coutd << "done -> ";
+	}	
 }
 
 // void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {

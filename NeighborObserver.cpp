@@ -82,11 +82,19 @@ unsigned int NeighborObserver::getNextExpectedBroadcastSlotOffset(const MacId &i
 }
 
 void NeighborObserver::clearAdvertisedLinkProposals(const MacId &id) {
-	advertised_link_proposals.at(id).clear();
+	auto it = advertised_link_proposals.find(id);
+	if (it != advertised_link_proposals.end())
+		it->second.clear();
 }
 
-void NeighborObserver::addAdvertisedLinkProposal(const MacId &id, unsigned long current_slot, const LinkProposal &proposal) {	
-	advertised_link_proposals.at(id).push_back({current_slot, LinkProposal(proposal)});
+void NeighborObserver::addAdvertisedLinkProposal(const MacId &id, unsigned long current_slot, const LinkProposal &proposal) {		
+	auto it = advertised_link_proposals.find(id);
+	if (it == advertised_link_proposals.end()) {		
+		auto proposals = std::vector<std::pair<unsigned long, LinkProposal>>();
+		proposals.push_back({current_slot, LinkProposal(proposal)});
+		advertised_link_proposals.insert({id, proposals});
+	} else 
+		it->second.push_back({current_slot, LinkProposal(proposal)});	
 }
 
 std::vector<LinkProposal> NeighborObserver::getAdvertisedLinkProposals(const MacId &id, const unsigned long current_slot) const {
