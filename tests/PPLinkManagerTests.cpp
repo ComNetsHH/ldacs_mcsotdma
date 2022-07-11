@@ -76,12 +76,23 @@ public:
 		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_broadcasts_sent.get());
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_broadcasts_rcvd.get());
+		// link proposals have been received
+		// start link establishment
+		mac->notifyOutgoing(1, partner_id);
+		size_t request_tx_slot = sh->next_broadcast_slot;
+		for (size_t t = 0; t < request_tx_slot; t++) {
+			mac->update(1);
+			mac->execute();
+			mac->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_saved_proposals_sent.get());		
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		// CPPUNIT_TEST(testGet);		
-		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
 		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);					
 	CPPUNIT_TEST_SUITE_END();
 };

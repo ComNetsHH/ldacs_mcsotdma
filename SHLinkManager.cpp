@@ -56,33 +56,13 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		// propose locally-usable links if no proposals are saved or none are valid
 		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
 		std::vector<LinkProposal> link_proposals;
-		int num_forward_bursts = 1, num_reverse_bursts = 1;
+		
 		int period, min_offset;
+		int num_forward_bursts = 1, num_reverse_bursts = 1;
 		if (must_propose_something_new) {
 			coutd << "finding locally-usable links -> ";
-			mac->statisticReportSentOwnProposals();
-
-			size_t num_proposals = 3;
-			auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
-			const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
-			const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;
-			double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
-			coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
-			auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
-			min_offset = pair.first;						
-			period = pair.second;			
-			coutd << " min_period=" << period << " -> ";			
-			try {
-				// the proposal should be after the other user's next broadcast slot 
-				int next_expected_broadcast = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
-				min_offset = std::max(min_offset, next_expected_broadcast + 1);
-				coutd << "using saved neighbor's next broadcast in " << min_offset << " slots as minimum offset -> ";
-			} catch (const std::exception &e) {
-				// if that is unknown, use own next broadcast slot
-				min_offset = std::max(min_offset, (int) next_broadcast_slot);
-				coutd << "using own next broadcast in " << min_offset << " slots as minimum offset -> ";
-			}			
-			link_proposals = LinkProposalFinder::findLinkProposals(num_proposals, min_offset, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
+			size_t num_proposals = 3;			
+			link_proposals = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals);			
 		// propose advertised links if we know of some
 		} else {
 			mac->statisticReportSentSavedProposals();
@@ -99,7 +79,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 				auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
 				pp->lockProposedResources(proposal);
 				if (!notified_pp) {
-					notified_pp = true;
+					notified_pp = true;					
 					pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period, min_offset);
 				}
 			}
@@ -128,6 +108,31 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	mac->statisticReportBroadcastSent();
 	mac->statisticReportBroadcastMacDelay(measureMacDelay());				
 	return packet;	
+}
+
+std::vector<LinkProposal> SHLinkManager::proposeLocalLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts, size_t num_proposals) {
+	mac->statisticReportSentOwnProposals();
+	
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
+	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;
+	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
+	coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
+	auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
+	int min_offset = pair.first;						
+	int period = pair.second;	
+	coutd << " min_period=" << period << " -> ";			
+	try {
+		// the proposal should be after the other user's next broadcast slot 
+		int next_expected_broadcast = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
+		min_offset = std::max(min_offset, next_expected_broadcast + 1);
+		coutd << "using saved neighbor's next broadcast in " << min_offset << " slots as minimum offset -> ";
+	} catch (const std::exception &e) {
+		// if that is unknown, use own next broadcast slot
+		min_offset = std::max(min_offset, (int) next_broadcast_slot);
+		coutd << "using own next broadcast in " << min_offset << " slots as minimum offset -> ";
+	}			
+	return LinkProposalFinder::findLinkProposals(num_proposals, min_offset, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);			
 }
 
 void SHLinkManager::notifyOutgoing(unsigned long num_bits) {
