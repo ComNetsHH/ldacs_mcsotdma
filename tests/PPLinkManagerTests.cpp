@@ -54,6 +54,7 @@ public:
 			mac->onSlotEnd();
 		}
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_own_proposals_sent.get());		
 	}
 
 	/** Tests that when there is an advertised link, the SH initiates a 1SHOT establishment. */
