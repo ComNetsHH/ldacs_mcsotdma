@@ -245,6 +245,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool canLock(unsigned int slot_offset) const;		
 
+		bool isLinkValid(int start_slot_offset, int period, int num_tx_initiator, int num_tx_recipient, int timeout) const;
+
 	protected:
 		bool isValid(int32_t slot_offset) const;
 

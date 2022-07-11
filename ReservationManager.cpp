@@ -307,3 +307,7 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 	coutd << "done -> ";
 	return reservation_map;
 }
+
+uint32_t ReservationManager::getPlanningHorizon() const {
+	return this->planning_horizon;
+}
