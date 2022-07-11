@@ -169,14 +169,13 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 		scheduleBroadcastSlot();
 	}
 
-	// broadcast link manager should always have a ReservationTable assigned
-	if (current_reservation_table == nullptr)
-		throw std::runtime_error("SHLinkManager::broadcastSlotSelection for unset ReservationTable.");
+	// broadcast link manager should always have a ReservationTable assigned	
+	assert(current_reservation_table != nullptr && "SHLinkManager::onSlotStart for unset ReservationTable.");
 
 	// mark reception slot if there's nothing else to do
 	const auto& current_reservation = current_reservation_table->getReservation(0);
 	if (current_reservation.isIdle() || current_reservation.isBusy()) {
-		coutd << "marking BC reception -> ";
+		coutd << "marking SH reception -> ";
 		try {
 			current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 		} catch (const std::exception& e) {
