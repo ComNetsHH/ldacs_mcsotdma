@@ -119,9 +119,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int getAvgNumSlotsInbetweenPacketGeneration() const;				
 
 		/** Propose links that work locally. Used when no proposals are saved for a particular user. */
-		std::vector<LinkProposal> proposeLocalLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts, size_t num_proposals);
+		std::pair<std::vector<LinkProposal>, int> proposeLocalLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts, size_t num_proposals);
 		/** Propose links that have been advertised by another user, that also work locally. */
-		LinkProposal proposeRemoteLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts);
+		LinkProposal proposeRemoteLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts);		
 
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */

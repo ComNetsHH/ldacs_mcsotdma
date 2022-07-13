@@ -160,6 +160,11 @@ public:
 		CPPUNIT_ASSERT_EQUAL(pp->timeout, utilization.timeout);
 	}
 
+	/** Tests that an accepted link request's utilization is correctly identified at the link initiator through beacon reception. */
+	void testAcceptedLinkRequestIsIdentifiedThroughBeacon() {
+
+	}
+
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		// CPPUNIT_TEST(testGet);		
 		// CPPUNIT_TEST(testAskSHToSendLinkRequest);

@@ -24,13 +24,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool isActive() const override;		
 
 		void lockProposedResources(const LinkProposal& proposed_link);
-		void notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start);
+		void notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot);
 		int getRemainingTimeout() const;
 		void acceptLinkRequest(LinkProposal proposal);
 		L2HeaderSH::LinkUtilizationMessage getUtilization() const;
 
 	protected:
 		void establishLink();
+		void cancelLink();
 
 	protected:
 		/** Holds the number of slots until the next transmission opportunity. */
@@ -55,6 +56,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		ReservationMap reserved_resources;
 		/** Holds the absolute slot number at which link establishment was initiated, s.t. the link establishment time can be measured. */
 		int stat_link_establishment_start;
+		int expected_link_request_confirmation_slot = 0;
+		int max_establishment_attempts = 3, establishment_attempts = 0;
 	};
 }
 

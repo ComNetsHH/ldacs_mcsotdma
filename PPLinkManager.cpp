@@ -21,6 +21,7 @@ void PPLinkManager::notifyOutgoing(unsigned long num_bits) {
 	// trigger link establishment
 	if (link_status == link_not_established) {
 		coutd << "link not established -> triggering establishment -> ";		
+		establishment_attempts = 0;
 		establishLink();
 	// unless it's already underway/established
 	} else 
@@ -28,7 +29,11 @@ void PPLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void PPLinkManager::establishLink() {	
-	coutd << "starting link establishment -> ";	
+	establishment_attempts++;
+	coutd << "starting link establishment #" << establishment_attempts << " -> ";		
+	if (establishment_attempts >= max_establishment_attempts) {
+		throw std::runtime_error("max no. of link establishment attempts reached!");
+	}
 	if (this->link_status == link_established) {
 		coutd << "status is '" << this->link_status << "' -> no need to establish -> ";
 		return;
@@ -48,7 +53,14 @@ void PPLinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void PPLinkManager::onSlotEnd() {
-
+	if (link_status == awaiting_reply) {
+		this->expected_link_request_confirmation_slot--;
+		if (this->expected_link_request_confirmation_slot < 0) {
+			coutd << "expected link reply not received -> re-establishing -> ";
+			cancelLink();
+			establishLink();
+		}
+	}
 }
 
 void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) {
@@ -142,7 +154,7 @@ void PPLinkManager::lockProposedResources(const LinkProposal& proposed_link) {
 	reserved_resources.merge(lock_map);	
 }
 
-void PPLinkManager::notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start) {
+void PPLinkManager::notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot) {
 	coutd << *this << " updating status " << link_status << " -> ";
 	link_status = awaiting_reply;
 	coutd << link_status << " -> ";
@@ -151,6 +163,7 @@ void PPLinkManager::notifyLinkRequestSent(int num_bursts_forward, int num_recipi
 	this->period = period;
 	this->timeout = mac->getDefaultPPLinkTimeout();
 	this->next_tx_in = expected_link_start;
+	this->expected_link_request_confirmation_slot = expected_confirming_beacon_slot;
 }
 
 int PPLinkManager::getRemainingTimeout() const {
@@ -184,4 +197,14 @@ L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
 		utilization.timeout = timeout;
 	}
 	return utilization;
+}
+
+void PPLinkManager::cancelLink() {
+	coutd << "cancelling link -> ";
+	size_t num_unlocked = reserved_resources.unlock_either_id(mac->getMacId(), link_id);
+	coutd << "unlocked " << num_unlocked << " resources -> ";
+	size_t num_unscheduled = reserved_resources.unschedule({Reservation::TX, Reservation::RX});
+	coutd << "unscheduled " << num_unscheduled << " resources -> ";
+	coutd << "link status '" << link_status << "->" << LinkManager::link_not_established << " -> ";
+	link_status = link_not_established;
 }
