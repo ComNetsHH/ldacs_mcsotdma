@@ -156,3 +156,13 @@ void PPLinkManager::notifyLinkRequestSent(int num_initiator_tx, int num_recipien
 int PPLinkManager::getRemainingTimeout() const {
 	return this->timeout + (link_status == awaiting_reply ? next_tx_in : 0);
 }
+
+void PPLinkManager::acceptLinkRequest(LinkProposal proposal) {
+	coutd << *this << " accepting link request -> ";
+	// schedule resources
+	
+	// update status
+	coutd << "status '" << link_status << "'->'";
+	this->link_status = link_established;
+	coutd << link_status << "' -> ";
+}

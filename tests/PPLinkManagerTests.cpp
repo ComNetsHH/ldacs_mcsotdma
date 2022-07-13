@@ -90,13 +90,54 @@ public:
 		}
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_saved_proposals_sent.get());		
+		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_own_proposals_sent.get());		
+	}
+
+	/** Tests that link request is accepted if possible. */
+	void testAcceptAdvertisedLinkRequest() {
+		size_t num_slots = 0, max_slots = 250;
+		while (mac->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_you->stat_num_broadcasts_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_broadcasts_rcvd.get());
+		// link proposals have been received
+		// start link establishment
+		mac->notifyOutgoing(1, partner_id);
+		size_t request_tx_slot = sh->next_broadcast_slot;
+		for (size_t t = 0; t < request_tx_slot; t++) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_saved_proposals_sent.get());		
+		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_own_proposals_sent.get());		
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_requests_rcvd.get());		
+	}
+
+	/** Tests that own link establishment is triggered if a link in unacceptable. */
+	void testStartOwnLinkIfRequestInacceptable() {
+		bool is_implemented = false;
+		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		// CPPUNIT_TEST(testGet);		
 		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
 		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);					
+		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
+		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
 	CPPUNIT_TEST_SUITE_END();
 };
 }

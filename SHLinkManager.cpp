@@ -427,6 +427,45 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 		for (const auto &proposal : header->link_proposals) 
 			mac->getNeighborObserver().addAdvertisedLinkProposal(header->src_id, mac->getCurrentSlot(), proposal.proposed_link);	
 	}	
+
+	// check link requests
+	std::vector<LinkProposal> acceptable_links;
+	bool received_request = false;
+	for (const auto &link_request : header->link_requests) {
+		if (link_request.dest_id == mac->getMacId()) {
+			coutd << "processing link request -> ";
+			mac->statisticReportLinkRequestReceived();
+			received_request = true;
+			const auto &proposal = link_request.proposed_link;			
+			// check if any proposed link works locally
+			const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));			
+			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout());
+			if (is_acceptable) {
+				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is acceptable -> ";
+				acceptable_links.push_back(proposal);
+			} else
+				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is NOT acceptable -> ";
+		}				
+	}	
+	if (received_request) {
+		auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
+		// accept if possible
+		if (!acceptable_links.empty()) {
+			LinkProposal earliest_link;
+			int earliest_start_slot = reservation_manager->getPlanningHorizon();
+			for (auto link : acceptable_links) {
+				if (link.slot_offset < earliest_start_slot) {
+					earliest_start_slot = link.slot_offset;
+					earliest_link = link;
+				}
+			}
+			pp->acceptLinkRequest(earliest_link);
+		// start own link establishment otherwise
+		} else {
+			coutd << "no link request could be accepted, starting own link establishment -> ";
+			pp->notifyOutgoing(1);
+		}		
+	}
 }
 
 // void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
