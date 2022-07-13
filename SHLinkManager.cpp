@@ -116,6 +116,11 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	for (const LinkProposal &proposal : proposable_links) 
 		header->link_proposals.push_back(L2HeaderSH::LinkProposalMessage(proposal));	
 	coutd << "wrote " << header->link_proposals.size() << " link proposals into header -> ";		
+
+	// write utilizations into header
+	
+
+	// transmit packet
 	mac->statisticReportBroadcastSent();
 	mac->statisticReportBroadcastMacDelay(measureMacDelay());				
 	return packet;	

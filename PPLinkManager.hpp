@@ -5,6 +5,7 @@
 #include "FrequencyChannel.hpp"
 #include "ReservationMap.hpp"
 #include "LinkProposal.hpp"
+#include "SlotDuration.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {	
 	class PPLinkManager : public LinkManager {
@@ -20,9 +21,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool isActive() const override;		
 
 		void lockProposedResources(const LinkProposal& proposed_link);
-		void notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period, int expected_link_start);
+		void notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start);
 		int getRemainingTimeout() const;
 		void acceptLinkRequest(LinkProposal proposal);
+		L2HeaderSH::LinkUtilizationMessage getUtilization() const;
 
 	protected:
 		void establishLink();
@@ -43,7 +45,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Remaining number of exchanges until link termination. */
 		int timeout;
 		/** Holds the slot duration that has been negotiated upon. */
-		LinkProposal::SlotDuration slot_duration;
+		SlotDuration slot_duration;
 		/** Currently-used frequency channel. */
 		const FrequencyChannel *channel;
 		/** Stores locked and reserved communication resources. */

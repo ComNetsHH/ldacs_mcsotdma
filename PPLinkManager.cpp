@@ -142,11 +142,11 @@ void PPLinkManager::lockProposedResources(const LinkProposal& proposed_link) {
 	reserved_resources.merge(lock_map);	
 }
 
-void PPLinkManager::notifyLinkRequestSent(int num_initiator_tx, int num_recipient_tx, int period, int expected_link_start) {
+void PPLinkManager::notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start) {
 	coutd << *this << " updating status " << link_status << " -> ";
 	link_status = awaiting_reply;
 	coutd << link_status << " -> ";
-	this->num_initiator_tx = num_initiator_tx;
+	this->num_initiator_tx = num_bursts_forward;
 	this->num_recipient_tx = num_recipient_tx;
 	this->period = period;
 	this->timeout = mac->getDefaultPPLinkTimeout();
@@ -168,4 +168,18 @@ void PPLinkManager::acceptLinkRequest(LinkProposal proposal) {
 	coutd << "status '" << link_status << "'->'";
 	this->link_status = link_established;
 	coutd << link_status << "' -> ";
+}
+
+L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
+	auto utilization = L2HeaderSH::LinkUtilizationMessage();
+	if (link_status == link_established) {
+		utilization.center_frequency = channel->getCenterFrequency();
+		utilization.num_bursts_forward = num_initiator_tx;
+		utilization.num_bursts_reverse = num_recipient_tx;
+		utilization.period = period;
+		utilization.slot_duration = slot_duration;
+		utilization.slot_offset = next_tx_in;
+		utilization.timeout = timeout;
+	}
+	return utilization;
 }

@@ -84,6 +84,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;				
 
 		size_t getNumUtilizedP2PResources() const;
+		
 
 		// void onThirdPartyLinkReset(const ThirdPartyLink* caller);
 
