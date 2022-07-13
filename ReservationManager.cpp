@@ -201,12 +201,7 @@ std::vector<ReservationTable*>& ReservationManager::getP2PReservationTables() {
 	return this->p2p_reservation_tables;
 }
 
-ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channel, const int &start_slot_offset, const int &num_forward_bursts, const int &num_reverse_bursts, const int &period, const int &timeout, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator) {
-	if (start_slot_offset + timeout*2 >= planning_horizon) {
-		std::stringstream ss;
-		ss << "ReservationManager::scheduleBursts(timeout=" << timeout << ", first_burst_in=" << start_slot_offset << ", num_forward_bursts=" << num_forward_bursts << ", num_reverse_bursts=" << num_reverse_bursts << ", period=" << period << ") exceeds planning horizon: " << start_slot_offset + timeout*2 << " > " << planning_horizon << ".";
-		throw std::invalid_argument(ss.str());
-	}		
+ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channel, const int &start_slot_offset, const int &num_forward_bursts, const int &num_reverse_bursts, const int &period, const int &timeout, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator) {	
 	ReservationMap reservation_map;
 	ReservationTable *tbl = getReservationTable(channel);	
 	Reservation::Action action_1, action_2;	

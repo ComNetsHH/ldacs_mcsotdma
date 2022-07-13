@@ -45,7 +45,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
 		std::vector<LinkProposal> link_proposals;
 		
-		int period, min_offset;
+		int period = getPPMinOffsetAndPeriod().second, min_offset;		
+
 		int num_forward_bursts = 1, num_reverse_bursts = 1;
 		bool scheduled_broadcast_slot = false;
 		// propose something that works locally
@@ -94,11 +95,13 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		}
 	}
 
-	// schedule next slot and write offset into header
-	coutd << "scheduling next broadcast slot -> ";
+	// schedule next slot and write offset into header	
 	try {
-		if (next_broadcast_slot == 0) // could be that proposeLocalLinks already scheduled the next slot
-			scheduleBroadcastSlot();		
+		if (next_broadcast_slot == 0) {// could be that proposeLocalLinks already scheduled the next slot
+			coutd << "scheduling next broadcast slot -> ";
+			scheduleBroadcastSlot();	
+		} else
+			coutd << "next broadcast slot has already been scheduled -> ";
 		// Put it into the header.
 		if (this->advertise_slot_in_header) {			
 			header->slot_offset = next_broadcast_slot;
@@ -108,17 +111,12 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		throw std::runtime_error("Error when trying to schedule next broadcast: " + std::string(e.what()));
 	}	
 
-	// find link proposals
+	// find link proposals	
 	size_t num_proposals = 3;
-	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
-	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
-	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;	
-	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
-	auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
-	int min_offset = pair.first;
-	int min_period = pair.second;
-	int num_forward_bursts = 1, num_reverse_bursts = 1;
-	int period = 1;
+	coutd << "computing " << num_proposals << " proposals -> ";
+	auto pair = getPPMinOffsetAndPeriod();
+	int min_offset = pair.first, period = pair.second;
+	int num_forward_bursts = 1, num_reverse_bursts = 1;	
 	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
 	// write proposals into header
 	for (const LinkProposal &proposal : proposable_links) 
@@ -576,4 +574,12 @@ double SHLinkManager::getNumTxPerTimeSlot() const {
 
 bool SHLinkManager::isActive() const {
 	return next_broadcast_scheduled;
+}
+
+std::pair<int, int> SHLinkManager::getPPMinOffsetAndPeriod() const {
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
+	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;	
+	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
+	return mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);		
 }

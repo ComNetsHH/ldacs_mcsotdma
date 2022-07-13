@@ -70,7 +70,7 @@ void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload
 double PPLinkManager::getNumTxPerTimeSlot() const {
 	if (!isActive())
 		throw std::runtime_error("cannot call PPLinkManager::getNumSlotsUntilExpiry for inactive link");
-	return 1.0 / (5.0 * std::pow(2.0, period));
+	return 1.0 / (5.0 * std::pow(2.0, period)) / 2;
 }
 
 bool PPLinkManager::isActive() const {

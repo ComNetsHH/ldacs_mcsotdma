@@ -81,18 +81,18 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 		// 	// if there's sufficiently many links, the new one can use the remaining budget
 		// 	max_budget = avail_budget;		
 		// }		
-		// translate budget to minimum period n, where periodicity is 5*2^n	
-		unsigned int min_period = std::max(0.0, std::ceil(std::log2(1.0/(5.0*avail_budget))));	
+		// translate budget to minimum period n, where periodicity is every second burst of 5*2^n => 10*2^n
+		unsigned int min_period = std::max(0.0, std::ceil(std::log2(1.0/(10.0*avail_budget))));	
 		coutd << "max_budget=" << avail_budget << " -> min_period=" << min_period << " -> ";
 		return {min_offset, min_period};
 	} else
 		throw no_duty_cycle_budget_left_error("no duty cycle budget is left");
 }
 
-double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {
-	double avail_budget = this->max_duty_cycle;		
+double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {	
+	double avail_budget = this->max_duty_cycle;			
 	for (double d : used_budget) 
-		avail_budget -= d;	
+		avail_budget -= d;				
 	// if not all PP links have been established yet
 	size_t num_active_pp_links = used_budget.size();
 	if (num_active_pp_links < min_num_supported_pp_links)

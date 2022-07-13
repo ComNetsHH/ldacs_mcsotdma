@@ -123,6 +123,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Propose links that have been advertised by another user, that also work locally. */
 		LinkProposal proposeRemoteLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts);		
 
+		std::pair<int, int> getPPMinOffsetAndPeriod() const;
+
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		// std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
