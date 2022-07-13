@@ -130,7 +130,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		ReservationTable* getTxTable() const;		
 
-		ReservationMap scheduleBursts(const FrequencyChannel *channel, const unsigned int timeout, const int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator);		
+		ReservationMap scheduleBursts(const FrequencyChannel *channel, const int &start_slot_offset, const int &num_forward_bursts, const int &num_reverse_bursts, const int &period, const int &timeout, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator);		
 
 		uint32_t getPlanningHorizon() const;
 

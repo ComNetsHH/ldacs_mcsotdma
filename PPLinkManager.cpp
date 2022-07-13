@@ -160,7 +160,10 @@ int PPLinkManager::getRemainingTimeout() const {
 void PPLinkManager::acceptLinkRequest(LinkProposal proposal) {
 	coutd << *this << " accepting link request -> ";
 	// schedule resources
-	
+	coutd << "unlocking " << reserved_resources.size() << " locked resources -> ";
+	reserved_resources.unlock_either_id(mac->getMacId(), link_id);
+	coutd << "scheduling resources -> ";
+	reservation_manager->scheduleBursts(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency), proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), link_id, mac->getMacId(), false);
 	// update status
 	coutd << "status '" << link_status << "'->'";
 	this->link_status = link_established;
