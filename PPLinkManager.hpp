@@ -9,6 +9,9 @@
 
 namespace TUHH_INTAIRNET_MCSOTDMA {	
 	class PPLinkManager : public LinkManager {
+
+		friend class PPLinkManagerTests;
+
 	public:
 		PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);
 		void onReceptionReservation() override;		

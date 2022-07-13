@@ -544,3 +544,17 @@ const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {
 unsigned int MCSOTDMA_Mac::getDefaultPPLinkTimeout() const {
 	return this->default_pp_link_timeout;
 }
+
+std::vector<L2HeaderSH::LinkUtilizationMessage> MCSOTDMA_Mac::getPPLinkUtilizations() const {
+	auto utilizations = std::vector<L2HeaderSH::LinkUtilizationMessage>();
+	for (const auto pair : link_managers) {
+		const MacId &id = pair.first;
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
+			const PPLinkManager *link_manager = (PPLinkManager*) pair.second;
+			L2HeaderSH::LinkUtilizationMessage utilization = link_manager->getUtilization();
+			if (utilization != L2HeaderSH::LinkUtilizationMessage())
+				utilizations.push_back(utilization);
+		}
+	}
+	return utilizations;
+}

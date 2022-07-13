@@ -163,7 +163,8 @@ void PPLinkManager::acceptLinkRequest(LinkProposal proposal) {
 	coutd << "unlocking " << reserved_resources.size() << " locked resources -> ";
 	reserved_resources.unlock_either_id(mac->getMacId(), link_id);
 	coutd << "scheduling resources -> ";
-	reservation_manager->scheduleBursts(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency), proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), link_id, mac->getMacId(), false);
+	channel = reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency);
+	reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), link_id, mac->getMacId(), false);	
 	// update status
 	coutd << "status '" << link_status << "'->'";
 	this->link_status = link_established;
@@ -173,6 +174,7 @@ void PPLinkManager::acceptLinkRequest(LinkProposal proposal) {
 L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
 	auto utilization = L2HeaderSH::LinkUtilizationMessage();
 	if (link_status == link_established) {
+		assert(channel != nullptr && "frequency channel unset in PPLinkManager");
 		utilization.center_frequency = channel->getCenterFrequency();
 		utilization.num_bursts_forward = num_initiator_tx;
 		utilization.num_bursts_reverse = num_recipient_tx;

@@ -123,6 +123,8 @@ public:
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_saved_proposals_sent.get());		
 		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_own_proposals_sent.get());		
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_requests_rcvd.get());		
+		auto *pp_you = (PPLinkManager*) mac_you->getLinkManager(id);
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 	}
 
 	/** Tests that own link establishment is triggered if a link in unacceptable. */
@@ -131,13 +133,41 @@ public:
 		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
 	}
 
+	/** Tests that after accepting a link request, the link utilization is correctly updated. */
+	void testLinkUtilizationIsCorrectAfterEstablishment() {
+		size_t num_slots = 0, max_slots = 250;
+		mac_you->notifyOutgoing(1, id);
+		while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+		auto utilizations = mac->getPPLinkUtilizations();
+		CPPUNIT_ASSERT_EQUAL(size_t(1), utilizations.size());
+		L2HeaderSH::LinkUtilizationMessage utilization = utilizations.at(0);
+		CPPUNIT_ASSERT_EQUAL(pp->next_tx_in, utilization.slot_offset);
+		CPPUNIT_ASSERT_EQUAL(pp->slot_duration, utilization.slot_duration);
+		CPPUNIT_ASSERT_EQUAL(pp->num_initiator_tx, utilization.num_bursts_forward);
+		CPPUNIT_ASSERT_EQUAL(pp->num_recipient_tx, utilization.num_bursts_reverse);
+		CPPUNIT_ASSERT_EQUAL(pp->period, utilization.period);
+		CPPUNIT_ASSERT(pp->channel != nullptr);
+		CPPUNIT_ASSERT_EQUAL(pp->channel->getCenterFrequency(), (uint64_t) utilization.center_frequency);
+		CPPUNIT_ASSERT_EQUAL(pp->timeout, utilization.timeout);
+	}
+
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		// CPPUNIT_TEST(testGet);		
 		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
 		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
 		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
-		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
 		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
 	CPPUNIT_TEST_SUITE_END();
 };
 }
