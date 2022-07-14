@@ -207,13 +207,12 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 	Reservation::Action action_1, action_2;	
 	// we differentiate between being the link initiator or not
 	action_1 = is_link_initiator ? Reservation::TX : Reservation::RX;
-	action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
-	// and the target is always the other user
-	MacId target_id = recipient_id;	
+	action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;	
+	MacId target_id = is_link_initiator ? recipient_id : initiator_id; 	
 	
 	auto tx_rx_slots = SlotCalculator::calculateAlternatingBursts(start_slot_offset, num_forward_bursts, num_reverse_bursts, period, timeout);	
-	// go over link initiator's TX slots
-	coutd << "scheduling TX slots: ";
+	// go over link initiator's TX slots	
+	coutd << (is_link_initiator ? "scheduling TX slots: " : "scheduling RX slots: ");
 	for (int &slot_offset : tx_rx_slots.first) {
 		bool can_write = false, can_overwrite = false;
 		const auto &res = tbl->getReservation(slot_offset);
@@ -252,11 +251,12 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 		if (can_write || can_overwrite) {
 			tbl->mark(slot_offset, Reservation(target_id, action_1));						
 			reservation_map.add_scheduled_resource(tbl, slot_offset);
+			coutd << ":" << tbl->getReservation(slot_offset);
 			coutd << (can_write ? "" : " overwritten");
-		}
+		} 
 		coutd << ", ";
 	}
-	coutd << "-> scheduling RX slots: ";
+	coutd << (is_link_initiator ? "scheduling RX slots: " : "scheduling TX slots: ");
 	// go over the link initiator's RX slots
 	for (int &slot_offset : tx_rx_slots.second) {
 		bool can_write = false, can_overwrite = false;
@@ -295,6 +295,7 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 		if (can_write || can_overwrite) {
 			tbl->mark(slot_offset, Reservation(target_id, action_2));		
 			reservation_map.add_scheduled_resource(tbl, slot_offset);	
+			coutd << ":" << tbl->getReservation(slot_offset);
 			coutd << (can_write ? "" : " overwritten");
 		}
 		coutd << ", ";

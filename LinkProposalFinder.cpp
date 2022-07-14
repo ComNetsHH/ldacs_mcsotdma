@@ -17,7 +17,7 @@ std::vector<LinkProposal> LinkProposalFinder::findLinkProposals(size_t num_propo
 		auto candidate_slots = table->findPPCandidates(1, min_time_slot_offset, num_forward_bursts, num_reverse_bursts, period, timeout);
 		coutd << "found " << candidate_slots.size() << " slots on " << *table->getLinkedChannel() << ": ";
 		for (int32_t slot : candidate_slots)
-			coutd << slot << " ";
+			coutd << "t=" << slot << " ";
 		coutd << " -> ";
 		if (!candidate_slots.empty()) {
 			// save it

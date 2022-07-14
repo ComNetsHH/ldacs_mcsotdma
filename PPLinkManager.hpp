@@ -24,10 +24,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool isActive() const override;		
 
 		void lockProposedResources(const LinkProposal& proposed_link);
-		void notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot);
+		void notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot);		
 		int getRemainingTimeout() const;
-		void acceptLinkRequest(LinkProposal proposal);
-		L2HeaderSH::LinkUtilizationMessage getUtilization() const;
+		void acceptLink(LinkProposal proposal, bool through_request);
+		L2HeaderSH::LinkUtilizationMessage getUtilization() const;		
 
 	protected:
 		void establishLink();

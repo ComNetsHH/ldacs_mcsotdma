@@ -34,7 +34,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	header->src_id = mac->getMacId();	
 
 	// add link requests
-	coutd << "considering " << link_requests.size() << " pending link requests: ";
+	if (!link_requests.empty())
+		coutd << "considering " << link_requests.size() << " pending link requests: ";
 	for (auto dest_id : link_requests) {		
 		coutd << "id=" << dest_id << " -> ";
 		// check if we know preferred links
@@ -110,6 +111,20 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	} catch (const std::exception &e) {
 		throw std::runtime_error("Error when trying to schedule next broadcast: " + std::string(e.what()));
 	}	
+
+	// attach next link reply
+	if (!link_replies.empty()) {
+		auto reply = link_replies.at(0);
+		coutd << "attaching link reply for " << reply.dest_id << " -> ";
+		header->link_reply = L2HeaderSH::LinkReply(reply);		
+		link_replies.erase(link_replies.begin());
+		if (link_replies.empty())
+			coutd << "no more replies pending -> ";
+		else 
+			coutd << link_replies.size() << " replies pending -> ";
+		mac->statisticReportLinkReplySent();
+		// check if pending link replies are out-of-date now
+	}
 
 	// find link proposals	
 	size_t num_proposals = 3;
@@ -444,9 +459,10 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 	// check link requests
 	std::vector<LinkProposal> acceptable_links;
 	bool received_request = false;
+	if (!header->link_requests.empty())
+		coutd << "processing " << header->link_requests.size() << " link requests -> ";
 	for (const auto &link_request : header->link_requests) {
-		if (link_request.dest_id == mac->getMacId()) {
-			coutd << "processing link request -> ";
+		if (link_request.dest_id == mac->getMacId()) {			
 			mac->statisticReportLinkRequestReceived();
 			received_request = true;
 			const auto &proposal = link_request.proposed_link;			
@@ -472,7 +488,10 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 					earliest_link = link;
 				}
 			}
-			pp->acceptLinkRequest(earliest_link);
+			pp->acceptLink(earliest_link, true);
+			// write link reply
+			coutd << "will attach link reply to next SH transmission -> ";			
+			link_replies.push_back(L2HeaderSH::LinkReply(header->src_id, earliest_link));
 		// start own link establishment otherwise
 		} else {
 			coutd << "no link request could be accepted, starting own link establishment -> ";
@@ -480,10 +499,20 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 		}		
 	}
 
+	// check link reply	
+	if (header->link_reply.dest_id == mac->getMacId()) {
+		coutd << "processing link reply -> ";
+		const LinkProposal &link = header->link_reply.proposed_link;
+		auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
+		pp->acceptLink(link, false);
+		mac->statisticReportLinkReplyReceived();
+	}
+
 	// check link utilizations
 	for (const auto &utilization : header->link_utilizations) {
-		coutd << "processing link utilization ";
-
+		coutd << "processing link utilization -> ";
+		mac->statisticReportLinkUtilizationReceived();
+		// TODO potential third party processing
 	}
 }
 

@@ -115,7 +115,7 @@ void PPLinkManager::onSlotEnd() {
 	// has an expected reply not arrived?
 	if (link_status == awaiting_reply && this->time_slots_until_reply == 0) {
 		coutd << "expected reply hasn't arrived -> trying to establish a new link -> ";
-		mac->statistcReportPPLinkMissedLastReplyOpportunity();
+		mac->statisticReportPPLinkMissedLastReplyOpportunity();
 		cancelLink();		
 		establishLink();
 	}

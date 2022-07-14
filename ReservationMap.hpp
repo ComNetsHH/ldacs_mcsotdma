@@ -15,6 +15,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 /** Container that saves the resources that were locked or scheduled during link establishment. */
 class ReservationMap {
+
+	friend class PPLinkManagerTests;
+
 public:
 	ReservationMap() : num_slots_since_creation(0) {};		
 
@@ -38,8 +41,14 @@ public:
 	}
 
 	size_t size() const {
-		return scheduled_resources.size() + locked_resources.size();
+		return size_scheduled() + size_locked();
 	}			
+	size_t size_scheduled() const {
+		return scheduled_resources.size();
+	}
+	size_t size_locked() const {
+		return locked_resources.size();
+	}
 	
 	void reset() {				
 		this->scheduled_resources.clear();

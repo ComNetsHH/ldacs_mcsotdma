@@ -49,7 +49,7 @@ void PPLinkManager::establishLink() {
 }
 
 void PPLinkManager::onSlotStart(uint64_t num_slots) {
-
+	reserved_resources.onSlotStart();
 }
 
 void PPLinkManager::onSlotEnd() {
@@ -57,6 +57,7 @@ void PPLinkManager::onSlotEnd() {
 		this->expected_link_request_confirmation_slot--;
 		if (this->expected_link_request_confirmation_slot < 0) {
 			coutd << "expected link reply not received -> re-establishing -> ";
+			mac->statisticReportPPLinkMissedLastReplyOpportunity();
 			cancelLink();
 			establishLink();
 		}
@@ -170,16 +171,19 @@ int PPLinkManager::getRemainingTimeout() const {
 	return this->timeout + (link_status == awaiting_reply ? next_tx_in : 0);
 }
 
-void PPLinkManager::acceptLinkRequest(LinkProposal proposal) {
-	coutd << *this << " accepting link request -> ";
-	// schedule resources
-	coutd << "unlocking " << reserved_resources.size() << " locked resources -> ";
-	reserved_resources.unlock_either_id(mac->getMacId(), link_id);
-	coutd << "scheduling resources -> ";
+void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
+	coutd << *this << " accepting link -> ";
+	coutd << "unlocking " << reserved_resources.size_locked() << " and unscheduling " << reserved_resources.size_scheduled() << " resources -> ";
+	cancelLink();
+	// schedule resources	
+	coutd << "scheduling resources on f=" << proposal.center_frequency << "kHz -> ";
 	channel = reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency);
-	reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), link_id, mac->getMacId(), false);	
+	bool is_link_initiator = !through_request; // recipient of a link request is not the initiator
+	MacId initiator_id = is_link_initiator ? mac->getMacId() : link_id;
+	MacId recipient_id = is_link_initiator ? link_id : mac->getMacId();
+	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));	
 	// update status
-	coutd << "status '" << link_status << "'->'";
+	coutd << "status is now '";
 	this->link_status = link_established;
 	coutd << link_status << "' -> ";
 }
@@ -199,12 +203,8 @@ L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
 	return utilization;
 }
 
-void PPLinkManager::cancelLink() {
-	coutd << "cancelling link -> ";
-	size_t num_unlocked = reserved_resources.unlock_either_id(mac->getMacId(), link_id);
-	coutd << "unlocked " << num_unlocked << " resources -> ";
-	size_t num_unscheduled = reserved_resources.unschedule({Reservation::TX, Reservation::RX});
-	coutd << "unscheduled " << num_unscheduled << " resources -> ";
-	coutd << "link status '" << link_status << "->" << LinkManager::link_not_established << " -> ";
+void PPLinkManager::cancelLink() {	
+	size_t num_unlocked = reserved_resources.unlock_either_id(mac->getMacId(), link_id);	
+	size_t num_unscheduled = reserved_resources.unschedule({Reservation::TX, Reservation::RX});		
 	link_status = link_not_established;
 }

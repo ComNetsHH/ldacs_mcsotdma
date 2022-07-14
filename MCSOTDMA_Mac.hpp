@@ -162,7 +162,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			stat_unicast_mac_delay.capture((double) mac_delay);
 		}		
 
-		void statistcReportPPLinkMissedLastReplyOpportunity() {
+		void statisticReportPPLinkMissedLastReplyOpportunity() {
 			stat_pp_link_missed_last_reply_opportunity.increment();
 		}
 
@@ -224,6 +224,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportSentSavedProposals() {
 			stat_num_saved_proposals_sent.increment();
 		}		
+		void statisticReportLinkUtilizationReceived() {
+			stat_num_link_utils_rcvd.increment();
+		}						
 
 		unsigned int getP2PBurstOffset() const;		
 
@@ -326,6 +329,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_duty_cycle = Statistic("mcsotdma_statistic_duty_cycle", this);		
 		Statistic stat_num_own_proposals_sent = Statistic("stat_num_own_proposals_sent", this);		
 		Statistic stat_num_saved_proposals_sent = Statistic("stat_num_saved_proposals_sent", this);		
+		Statistic stat_num_link_utils_rcvd = Statistic("stat_num_link_utils_rcvd", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,
@@ -365,7 +369,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_dme_packets_rcvd,
 				&stat_num_broadcast_collisions_detected,
 				&stat_num_beacon_collisions_detected,
-				&stat_num_beacon_collisions_detected
+				&stat_num_beacon_collisions_detected,
+				&stat_num_link_utils_rcvd
 		};
 	};
 
