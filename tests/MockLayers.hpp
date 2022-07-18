@@ -174,7 +174,7 @@ class RLCLayer : public IRlc {
 				} else {
 					coutd << "returning new unicast -> ";
 					segment = new L2Packet();
-					auto* base_header = new L2HeaderSH(mac_id);					
+					auto* base_header = new L2HeaderPP(mac_id);					
 					segment->addMessage(base_header, new RLCPayload(0));					
 				}
 			} else {

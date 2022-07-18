@@ -9,11 +9,20 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 PPLinkManager::PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
 void PPLinkManager::onReceptionReservation() {
-
+	
 }
 
-L2Packet* PPLinkManager::onTransmissionReservation() {		
-	return nullptr;
+L2Packet* PPLinkManager::onTransmissionReservation() {			
+	coutd << *this << "::onTransmission -> ";		
+	size_t capacity = mac->getCurrentDatarate();
+	coutd << "requesting " << capacity << " bits from upper sublayer -> ";
+	L2Packet *packet = mac->requestSegment(capacity, link_id);	
+	auto *&header = (L2HeaderPP*&) packet->getHeaders().at(0);
+	header->src_id = mac->getMacId();
+	header->dest_id = link_id;
+	// return packet
+	mac->statisticReportUnicastSent();	
+	return packet;	
 }
 
 void PPLinkManager::notifyOutgoing(unsigned long num_bits) {
@@ -65,7 +74,7 @@ void PPLinkManager::onSlotEnd() {
 }
 
 void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) {
-
+	coutd << *this << "::processing unicast -> ";
 }
 
 double PPLinkManager::getNumTxPerTimeSlot() const {

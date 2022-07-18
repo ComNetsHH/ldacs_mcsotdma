@@ -34,7 +34,7 @@ void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
 
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {
 	assert(lower_layer && "MCSOTDMA_Mac's lower layer is unset.");
-	// check that the packet is not empty
+	// check that the packet is not empty	
 	if (packet->getDestination() == SYMBOLIC_ID_UNSET) {
 		delete packet;
 		return;
@@ -142,6 +142,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				L2Packet* outgoing_packet = link_manager->onTransmissionReservation();
 				if (outgoing_packet != nullptr) {
 					outgoing_packet->notifyCallbacks();				
+					coutd << "passing to lower layer -> ";
 					passToLower(outgoing_packet, channel->getCenterFrequency());					
 				} else {										
 					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";

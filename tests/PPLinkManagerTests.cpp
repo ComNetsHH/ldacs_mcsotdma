@@ -390,9 +390,69 @@ public:
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 	}
 
+	/** Tests that the first packet of a newly-established PP link is sent. */
+	void testUnicastPacketIsSent() {
+		size_t num_slots = 0, max_slots = 250;
+		mac->notifyOutgoing(1, partner_id);
+		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+		num_slots = 0;
+		while (mac->stat_num_unicasts_sent.get() < 1.0 && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_unicasts_sent.get());		
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_unicasts_rcvd.get());		
+	}
+
+	/** Tests that throughout an entire PP link, the timeouts between two users match. */
+	void testTimeoutsMatchOverWholePPLink() {
+		size_t num_slots = 0, max_slots = 250;
+		while (mac->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_you->stat_num_broadcasts_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_broadcasts_rcvd.get());
+		// link proposals have been received
+		// start link establishment
+		mac->notifyOutgoing(1, partner_id);
+		num_slots = 0;
+		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);		
+
+	}
+
 	/** Tests that after link establishment, an entire PP link communication works and packets are exchanged. */
 	void testCommOverWholePPLink() {
-		size_t num_slots = 0, max_slots = 50;
+		size_t num_slots = 0, max_slots = 250;
 		while (mac->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
 			mac->update(1);
 			mac_you->update(1);
@@ -422,21 +482,22 @@ public:
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		CPPUNIT_TEST(testGet);		
-		CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
-		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
-		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
-		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
-		CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
-		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
-		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);				
-		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
-		CPPUNIT_TEST(testProcessLinkReply);		
-		CPPUNIT_TEST(testLocalLinkEstablishment);
-		CPPUNIT_TEST(testProposalLinkEstablishment);
-		CPPUNIT_TEST(testCommOverWholePPLink);		
+		// CPPUNIT_TEST(testGet);		
+		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
+		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// // CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		// CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
+		// CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
+		// CPPUNIT_TEST(testUnlockAfterLinkRequest);		
+		// CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);				
+		// CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
+		// CPPUNIT_TEST(testProcessLinkReply);		
+		// CPPUNIT_TEST(testLocalLinkEstablishment);
+		// CPPUNIT_TEST(testProposalLinkEstablishment);		
+		CPPUNIT_TEST(testUnicastPacketIsSent);		
+		// CPPUNIT_TEST(testCommOverWholePPLink);		
 	CPPUNIT_TEST_SUITE_END();
 };
 }
