@@ -347,6 +347,49 @@ public:
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 	}
 
+	void testProposalLinkEstablishment() {
+		size_t num_slots = 0, max_slots = 50;
+		while (mac->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_you->stat_num_broadcasts_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_broadcasts_rcvd.get());
+		// link proposals have been received
+		// start link establishment
+		mac->notifyOutgoing(1, partner_id);
+		size_t request_tx_slot = sh->next_broadcast_slot;
+		for (size_t t = 0; t < request_tx_slot; t++) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_saved_proposals_sent.get());		
+		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_own_proposals_sent.get());		
+
+		num_slots = 0;
+		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+	}
+
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testGet);		
 		CPPUNIT_TEST(testAskSHToSendLinkRequest);
@@ -360,7 +403,8 @@ public:
 		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);				
 		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
 		CPPUNIT_TEST(testProcessLinkReply);		
-		CPPUNIT_TEST(testLocalLinkEstablishment);				
+		CPPUNIT_TEST(testLocalLinkEstablishment);
+		CPPUNIT_TEST(testProposalLinkEstablishment);		
 	CPPUNIT_TEST_SUITE_END();
 };
 }
