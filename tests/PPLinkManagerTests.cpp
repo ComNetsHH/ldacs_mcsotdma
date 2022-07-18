@@ -193,7 +193,7 @@ public:
 			}
 		}		
 	}
-
+	
 	void testUnlockAfterLinkRequest() {
 		mac->notifyOutgoing(1, partner_id);
 		size_t num_slots = 0, max_slots = 250;
@@ -206,10 +206,12 @@ public:
 			mac_you->onSlotEnd();
 		}
 		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
-		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());		
 		pp->cancelLink();
 		for (auto *table : mac->getReservationManager()->getP2PReservationTables()) {
 			for (int t = 0; t < table->getPlanningHorizon(); t++) {
+				if (!table->getReservation(t).isIdle())
+					coutd << "t=" << t << std::endl;
 				CPPUNIT_ASSERT_EQUAL(Reservation(), table->getReservation(t));
 			}
 		}
@@ -257,14 +259,14 @@ public:
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		// CPPUNIT_TEST(testGet);		
-		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
-		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
-		// // CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
-		// CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
-		// CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
+		CPPUNIT_TEST(testGet);		
+		CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
+		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
+		CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
 		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
 		// CPPUNIT_TEST(testProcessLinkReply);		
 	CPPUNIT_TEST_SUITE_END();

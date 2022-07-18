@@ -17,6 +17,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 class ReservationMap {
 
 	friend class PPLinkManagerTests;
+	friend class PPLinkManager;	
 
 public:
 	ReservationMap() : num_slots_since_creation(0) {};		
@@ -60,20 +61,20 @@ public:
 	 * @throws std::invalid_argument if any resource was not locked
 	 * */
 	size_t unlock_either_id(const MacId &id1, const MacId &id2) {				
-		size_t num_unlocked = 0;
+		size_t num_unlocked = 0;		
 		for (const auto& pair : locked_resources) {
 			ReservationTable *table = pair.first;
 			// skip SH reservations
 			if (table->getLinkedChannel() != nullptr && table->getLinkedChannel()->isSH())
 				continue;			
-			int slot_offset = pair.second - this->num_slots_since_creation;						
+			int slot_offset = pair.second - this->num_slots_since_creation;			
 			if (slot_offset > 0) {				
 				try {
 					table->unlock_either_id(slot_offset, id1, id2);							
-					num_unlocked++;
-				} catch (const id_mismatch &e) {
+					num_unlocked++;					
+				} catch (const id_mismatch &e) {					
 					// do nothing
-				} catch (const std::invalid_argument &e) {
+				} catch (const std::invalid_argument &e) {					
 					// do nothing
 				} catch (const std::exception &e) {
 					throw std::runtime_error("ReservationMap::unlock_either_id error: " + std::string(e.what()));

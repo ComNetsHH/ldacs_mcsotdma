@@ -82,13 +82,15 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			for (auto proposal : link_proposals) {
 				// save request
 				header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
-				// lock resources
+				// notify PP
 				auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
-				pp->lockProposedResources(proposal);
 				if (!notified_pp) {
 					notified_pp = true;					
+					// this resets the locked resource map so must be called before lockProposedResources
 					pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period, min_offset, min_offset);
 				}
+				// lock resources				
+				pp->lockProposedResources(proposal);				
 			}
 			mac->statisticReportLinkRequestSent();		
 		} else {

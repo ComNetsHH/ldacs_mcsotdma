@@ -151,20 +151,22 @@ void PPLinkManager::lockProposedResources(const LinkProposal& proposed_link) {
 				break;
 			}
 	}
-	coutd << locked_local.size() << " local + " << locked_rx.size() << " receiver + " << locked_tx.size() << " transmitter resources on f=" << proposed_link.center_frequency << " -> ";
+	coutd << locked_local.size() << " local + " << locked_rx.size() << " receiver + " << locked_tx.size() << " transmitter resources on f=" << proposed_link.center_frequency << " -> ";	
 	reserved_resources.merge(lock_map);	
 }
 
-void PPLinkManager::notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot) {
-	coutd << *this << " updating status " << link_status << " -> ";
+void PPLinkManager::notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot) {	
+	// remove all locks and schedules
+	cancelLink();
+	// update status and parameters and counters
 	link_status = awaiting_reply;
-	coutd << link_status << " -> ";
+	coutd << *this << " updating status " << link_status << " -> ";	
 	this->num_initiator_tx = num_bursts_forward;
 	this->num_recipient_tx = num_recipient_tx;
 	this->period = period;
 	this->timeout = mac->getDefaultPPLinkTimeout();
 	this->next_tx_in = expected_link_start;
-	this->expected_link_request_confirmation_slot = expected_confirming_beacon_slot;
+	this->expected_link_request_confirmation_slot = expected_confirming_beacon_slot;		
 }
 
 int PPLinkManager::getRemainingTimeout() const {
@@ -181,7 +183,8 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	bool is_link_initiator = !through_request; // recipient of a link request is not the initiator
 	MacId initiator_id = is_link_initiator ? mac->getMacId() : link_id;
 	MacId recipient_id = is_link_initiator ? link_id : mac->getMacId();
-	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));	
+	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));		
+	coutd << std::endl;
 	// update status
 	coutd << "status is now '";
 	this->link_status = link_established;
@@ -203,8 +206,9 @@ L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
 	return utilization;
 }
 
-void PPLinkManager::cancelLink() {	
-	size_t num_unlocked = reserved_resources.unlock_either_id(mac->getMacId(), link_id);	
-	size_t num_unscheduled = reserved_resources.unschedule({Reservation::TX, Reservation::RX});		
+void PPLinkManager::cancelLink() {		
+	size_t num_unlocked = reserved_resources.unlock_either_id(mac->getMacId(), link_id);		
+	size_t num_unscheduled = reserved_resources.unschedule({Reservation::TX, Reservation::RX});			
 	link_status = link_not_established;
+	reserved_resources.reset();
 }
