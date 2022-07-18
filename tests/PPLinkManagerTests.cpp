@@ -8,8 +8,8 @@
 namespace TUHH_INTAIRNET_MCSOTDMA {
 class PPLinkManagerTests : public CppUnit::TestFixture {
 private:
-	PPLinkManager *pp;
-	SHLinkManager *sh;
+	PPLinkManager *pp, *pp_you;
+	SHLinkManager *sh, *sh_you;
 	MacId id, partner_id;
 	uint32_t planning_horizon;
 	MACLayer *mac, *mac_you;
@@ -26,6 +26,8 @@ public:
 		mac_you = env_you->mac_layer;
 		pp = (PPLinkManager*) mac->getLinkManager(partner_id);
 		sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+		pp_you = (PPLinkManager*) mac_you->getLinkManager(id);
+		sh_you = (SHLinkManager*) mac_you->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
 
 		env->phy_layer->connected_phys.push_back(env_you->phy_layer);
 		env_you->phy_layer->connected_phys.push_back(env->phy_layer);		
@@ -123,8 +125,7 @@ public:
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_saved_proposals_sent.get());		
 		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_own_proposals_sent.get());		
-		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_requests_rcvd.get());		
-		auto *pp_you = (PPLinkManager*) mac_you->getLinkManager(id);
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_requests_rcvd.get());				
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 	}
 
@@ -308,8 +309,7 @@ public:
 		CPPUNIT_ASSERT_EQUAL(0, pp->expected_link_request_confirmation_slot);
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_replies_sent.get());		
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_replies_rcvd.get());		
-		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
-		auto *pp_you = (PPLinkManager*) mac_you->getLinkManager(id);
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 		CPPUNIT_ASSERT_EQUAL(pp->channel->getCenterFrequency(), pp_you->channel->getCenterFrequency());
 		auto *table = mac->getReservationManager()->getReservationTable(pp->channel), *table_you = mac_you->getReservationManager()->getReservationTable(pp_you->channel);
@@ -330,6 +330,23 @@ public:
 		}
 	}
 
+	/** Tests that links are established at both sides when no proposals were present. */
+	void testLocalLinkEstablishment() {
+		size_t num_slots = 0, max_slots = 250;
+		mac_you->notifyOutgoing(1, id);
+		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+	}
+
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		CPPUNIT_TEST(testGet);		
 		CPPUNIT_TEST(testAskSHToSendLinkRequest);
@@ -343,6 +360,7 @@ public:
 		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);				
 		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
 		CPPUNIT_TEST(testProcessLinkReply);		
+		CPPUNIT_TEST(testLocalLinkEstablishment);				
 	CPPUNIT_TEST_SUITE_END();
 };
 }
