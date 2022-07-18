@@ -29,7 +29,7 @@ std::pair<std::vector<int>, std::vector<int>> SlotCalculator::calculateAlternati
 	auto tx_rx_slots = std::pair<std::vector<int>, std::vector<int>>();
 	auto &tx_slots = tx_rx_slots.first;
 	auto &rx_slots = tx_rx_slots.second;
-	int increment = 5*std::pow(2, period);	
+	int increment = 5*std::pow(2, period);		
 	int slot = start_slot_offset;
 	for (int exchange = 0; exchange < timeout; exchange++) {				
 		for (int fw_burst = 0; fw_burst < num_forward_bursts; fw_burst++) {

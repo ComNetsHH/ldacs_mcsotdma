@@ -257,7 +257,7 @@ unsigned int ReservationTable::findEarliestIdleSlotsBC(unsigned int start_offset
 //	throw std::runtime_error("ReservationTable::findEarliestIdleRange found no idle slot range of specified length.");
 //}
 
-bool ReservationTable::isValid(int32_t slot_offset) const {
+bool ReservationTable::isValid(int32_t slot_offset) const {	
 	return std::abs(slot_offset) <= this->planning_horizon; // can't move more than one horizon into either direction of time.
 }
 

@@ -182,7 +182,7 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	channel = reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency);
 	bool is_link_initiator = !through_request; // recipient of a link request is not the initiator
 	MacId initiator_id = is_link_initiator ? mac->getMacId() : link_id;
-	MacId recipient_id = is_link_initiator ? link_id : mac->getMacId();
+	MacId recipient_id = is_link_initiator ? link_id : mac->getMacId();			
 	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));		
 	coutd << std::endl;
 	// update status

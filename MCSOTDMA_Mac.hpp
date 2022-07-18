@@ -226,7 +226,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}		
 		void statisticReportLinkUtilizationReceived() {
 			stat_num_link_utils_rcvd.increment();
-		}						
+		}				
+						
 
 		unsigned int getP2PBurstOffset() const;		
 

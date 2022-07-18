@@ -468,6 +468,12 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 			mac->statisticReportLinkRequestReceived();
 			received_request = true;
 			const auto &proposal = link_request.proposed_link;			
+			// check if slot offset is large enough to reply in time
+			if (link_request.proposed_link.slot_offset <= next_broadcast_slot) {
+				coutd << "t=" << link_request.proposed_link.slot_offset << " would be before my next SH transmission at t=" << next_broadcast_slot << " -> NOT acceptable -> ";
+				mac->statisticReportLinkRequestRejectedDueToUnacceptableReplySlot();
+				continue;
+			}			
 			// check if any proposed link works locally
 			const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));			
 			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout());
