@@ -418,6 +418,47 @@ public:
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_unicasts_rcvd.get());		
 	}
 
+	void testNextTxSlotCorrectlySetAfterLinkEstablishment() {
+		size_t num_slots = 0, max_slots = 250;
+		mac->notifyOutgoing(1, partner_id);
+		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+		CPPUNIT_ASSERT(pp->current_reservation_table != nullptr);
+		CPPUNIT_ASSERT(pp_you->current_reservation_table != nullptr);		
+		CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, pp->current_reservation_table->getReservation(pp->next_tx_in).getAction());
+		CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, pp->current_reservation_table->getReservation(pp_you->next_tx_in).getAction());
+		CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, pp_you->current_reservation_table->getReservation(pp_you->next_tx_in).getAction());
+		CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, pp_you->current_reservation_table->getReservation(pp->next_tx_in).getAction());
+	}
+
+	void testFirstTwoTransmissionBurst() {
+		size_t num_slots = 0, max_slots = 250;
+		mac->notifyOutgoing(1, partner_id);
+		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+
+		// proceed until after first transmission burst
+		
+	}
+
 	/** Tests that throughout an entire PP link, the timeouts between two users match. */
 	void testTimeoutsMatchOverWholePPLink() {
 		size_t num_slots = 0, max_slots = 250;
@@ -448,7 +489,7 @@ public:
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);		
 
-	}
+	}	
 
 	/** Tests that after link establishment, an entire PP link communication works and packets are exchanged. */
 	void testCommOverWholePPLink() {
@@ -496,8 +537,9 @@ public:
 		// CPPUNIT_TEST(testProcessLinkReply);		
 		// CPPUNIT_TEST(testLocalLinkEstablishment);
 		// CPPUNIT_TEST(testProposalLinkEstablishment);		
-		CPPUNIT_TEST(testUnicastPacketIsSent);		
+		// CPPUNIT_TEST(testUnicastPacketIsSent);		
 		// CPPUNIT_TEST(testCommOverWholePPLink);		
+		CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);				
 	CPPUNIT_TEST_SUITE_END();
 };
 }

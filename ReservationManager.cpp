@@ -299,7 +299,7 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 			coutd << (can_write ? "" : " overwritten");
 		}
 		coutd << ", ";
-	}
+	}	
 	coutd << "done -> ";
 	return reservation_map;
 }

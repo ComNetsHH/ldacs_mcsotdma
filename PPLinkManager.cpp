@@ -71,6 +71,8 @@ void PPLinkManager::onSlotEnd() {
 			establishLink();
 		}
 	}
+	if (link_status == link_established)
+		next_tx_in--;
 }
 
 void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) {
@@ -192,8 +194,17 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	bool is_link_initiator = !through_request; // recipient of a link request is not the initiator
 	MacId initiator_id = is_link_initiator ? mac->getMacId() : link_id;
 	MacId recipient_id = is_link_initiator ? link_id : mac->getMacId();			
-	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));		
-	coutd << std::endl;
+	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));					
+	for (const std::pair<ReservationTable*, int>& pair : reserved_resources.scheduled_resources) {
+		const auto *table = pair.first;
+		int t = pair.second;
+		if (table->getReservation(t).isTx()) {
+			this->next_tx_in = t + 1;
+			coutd << "first transmission at t=" << next_tx_in << " -> ";
+			break;
+		}
+	}
+	current_reservation_table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));
 	// update status
 	coutd << "status is now '";
 	this->link_status = link_established;
