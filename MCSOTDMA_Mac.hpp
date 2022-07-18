@@ -227,6 +227,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportLinkUtilizationReceived() {
 			stat_num_link_utils_rcvd.increment();
 		}				
+		void statisticReportLinkRequestAccepted() {
+			stat_num_pp_link_requests_accepted.increment();
+		}						
 						
 
 		unsigned int getP2PBurstOffset() const;		
@@ -319,6 +322,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);				
 		Statistic stat_pp_link_burst_offset = Statistic("mcsotdma_statistic_burst_offset", this);				
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
+		Statistic stat_num_pp_link_requests_accepted = Statistic("stat_num_pp_link_requests_accepted", this);
 		Statistic stat_num_pp_links_expired = Statistic("mcsotdma_statistic_num_pp_links_expired", this);
 		Statistic stat_num_pp_requests_canceled_due_to_insufficient_resources = Statistic("mcsotdma_statistic_num_pp_requests_canceled_due_to_insufficient_resources", this);
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_reply_slot", this);
@@ -362,6 +366,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_pp_link_establishment_time,
 				&stat_pp_link_burst_offset,
 				&stat_num_pp_links_established,
+				&stat_num_pp_link_requests_accepted,
 				&stat_num_pp_links_expired,
 				&stat_num_pp_requests_canceled_due_to_insufficient_resources,
 				&stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot,

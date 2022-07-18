@@ -189,6 +189,7 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	coutd << "status is now '";
 	this->link_status = link_established;
 	coutd << link_status << "' -> ";
+	mac->statisticReportLinkRequestAccepted();
 }
 
 L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {

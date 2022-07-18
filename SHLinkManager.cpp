@@ -497,9 +497,11 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 				}
 			}
 			pp->acceptLink(earliest_link, true);
-			// write link reply
-			coutd << "will attach link reply to next SH transmission -> ";			
-			link_replies.push_back(L2HeaderSH::LinkReply(header->src_id, earliest_link));
+			// write link reply			
+			LinkProposal normalized_proposal = LinkProposal(earliest_link);
+			normalized_proposal.slot_offset -= (next_broadcast_slot + 1);
+			coutd << "will attach link reply to next SH transmission with normalized offset t=" << normalized_proposal.slot_offset << " -> ";			
+			link_replies.push_back(L2HeaderSH::LinkReply(header->src_id, normalized_proposal));
 		// start own link establishment otherwise
 		} else {
 			coutd << "no link request could be accepted, starting own link establishment -> ";

@@ -249,7 +249,36 @@ public:
 
 	/** Tests that a link reply's slot offset is normalized. E.g. request at t=5, reply at t=7, then the original slot offset must be decremented by 2. */
 	void testLinkReplySlotOffsetIsNormalized() {
+		mac->update(1);
+		mac_you->update(1);
+		mac->execute();
+		mac_you->execute();
+		mac->onSlotEnd();
+		mac_you->onSlotEnd();
+		CPPUNIT_ASSERT_EQUAL(true, sh->next_broadcast_scheduled);		
+		CPPUNIT_ASSERT_GREATER(uint(0), sh->next_broadcast_slot);
 
+		// construct link request
+		L2Packet *packet = mac_you->requestSegment(100, partner_id);
+		L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);				
+		LinkProposal proposal = LinkProposal();
+		proposal.center_frequency = mac_you->getReservationManager()->getP2PFreqChannels().at(0)->getCenterFrequency();
+		proposal.slot_offset = sh->next_broadcast_slot + 1;
+		L2HeaderSH::LinkRequest request = L2HeaderSH::LinkRequest(id, proposal);
+		header->link_requests.push_back(request);
+
+		// receive link request
+		mac->update(1);
+		mac->receiveFromLower(packet, mac->reservation_manager->getBroadcastFreqChannel()->getCenterFrequency());
+		mac->execute();
+		mac->onSlotEnd();
+
+		// ensure it's been accepted
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_link_requests_accepted.get());
+		// and a link reply should be pending
+		CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_replies.size());
+		const L2HeaderSH::LinkReply &reply = sh->link_replies.at(0);
+		CPPUNIT_ASSERT_EQUAL(1, reply.proposed_link.slot_offset);
 	}
 
 	/** Tests that a link reply is correctly processed. */
@@ -296,16 +325,17 @@ public:
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		// CPPUNIT_TEST(testGet);		
-		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
-		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
-		// // CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
-		// CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
-		// CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
-		// CPPUNIT_TEST(testUnlockAfterLinkRequest);		
+		CPPUNIT_TEST(testGet);		
+		CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
+		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
+		CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
+		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
 		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);				
+		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
 		// CPPUNIT_TEST(testProcessLinkReply);		
 	CPPUNIT_TEST_SUITE_END();
 };
