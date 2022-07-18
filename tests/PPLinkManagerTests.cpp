@@ -321,6 +321,12 @@ public:
 				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), res);
 				CPPUNIT_ASSERT_EQUAL(Reservation(id, Reservation::RX), res_you);				
 			}
+			if (res.isRx()) {
+				if (res_you != Reservation(id, Reservation::TX))
+					std::cout << std::endl << "t=" << t << std::endl;
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), res);
+				CPPUNIT_ASSERT_EQUAL(Reservation(id, Reservation::TX), res_you);				
+			}
 		}
 	}
 
