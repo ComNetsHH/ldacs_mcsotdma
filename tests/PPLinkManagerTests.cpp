@@ -278,7 +278,7 @@ public:
 		// and a link reply should be pending
 		CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_replies.size());
 		const L2HeaderSH::LinkReply &reply = sh->link_replies.at(0);
-		CPPUNIT_ASSERT_EQUAL(1, reply.proposed_link.slot_offset);
+		CPPUNIT_ASSERT_EQUAL(2, reply.proposed_link.slot_offset);
 	}
 
 	/** Tests that a link reply is correctly processed. */
@@ -336,7 +336,7 @@ public:
 		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
 		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);				
 		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
-		// CPPUNIT_TEST(testProcessLinkReply);		
+		CPPUNIT_TEST(testProcessLinkReply);		
 	CPPUNIT_TEST_SUITE_END();
 };
 }

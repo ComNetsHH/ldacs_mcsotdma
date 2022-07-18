@@ -499,7 +499,7 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 			pp->acceptLink(earliest_link, true);
 			// write link reply			
 			LinkProposal normalized_proposal = LinkProposal(earliest_link);
-			normalized_proposal.slot_offset -= (next_broadcast_slot + 1);
+			normalized_proposal.slot_offset -= next_broadcast_slot;
 			coutd << "will attach link reply to next SH transmission with normalized offset t=" << normalized_proposal.slot_offset << " -> ";			
 			link_replies.push_back(L2HeaderSH::LinkReply(header->src_id, normalized_proposal));
 		// start own link establishment otherwise
