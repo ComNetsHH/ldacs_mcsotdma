@@ -584,9 +584,11 @@ public:
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_expired.get());
 	}
 
-	void testFirstTwoTransmissionBurst() {
-		size_t num_slots = 0, max_slots = 250;
-		mac->notifyOutgoing(1, partner_id);
+	/** Tests that after link establishment, an entire PP link communication works and packets are exchanged. */
+	void testCommOverWholePPLink() {
+		env->rlc_layer->should_there_be_more_p2p_data = false;
+		env_you->rlc_layer->should_there_be_more_p2p_data = false;
+		size_t num_slots = 0, max_slots = 250;		
 		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
 			mac->update(1);
 			mac_you->update(1);
@@ -594,68 +596,66 @@ public:
 			mac_you->execute();
 			mac->onSlotEnd();
 			mac_you->onSlotEnd();
+			if (num_slots == 20)
+				mac->notifyOutgoing(1, partner_id);
 		}
 		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
-		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);		
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_established.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_established.get());
 
-		// proceed until after first transmission burst
-		
-	}	
-
-	/** Tests that after link establishment, an entire PP link communication works and packets are exchanged. */
-	void testCommOverWholePPLink() {
-		size_t num_slots = 0, max_slots = 250;
-		while (mac->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
+		// no packets have been exchanged yet
+		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_unicasts_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_you->stat_num_unicasts_sent.get());
+		// proceed until link expiry
+		num_slots = 0; 
+		max_slots = 3000;		
+		while ((mac->stat_num_pp_links_expired.get() < 1.0) && num_slots++ < max_slots) {
 			mac->update(1);
 			mac_you->update(1);
 			mac->execute();
 			mac_you->execute();
 			mac->onSlotEnd();
-			mac_you->onSlotEnd();
+			mac_you->onSlotEnd();			
 		}
 		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_you->stat_num_broadcasts_sent.get());
-		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_broadcasts_rcvd.get());
-		// link proposals have been received
-		// start link establishment
-		mac->notifyOutgoing(1, partner_id);
-		num_slots = 0;
-		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
-			mac->update(1);
-			mac_you->update(1);
-			mac->execute();
-			mac_you->execute();
-			mac->onSlotEnd();
-			mac_you->onSlotEnd();
-		}
-		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
-		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
-		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);		
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_expired.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_expired.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(mac->getDefaultPPLinkTimeout()), (size_t) mac->stat_num_unicasts_sent.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(mac->getDefaultPPLinkTimeout()), (size_t) mac_you->stat_num_unicasts_sent.get());		
+	}
+
+	void testMaxLinkEstablishmentAttemptsReached() {
+		bool is_implemented = false;
+		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		CPPUNIT_TEST(testGet);		
-		CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
-		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
-		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
-		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
-		CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
-		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
-		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);						
-		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
-		CPPUNIT_TEST(testProcessLinkReply);		
-		CPPUNIT_TEST(testLocalLinkEstablishment);
-		CPPUNIT_TEST(testProposalLinkEstablishment);		
-		CPPUNIT_TEST(testUnicastPacketIsSent);		
-		CPPUNIT_TEST(testCommOverWholePPLink);		
-		CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
-		CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
-		CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
-		CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
-		CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
+		// CPPUNIT_TEST(testGet);		
+		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
+		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// // CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		// CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
+		// CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
+		// CPPUNIT_TEST(testUnlockAfterLinkRequest);		
+		// CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);						
+		// CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
+		// CPPUNIT_TEST(testProcessLinkReply);		
+		// CPPUNIT_TEST(testLocalLinkEstablishment);
+		// CPPUNIT_TEST(testProposalLinkEstablishment);		
+		// CPPUNIT_TEST(testUnicastPacketIsSent);		
+		// CPPUNIT_TEST(testCommOverWholePPLink);		
+		// CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
+		// CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
+		// CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
+		// CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
+		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
+		CPPUNIT_TEST(testCommOverWholePPLink);
+		// CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);		
+		
 	CPPUNIT_TEST_SUITE_END();
 };
 }
