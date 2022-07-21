@@ -71,6 +71,37 @@ void PPLinkManager::onSlotEnd() {
 			establishLink();
 		}
 	}	
+	if (link_status == link_established) {
+		bool timeout_expiry = decrementTimeout();
+		if (timeout_expiry)
+			onTimeoutExpiry();
+	}
+}
+
+bool PPLinkManager::decrementTimeout() {
+	if (link_status == link_established) {
+		bool is_exchange_end = is_link_initiator ? getNextTxSlot() == 0 : getNextRxSlot() == 0;
+		if (is_exchange_end) {
+			coutd << "timeout " << timeout << "->";
+			timeout--;
+			coutd << timeout << " -> ";
+		}
+	}
+	return timeout <= 0;
+}
+
+void PPLinkManager::onTimeoutExpiry() { 
+	coutd << "timeout reached, link expires -> ";
+	reserved_resources.reset();
+	cancelLink();
+	mac->statisticReportPPLinkExpired();
+	// re-establish the link if there is more data
+	if (mac->isThereMoreData(link_id)) {
+		coutd << "upper layer reports more data -> ";
+		notifyOutgoing(1);
+		// notifyOutgoing((unsigned long) outgoing_traffic_estimate.get());
+	} else
+		coutd << "no more data to send, keeping link closed -> ";
 }
 
 void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) {
@@ -178,7 +209,7 @@ void PPLinkManager::notifyLinkRequestSent(int num_bursts_forward, int num_recipi
 }
 
 int PPLinkManager::getRemainingTimeout() const {
-	return this->timeout + (link_status == awaiting_reply ? getNextTxSlot() : 0);
+	return this->timeout;
 }
 
 void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
@@ -197,9 +228,11 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	coutd << "status is now '";
 	this->link_status = link_established;
 	coutd << link_status << "' -> ";
-	mac->statisticReportLinkRequestAccepted();
+	if (through_request)
+		mac->statisticReportLinkRequestAccepted();
+	mac->statisticReportPPLinkEstablished();
 	// set timeout
-	this->timeout = mac->getDefaultPPLinkTimeout();
+	this->timeout = mac->getDefaultPPLinkTimeout();	
 }
 
 L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {

@@ -38,6 +38,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return Whether the timeout has reached zero.
 		 */
 		bool decrementTimeout();
+		void onTimeoutExpiry();
 
 	protected:		
 		/** Whether this user has initiated this link and gets to transmit first during one exchange. */
