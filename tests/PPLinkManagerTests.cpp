@@ -131,8 +131,37 @@ public:
 
 	/** Tests that own link establishment is triggered if a link in unacceptable. */
 	void testStartOwnLinkIfRequestInacceptable() {
-		bool is_implemented = false;
-		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		mac->update(1);
+		mac_you->update(1);
+		mac->execute();
+		mac_you->execute();
+		mac->onSlotEnd();
+		mac_you->onSlotEnd();
+		CPPUNIT_ASSERT_EQUAL(true, sh->next_broadcast_scheduled);		
+		CPPUNIT_ASSERT_GREATER(uint(0), sh->next_broadcast_slot);
+
+		// construct link request
+		L2Packet *packet = mac_you->requestSegment(100, SYMBOLIC_LINK_ID_BROADCAST);
+		L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);
+		CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, header->frame_type);
+		header->src_id = partner_id;
+		LinkProposal proposal = LinkProposal();
+		proposal.center_frequency = mac_you->getReservationManager()->getP2PFreqChannels().at(0)->getCenterFrequency();
+		proposal.slot_offset = sh->next_broadcast_slot - 2;
+		L2HeaderSH::LinkRequest request = L2HeaderSH::LinkRequest(id, proposal);
+		header->link_requests.push_back(request);
+
+		// receive link request
+		mac->update(1);
+		mac->receiveFromLower(packet, mac->reservation_manager->getBroadcastFreqChannel()->getCenterFrequency());
+		mac->execute();
+		mac->onSlotEnd();		
+
+		// ensure it's been rejected
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot.get());		
+
+		// ensure own link establishment has been triggered
+		CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp->link_status);
 	}
 
 	/** Tests that after accepting a link request, the link utilization is correctly updated. */
@@ -496,7 +525,7 @@ public:
 	}	
 
 	/** Tests that when two users attempt to establish links to one another, the first received link request cancels the other's attempt. */
-	void testCancelLinkRequestWhenRequestIsReceiver() {
+	void testCancelLinkRequestWhenRequestIsReceived() {
 		mac->notifyOutgoing(1, partner_id);
 		mac_you->notifyOutgoing(1, id);
 		CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_requests.size());
@@ -629,7 +658,7 @@ public:
 	void testMaxLinkEstablishmentAttemptsReached() {
 		bool is_implemented = false;
 		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
-	}
+	}	
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
 		// CPPUNIT_TEST(testGet);		
@@ -637,7 +666,7 @@ public:
 		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
 		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
 		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
-		// // CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
 		// CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
 		// CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
 		// CPPUNIT_TEST(testUnlockAfterLinkRequest);		
@@ -650,10 +679,10 @@ public:
 		// CPPUNIT_TEST(testCommOverWholePPLink);		
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
 		// CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
-		// CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
+		// CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceived);		
 		// CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
-		CPPUNIT_TEST(testCommOverWholePPLink);
+		// CPPUNIT_TEST(testCommOverWholePPLink);
 		// CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);		
 		
 	CPPUNIT_TEST_SUITE_END();
