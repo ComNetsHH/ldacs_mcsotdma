@@ -97,6 +97,18 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			coutd << "empty proposals, couldn't propose links during link request -> ";
 		}
 	}
+	// remove link requests that have been added
+	if (!header->link_requests.empty()) {
+		for (auto &request : header->link_requests) {
+			MacId dest_id = request.dest_id;
+			for (auto it = link_requests.begin(); it != link_requests.end();) {
+				if ((*it) == dest_id)
+					it = link_requests.erase(it);
+				else
+					it++;
+			}
+		}
+	}
 
 	// schedule next slot and write offset into header	
 	try {
