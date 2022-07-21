@@ -110,15 +110,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_THROW(mac->getChannelSensingObservation(), std::runtime_error);
 			mac->setLearnDMEActivity(true);
 			CPPUNIT_ASSERT_NO_THROW(mac->getChannelSensingObservation());			
-		}
-
+		}		
 
 		CPPUNIT_TEST_SUITE(MCSOTDMA_MacTests);
 			CPPUNIT_TEST(testPositions);
 			CPPUNIT_TEST(testCollision);
 			CPPUNIT_TEST(testChannelError);			
 			CPPUNIT_TEST(testCollisionAndChannelError);			
-			CPPUNIT_TEST(testDMEPacketChannelSensing);			
+			CPPUNIT_TEST(testDMEPacketChannelSensing);						
 		CPPUNIT_TEST_SUITE_END();
 	};
 

@@ -229,9 +229,10 @@ public:
 		CPPUNIT_ASSERT_GREATER(uint(0), sh->next_broadcast_slot);
 
 		// construct link request
-		L2Packet *packet = mac_you->requestSegment(100, partner_id);
-		L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);				
-		header->src_id = id;
+		L2Packet *packet = mac_you->requestSegment(100, SYMBOLIC_LINK_ID_BROADCAST);
+		L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);
+		CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, header->frame_type);
+		header->src_id = partner_id;
 		LinkProposal proposal = LinkProposal();
 		proposal.center_frequency = mac_you->getReservationManager()->getP2PFreqChannels().at(0)->getCenterFrequency();
 		proposal.slot_offset = sh->next_broadcast_slot - 2;
@@ -242,7 +243,7 @@ public:
 		mac->update(1);
 		mac->receiveFromLower(packet, mac->reservation_manager->getBroadcastFreqChannel()->getCenterFrequency());
 		mac->execute();
-		mac->onSlotEnd();
+		mac->onSlotEnd();		
 
 		// ensure it's been rejected
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot.get());		
@@ -260,8 +261,9 @@ public:
 		CPPUNIT_ASSERT_GREATER(uint(0), sh->next_broadcast_slot);
 
 		// construct link request
-		L2Packet *packet = mac_you->requestSegment(100, partner_id);
-		L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);						
+		L2Packet *packet = mac_you->requestSegment(100, SYMBOLIC_LINK_ID_BROADCAST);
+		L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);
+		CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, header->frame_type);
 		LinkProposal proposal = LinkProposal();
 		proposal.center_frequency = mac_you->getReservationManager()->getP2PFreqChannels().at(0)->getCenterFrequency();
 		proposal.slot_offset = sh->next_broadcast_slot + 1;
@@ -540,13 +542,13 @@ public:
 		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
 		CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
 		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
-		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);				
-		// CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
+		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);						
+		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
 		CPPUNIT_TEST(testProcessLinkReply);		
 		CPPUNIT_TEST(testLocalLinkEstablishment);
 		CPPUNIT_TEST(testProposalLinkEstablishment);		
 		CPPUNIT_TEST(testUnicastPacketIsSent);		
-		// CPPUNIT_TEST(testCommOverWholePPLink);		
+		CPPUNIT_TEST(testCommOverWholePPLink);		
 		CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
 		// CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		

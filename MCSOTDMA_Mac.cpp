@@ -190,16 +190,9 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	return {num_txs, num_rxs};
 }
 
-void MCSOTDMA_Mac::storePacket(L2Packet *&packet, uint64_t center_freq) {
-	// auto it = received_packets.find(center_freq);
-	// if (it == received_packets.end()) {
-	// 	std::cout << received_packets.size() << std::endl;
-	// 	auto pair = received_packets.insert({center_freq, std::vector<L2Packet*>()});
-	// 	if (pair.second)
-	// 		it = pair.first;
-	// }
-	// (*it).second.push_back(packet);
+void MCSOTDMA_Mac::storePacket(L2Packet *&packet, uint64_t center_freq) {	
 	received_packets[center_freq].push_back(packet);
+	coutd << "stored until slot end -> ";
 }
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
@@ -209,13 +202,13 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	if (origin_id == id) {
 		this->deletePacket(packet);
 		delete packet;
+		coutd << "deleted -> ";		
 		return;
 	}
 	if (dest_id == SYMBOLIC_ID_UNSET && origin_id != SYMBOLIC_LINK_ID_DME)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");	
 	// store until slot end, then process	
-	storePacket(packet, center_frequency);	
-	coutd << "stored until slot end.";
+	storePacket(packet, center_frequency);		
 }
 
 LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
