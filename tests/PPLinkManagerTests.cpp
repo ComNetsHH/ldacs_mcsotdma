@@ -518,7 +518,7 @@ public:
 		env->rlc_layer->should_there_be_more_p2p_data = true;
 		env_you->rlc_layer->should_there_be_more_p2p_data = true;
 		mac->notifyOutgoing(1, partner_id);
-		size_t num_slots = 0, max_slots = 10000;		
+		size_t num_slots = 0, max_slots = 3000;		
 		while ((mac->stat_num_pp_links_established.get() < 2.0) && num_slots++ < max_slots) {
 			mac->update(1);
 			mac_you->update(1);
@@ -530,8 +530,7 @@ public:
 		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
 		CPPUNIT_ASSERT(LinkManager::link_not_established != pp->link_status);		
 		CPPUNIT_ASSERT(LinkManager::link_not_established != pp_you->link_status);				
-		CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_pp_links_established.get());
-		std::cout << std::endl << "num_slots=" << num_slots << std::endl;		
+		CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_pp_links_established.get());		
 	}
 
 
@@ -621,8 +620,8 @@ public:
 		// CPPUNIT_TEST(testCommOverWholePPLink);		
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
 		// CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
-		CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
-		// CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
+		// CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
+		CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
 	CPPUNIT_TEST_SUITE_END();
 };
