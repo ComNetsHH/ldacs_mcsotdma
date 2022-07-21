@@ -30,6 +30,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		L2HeaderSH::LinkUtilizationMessage getUtilization() const;		
 		int getNextTxSlot() const;		
 		int getNextRxSlot() const;
+		void setMaxNoPPLinkEstablishmentAttempts(int value);
 
 	protected:
 		void establishLink();

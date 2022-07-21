@@ -233,6 +233,7 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {						
 			link_manager = new PPLinkManager(internal_id, reservation_manager, this);			
+			((PPLinkManager*) link_manager)->setMaxNoPPLinkEstablishmentAttempts(this->max_no_pp_link_establishment_attempts);
 		}		
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
@@ -563,4 +564,14 @@ std::vector<L2HeaderSH::LinkUtilizationMessage> MCSOTDMA_Mac::getPPLinkUtilizati
 		}
 	}
 	return utilizations;
+}
+
+void MCSOTDMA_Mac::setMaxNoPPLinkEstablishmentAttempts(int value) {
+	this->max_no_pp_link_establishment_attempts = value;
+	for (auto pair : link_managers) {
+		if (pair.first != SYMBOLIC_LINK_ID_BROADCAST && pair.first != SYMBOLIC_LINK_ID_BEACON) {
+			auto *pp = (PPLinkManager*) pair.second;
+			pp->setMaxNoPPLinkEstablishmentAttempts(this->max_no_pp_link_establishment_attempts);
+		}
+	}
 }

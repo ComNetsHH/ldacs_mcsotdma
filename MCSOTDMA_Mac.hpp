@@ -79,9 +79,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void setBcSlotSelectionMinNumCandidateSlots(int value) override;
 		void setBcSlotSelectionMaxNumCandidateSlots(int value) override;
-
 		void setContentionMethod(ContentionMethod method) override;		
 		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;				
+		void setMaxNoPPLinkEstablishmentAttempts(int value) override;
 
 		size_t getNumUtilizedP2PResources() const;
 		std::vector<L2HeaderSH::LinkUtilizationMessage> getPPLinkUtilizations() const;
@@ -291,6 +291,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<uint64_t, bool> channel_sensing_observation;	
 		/** Holds the current prediction of DME channel accesses. */
 		std::vector<std::vector<double>> current_prediction_mat;	
+		int max_no_pp_link_establishment_attempts = 5;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

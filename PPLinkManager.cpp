@@ -283,3 +283,7 @@ int PPLinkManager::getNextRxSlot() const {
 	}
 	return pair.second;
 }
+
+void PPLinkManager::setMaxNoPPLinkEstablishmentAttempts(int value) {
+	this->max_establishment_attempts = value;
+}
