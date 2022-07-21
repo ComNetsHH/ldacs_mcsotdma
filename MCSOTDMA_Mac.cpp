@@ -190,6 +190,18 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	return {num_txs, num_rxs};
 }
 
+void MCSOTDMA_Mac::storePacket(L2Packet *&packet, uint64_t center_freq) {
+	// auto it = received_packets.find(center_freq);
+	// if (it == received_packets.end()) {
+	// 	std::cout << received_packets.size() << std::endl;
+	// 	auto pair = received_packets.insert({center_freq, std::vector<L2Packet*>()});
+	// 	if (pair.second)
+	// 		it = pair.first;
+	// }
+	// (*it).second.push_back(packet);
+	received_packets[center_freq].push_back(packet);
+}
+
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
 	const MacId& origin_id = packet->getOrigin();
 	const MacId& dest_id = packet->getDestination();
@@ -201,8 +213,8 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	}
 	if (dest_id == SYMBOLIC_ID_UNSET && origin_id != SYMBOLIC_LINK_ID_DME)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");	
-	// store until slot end, then process
-	received_packets[center_frequency].push_back(packet);
+	// store until slot end, then process	
+	storePacket(packet, center_frequency);	
 	coutd << "stored until slot end.";
 }
 
@@ -542,7 +554,7 @@ const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {
 }
 
 
-unsigned int MCSOTDMA_Mac::getDefaultPPLinkTimeout() const {
+int MCSOTDMA_Mac::getDefaultPPLinkTimeout() const {
 	return this->default_pp_link_timeout;
 }
 

@@ -28,16 +28,18 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		int getRemainingTimeout() const;
 		void acceptLink(LinkProposal proposal, bool through_request);
 		L2HeaderSH::LinkUtilizationMessage getUtilization() const;		
+		int getNextTxSlot() const;		
+		int getNextRxSlot() const;
 
 	protected:
 		void establishLink();
 		void cancelLink();
+		/**		 
+		 * @return Whether the timeout has reached zero.
+		 */
+		bool decrementTimeout();
 
-	protected:
-		/** Holds the number of slots until the next transmission opportunity. */
-		int next_tx_in; 
-		/** Holds the number of slots until the next reception opportunity. */
-		int next_rx_in;
+	protected:		
 		/** Whether this user has initiated this link and gets to transmit first during one exchange. */
 		bool is_link_initiator; 
 		/** Holds the communication opportunity (TX or RX) periodicity as 5*2^n. */

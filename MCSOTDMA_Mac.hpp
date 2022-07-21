@@ -250,7 +250,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::pair<std::vector<double>, std::vector<int>> getUsedPPDutyCycleBudget() const;		
 		double getUsedSHDutyCycleBudget() const;		
 		int getSHSlotOffset() const; 
-		unsigned int getDefaultPPLinkTimeout() const;
+		int getDefaultPPLinkTimeout() const;
 
 	protected:
 		/**
@@ -258,6 +258,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param channel
 		 */
 		void onReceptionSlot(const FrequencyChannel* channel);
+		void storePacket(L2Packet *&packet, uint64_t center_freq);
 
 		/** Keeps track of transmission resource reservations. */
 		ReservationManager* reservation_manager;
@@ -278,7 +279,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool adapt_burst_offset = true;
 		/** Number of time slots considered to compute the duty cycle. */
 
-		unsigned int default_pp_link_timeout = 20;
+		int default_pp_link_timeout = 20;
 		
 		/** Time slots. */
 		const unsigned int default_duty_cycle_period = 100;

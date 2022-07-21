@@ -8,6 +8,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <limits>
 #include "ReservationTable.hpp"
 #include "Reservation.hpp"
 
@@ -118,6 +119,36 @@ public:
 		}
 		return num_unscheduled;
 	}	
+
+	std::pair<ReservationTable*, int> getNextTxReservation() const {
+		int closest_time_slot = std::numeric_limits<int>::max();
+		std::pair<ReservationTable*, int> best_match = {nullptr, 0};
+		for (auto pair : scheduled_resources) {			
+			int time_slot = pair.second - this->num_slots_since_creation;
+			bool is_tx = pair.first->getReservation(pair.second - this->num_slots_since_creation).isTx();
+			if (time_slot > 0 && time_slot < closest_time_slot && is_tx) {
+				closest_time_slot = time_slot;
+				best_match = pair;
+				best_match.second = time_slot;								
+			}
+		}		
+		return best_match;
+	}
+
+	std::pair<ReservationTable*, int> getNextRxReservation() const {
+		int closest_time_slot = std::numeric_limits<int>::max();
+		std::pair<ReservationTable*, int> best_match = {nullptr, 0};
+		for (auto pair : scheduled_resources) {			
+			int time_slot = pair.second - this->num_slots_since_creation;
+			bool is_rx = pair.first->getReservation(pair.second - this->num_slots_since_creation).isRx();
+			if (time_slot > 0 && time_slot < closest_time_slot && is_rx) {
+				closest_time_slot = time_slot;
+				best_match = pair;
+				best_match.second = time_slot;
+			}
+		}
+		return best_match;
+	}
 
 	protected:		
 		std::vector<std::pair<ReservationTable*, int>> scheduled_resources;				
