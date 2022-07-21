@@ -165,6 +165,17 @@ size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 	}
 	return num_cancelled;
 }
+size_t SHLinkManager::cancelLinkReply(const MacId& id) {	
+	size_t num_cancelled = 0;
+	for (auto it = link_replies.begin(); it != link_replies.end();) {		
+		if ((*it).dest_id == id) {
+			it = link_replies.erase(it);
+			num_cancelled++;
+		} else
+			it++;
+	}
+	return num_cancelled;
+}
 
 std::pair<std::vector<LinkProposal>, int> SHLinkManager::proposeLocalLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts, size_t num_proposals) {	
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();

@@ -233,6 +233,8 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	mac->statisticReportPPLinkEstablished();
 	// set timeout
 	this->timeout = mac->getDefaultPPLinkTimeout();	
+	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
+	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
 }
 
 L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {

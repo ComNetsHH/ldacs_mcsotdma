@@ -45,7 +45,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return Number of removed requests.
 		 */
 		size_t cancelLinkRequest(const MacId& id);
-
 		size_t cancelLinkReply(const MacId& id);
 
 		void assign(const FrequencyChannel* channel) override;
