@@ -244,7 +244,14 @@ L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
 		utilization.num_bursts_reverse = num_recipient_tx;
 		utilization.period = period;
 		utilization.slot_duration = slot_duration;
-		utilization.slot_offset = getNextTxSlot();
+		if (timeout > 1) {
+			try {
+			utilization.slot_offset = getNextTxSlot();
+			} catch (const std::runtime_error &e) {
+				throw std::runtime_error("Error during link utilization generation with timeout=" + std::to_string(getRemainingTimeout()) + ": " + std::string(e.what()));
+			}
+		} else
+			utilization.slot_offset = 0;		
 		utilization.timeout = timeout;
 	}
 	return utilization;
@@ -255,13 +262,24 @@ void PPLinkManager::cancelLink() {
 	size_t num_unscheduled = reserved_resources.unschedule({Reservation::TX, Reservation::RX});			
 	link_status = link_not_established;
 	reserved_resources.reset();
+	current_reservation_table = nullptr;
 }
 
 int PPLinkManager::getNextTxSlot() const {
 	auto pair = reserved_resources.getNextTxReservation();
+	if (pair.first == nullptr) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::getNextTxSlot couldn't find next transmission slot.";
+		throw std::runtime_error(ss.str());
+	}
 	return pair.second;
 }		
 int PPLinkManager::getNextRxSlot() const {
 	auto pair = reserved_resources.getNextRxReservation();
+	if (pair.first == nullptr) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::getNextRxSlot couldn't find next reception slot.";
+		throw std::runtime_error(ss.str());
+	}
 	return pair.second;
 }

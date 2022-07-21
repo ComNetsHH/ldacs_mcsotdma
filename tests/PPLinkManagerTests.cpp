@@ -511,7 +511,7 @@ public:
 			mac_you->onSlotEnd();			
 		}
 		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		CPPUNIT_ASSERT_EQUAL(size_t(sh->num_proposals_unadvertised_link_requests), size_t(mac->stat_num_requests_rcvd.get() + mac_you->stat_num_requests_rcvd.get()));
+		CPPUNIT_ASSERT(size_t(mac->stat_num_requests_rcvd.get() + mac_you->stat_num_requests_rcvd.get()) >= size_t(1) && size_t(mac->stat_num_requests_rcvd.get() + mac_you->stat_num_requests_rcvd.get()) <= size_t(sh->num_proposals_unadvertised_link_requests));
 	}
 
 	void testLinkReestablishmentWhenTheresMoreData() {
@@ -536,7 +536,7 @@ public:
 
 	/** Tests that the next_tx_in variable is always accurate. */
 	void testNextTxSlotCorrectlySetOverWholePPLink() {
-		size_t num_slots = 0, max_slots = 250;
+		size_t num_slots = 0, max_slots = 3000;
 		mac->notifyOutgoing(1, partner_id);
 		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
 			mac->update(1);
@@ -549,6 +549,39 @@ public:
 		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);		
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+
+		num_slots = 0;
+		while (mac->stat_num_pp_links_expired.get() < 1.0 && num_slots++ < max_slots) {
+			try {								
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::TX), pp->current_reservation_table->getReservation(pp->getNextTxSlot()));
+			} catch (const std::runtime_error &e) {
+				// do nothing
+			}			
+			try {								
+				CPPUNIT_ASSERT_EQUAL(Reservation(partner_id, Reservation::RX), pp->current_reservation_table->getReservation(pp->getNextRxSlot()));
+			} catch (const std::runtime_error &e) {
+				// do nothing
+			}			
+			try {								
+				CPPUNIT_ASSERT_EQUAL(Reservation(id, Reservation::TX), pp_you->current_reservation_table->getReservation(pp_you->getNextTxSlot()));
+			} catch (const std::runtime_error &e) {
+				// do nothing
+			}			
+			try {								
+				CPPUNIT_ASSERT_EQUAL(Reservation(id, Reservation::RX), pp_you->current_reservation_table->getReservation(pp_you->getNextRxSlot()));
+			} catch (const std::runtime_error &e) {
+				// do nothing
+			}			
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_expired.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_expired.get());
 	}
 
 	void testFirstTwoTransmissionBurst() {
@@ -602,27 +635,27 @@ public:
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		// CPPUNIT_TEST(testGet);		
-		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
-		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
-		// // CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
-		// CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
-		// CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
-		// CPPUNIT_TEST(testUnlockAfterLinkRequest);		
-		// CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);						
-		// CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
-		// CPPUNIT_TEST(testProcessLinkReply);		
-		// CPPUNIT_TEST(testLocalLinkEstablishment);
-		// CPPUNIT_TEST(testProposalLinkEstablishment);		
-		// CPPUNIT_TEST(testUnicastPacketIsSent);		
-		// CPPUNIT_TEST(testCommOverWholePPLink);		
-		// CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
-		// CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
-		// CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
+		CPPUNIT_TEST(testGet);		
+		CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
+		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
+		CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
+		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
+		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);						
+		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
+		CPPUNIT_TEST(testProcessLinkReply);		
+		CPPUNIT_TEST(testLocalLinkEstablishment);
+		CPPUNIT_TEST(testProposalLinkEstablishment);		
+		CPPUNIT_TEST(testUnicastPacketIsSent);		
+		CPPUNIT_TEST(testCommOverWholePPLink);		
+		CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
+		CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
+		CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
 		CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
-		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
+		CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
 	CPPUNIT_TEST_SUITE_END();
 };
 }
