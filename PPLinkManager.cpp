@@ -41,7 +41,11 @@ void PPLinkManager::establishLink() {
 	establishment_attempts++;
 	coutd << "starting link establishment #" << establishment_attempts << " -> ";		
 	if (establishment_attempts >= max_establishment_attempts) {
-		throw std::runtime_error("max no. of link establishment attempts reached!");
+		coutd << "exceeded max. no of link establishment attempts, giving up -> ";
+		mac->statisticReportMaxNoOfPPLinkEstablishmentAttemptsExceeded();
+		cancelLink();
+		establishment_attempts = 0;
+		return;		
 	}
 	if (this->link_status == link_established) {
 		coutd << "status is '" << this->link_status << "' -> no need to establish -> ";
@@ -95,6 +99,7 @@ void PPLinkManager::onTimeoutExpiry() {
 	reserved_resources.reset();
 	cancelLink();
 	mac->statisticReportPPLinkExpired();
+	establishment_attempts = 0;
 	// re-establish the link if there is more data
 	if (mac->isThereMoreData(link_id)) {
 		coutd << "upper layer reports more data -> ";
@@ -235,6 +240,7 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	this->timeout = mac->getDefaultPPLinkTimeout();	
 	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);
 	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkReply(link_id);
+	establishment_attempts = 0;
 }
 
 L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
@@ -264,7 +270,10 @@ void PPLinkManager::cancelLink() {
 	size_t num_unscheduled = reserved_resources.unschedule({Reservation::TX, Reservation::RX});			
 	link_status = link_not_established;
 	reserved_resources.reset();
-	current_reservation_table = nullptr;
+	current_reservation_table = nullptr;	
+	auto *sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+	sh->cancelLinkRequest(link_id);
+	sh->cancelLinkReply(link_id);
 }
 
 int PPLinkManager::getNextTxSlot() const {

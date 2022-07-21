@@ -656,8 +656,52 @@ public:
 	}
 
 	void testMaxLinkEstablishmentAttemptsReached() {
-		bool is_implemented = false;
-		CPPUNIT_ASSERT_EQUAL(true, is_implemented);
+		env->rlc_layer->should_there_be_more_p2p_data = false;
+		env_you->rlc_layer->should_there_be_more_p2p_data = false;
+		mac->notifyOutgoing(1, partner_id);
+		// disconnect
+		env->phy_layer->connected_phys.clear();
+		size_t num_slots = 0, max_slots = 500;
+		while (mac->stat_num_requests_sent.get() < 1.0 && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		// request sent
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_requests_sent.get());
+		// but not received
+		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_requests_rcvd.get());
+		// expected reply slot should be set
+		int expected_reply_slot = pp->expected_link_request_confirmation_slot;
+		CPPUNIT_ASSERT_GREATER(0, expected_reply_slot);
+		for (int t = 0; t < expected_reply_slot + 1; t++) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_pp_link_missed_last_reply_opportunity.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) pp->establishment_attempts);
+		// now continue until max attempts have been reached
+		num_slots = 0;
+		while (mac->stat_pp_link_exceeded_max_no_establishment_attempts.get() < 1.0 && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_pp_link_exceeded_max_no_establishment_attempts.get());
+		CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac->stat_num_pp_links_established.get());
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
 	}	
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
@@ -683,7 +727,7 @@ public:
 		CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
 		CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
 		CPPUNIT_TEST(testCommOverWholePPLink);
-		// CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);		
+		CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);		
 		
 	CPPUNIT_TEST_SUITE_END();
 };

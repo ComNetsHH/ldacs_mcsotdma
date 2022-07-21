@@ -229,7 +229,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}				
 		void statisticReportLinkRequestAccepted() {
 			stat_num_pp_link_requests_accepted.increment();
-		}						
+		}				
+		void statisticReportMaxNoOfPPLinkEstablishmentAttemptsExceeded() {
+			stat_pp_link_exceeded_max_no_establishment_attempts.increment();
+		}				
 						
 
 		unsigned int getP2PBurstOffset() const;		
@@ -321,6 +324,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_unicast_wasted_tx_opportunities = Statistic("mcsotdma_statistic_unicast_wasted_tx_opportunities", this);
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);
 		Statistic stat_pp_link_missed_first_data_tx = Statistic("mcsotdma_statistic_pp_link_missed_first_data_tx", this);
+		Statistic stat_pp_link_exceeded_max_no_establishment_attempts = Statistic("mcsotdma_statistic_pp_link_exceeded_max_no_establishment_attempts", this);
 		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);				
 		Statistic stat_pp_link_burst_offset = Statistic("mcsotdma_statistic_burst_offset", this);				
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
