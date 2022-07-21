@@ -36,7 +36,9 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	// add link requests
 	if (!link_requests.empty())
 		coutd << "considering " << link_requests.size() << " pending link requests: ";
-	for (auto dest_id : link_requests) {		
+	for (auto pair : link_requests) {		
+		MacId &dest_id = pair.first;	
+		uint64_t &generation_time = pair.second;	
 		coutd << "id=" << dest_id << " -> ";
 		// check if we know preferred links
 		const auto &advertised_normalized_proposals = mac->getNeighborObserver().getAdvertisedLinkProposals(dest_id, mac->getCurrentSlot());
@@ -79,7 +81,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			bool notified_pp = false;
 			for (auto proposal : link_proposals) {
 				// save request
-				header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal));			
+				header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal, generation_time));			
 				// notify PP
 				auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
 				if (!notified_pp) {
@@ -157,7 +159,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
 	size_t num_cancelled = 0;
 	for (auto it = link_requests.begin(); it != link_requests.end();) {
-		if ((*it) == id) {
+		if ((*it).first == id) {
 			it = link_requests.erase(it);
 			num_cancelled++;
 		} else
@@ -300,7 +302,7 @@ void SHLinkManager::onSlotEnd() {
 void SHLinkManager::sendLinkRequest(const MacId &dest_id) {	
 	coutd << *this << " will send link request to " << dest_id << " with next transmission -> ";	
 	// save request
-	link_requests.push_back(dest_id);	
+	link_requests.push_back({dest_id, mac->getCurrentSlot()});	
 	// schedule broadcast slot if necessary
 	notifyOutgoing(1);
 }
@@ -487,7 +489,7 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 	}	
 
 	// check link requests
-	std::vector<LinkProposal> acceptable_links;
+	std::vector<std::pair<LinkProposal, uint64_t>> acceptable_links;
 	bool received_request = false;
 	if (!header->link_requests.empty())
 		coutd << "processing " << header->link_requests.size() << " link requests -> ";
@@ -507,7 +509,7 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout());
 			if (is_acceptable) {
 				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is acceptable -> ";
-				acceptable_links.push_back(proposal);
+				acceptable_links.push_back({proposal, link_request.generation_time});
 			} else
 				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is NOT acceptable -> ";
 		}				
@@ -518,13 +520,16 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 		if (!acceptable_links.empty()) {
 			LinkProposal earliest_link;
 			int earliest_start_slot = reservation_manager->getPlanningHorizon();
-			for (auto link : acceptable_links) {
+			uint64_t generation_time;
+			for (auto pair : acceptable_links) {
+				auto link = pair.first;				 
 				if (link.slot_offset < earliest_start_slot) {
 					earliest_start_slot = link.slot_offset;
 					earliest_link = link;
+					generation_time = pair.second;
 				}
 			}
-			pp->acceptLink(earliest_link, true);
+			pp->acceptLink(earliest_link, true, generation_time);
 			size_t num_cancelled_own_link_requests = cancelLinkRequest(header->src_id);
 			coutd << (num_cancelled_own_link_requests > 0 ? "cancelled own link request -> " : "");
 			// write link reply			
@@ -544,7 +549,7 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 		coutd << "processing link reply -> ";
 		const LinkProposal &link = header->link_reply.proposed_link;
 		auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
-		pp->acceptLink(link, false);
+		pp->acceptLink(link, false, 0);
 		mac->statisticReportLinkReplyReceived();
 	}
 

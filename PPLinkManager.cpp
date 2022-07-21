@@ -20,8 +20,10 @@ L2Packet* PPLinkManager::onTransmissionReservation() {
 	auto *&header = (L2HeaderPP*&) packet->getHeaders().at(0);
 	header->src_id = mac->getMacId();
 	header->dest_id = link_id;
-	// return packet
+	// report statistics
 	mac->statisticReportUnicastSent();	
+	mac->statisticReportUnicastMacDelay(measureMacDelay());
+	// return packet
 	return packet;	
 }
 
@@ -217,7 +219,7 @@ int PPLinkManager::getRemainingTimeout() const {
 	return this->timeout;
 }
 
-void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
+void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request, uint64_t generation_time) {
 	coutd << *this << " accepting link -> ";
 	coutd << "unlocking " << reserved_resources.size_locked() << " and unscheduling " << reserved_resources.size_scheduled() << " resources -> ";
 	cancelLink();
@@ -233,9 +235,16 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	coutd << "status is now '";
 	this->link_status = link_established;
 	coutd << link_status << "' -> ";
-	if (through_request)
+	if (through_request) {
 		mac->statisticReportLinkRequestAccepted();
-	mac->statisticReportPPLinkEstablished();
+		// the time when link establishment was triggered is sent through the link request
+		auto *sh = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+		stat_link_establishment_start = generation_time - sh->getNextBroadcastSlot();
+	}
+	mac->statisticReportPPLinkEstablished();	
+	int link_establishment_time = mac->getCurrentSlot() - stat_link_establishment_start;			
+	coutd << *mac << "::" << *this << " measuring link establishment time " << mac->getCurrentSlot() << " - " << stat_link_establishment_start << "=" << link_establishment_time << " -> ";
+	mac->statisticReportPPLinkEstablishmentTime(link_establishment_time);
 	// set timeout
 	this->timeout = mac->getDefaultPPLinkTimeout();	
 	((SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->cancelLinkRequest(link_id);

@@ -26,7 +26,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void lockProposedResources(const LinkProposal& proposed_link);
 		void notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot);		
 		int getRemainingTimeout() const;
-		void acceptLink(LinkProposal proposal, bool through_request);
+		void acceptLink(LinkProposal proposal, bool through_request, uint64_t generation_time);
 		L2HeaderSH::LinkUtilizationMessage getUtilization() const;		
 		int getNextTxSlot() const;		
 		int getNextRxSlot() const;
@@ -59,7 +59,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Stores locked and reserved communication resources. */
 		ReservationMap reserved_resources;
 		/** Holds the absolute slot number at which link establishment was initiated, s.t. the link establishment time can be measured. */
-		int stat_link_establishment_start;
+		int stat_link_establishment_start;		
 		int expected_link_request_confirmation_slot = 0;
 		int max_establishment_attempts = 5, establishment_attempts = 0;
 	};

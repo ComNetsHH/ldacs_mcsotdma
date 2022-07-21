@@ -127,7 +127,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		// std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;
-		std::vector<MacId> link_requests;
+		std::vector<std::pair<MacId, uint64_t>> link_requests;
 		std::vector<L2HeaderSH::LinkReply> link_replies;
 		/** Collection of link replies and corresponding time slots where they should be transmitted. */
 		// std::vector<std::pair<unsigned int, std::pair<L2HeaderLinkReply*, LinkEstablishmentPayload*>>> link_replies;				
