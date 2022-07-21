@@ -464,7 +464,7 @@ public:
 		// intially, timeouts should be max on both sides
 		CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout(), pp->getRemainingTimeout());
 		CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout(), pp_you->getRemainingTimeout());		
-		int next_burst_end = pp->is_link_initiator ? pp->getNextTxSlot() : pp_you->getNextTxSlot();
+		int next_burst_end = pp->is_link_initiator ? pp->getNextRxSlot() : pp_you->getNextRxSlot();
 		for (int t = 0; t < next_burst_end; t++) {
 			mac->update(1);
 			mac_you->update(1);

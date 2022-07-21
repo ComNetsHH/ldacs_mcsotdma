@@ -126,7 +126,7 @@ public:
 		for (auto pair : scheduled_resources) {			
 			int time_slot = pair.second - this->num_slots_since_creation;
 			bool is_tx = pair.first->getReservation(pair.second - this->num_slots_since_creation).isTx();
-			if (time_slot > 0 && time_slot < closest_time_slot && is_tx) {
+			if (time_slot >= 0 && time_slot < closest_time_slot && is_tx) {
 				closest_time_slot = time_slot;
 				best_match = pair;
 				best_match.second = time_slot;								
@@ -141,7 +141,7 @@ public:
 		for (auto pair : scheduled_resources) {			
 			int time_slot = pair.second - this->num_slots_since_creation;
 			bool is_rx = pair.first->getReservation(pair.second - this->num_slots_since_creation).isRx();
-			if (time_slot > 0 && time_slot < closest_time_slot && is_rx) {
+			if (time_slot >= 0 && time_slot < closest_time_slot && is_rx) {
 				closest_time_slot = time_slot;
 				best_match = pair;
 				best_match.second = time_slot;

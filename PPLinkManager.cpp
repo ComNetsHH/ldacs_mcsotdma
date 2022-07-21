@@ -80,9 +80,9 @@ void PPLinkManager::onSlotEnd() {
 
 bool PPLinkManager::decrementTimeout() {
 	if (link_status == link_established) {
-		bool is_exchange_end = is_link_initiator ? getNextTxSlot() == 0 : getNextRxSlot() == 0;
+		bool is_exchange_end = is_link_initiator ? getNextRxSlot() == 0 : getNextTxSlot() == 0;		
 		if (is_exchange_end) {
-			coutd << "timeout " << timeout << "->";
+			coutd << *mac << "::" << *this << " timeout " << timeout << "->";
 			timeout--;
 			coutd << timeout << " -> ";
 		}
@@ -218,10 +218,10 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request) {
 	cancelLink();
 	// schedule resources	
 	coutd << "scheduling resources on f=" << proposal.center_frequency << "kHz -> ";
-	channel = reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency);
-	bool is_link_initiator = !through_request; // recipient of a link request is not the initiator
-	MacId initiator_id = is_link_initiator ? mac->getMacId() : link_id;
-	MacId recipient_id = is_link_initiator ? link_id : mac->getMacId();			
+	channel = reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency);	
+	this->is_link_initiator = !through_request; // recipient of a link request is not the initiator
+	MacId initiator_id = this->is_link_initiator ? mac->getMacId() : link_id;
+	MacId recipient_id = this->is_link_initiator ? link_id : mac->getMacId();			
 	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));						
 	current_reservation_table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));
 	// update status
