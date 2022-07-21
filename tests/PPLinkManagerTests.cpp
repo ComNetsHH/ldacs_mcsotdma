@@ -444,6 +444,8 @@ public:
 
 	/** Tests that throughout an entire PP link, the timeouts between two users match and are correctly decremented. */
 	void testTimeoutsMatchOverWholePPLink() {
+		env->rlc_layer->should_there_be_more_p2p_data = false;
+		env_you->rlc_layer->should_there_be_more_p2p_data = false;
 		size_t num_slots = 0, max_slots = 250;		
 		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
 			mac->update(1);
@@ -464,8 +466,22 @@ public:
 		// intially, timeouts should be max on both sides
 		CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout(), pp->getRemainingTimeout());
 		CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout(), pp_you->getRemainingTimeout());		
-		int next_burst_end = pp->is_link_initiator ? pp->getNextRxSlot() : pp_you->getNextRxSlot();
-		for (int t = 0; t < next_burst_end; t++) {
+		for (int timeout = 0; timeout < mac->getDefaultPPLinkTimeout(); timeout++) {
+			int next_burst_end = pp->is_link_initiator ? pp->getNextRxSlot() : pp_you->getNextRxSlot();			
+			for (int t = 0; t < next_burst_end; t++) {
+				mac->update(1);
+				mac_you->update(1);
+				mac->execute();
+				mac_you->execute();
+				mac->onSlotEnd();
+				mac_you->onSlotEnd();
+			}			
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(timeout+1), (size_t) mac->stat_num_unicasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(timeout+1), (size_t) mac_you->stat_num_unicasts_sent.get());
+			CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout() - (timeout+1), pp->getRemainingTimeout());
+			CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout() - (timeout+1), pp_you->getRemainingTimeout());		
 			mac->update(1);
 			mac_you->update(1);
 			mac->execute();
@@ -473,12 +489,10 @@ public:
 			mac->onSlotEnd();
 			mac_you->onSlotEnd();
 		}
-		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_pp_links_established.get());
-		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_established.get());
-		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_unicasts_sent.get());
-		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_unicasts_sent.get());
-		CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout() - 1, pp->getRemainingTimeout());
-		CPPUNIT_ASSERT_EQUAL(mac->getDefaultPPLinkTimeout() - 1, pp_you->getRemainingTimeout());		
+		CPPUNIT_ASSERT_EQUAL(0, pp->getRemainingTimeout());
+		CPPUNIT_ASSERT_EQUAL(0, pp_you->getRemainingTimeout());
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_you->link_status);		
 	}	
 
 
