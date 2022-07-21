@@ -495,6 +495,45 @@ public:
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_you->link_status);		
 	}	
 
+	/** Tests that when two users attempt to establish links to one another, the first received link request cancels the other's attempt. */
+	void testCancelLinkRequestWhenRequestIsReceiver() {
+		mac->notifyOutgoing(1, partner_id);
+		mac_you->notifyOutgoing(1, id);
+		CPPUNIT_ASSERT_EQUAL(size_t(1), sh->link_requests.size());
+		CPPUNIT_ASSERT_EQUAL(size_t(1), sh_you->link_requests.size());
+		size_t num_slots = 0, max_slots = 100;
+		while ((pp->link_status != LinkManager::link_established && pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();			
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		CPPUNIT_ASSERT_EQUAL(size_t(sh->num_proposals_unadvertised_link_requests), size_t(mac->stat_num_requests_rcvd.get() + mac_you->stat_num_requests_rcvd.get()));
+	}
+
+	void testLinkReestablishmentWhenTheresMoreData() {
+		env->rlc_layer->should_there_be_more_p2p_data = true;
+		env_you->rlc_layer->should_there_be_more_p2p_data = true;
+		mac->notifyOutgoing(1, partner_id);
+		size_t num_slots = 0, max_slots = 10000;		
+		while ((mac->stat_num_pp_links_established.get() < 2.0) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();			
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT(LinkManager::link_not_established != pp->link_status);		
+		CPPUNIT_ASSERT(LinkManager::link_not_established != pp_you->link_status);				
+		CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac->stat_num_pp_links_established.get());
+		std::cout << std::endl << "num_slots=" << num_slots << std::endl;		
+	}
+
 
 	/** Tests that the next_tx_in variable is always accurate. */
 	void testNextTxSlotCorrectlySetOverWholePPLink() {
@@ -581,7 +620,9 @@ public:
 		// CPPUNIT_TEST(testUnicastPacketIsSent);		
 		// CPPUNIT_TEST(testCommOverWholePPLink);		
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
-		CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
+		// CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
+		CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceiver);		
+		// CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
 	CPPUNIT_TEST_SUITE_END();
 };

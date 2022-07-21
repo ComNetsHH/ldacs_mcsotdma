@@ -53,9 +53,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		// propose something that works locally
 		if (must_propose_something_new) {
 			mac->statisticReportSentOwnProposals();
-			coutd << "finding locally-usable links -> ";
-			size_t num_proposals = 3;			
-			auto pair = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals);			
+			coutd << "finding locally-usable links -> ";			
+			auto pair = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals_unadvertised_link_requests);			
 			link_proposals = pair.first;
 			min_offset = pair.second;
 		// propose advertised links if we know of some
@@ -68,9 +67,8 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 			// fall-back to locally-usable links of the advertised ones don't fit
 			} catch (const std::runtime_error &e) {
 				mac->statisticReportSentOwnProposals();
-				coutd << "finding locally-usable links instead -> ";
-				size_t num_proposals = 3;			
-				auto pair = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals);			
+				coutd << "finding locally-usable links instead -> ";				
+				auto pair = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals_unadvertised_link_requests);			
 				link_proposals = pair.first;
 				min_offset = pair.second;
 			}
@@ -101,12 +99,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	if (!header->link_requests.empty()) {
 		for (auto &request : header->link_requests) {
 			MacId dest_id = request.dest_id;
-			for (auto it = link_requests.begin(); it != link_requests.end();) {
-				if ((*it) == dest_id)
-					it = link_requests.erase(it);
-				else
-					it++;
-			}
+			cancelLinkRequest(dest_id);
 		}
 	}
 
@@ -159,6 +152,18 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	mac->statisticReportBroadcastSent();
 	mac->statisticReportBroadcastMacDelay(measureMacDelay());				
 	return packet;	
+}
+
+size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
+	size_t num_cancelled = 0;
+	for (auto it = link_requests.begin(); it != link_requests.end();) {
+		if ((*it) == id) {
+			it = link_requests.erase(it);
+			num_cancelled++;
+		} else
+			it++;
+	}
+	return num_cancelled;
 }
 
 std::pair<std::vector<LinkProposal>, int> SHLinkManager::proposeLocalLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts, size_t num_proposals) {	
@@ -509,6 +514,8 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 				}
 			}
 			pp->acceptLink(earliest_link, true);
+			size_t num_cancelled_own_link_requests = cancelLinkRequest(header->src_id);
+			coutd << (num_cancelled_own_link_requests > 0 ? "cancelled own link request -> " : "");
 			// write link reply			
 			LinkProposal normalized_proposal = LinkProposal(earliest_link);
 			normalized_proposal.slot_offset -= next_broadcast_slot;
