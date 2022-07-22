@@ -35,8 +35,8 @@ int main() {
 	// // runner.addTest(ThreeUsersTests::suite());
 	runner.addTest(PPLinkManagerTests::suite());
 //	// runner.addTest(ThirdPartyLinkTests::suite());
-	// runner.addTest(LinkProposalFinderTests::suite());	
-	// runner.addTest(SlotCalculatorTests::suite());	
+	runner.addTest(LinkProposalFinderTests::suite());	
+	runner.addTest(SlotCalculatorTests::suite());	
 
 	runner.run();
 	return runner.result().wasSuccessful() ? 0 : 1;

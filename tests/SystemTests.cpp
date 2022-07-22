@@ -174,7 +174,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_LESS(max_num_slots, num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, pp_me->link_status);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::link_established, pp_you->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(sh_me->num_proposals_unadvertised_link_requests), (size_t) mac_layer_me->stat_num_requests_rcvd.get() + (size_t) mac_layer_you->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_layer_me->stat_num_requests_rcvd.get() + (size_t) mac_layer_you->stat_num_requests_rcvd.get());
 			CPPUNIT_ASSERT((size_t) mac_layer_me->stat_num_requests_sent.get() + (size_t) mac_layer_you->stat_num_requests_sent.get() >= 1); // due to collisions, several attempts may be required
 		}		
 

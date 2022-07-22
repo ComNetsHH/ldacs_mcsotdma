@@ -145,11 +145,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 					coutd << "passing to lower layer -> ";
 					passToLower(outgoing_packet, channel->getCenterFrequency());					
 				} else {										
-					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
-					if (id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON)
-						this->stat_broadcast_wasted_tx_opportunities.increment();
-					else
-						this->stat_unicast_wasted_tx_opportunities.increment();
+					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";					
 				}
 				break;
 			}			
