@@ -359,7 +359,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				CPPUNIT_ASSERT_EQUAL(true, link_manager->isNextBroadcastScheduled());
 			}
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->isNextBroadcastScheduled());
-		}		
+		}				
 
 
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);

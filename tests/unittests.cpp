@@ -12,7 +12,7 @@
 #include "FrequencyChannelTests.cpp"
 #include "SHLinkManagerTests.cpp"
 #include "MCSOTDMA_MacTests.cpp"
-// #include "SystemTests.cpp"
+#include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
 // #include "ThreeUsersTests.cpp"
 #include "PPLinkManagerTests.cpp"
@@ -31,9 +31,9 @@ int main() {
 	// runner.addTest(MCSOTDMA_MacTests::suite());
 	// runner.addTest(MCSOTDMA_PhyTests::suite());	
 	// runner.addTest(SHLinkManagerTests::suite());
-	// runner.addTest(SystemTests::suite());
+	runner.addTest(SystemTests::suite());
 	// // runner.addTest(ThreeUsersTests::suite());
-	runner.addTest(PPLinkManagerTests::suite());
+	// runner.addTest(PPLinkManagerTests::suite());
 //	// runner.addTest(ThirdPartyLinkTests::suite());
 	// runner.addTest(LinkProposalFinderTests::suite());	
 	// runner.addTest(SlotCalculatorTests::suite());	
