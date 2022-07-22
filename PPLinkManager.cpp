@@ -118,7 +118,13 @@ void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload
 double PPLinkManager::getNumTxPerTimeSlot() const {
 	if (!isActive())
 		throw std::runtime_error("cannot call PPLinkManager::getNumSlotsUntilExpiry for inactive link");
-	return 1.0 / (5.0 * std::pow(2.0, period)) / 2;
+	double d = 1.0 / (5.0 * std::pow(2.0, period)) / 2;
+	if (d == std::numeric_limits<double>::infinity() || d == -std::numeric_limits<double>::infinity()) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::getNumTxPerTimeSlot=inf for period=" << period << " link_status=" << link_status;
+		throw std::runtime_error(ss.str());
+	}
+	return d;
 }
 
 bool PPLinkManager::isActive() const {
@@ -224,6 +230,7 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request, uint
 	coutd << "unlocking " << reserved_resources.size_locked() << " and unscheduling " << reserved_resources.size_scheduled() << " resources -> ";
 	cancelLink();
 	// schedule resources	
+	this->period = proposal.period;
 	coutd << "scheduling resources on f=" << proposal.center_frequency << "kHz -> ";
 	channel = reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency);	
 	this->is_link_initiator = !through_request; // recipient of a link request is not the initiator

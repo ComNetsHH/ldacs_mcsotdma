@@ -289,7 +289,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_pp_link_exceeded_max_no_establishment_attempts = Statistic("mcsotdma_statistic_pp_link_exceeded_max_no_establishment_attempts", this);
 		Statistic stat_pp_link_establishment_time = Statistic("mcsotdma_statistic_pp_link_establishment_time", this);						
 		Statistic stat_num_pp_links_established = Statistic("mcsotdma_statistic_num_pp_links_established", this);
-		Statistic stat_num_pp_link_requests_accepted = Statistic("stat_num_pp_link_requests_accepted", this);
+		Statistic stat_num_pp_link_requests_accepted = Statistic("mcsotdma_statistic_pp_link_requests_accepted", this);
 		Statistic stat_num_pp_links_expired = Statistic("mcsotdma_statistic_num_pp_links_expired", this);		
 		/** If proposed resources are earlier than the next SH transmission. */
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_reply_slot", this);
@@ -297,9 +297,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_dme_packets_rcvd = Statistic("mcsotdma_statistic_num_num_dme_packets_rcvd", this);		
 		Statistic stat_num_broadcast_collisions_detected = Statistic("mcsotdma_statistic_num_broadcast_collisions_detected", this);				
 		Statistic stat_duty_cycle = Statistic("mcsotdma_statistic_duty_cycle", this);		
-		Statistic stat_num_own_proposals_sent = Statistic("stat_num_own_proposals_sent", this);		
-		Statistic stat_num_saved_proposals_sent = Statistic("stat_num_saved_proposals_sent", this);		
-		Statistic stat_num_link_utils_rcvd = Statistic("stat_num_link_utils_rcvd", this);		
+		Statistic stat_num_own_proposals_sent = Statistic("mcsotdma_statistic_num_own_proposals_sent", this);		
+		Statistic stat_num_saved_proposals_sent = Statistic("mcsotdma_statistic_num_saved_proposals_sent", this);		
+		Statistic stat_num_link_utils_rcvd = Statistic("mcsotdma_statistic_num_link_utils_rcvd", this);		
 		std::vector<Statistic*> statistics = {
 				&stat_num_packets_rcvd,
 				&stat_num_broadcasts_rcvd,

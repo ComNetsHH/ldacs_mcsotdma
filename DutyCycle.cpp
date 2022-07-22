@@ -85,8 +85,17 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 		unsigned int min_period = std::max(0.0, std::ceil(std::log2(1.0/(10.0*avail_budget))));	
 		// coutd << "max_budget=" << avail_budget << " -> min_period=" << min_period << " -> ";
 		return {min_offset, min_period};
-	} else
-		throw no_duty_cycle_budget_left_error("no duty cycle budget is left");
+	} else {
+		std::stringstream ss;
+		ss << "no duty cycle budget is left (" << std::to_string(avail_budget) << ")" << " for " << used_pp_budgets.size() << " used_pp_budgets=[";
+		for (auto budget : used_pp_budgets)
+			ss << budget << ", ";
+		ss << "] and " << timeouts.size() << " timeouts=[";
+		for (auto timeout : timeouts)
+			ss << timeout << ", ";
+		ss << "] used_sh_budget=" << used_sh_budget << " sh_slot_offset=" << sh_slot_offset; 
+		throw no_duty_cycle_budget_left_error(ss.str());
+	}
 }
 
 double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {	
@@ -97,6 +106,15 @@ double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {
 	size_t num_active_pp_links = used_budget.size();
 	if (num_active_pp_links < min_num_supported_pp_links)
 		avail_budget -= this->max_duty_cycle / ((double) min_num_supported_pp_links + 1); // leave budget to establish next PP link immediately
+	if (avail_budget == std::numeric_limits<double>::infinity() || avail_budget == -std::numeric_limits<double>::infinity()) {
+		std::stringstream ss;
+		ss << "sh_budget=inf for " << used_budget.size() << " used_budget=[";
+		for (auto d : used_budget)
+			ss << d << ", ";
+		ss << "] and " << num_active_pp_links << " active PP links";
+		throw std::runtime_error(ss.str());
+	}
+		
 	return avail_budget;
 }
 

@@ -48,7 +48,14 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
 		std::vector<LinkProposal> link_proposals;
 		
-		int period = getPPMinOffsetAndPeriod().second, min_offset;		
+		int period, min_offset;
+		try {
+			period = getPPMinOffsetAndPeriod().second;		
+		} catch (const no_duty_cycle_budget_left_error &e) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::onTransmissionReservation error processing link request: " << e.what();
+			throw std::runtime_error(std::string(e.what()));
+		}			
 
 		int num_forward_bursts = 1, num_reverse_bursts = 1;
 		bool scheduled_broadcast_slot = false;
@@ -138,8 +145,16 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 	// find link proposals	
 	size_t num_proposals = 3;
 	coutd << "computing " << num_proposals << " proposals -> ";
-	auto pair = getPPMinOffsetAndPeriod();
-	int min_offset = pair.first, period = pair.second;
+	int min_offset, period;
+	try {
+		auto pair = getPPMinOffsetAndPeriod();		
+		min_offset = pair.first; 
+		period = pair.second;
+	} catch (const no_duty_cycle_budget_left_error &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::onTransmissionReservation error processing link request: " << e.what();
+		throw std::runtime_error(std::string(e.what()));
+	}				
 	int num_forward_bursts = 1, num_reverse_bursts = 1;	
 	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
 	// write proposals into header
@@ -185,9 +200,17 @@ std::pair<std::vector<LinkProposal>, int> SHLinkManager::proposeLocalLinks(const
 	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;
 	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
 	coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
-	auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
-	int min_offset = pair.first;						
-	int period = pair.second;	
+	int min_offset;
+	int period;
+	try {
+		auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
+		min_offset = pair.first;						
+		period = pair.second;	
+	} catch (const no_duty_cycle_budget_left_error &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::proposeLocalLinks error: " << e.what();
+		throw std::runtime_error(std::string(e.what()));
+	}	
 	coutd << " min_period=" << period << " -> ";			
 	try {
 		// the proposal should be after the other user's next broadcast slot 
@@ -559,6 +582,8 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 		mac->statisticReportLinkUtilizationReceived();
 		// TODO potential third party processing
 	}
+
+	mac->onBeaconReception(origin, header->position);
 }
 
 // void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
@@ -654,6 +679,10 @@ std::pair<int, int> SHLinkManager::getPPMinOffsetAndPeriod() const {
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
 	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
 	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;	
-	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
-	return mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);		
+	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);			
+	try {
+		return mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);		
+	} catch (const no_duty_cycle_budget_left_error &e) {
+		throw no_duty_cycle_budget_left_error("error in getPPMinOffsetAndPeriod: " + std::string(e.what()));
+	}
 }
