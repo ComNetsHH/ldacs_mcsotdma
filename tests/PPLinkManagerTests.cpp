@@ -732,34 +732,34 @@ public:
 		CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_you->stat_num_pp_links_established.get());			
 	}
 
-	// void testManyPPLinkEstablishmentTimes() {
-	// 	mac_you->notifyOutgoing(512, partner_id);			
-	// 	env_you->rlc_layer->should_there_be_more_p2p_data = false;
-	// 	CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_you->stat_num_pp_links_established.get());
-	// 	size_t num_slots = 0, max_slots = 512*10, num_links = 10;
-	// 	std::vector<double> link_establishment_times_me, link_establishment_times_you;
-	// 	while (mac_you->stat_num_pp_links_established.get() < num_links && num_slots++ < max_slots) {
-	// 		mac->update(1);
-	// 		mac_you->update(1);
-	// 		mac->execute();
-	// 		mac_you->execute();
-	// 		mac->onSlotEnd();
-	// 		mac_you->onSlotEnd();								
-	// 		if (mac_you->stat_num_pp_links_established.get() > link_establishment_times_me.size())
-	// 			link_establishment_times_me.push_back(mac_you->stat_pp_link_establishment_time.get());
-	// 		if (mac->stat_num_pp_links_established.get() > link_establishment_times_you.size())
-	// 			link_establishment_times_you.push_back(mac->stat_pp_link_establishment_time.get());
-	// 	}
-	// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-	// 	CPPUNIT_ASSERT_EQUAL(num_links, (size_t) mac_you->stat_num_pp_links_established.get());
-	// 	CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
-	// 	CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
-	// 	for (size_t i = 0; i < num_links; i++) {
-	// 		CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_me.at(i));
-	// 		if (link_establishment_times_you.size() > i)
-	// 			CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_you.at(i));				
-	// 	}			
-	// }
+	void testManyPPLinkEstablishmentTimes() {
+		env->rlc_layer->should_there_be_more_p2p_data = true;
+		env_you->rlc_layer->should_there_be_more_p2p_data = true;
+		mac_you->notifyOutgoing(1, id);
+		size_t num_slots = 0, max_slots = 3000, num_links = 2;
+		std::vector<double> link_establishment_times, link_establishment_times_you;
+		while ((mac->stat_num_pp_links_established.get() < num_links) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();			
+			if (mac->stat_num_pp_links_established.get() > link_establishment_times.size())
+				link_establishment_times.push_back(mac->stat_pp_link_establishment_time.get());			
+			if (mac_you->stat_num_pp_links_established.get() > link_establishment_times_you.size())
+				link_establishment_times_you.push_back(mac_you->stat_pp_link_establishment_time.get());							
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);				
+		CPPUNIT_ASSERT_EQUAL(num_links, (size_t) mac->stat_num_pp_links_established.get());
+		CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times.size());
+		CPPUNIT_ASSERT(link_establishment_times.size() >= link_establishment_times.size() -1 && link_establishment_times.size() <= link_establishment_times.size() + 1);			
+		for (size_t i = 0; i < num_links; i++) {
+			CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times.at(i));			
+			if (link_establishment_times_you.size() > i)
+				CPPUNIT_ASSERT_EQUAL(link_establishment_times.at(i), link_establishment_times_you.at(i));
+		}			
+	}
 
 	// /** In many simulations, the first data is not transmitted at simulation start, but later. Make sure that this works as expected. */
 	// void testManyPPLinkEstablishmentTimesStartLate() {
@@ -778,7 +778,7 @@ public:
 	// 	env_you->rlc_layer->should_there_be_more_p2p_data = false;
 	// 	CPPUNIT_ASSERT_EQUAL(size_t(0), (size_t) mac_you->stat_num_pp_links_established.get());
 	// 	size_t num_slots = 0, max_slots = 512*10, num_links = 10;
-	// 	std::vector<double> link_establishment_times_me, link_establishment_times_you;
+	// 	std::vector<double> link_establishment_times, link_establishment_times;
 	// 	while (mac_you->stat_num_pp_links_established.get() < num_links && num_slots++ < max_slots) {
 	// 		mac->update(1);
 	// 		mac_you->update(1);
@@ -786,19 +786,19 @@ public:
 	// 		mac_you->execute();
 	// 		mac->onSlotEnd();
 	// 		mac_you->onSlotEnd();								
-	// 		if (mac_you->stat_num_pp_links_established.get() > link_establishment_times_me.size())
-	// 			link_establishment_times_me.push_back(mac_you->stat_pp_link_establishment_time.get());
-	// 		if (mac->stat_num_pp_links_established.get() > link_establishment_times_you.size())
-	// 			link_establishment_times_you.push_back(mac->stat_pp_link_establishment_time.get());
+	// 		if (mac_you->stat_num_pp_links_established.get() > link_establishment_times.size())
+	// 			link_establishment_times.push_back(mac_you->stat_pp_link_establishment_time.get());
+	// 		if (mac->stat_num_pp_links_established.get() > link_establishment_times.size())
+	// 			link_establishment_times.push_back(mac->stat_pp_link_establishment_time.get());
 	// 	}
 	// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 	// 	CPPUNIT_ASSERT_EQUAL(num_links, (size_t) mac_you->stat_num_pp_links_established.get());
-	// 	CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times_me.size());
-	// 	CPPUNIT_ASSERT(link_establishment_times_me.size() >= link_establishment_times_you.size() -1 && link_establishment_times_me.size() <= link_establishment_times_you.size() + 1);			
+	// 	CPPUNIT_ASSERT_EQUAL(num_links, link_establishment_times.size());
+	// 	CPPUNIT_ASSERT(link_establishment_times.size() >= link_establishment_times.size() -1 && link_establishment_times.size() <= link_establishment_times.size() + 1);			
 	// 	for (size_t i = 0; i < num_links; i++) {
-	// 		CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_me.at(i));
-	// 		if (link_establishment_times_you.size() > i)
-	// 			CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times_you.at(i));				
+	// 		CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times.at(i));
+	// 		if (link_establishment_times.size() > i)
+	// 			CPPUNIT_ASSERT_GREATEREQUAL(1.0, link_establishment_times.at(i));				
 	// 	}			
 	// }
 
@@ -826,8 +826,8 @@ public:
 		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
 		// CPPUNIT_TEST(testCommOverWholePPLink);
 		// CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);
-		CPPUNIT_TEST(testPPLinkEstablishmentTime);		
-		// CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);
+		// CPPUNIT_TEST(testPPLinkEstablishmentTime);		
+		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);
 		// CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);		
 		
 	CPPUNIT_TEST_SUITE_END();
