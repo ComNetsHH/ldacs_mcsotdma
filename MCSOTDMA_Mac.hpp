@@ -200,6 +200,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void statisticReportMaxNoOfPPLinkEstablishmentAttemptsExceeded() {
 			stat_pp_link_exceeded_max_no_establishment_attempts.increment();
 		}				
+		void statisticReportPPPeriodUsed(double value) {
+			stat_pp_period.capture(value);
+		}
 						
 
 		unsigned int getP2PBurstOffset() const;		
@@ -294,6 +297,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** If proposed resources are earlier than the next SH transmission. */
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_reply_slot", this);
 		Statistic stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals = Statistic("mcsotdma_statistic_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals", this);				
+		Statistic stat_pp_period = Statistic("mcsotdma_statistic_pp_period", this);				
 		Statistic stat_num_dme_packets_rcvd = Statistic("mcsotdma_statistic_num_num_dme_packets_rcvd", this);		
 		Statistic stat_num_broadcast_collisions_detected = Statistic("mcsotdma_statistic_num_broadcast_collisions_detected", this);				
 		Statistic stat_duty_cycle = Statistic("mcsotdma_statistic_duty_cycle", this);		
@@ -329,6 +333,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_pp_links_expired,				
 				&stat_num_pp_requests_rejected_due_to_unacceptable_reply_slot,
 				&stat_num_pp_requests_rejected_due_to_unacceptable_pp_resource_proposals,				
+				&stat_pp_period,
 				&stat_num_dme_packets_rcvd,
 				&stat_num_broadcast_collisions_detected,				
 				&stat_num_link_utils_rcvd

@@ -231,6 +231,7 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request, uint
 	cancelLink();
 	// schedule resources	
 	this->period = proposal.period;
+	mac->statisticReportPPPeriodUsed(this->period);
 	coutd << "scheduling resources on f=" << proposal.center_frequency << "kHz -> ";
 	channel = reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency);	
 	this->is_link_initiator = !through_request; // recipient of a link request is not the initiator

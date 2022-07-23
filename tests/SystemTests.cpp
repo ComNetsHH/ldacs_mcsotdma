@@ -328,7 +328,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double used_sh_budget = 0.0;
 			int sh_slot_offset = -1;
 			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
-			CPPUNIT_ASSERT_EQUAL(1, min_offset_and_period.second);
+			CPPUNIT_ASSERT_EQUAL(0, min_offset_and_period.second);
 		}
 
 		void testDutyCyclePeriodicityPPOneLinkUsed() {
