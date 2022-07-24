@@ -571,3 +571,11 @@ void MCSOTDMA_Mac::setMaxNoPPLinkEstablishmentAttempts(int value) {
 		}
 	}
 }
+
+void MCSOTDMA_Mac::setConsiderDutyCycle(bool flag) {
+	this->use_duty_cycle = flag;
+}
+
+bool MCSOTDMA_Mac::shouldConsiderDutyCycle() const {
+	return this->use_duty_cycle;
+}
