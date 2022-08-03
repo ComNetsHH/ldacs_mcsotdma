@@ -82,6 +82,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setContentionMethod(ContentionMethod method) override;		
 		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;				
 		void setMaxNoPPLinkEstablishmentAttempts(int value) override;
+		void setMinNumSupportedPPLinks(unsigned int value) override;
 
 		size_t getNumUtilizedP2PResources() const;
 		std::vector<L2HeaderSH::LinkUtilizationMessage> getPPLinkUtilizations() const;

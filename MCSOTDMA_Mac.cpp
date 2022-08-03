@@ -579,3 +579,7 @@ void MCSOTDMA_Mac::setConsiderDutyCycle(bool flag) {
 bool MCSOTDMA_Mac::shouldConsiderDutyCycle() const {
 	return this->use_duty_cycle;
 }
+
+void MCSOTDMA_Mac::setMinNumSupportedPPLinks(unsigned int value) {
+	this->duty_cycle.setMinNumSupportedPPLinks(value);
+}
