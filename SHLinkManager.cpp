@@ -404,6 +404,8 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 }
 
 void SHLinkManager::scheduleBroadcastSlot() {	
+	if (!this->do_transmit)
+		return;
 	unscheduleBroadcastSlot();
 	// Compute minimum slot offset to adhere to duty cycle.
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
@@ -515,9 +517,12 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 	std::vector<std::pair<LinkProposal, uint64_t>> acceptable_links;
 	bool received_request = false;
 	if (!header->link_requests.empty())
-		coutd << "processing " << header->link_requests.size() << " link requests -> ";
+		coutd << "processing " << header->link_requests.size() << " link requests -> ";	
+	std::map<MacId, bool> already_processed_third_party_link_request = std::map<MacId, bool>();
 	for (const auto &link_request : header->link_requests) {
-		if (link_request.dest_id == mac->getMacId()) {			
+		const MacId &dest_id = link_request.dest_id;
+		// destined to us?
+		if (dest_id == mac->getMacId()) {
 			mac->statisticReportLinkRequestReceived();
 			received_request = true;
 			const auto &proposal = link_request.proposed_link;			
@@ -535,8 +540,22 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 				acceptable_links.push_back({proposal, link_request.generation_time});
 			} else
 				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is NOT acceptable -> ";
-		}				
+		// destined to another user?
+		} else {
+			coutd << "passing link request on to 3rd-party-link -> ";
+			coutd.flush();
+			mac->statisticReportThirdPartyLinkRequestReceived();
+			const MacId &src_id = header->src_id;
+			auto &third_party_link = mac->getThirdPartyLink(src_id, dest_id);
+			// reset previous locks and schedules for first link request to this destination
+			auto it = already_processed_third_party_link_request.find(dest_id);
+			if (it != already_processed_third_party_link_request.end() && ((*it).second == false))
+				third_party_link.reset();
+			third_party_link.processLinkRequestMessage(link_request);
+			already_processed_third_party_link_request[dest_id] = true;
+		}
 	}	
+
 	if (received_request) {
 		auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
 		// accept if possible
@@ -568,12 +587,19 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 	}
 
 	// check link reply	
-	if (header->link_reply.dest_id == mac->getMacId()) {
-		coutd << "processing link reply -> ";
-		const LinkProposal &link = header->link_reply.proposed_link;
-		auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
-		pp->acceptLink(link, false, 0);
-		mac->statisticReportLinkReplyReceived();
+	if (header->link_reply.dest_id != SYMBOLIC_ID_UNSET) {
+		if (header->link_reply.dest_id == mac->getMacId()) {
+			coutd << "processing link reply -> ";
+			const LinkProposal &link = header->link_reply.proposed_link;
+			auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
+			pp->acceptLink(link, false, 0);
+			mac->statisticReportLinkReplyReceived();
+		} else {			
+			coutd << "passing link reply on to 3rd-party-link -> ";
+			mac->statisticReportThirdPartyLinkReplyReceived();
+			auto &third_party_link = mac->getThirdPartyLink(header->src_id, header->link_reply.dest_id);
+			third_party_link.processLinkReplyMessage(header->link_reply, header->src_id);
+		}
 	}
 
 	// check link utilizations
@@ -685,4 +711,8 @@ std::pair<int, int> SHLinkManager::getPPMinOffsetAndPeriod() const {
 	} catch (const no_duty_cycle_budget_left_error &e) {
 		throw no_duty_cycle_budget_left_error("error in getPPMinOffsetAndPeriod: " + std::string(e.what()));
 	}
+}
+
+void SHLinkManager::setShouldTransmit(bool value) {
+	this->do_transmit = value;
 }

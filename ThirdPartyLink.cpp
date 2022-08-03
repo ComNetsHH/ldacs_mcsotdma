@@ -6,6 +6,7 @@
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "SlotCalculator.hpp"
+#include "L2Header.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
@@ -67,7 +68,7 @@ void ThirdPartyLink::onSlotEnd() {
 
 void ThirdPartyLink::reset() {
 	coutd << *this << " resetting -> ";
-	this->status = uninitialied;
+	this->status = uninitialized;
 	// unlock and unschedule everything
 	size_t unlocks = locked_resources_for_initiator.unlock_either_id(id_link_initiator, id_link_recipient);
 	coutd << "unlocked " << unlocks << " initiator locks -> ";
@@ -79,8 +80,7 @@ void ThirdPartyLink::reset() {
 	locked_resources_for_recipient.reset();
 	scheduled_resources.reset();		
 	// reset counters	
-	num_slots_until_expected_link_reply = UNSET;
-	reply_offset = UNSET;
+	num_slots_until_expected_link_reply = UNSET;	
 	link_expiry_offset = UNSET;
 	normalization_offset = UNSET;	
 	// reset description
@@ -95,92 +95,93 @@ const MacId& ThirdPartyLink::getIdLinkRecipient() const {
 	return id_link_recipient;
 }
 
-void ThirdPartyLink::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload) {
-	coutd << *this << " processing link request -> ";
-	// if anything has been locked or scheduled
-	// then a new link request erases all of that
-	reset();
+void ThirdPartyLink::processLinkRequestMessage(const L2HeaderSH::LinkRequest& header) {
+	coutd << *this << " processing link request -> ";	
 	// update status
 	this->status = received_request_awaiting_reply;	
-	// parse expected reply slot
-	this->num_slots_until_expected_link_reply = (int) header->reply_offset; // this one is updated each slot
-	this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed	
+	// get expected reply slot
+	const auto &neighbor_observer = mac->getNeighborObserver();
+	try {
+		// use recipient's next broadcast if available
+		this->num_slots_until_expected_link_reply = neighbor_observer.getNextExpectedBroadcastSlotOffset(id_link_recipient);
+	} catch (const std::invalid_argument &e) {
+		// else use initiator's, which must be known because we've just received this user's beacon
+		this->num_slots_until_expected_link_reply = neighbor_observer.getNextExpectedBroadcastSlotOffset(id_link_initiator);
+	}	
+	// this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed
 	// mark the slot as RX (collisions are handled, too)
 	auto *sh_manager = (SHLinkManager*) mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);		
 	sh_manager->reportThirdPartyExpectedLinkReply(this->num_slots_until_expected_link_reply, id_link_recipient);
-	// parse proposed resources	
-	const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources = payload->resources;
-	const unsigned int  &timeout = header->timeout, 
-						&burst_length = header->burst_length, 
-						&burst_length_tx = header->burst_length_tx,
-						burst_length_rx = burst_length - burst_length_tx,
-						&burst_offset = header->burst_offset;
-	this->link_description = LinkDescription(proposed_resources, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+	// parse proposed resources
+
+	const LinkProposal &link_proposal = header.proposed_link;	
+	std::cout << "proposed_link=" << link_proposal.center_frequency << std::endl;
+	int timeout = mac->getDefaultPPLinkTimeout();
+	this->link_description = LinkDescription(link_proposal, timeout);
+	this->link_description.id_link_initiator = id_link_initiator;
+	this->link_description.id_link_recipient = id_link_recipient;
+	this->link_description.link_established = false;
+	this->link_description.timeout = timeout;
 	// lock as much as possible
 	normalization_offset = 0; // request reception is the reference time
-	this->lockIfPossible(this->locked_resources_for_initiator, this->locked_resources_for_recipient, proposed_resources, normalization_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+	this->lockIfPossible(this->locked_resources_for_initiator, this->locked_resources_for_recipient, link_proposal, normalization_offset, timeout);
 	coutd << "locked " << locked_resources_for_initiator.size() << " initiator resources and " << locked_resources_for_recipient.size() << " recipient resources -> ";
 }
 
-void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, ReservationMap& locks_recipient, const std::map<const FrequencyChannel*, std::vector<unsigned int>> &proposed_resources, const int &normalization_offset, const int &burst_length, const int &burst_length_tx, const int &burst_length_rx, const int &burst_offset, const int &timeout) {
-	// lock all links	
-	for (const auto &pair : proposed_resources) {
-		// for this subchannel
-		const FrequencyChannel *channel = pair.first;		
-		// skip the SH, as we have already reserved the expected link reply resource
-		if (channel->isSH())
-			continue;
-		const std::vector<unsigned int> &start_slot_offsets = pair.second;
-		ReservationTable *table = mac->getReservationManager()->getReservationTable(channel);
-		
-		// for each starting slot offset
-		for (unsigned int start_slot_offset : start_slot_offsets) {
-			int normalized_offset = start_slot_offset - normalization_offset;
-			if (normalized_offset < 0)
-				continue;
-			auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(normalized_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);			
-			auto &tx_slots = tx_rx_slots.first, &rx_slots = tx_rx_slots.second;			
-			// for each of the link initiator's transmission slot
-			for (int slot_offset : tx_slots) {
-				try {										
-					bool could_lock = table->lock_either_id(slot_offset, id_link_initiator, id_link_recipient);
-					if (could_lock) 
-						locks_initiator.add_locked_resource(table, slot_offset);											
-				} catch (const id_mismatch &e) {					
-					// do nothing if it couldn't be locked
-					// it may very well already be reserved/locked to another user			
-				} catch (const cannot_lock &e) {
-					// do nothing if it couldn't be locked
-					// it may very well already be reserved/locked to another user			
-				} catch (const std::exception &e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << "::processLinkRequestMessage error: " << e.what();
-					throw std::runtime_error(ss.str());
-				}
-			}			
-			// for each of the link recipient's transmission slot
-			for (int slot_offset : rx_slots) {									
-				try {
-					bool could_lock = table->lock_either_id(slot_offset, id_link_recipient, id_link_initiator);
-					if (could_lock) 
-						locks_recipient.add_locked_resource(table, slot_offset);						
-				} catch (const id_mismatch &e) {
-					// do nothing if it couldn't be locked
-					// it may very well already be reserved/locked to another user					
-				} catch (const cannot_lock &e) {
-					// do nothing if it couldn't be locked
-					// it may very well already be reserved/locked to another user			
-				} catch (const std::exception &e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << "::processLinkRequestMessage error: " << e.what();
-					throw std::runtime_error(ss.str());
-				}				
-			}
+void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, ReservationMap& locks_recipient, const LinkProposal &proposed_link, const int &normalization_offset, const int &timeout) {	
+	// get subchannel
+	const FrequencyChannel *channel;
+	try {
+		channel = mac->getReservationManager()->getFreqChannelByCenterFreq(proposed_link.center_frequency);
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << " error in lockIfPossible: " << e.what();
+		throw std::runtime_error(ss.str());
+	}	
+	// get time slots
+	auto slots = SlotCalculator::calculateAlternatingBursts(proposed_link.slot_offset, proposed_link.num_tx_initiator, proposed_link.num_tx_recipient, proposed_link.period, timeout);
+	ReservationTable *table = mac->getReservationManager()->getReservationTable(channel);		
+	const auto &tx_slots = slots.first;
+	const auto &rx_slots = slots.second;
+	// for each of the link initiator's transmission slot
+	for (int slot_offset : tx_slots) {
+		try {										
+			bool could_lock = table->lock_either_id(slot_offset, id_link_initiator, id_link_recipient);
+			if (could_lock) 
+				locks_initiator.add_locked_resource(table, slot_offset);											
+		} catch (const id_mismatch &e) {					
+			// do nothing if it couldn't be locked
+			// it may very well already be reserved/locked to another user			
+		} catch (const cannot_lock &e) {
+			// do nothing if it couldn't be locked
+			// it may very well already be reserved/locked to another user			
+		} catch (const std::exception &e) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::processLinkRequestMessage error: " << e.what();
+			throw std::runtime_error(ss.str());
 		}
-	}
+	}			
+	// for each of the link recipient's transmission slot
+	for (int slot_offset : rx_slots) {									
+		try {
+			bool could_lock = table->lock_either_id(slot_offset, id_link_recipient, id_link_initiator);
+			if (could_lock) 
+				locks_recipient.add_locked_resource(table, slot_offset);						
+		} catch (const id_mismatch &e) {
+			// do nothing if it couldn't be locked
+			// it may very well already be reserved/locked to another user					
+		} catch (const cannot_lock &e) {
+			// do nothing if it couldn't be locked
+			// it may very well already be reserved/locked to another user			
+		} catch (const std::exception &e) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::processLinkRequestMessage error: " << e.what();
+			throw std::runtime_error(ss.str());
+		}				
+	}	
 }
 
-void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
+void ThirdPartyLink::processLinkReplyMessage(const L2HeaderSH::LinkReply& header, const MacId& origin_id) {	
 	coutd << *this << " processing link reply -> ";			
 	// reset	
 	
@@ -195,35 +196,26 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 	locked_resources_for_recipient.reset();	
 	// update status
 	this->status = received_reply_link_established;	
-	// parse selected resource
-	const std::map<const FrequencyChannel*, std::vector<unsigned int>>& selected_resource_map = payload->resources;
-	if (selected_resource_map.size() != size_t(1))
-		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one selected resource, but " + std::to_string(selected_resource_map.size()));
-	const auto &selected_resource = *selected_resource_map.begin();
-	const FrequencyChannel *selected_freq_channel = selected_resource.first;
-	if (selected_resource.second.size() != size_t(1)) 
-		throw std::invalid_argument("PPLinkManager::processLinkReplyMessage got a reply that does not contain just one time slot offset, but " + std::to_string(selected_resource.second.size()));
-	const unsigned int selected_time_slot_offset = selected_resource.second.at(0);			
-	const int timeout = header->timeout, 
-				burst_length = header->burst_length,
-				burst_length_tx = header->burst_length_tx,
-				burst_length_rx = burst_length - burst_length_tx,
-				burst_offset = header->burst_offset;					
+	// parse selected resource		
+	const FrequencyChannel *selected_freq_channel = mac->getReservationManager()->getFreqChannelByCenterFreq(header.proposed_link.center_frequency);	
+	const unsigned int selected_time_slot_offset = header.proposed_link.slot_offset;
+	const int timeout = mac->getDefaultPPLinkTimeout();					
 	int first_burst_slot_offset = (int) selected_time_slot_offset; 	
-	// normalize to current time slot
-	if (reply_offset != UNSET)
-		first_burst_slot_offset -= reply_offset; 	
-	else
-		first_burst_slot_offset -= burst_length;
+	// // normalize to current time slot
+	// if (reply_offset != UNSET)
+	// 	first_burst_slot_offset -= reply_offset; 	
+	// else
+	// 	first_burst_slot_offset -= burst_length;
 	// save link info
 	normalization_offset = 0; // reply reception is the reference time now
-	this->link_description = LinkDescription({}, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
-	link_description.first_burst_slot_offset = first_burst_slot_offset;
-	link_description.selected_channel = selected_freq_channel;	
-	const MacId initiator_id = header->getDestId(), &recipient_id = origin_id;	
-	link_description.id_link_initiator = initiator_id;
-	link_description.id_link_recipient = recipient_id;
-	link_description.link_established = true;
+	this->link_description = LinkDescription(header.proposed_link, timeout);
+	this->link_description.first_burst_slot_offset = first_burst_slot_offset;
+	this->link_description.selected_channel = selected_freq_channel;	
+	const MacId initiator_id = header.dest_id, &recipient_id = origin_id;	
+	this->link_description.id_link_initiator = initiator_id;
+	this->link_description.id_link_recipient = recipient_id;
+	this->link_description.link_established = true;
+	this->link_description.timeout = timeout;
 	// schedule the link's resources		
 	std::vector<std::pair<int, Reservation>> reservations;
 	try {
@@ -249,21 +241,20 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderLinkReply*& header, c
 		throw std::runtime_error(ss.str());
 	}
 	// reset counters
-	num_slots_until_expected_link_reply = UNSET;
-	reply_offset = UNSET;
+	num_slots_until_expected_link_reply = UNSET;	
 	// set new counter
-	link_expiry_offset = first_burst_slot_offset + (timeout-1)*burst_offset + burst_length - 1;	
+	link_expiry_offset = first_burst_slot_offset + (timeout-1)*5*std::pow(2, header.proposed_link.period);	
 }
 
 void ThirdPartyLink::onAnotherThirdLinkReset() {		
-	if (this->status == uninitialied)
+	if (this->status == uninitialized)
 		return;	
 	coutd << *this << " checking if additional resources can be locked or scheduled -> status is " << this->status << " -> ";
 	switch (this->status) {	
 		case received_request_awaiting_reply: {
 			// attempt to add more locks
 			size_t num_locks_initiator = this->locked_resources_for_initiator.size(), num_locks_recipient = this->locked_resources_for_recipient.size();
-			this->lockIfPossible(this->locked_resources_for_initiator, this->locked_resources_for_recipient, link_description.proposed_resources, this->normalization_offset, link_description.burst_length, link_description.burst_length_tx, link_description.burst_length_rx, link_description.burst_offset, link_description.timeout);
+			this->lockIfPossible(this->locked_resources_for_initiator, this->locked_resources_for_recipient, link_description.link_proposal, this->normalization_offset, link_description.timeout);
 			coutd << "additionally locked " << this->locked_resources_for_initiator.size() - num_locks_initiator << " link initiator resources and " << this->locked_resources_for_recipient.size() - num_locks_recipient << " link recipient resources -> ";			
 			break;
 		}
@@ -298,7 +289,7 @@ std::vector<std::pair<int, Reservation>> ThirdPartyLink::LinkDescription::getRem
 		throw std::runtime_error("ThirdPartyLink::LinkDescription::getRemainingLinkReservations for link with unset 'first_burst_slot_offset'.");
 	std::pair<std::vector<int>, std::vector<int>> tx_rx_slots;
 	try {		
-		tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_slot_offset, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);
+		tx_rx_slots = SlotCalculator::calculateAlternatingBursts(first_burst_slot_offset, link_proposal.num_tx_initiator, link_proposal.num_tx_recipient, link_proposal.period, timeout);
 	} catch (const std::exception& e) {
 		throw std::runtime_error("error during calc: " + std::string(e.what()));
 	}

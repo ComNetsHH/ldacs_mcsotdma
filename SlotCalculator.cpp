@@ -33,11 +33,13 @@ std::pair<std::vector<int>, std::vector<int>> SlotCalculator::calculateAlternati
 	int slot = start_slot_offset;
 	for (int exchange = 0; exchange < timeout; exchange++) {				
 		for (int fw_burst = 0; fw_burst < num_forward_bursts; fw_burst++) {
-			tx_slots.push_back(slot);
+			if (slot >= 0)
+				tx_slots.push_back(slot);
 			slot += increment;
 		}
 		for (int rv_burst = 0; rv_burst < num_reverse_bursts; rv_burst++) {
-			rx_slots.push_back(slot);
+			if (slot >= 0)
+				rx_slots.push_back(slot);
 			slot += increment;
 		}
 	}

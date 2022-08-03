@@ -83,6 +83,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id);		
 		double getNumTxPerTimeSlot() const override;
 		bool isActive() const override;
+		void setShouldTransmit(bool value);
 
 	protected:
 		unsigned int getNumCandidateSlots(double target_collision_prob, unsigned int min, unsigned int max) const;
@@ -138,6 +139,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		unsigned int next_broadcast_slot = 0;		
 		/** If true, the next slot is advertised in the current header if possible. */
 		bool advertise_slot_in_header = true;
+		/** Whether transmissions should be done. */
+		bool do_transmit = true;
 		
 		/** Minimum number of slots to consider during slot selection. */
 		unsigned int MIN_CANDIDATES = 3;
