@@ -1110,46 +1110,45 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATER(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).locked_resources_for_recipient.size());
 		}
 
-		// /** Tests that when another third party link terminates, an existing link that has received a reply schedules those resources that lie in the present or future. Tests an entire link duration. */
-		// void testAnotherLinkResetSchedulesFutureResources() {
-		// 	// initiate link establishment
-		// 	mac_initiator->notifyOutgoing(1, id_recipient);			
-		// 	size_t num_slots = 0, max_slots = 30;
-		// 	auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	// proceed until request has been received
-		// 	while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();					
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
-		// 	CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);			
-		// 	// reservations have been made
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link.scheduled_resources.size());			
-		// 	// receive another reply that would have scheduled the same resources
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), env_recipient->phy_layer->outgoing_packets.size());
-		// 	auto *reply = env_recipient->phy_layer->outgoing_packets.at(env_recipient->phy_layer->outgoing_packets.size() - 1)->copy();
-		// 	CPPUNIT_ASSERT(reply != nullptr);
-		// 	CPPUNIT_ASSERT_GREATER(-1, reply->getReplyIndex());
-		// 	MacId id_initiator_2 = MacId(id.getId() + 100), id_recipient_2 = MacId(id.getId() + 101);
-		// 	((L2HeaderBase*) reply->getHeaders().at(0))->src_id = id_initiator_2;
-		// 	((L2HeaderLinkRequest*) reply->getHeaders().at(reply->getReplyIndex()))->dest_id = id_recipient_2;			
-		// 	mac->receiveFromLower(reply, env->sh_frequency);
-		// 	mac->onSlotEnd();
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).scheduled_resources.size());			
-		// 	// now terminate the first link which *has* scheduled resources
-		// 	third_party_link.reset();
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link.scheduled_resources.size());			
-		// 	// notify the other third party link
-		// 	mac->onThirdPartyLinkReset(&third_party_link);						
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).scheduled_resources.size());			
-		// }
+		/** Tests that when another third party link terminates, an existing link that has received a reply schedules those resources that lie in the present or future. Tests an entire link duration. */
+		void testAnotherLinkResetSchedulesFutureResources() {
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 500;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();					
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);			
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);			
+			// reservations have been made
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link.scheduled_resources.size());			
+			// receive another reply that would have scheduled the same resources
+			CPPUNIT_ASSERT_GREATER(size_t(0), env_recipient->phy_layer->outgoing_packets.size());
+			auto *reply = env_recipient->phy_layer->outgoing_packets.at(env_recipient->phy_layer->outgoing_packets.size() - 1)->copy();
+			CPPUNIT_ASSERT(reply != nullptr);			
+			MacId id_initiator_2 = MacId(id.getId() + 100), id_recipient_2 = MacId(id.getId() + 101);
+			((L2HeaderSH*) reply->getHeaders().at(0))->src_id = id_initiator_2;
+			((L2HeaderSH::LinkReply&) ((L2HeaderSH*) reply->getHeaders().at(0))->link_reply).dest_id = id_recipient_2;			
+			mac->receiveFromLower(reply, env->sh_frequency);
+			mac->onSlotEnd();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).scheduled_resources.size());			
+			// now terminate the first link which *has* scheduled resources
+			third_party_link.reset();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link.scheduled_resources.size());			
+			// notify the other third party link
+			mac->onThirdPartyLinkReset(&third_party_link);						
+			CPPUNIT_ASSERT_GREATER(size_t(0), mac->getThirdPartyLink(id_initiator_2, id_recipient_2).scheduled_resources.size());			
+		}
 		
 		// /** Encountered bug where the link reply would contain a different no. of slots than the request. This was ignored by the link initiator, but not by third parties and caused a crash due to a bad_alloc (burst_length_rx was consequently negative). */
 		// void testLinkParametersDontChange() {			
@@ -1235,8 +1234,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testUnexpectedReply);
 			// CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
 			// CPPUNIT_TEST(testReplySchedulesBursts);
-			CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
-			// CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
+			// CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
+			CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
 			// CPPUNIT_TEST(testLinkParametersDontChange);
 		CPPUNIT_TEST_SUITE_END();
 	};
