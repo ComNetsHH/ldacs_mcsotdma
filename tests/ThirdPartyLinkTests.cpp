@@ -243,46 +243,61 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);
 		}
 
-		// void testUnscheduleAfterTimeHasPassed() {
-		// 	// establish link
-		// 	pp_initiator->notifyOutgoing(1);
-		// 	size_t num_slots = 0, max_slots = 100;
-		// 	while (pp_initiator->link_status != LinkManager::link_established && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();
-		// 	}
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_initiator->link_status);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_recipient->link_status);
-		// 	// continue for a couple of time slots
-		// 	int max_t = 42;
-		// 	for (int t = 0; t < max_t; t++) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();
-		// 	}
-		// 	ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	CPPUNIT_ASSERT_NO_THROW(link.reset());
-		// 	// now neither locks nor scheduled resources should exist			
-		// 	for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
-		// 		const auto *tbl = reservation_manager->getReservationTable(channel);
-		// 		for (size_t t = 0; t < env->planning_horizon; t++) {															
-		// 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), tbl->getReservation(t));
-		// 		}
-		// 	}			
-		// }
+		void testUnscheduleAfterTimeHasPassed() {
+			size_t num_slots = 0, max_slots = 100;									
+			while (mac_initiator->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_broadcasts_rcvd.get());			
+
+			// start link establishment
+			pp_initiator->notifyOutgoing(1);			
+			num_slots = 0;
+			while (pp_initiator->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_initiator->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_recipient->link_status);
+			// continue for a couple of time slots
+			int max_t = 42;
+			for (int t = 0; t < max_t; t++) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			CPPUNIT_ASSERT_NO_THROW(link.reset());
+			// now neither locks nor scheduled resources should exist			
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
+				const auto *tbl = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) {															
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), tbl->getReservation(t));
+				}
+			}			
+		}
 
 		// /** Ensures that resource reservations match among the three users all the way until link termination. */
 		// void testResourceAgreementsMatchOverDurationOfOneLink() {
@@ -1437,8 +1452,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testGetThirdPartyLink);			
 			// CPPUNIT_TEST(testLinkRequestLocks);
 			// CPPUNIT_TEST(testMissingReplyUnlocks);
-			CPPUNIT_TEST(testExpectedReply);			
-			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			// CPPUNIT_TEST(testExpectedReply);			
+			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
 			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
 			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
 			// CPPUNIT_TEST(testLinkReestablishment);
