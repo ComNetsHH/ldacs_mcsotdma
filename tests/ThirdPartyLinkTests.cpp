@@ -705,37 +705,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}						
 		}
 
-		// /** Tests that all resource reservations in the current or later time slots are unscheduled through the reset() function when it is called just at link establishment. */
-		// void testImmediateResetUnschedules() {
-		// 	// initiate link establishment
-		// 	mac_initiator->notifyOutgoing(1, id_recipient);			
-		// 	size_t num_slots = 0, max_slots = 30;
-		// 	auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	// proceed until reply has been received
-		// 	while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();	
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);
-		// 	// immediately reset			
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link.scheduled_resources.size());
-		// 	third_party_link.reset();
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link.scheduled_resources.size());
-		// 	// make sure that no reservations are still there			
-		// 	for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
-		// 		const auto *table = reservation_manager->getReservationTable(channel);
-		// 		for (size_t t = 0; t < env->planning_horizon; t++) 					
-		// 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));
-		// 	}	
-		// }
+		/** Tests that all resource reservations in the current or later time slots are unscheduled through the reset() function when it is called just at link establishment. */
+		void testImmediateResetUnschedules() {
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 500;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until reply has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_reply_link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);
+			// immediately reset			
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link.scheduled_resources.size());
+			third_party_link.reset();
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link.scheduled_resources.size());
+			// make sure that no reservations are still there			
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) 					
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));
+			}	
+		}
 
 		// /** Tests that all resource reservations in the current or later time slots are unscheduled through the reset() function when it is called some time after link establishment but before termination. */
 		// void testIntermediateResetUnschedules() {
@@ -1463,8 +1463,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testLinkReestablishment);
 			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
 			// CPPUNIT_TEST(testImmediateResetUnlocks);
-			CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
-			// CPPUNIT_TEST(testImmediateResetUnschedules);
+			// CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
+			CPPUNIT_TEST(testImmediateResetUnschedules);
 			// CPPUNIT_TEST(testIntermediateResetUnschedules);
 			// CPPUNIT_TEST(testLateResetUnschedules);						
 			// CPPUNIT_TEST(testRequestLocksWherePossible);
