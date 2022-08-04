@@ -836,79 +836,33 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}		
 		}
 
-		// /** Tests that upon a request reception, resources are locked, but non-idle resources are not touched. */
-		// void testRequestLocksWherePossible() {
-		// 	// check which slots will be proposed
-		// 	auto map = pp_initiator->slotSelection(pp_initiator->proposal_num_frequency_channels, pp_initiator->proposal_num_time_slots, 2, 1, pp_initiator->burst_offset);
-		// 	// cherry-pick first proposed channel
-		// 	auto it = map.begin();
-		// 	auto cherry_picked_channel = (*it).first;
-		// 	auto slots = (*it).second;
-		// 	// schedule these slots for sth
-		// 	auto table = reservation_manager->getReservationTable(cherry_picked_channel);
-		// 	MacId some_other_id = MacId(id.getId() + 42);
-		// 	for (auto slot : slots)
-		// 		table->mark(slot, Reservation(some_other_id, Reservation::RX));
-		// 	// initiate link establishment
-		// 	mac_initiator->notifyOutgoing(1, id_recipient);			
-		// 	size_t num_slots = 0, max_slots = 30;
-		// 	auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	// proceed until request has been received
-		// 	while (third_party_link.status != ThirdPartyLink::Status::received_request_awaiting_reply && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();	
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_request_awaiting_reply, third_party_link.status);			
-		// 	// make sure that all locks are set except for the channel where another reservation is already present
-		// 	size_t num_locks = 0;
-		// 	for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
-		// 		const auto *table = reservation_manager->getReservationTable(channel);
-		// 		for (size_t t = 0; t < env->planning_horizon; t++) {
-		// 			if (channel == cherry_picked_channel)
-		// 				CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), table->getReservation(t));
-		// 			else if (table->getReservation(t).isLocked())
-		// 				num_locks++;
-		// 		}					
-		// 	}
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), num_locks);
-		// }
-
-		// /** Tests that upon a request reception, the expected reply slot is scheduled. */
-		// void testRequestSchedulesExpectedReply() {
-		// 	// initiate link establishment
-		// 	mac_initiator->notifyOutgoing(1, id_recipient);			
-		// 	size_t num_slots = 0, max_slots = 30;
-		// 	auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	// proceed until request has been received
-		// 	while (third_party_link.status != ThirdPartyLink::Status::received_request_awaiting_reply && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();	
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_request_awaiting_reply, third_party_link.status);		
-		// 	// check that indicated reply slot has been scheduled
-		// 	auto request_packet = env_initator->phy_layer->outgoing_packets.at(env_initator->phy_layer->outgoing_packets.size() - 1);
-		// 	CPPUNIT_ASSERT_GREATER(-1, request_packet->getRequestIndex());
-		// 	auto request_header = (L2HeaderLinkRequest*) request_packet->getHeaders().at(request_packet->getRequestIndex());
-		// 	int reply_offset = request_header->reply_offset;
-		// 	CPPUNIT_ASSERT_GREATER(0, reply_offset);
-		// 	CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), sh->current_reservation_table->getReservation(reply_offset));
-		// }
+		/** Tests that upon a request reception, the expected reply slot is scheduled. */
+		void testRequestSchedulesExpectedReply() {
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			size_t num_slots = 0, max_slots = 500;
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			// proceed until request has been received
+			while (third_party_link.status != ThirdPartyLink::Status::received_request_awaiting_reply && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_request_awaiting_reply, third_party_link.status);		
+			// check that indicated reply slot has been scheduled
+			auto request_packet = env_initator->phy_layer->outgoing_packets.at(env_initator->phy_layer->outgoing_packets.size() - 1);			
+			auto request_header = (L2HeaderSH*) request_packet->getHeaders().at(0);
+			int reply_offset = request_header->slot_offset;
+			CPPUNIT_ASSERT_GREATER(0, reply_offset);
+			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), sh->current_reservation_table->getReservation(reply_offset));
+		}
 
 		// void testLinkRequestOverwritesBroadcast() {			
 		// 	// initiate link establishment
@@ -1466,9 +1420,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
 			// CPPUNIT_TEST(testImmediateResetUnschedules);
 			// CPPUNIT_TEST(testIntermediateResetUnschedules);
-			CPPUNIT_TEST(testLateResetUnschedules);						
-			// CPPUNIT_TEST(testRequestLocksWherePossible);
-			// CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
+			// CPPUNIT_TEST(testLateResetUnschedules);									
+			CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
 			// CPPUNIT_TEST(testLinkRequestOverwritesBroadcast);
 			// CPPUNIT_TEST(testLinkRequestOverwritesBeacon);		
 			// CPPUNIT_TEST(testReplyUnlocks);
