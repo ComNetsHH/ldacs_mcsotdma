@@ -299,143 +299,143 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}			
 		}
 
-		// /** Ensures that resource reservations match among the three users all the way until link termination. */
-		// void testResourceAgreementsMatchOverDurationOfOneLink() {
-		// 	env_initator->rlc_layer->should_there_be_more_p2p_data = false;
-		// 	env_recipient->rlc_layer->should_there_be_more_p2p_data = false;			
-		// 	pp_initiator->notifyOutgoing(1);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_initiator->link_status);
-		// 	size_t num_slots = 0, max_slots = 1000;
-		// 	// proceed until link has been established at both sides
-		// 	while (!(pp_initiator->link_status == LinkManager::link_established && pp_recipient->link_status == LinkManager::link_established) && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_initiator->link_status);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_recipient->link_status);
-		// 	// now proceed until link expiry			
-		// 	num_slots = 0;
-		// 	while (!(pp_initiator->link_status == LinkManager::link_not_established && pp_recipient->link_status == LinkManager::link_not_established) && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();
-		// 		// after each slot, the resource reservations should match among the three users
-		// 		const auto *tbl_initiator = pp_initiator->current_reservation_table;
-		// 		const auto *tbl_recipient = pp_recipient->current_reservation_table;
-		// 		if (tbl_initiator != nullptr && tbl_recipient != nullptr) {
-		// 			const auto *tbl_thirdparty = reservation_manager->getReservationTable(tbl_initiator->getLinkedChannel());				
-		// 			size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0;
-		// 			for (int t = 0; t < env->planning_horizon; t++) {
-		// 				const Reservation &res_initiator = tbl_initiator->getReservation(t),
-		// 								&res_recipient = tbl_recipient->getReservation(t),
-		// 								&res_thirdparty = tbl_thirdparty->getReservation(t);
-		// 				if (res_initiator.isTx()) {					
-		// 					num_tx_at_initiator++;
-		// 					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
-		// 					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
-		// 				}
-		// 				if (res_recipient.isTx()) {
-		// 					num_tx_at_recipient++;
-		// 					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
-		// 					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
-		// 				}
-		// 				if (res_thirdparty.isBusy())
-		// 					num_busy_at_thirdparty++;
-		// 			}
-		// 			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_initiator);
-		// 			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_recipient);
-		// 			CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);
-		// 		}
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_initiator->link_status);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_recipient->link_status);
-		// 	ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_initiator.size());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_recipient.size());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), link.scheduled_resources.size());
-		// 	// both link initiator and third party should now have zero locks
-		// 	size_t num_locks_initiator = 0, num_locks_thirdparty = 0;
-		// 	for (auto *channel : reservation_manager->getP2PFreqChannels()) {
-		// 		const auto *tbl_initiator = env_initator->mac_layer->reservation_manager->getReservationTable(channel);
-		// 		const auto *tbl_thirdparty = reservation_manager->getReservationTable(channel);
-		// 		for (size_t t = 0; t < env->planning_horizon; t++) {										
-		// 			if (tbl_initiator->getReservation(t).isLocked()) {
-		// 				num_locks_initiator++;
-		// 				CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, tbl_thirdparty->getReservation(t).getAction());
-		// 			} 
-		// 			if (tbl_thirdparty->getReservation(t).isLocked()) {
-		// 				num_locks_thirdparty++;
-		// 				CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, tbl_initiator->getReservation(t).getAction());
-		// 			}
-		// 		}
-		// 	}
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), num_locks_initiator);
-		// 	CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);
-		// }
+		void testNoLocksAfterLinkExpiry() {
+			env_initator->rlc_layer->should_there_be_more_p2p_data = false;
+			env_recipient->rlc_layer->should_there_be_more_p2p_data = false;			
+			pp_initiator->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_initiator->link_status);
+			size_t num_slots = 0, max_slots = 5000;
+			// proceed until link has terminated on both sides
+			while (!(pp_initiator->link_status == LinkManager::link_not_established && pp_recipient->link_status == LinkManager::link_not_established) && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_initiator->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_recipient->link_status);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_pp_links_established.get());
+			ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_recipient.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link.scheduled_resources.size());
+			// proceed one slot further
+			mac_initiator->update(1);
+			mac_recipient->update(1);
+			mac->update(1);
+			mac_initiator->execute();
+			mac_recipient->execute();
+			mac->execute();
+			mac_initiator->onSlotEnd();
+			mac_recipient->onSlotEnd();
+			mac->onSlotEnd();
+			// should now have zero locks
+			size_t num_locks = 0;
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
+				const auto *tbl_thirdparty = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) {
+					const auto &res = tbl_thirdparty->getReservation(t);
+					if (!res.isIdle())
+						coutd << "problematic res: " << res << " at t=" << t << std::endl;
+					CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res);									
+				}
+			}			
+		}
 
-		// void testNoLocksAfterLinkExpiry() {
-		// 	env_initator->rlc_layer->should_there_be_more_p2p_data = false;
-		// 	env_recipient->rlc_layer->should_there_be_more_p2p_data = false;			
-		// 	pp_initiator->notifyOutgoing(1);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_initiator->link_status);
-		// 	size_t num_slots = 0, max_slots = 1000;
-		// 	// proceed until link has terminated on both sides
-		// 	while (!(pp_initiator->link_status == LinkManager::link_not_established && pp_recipient->link_status == LinkManager::link_not_established) && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_initiator->link_status);
-		// 	CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_recipient->link_status);
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_pp_links_established.get());
-		// 	ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_initiator.size());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_recipient.size());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), link.scheduled_resources.size());
-		// 	// proceed one slot further
-		// 	mac_initiator->update(1);
-		// 	mac_recipient->update(1);
-		// 	mac->update(1);
-		// 	mac_initiator->execute();
-		// 	mac_recipient->execute();
-		// 	mac->execute();
-		// 	mac_initiator->onSlotEnd();
-		// 	mac_recipient->onSlotEnd();
-		// 	mac->onSlotEnd();
-		// 	// should now have zero locks
-		// 	size_t num_locks = 0;
-		// 	for (auto *channel : reservation_manager->getP2PFreqChannels()) {				
-		// 		const auto *tbl_thirdparty = reservation_manager->getReservationTable(channel);
-		// 		for (size_t t = 0; t < env->planning_horizon; t++) {
-		// 			const auto &res = tbl_thirdparty->getReservation(t);
-		// 			if (!res.isIdle())
-		// 				coutd << "problematic res: " << res << " at t=" << t << std::endl;
-		// 			CPPUNIT_ASSERT_EQUAL(Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE), res);									
-		// 		}
-		// 	}			
-		// }
+		/** Ensures that resource reservations match among the three users all the way until link termination. */
+		void testResourceAgreementsMatchOverDurationOfOneLink() {
+			env_initator->rlc_layer->should_there_be_more_p2p_data = false;
+			env_recipient->rlc_layer->should_there_be_more_p2p_data = false;			
+			pp_initiator->notifyOutgoing(1);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_initiator->link_status);
+			size_t num_slots = 0, max_slots = 1000;
+			// proceed until link has been established at both sides
+			while (!(pp_initiator->link_status == LinkManager::link_established && pp_recipient->link_status == LinkManager::link_established) && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_initiator->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_recipient->link_status);
+			// now proceed until link expiry			
+			num_slots = 0;
+			while (!(pp_initiator->link_status == LinkManager::link_not_established && pp_recipient->link_status == LinkManager::link_not_established) && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+				// after each slot, the resource reservations should match among the three users
+				const auto *tbl_initiator = pp_initiator->current_reservation_table;
+				const auto *tbl_recipient = pp_recipient->current_reservation_table;
+				if (tbl_initiator != nullptr && tbl_recipient != nullptr) {
+					const auto *tbl_thirdparty = reservation_manager->getReservationTable(tbl_initiator->getLinkedChannel());				
+					size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0;
+					for (int t = 0; t < env->planning_horizon; t++) {
+						const Reservation &res_initiator = tbl_initiator->getReservation(t),
+										&res_recipient = tbl_recipient->getReservation(t),
+										&res_thirdparty = tbl_thirdparty->getReservation(t);
+						if (res_initiator.isTx()) {					
+							num_tx_at_initiator++;
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
+						}
+						if (res_recipient.isTx()) {
+							num_tx_at_recipient++;
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
+							CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
+						}
+						if (res_thirdparty.isBusy())
+							num_busy_at_thirdparty++;
+					}
+					CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_initiator);
+					CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_recipient);
+					CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);
+				}
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_initiator->link_status);
+			CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp_recipient->link_status);
+			ThirdPartyLink &link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link.locked_resources_for_recipient.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), link.scheduled_resources.size());
+			// both link initiator and third party should now have zero locks
+			size_t num_locks_initiator = 0, num_locks_thirdparty = 0;
+			for (auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const auto *tbl_initiator = env_initator->mac_layer->reservation_manager->getReservationTable(channel);
+				const auto *tbl_thirdparty = reservation_manager->getReservationTable(channel);
+				for (size_t t = 0; t < env->planning_horizon; t++) {										
+					if (tbl_initiator->getReservation(t).isLocked()) {
+						num_locks_initiator++;
+						CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, tbl_thirdparty->getReservation(t).getAction());
+					} 
+					if (tbl_thirdparty->getReservation(t).isLocked()) {
+						num_locks_thirdparty++;
+						CPPUNIT_ASSERT_EQUAL(Reservation::LOCKED, tbl_initiator->getReservation(t).getAction());
+					}
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(size_t(0), num_locks_initiator);
+			CPPUNIT_ASSERT_EQUAL(num_locks_initiator, num_locks_thirdparty);
+		}		
 
 		// void testLinkReestablishment() {
 		// 	env_initator->rlc_layer->should_there_be_more_p2p_data = false;
@@ -1453,8 +1453,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testLinkRequestLocks);
 			// CPPUNIT_TEST(testMissingReplyUnlocks);
 			// CPPUNIT_TEST(testExpectedReply);			
-			CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
+			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
 			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
 			// CPPUNIT_TEST(testLinkReestablishment);
 			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
