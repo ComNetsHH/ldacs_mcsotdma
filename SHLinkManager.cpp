@@ -549,8 +549,10 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 			auto &third_party_link = mac->getThirdPartyLink(src_id, dest_id);
 			// reset previous locks and schedules for first link request to this destination
 			auto it = already_processed_third_party_link_request.find(dest_id);
-			if (it != already_processed_third_party_link_request.end() && ((*it).second == false))
+			if (it == already_processed_third_party_link_request.end() || ((*it).second == false)) {
+				coutd << "resetting 3rd party link -> ";
 				third_party_link.reset();
+			}
 			third_party_link.processLinkRequestMessage(link_request);
 			already_processed_third_party_link_request[dest_id] = true;
 		}

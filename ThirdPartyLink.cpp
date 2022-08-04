@@ -137,7 +137,7 @@ void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, Reservation
 		ss << *mac << "::" << *this << " error in lockIfPossible: " << e.what();
 		throw std::runtime_error(ss.str());
 	}	
-	// get time slots
+	// get time slots	
 	auto slots = SlotCalculator::calculateAlternatingBursts(proposed_link.slot_offset - normalization_offset, proposed_link.num_tx_initiator, proposed_link.num_tx_recipient, proposed_link.period, timeout);
 	ReservationTable *table = mac->getReservationManager()->getReservationTable(channel);		
 	const auto &tx_slots = slots.first;
@@ -146,8 +146,8 @@ void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, Reservation
 	for (int slot_offset : tx_slots) {
 		try {										
 			bool could_lock = table->lock_either_id(slot_offset, id_link_initiator, id_link_recipient);
-			if (could_lock) 
-				locks_initiator.add_locked_resource(table, slot_offset);											
+			if (could_lock) 				
+				locks_initiator.add_locked_resource(table, slot_offset);														
 		} catch (const id_mismatch &e) {					
 			// do nothing if it couldn't be locked
 			// it may very well already be reserved/locked to another user			

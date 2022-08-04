@@ -59,7 +59,7 @@ public:
 	}	
 
 	/** 	 
-	 * @throws std::invalid_argument if any resource was not locked
+	 * @throws std::runtime_error if any resource was not locked
 	 * */
 	size_t unlock_either_id(const MacId &id1, const MacId &id2) {				
 		size_t num_unlocked = 0;		
@@ -68,7 +68,7 @@ public:
 			// skip SH reservations
 			if (table->getLinkedChannel() != nullptr && table->getLinkedChannel()->isSH())
 				continue;			
-			int slot_offset = pair.second - this->num_slots_since_creation;			
+			int slot_offset = pair.second - this->num_slots_since_creation;						
 			if (slot_offset > 0) {				
 				try {
 					table->unlock_either_id(slot_offset, id1, id2);							
