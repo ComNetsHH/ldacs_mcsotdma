@@ -404,8 +404,10 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 }
 
 void SHLinkManager::scheduleBroadcastSlot() {	
-	if (!this->do_transmit)
+	if (!this->do_transmit) {
+		coutd << "configured not to transmit, cancelling broadcast slot selection -> ";
 		return;
+	}
 	unscheduleBroadcastSlot();
 	// Compute minimum slot offset to adhere to duty cycle.
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
