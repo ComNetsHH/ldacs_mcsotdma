@@ -511,119 +511,124 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(size_t(2), (size_t) mac_initiator->stat_num_pp_links_established.get());
 		}
 
-		// /** Due to the hidden node problem, one user may receive several link requests that want to occupy the same resources. */
-		// void testTwoLinkRequestsWithSameResources() {			
-		// 	pp_initiator->notifyOutgoing(1);
-		// 	size_t num_slots = 0, max_slots = 100;
-		// 	while(mac_initiator->stat_num_requests_sent.get() < 1 && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_requests_rcvd.get());
-		// 	// now that one request has been received
-		// 	// create another one for another link
-		// 	// but with the same resources
-		// 	L2Packet *request_packet = nullptr;
-		// 	for (auto *packet : env_initator->phy_layer->outgoing_packets) {
-		// 		if (packet->getRequestIndex() != -1) {
-		// 			request_packet = packet;
-		// 			break;
-		// 		}
-		// 	}
-		// 	CPPUNIT_ASSERT(request_packet != nullptr);			
-		// 	L2Packet *another_request_packet = request_packet->copy();
-		// 	L2HeaderBase *base_header = (L2HeaderBase*) another_request_packet->getHeaders().at(0);
-		// 	MacId imaginary_src_id = MacId(id.getId() + 1);
-		// 	MacId imaginary_dest_id = MacId(id.getId() + 2);
-		// 	base_header->src_id = imaginary_src_id;
-		// 	auto *request_header = (L2HeaderLinkRequest*) another_request_packet->getHeaders().at(another_request_packet->getRequestIndex());
-		// 	request_header->dest_id = imaginary_dest_id;
-		// 	// make sure the 2nd reply is later than the first
-		// 	int reply_slot_1 = -1, reply_slot_2;
-		// 	auto *&proposed_resources = (LinkManager::LinkEstablishmentPayload*&) another_request_packet->getPayloads().at(another_request_packet->getRequestIndex());						
-		// 	for (auto &pair : proposed_resources->resources) {
-		// 		const auto *channel = pair.first;
-		// 		if (channel->isSH()) {					
-		// 			reply_slot_1 = pair.second.at(0);
-		// 			reply_slot_2 = reply_slot_1 + 1;					
-		// 			proposed_resources->resources.at(channel).at(0) = reply_slot_2;
-		// 			break;
-		// 		}
-		// 	}
-		// 	request_header->reply_offset = reply_slot_2;
-		// 	CPPUNIT_ASSERT_GREATER(-1, reply_slot_1);						
-		// 	mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(another_request_packet);			
-		// 	auto &third_party_link_1 = mac->getThirdPartyLink(id_initiator, id_recipient), &third_party_link_2 = mac->getThirdPartyLink(imaginary_src_id, imaginary_dest_id);
-		// 	// locks should've been made for first link
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_1.locked_resources_for_initiator.size());
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_1.locked_resources_for_recipient.size());
-		// 	// but not for 2nd link
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
-		// 	// remember which slots were locked
-		// 	std::map<const FrequencyChannel*, std::vector<int>> locked_res;
-		// 	size_t num_locks = 0;
-		// 	for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
-		// 		const auto *table = reservation_manager->getReservationTable(channel);
-		// 		for (int t = 0; t < env->planning_horizon; t++) {
-		// 			if (table->isLocked(t)) {
-		// 				locked_res[channel].push_back(t);
-		// 				num_locks++;
-		// 			}
-		// 		}
-		// 	}	
-		// 	CPPUNIT_ASSERT_EQUAL(third_party_link_1.locked_resources_for_initiator.size() + third_party_link_1.locked_resources_for_recipient.size(), num_locks);			
-		// 	// proceed until first reply is expected
-		// 	// but make sure it's not received
-		// 	env_recipient->phy_layer->connected_phys.clear();
-		// 	for (int t = 0; t < reply_slot_1; t++) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();
-		// 	}
-		// 	// locks should've been undone
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_1.locked_resources_for_initiator.size());
-		// 	CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_1.locked_resources_for_recipient.size());
-		// 	// and made for the 2nd link, whose reply is still expected
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
-		// 	// make sure it's the same slots (normalized to current time)			
-		// 	for (const auto &pair : locked_res) {
-		// 		const auto *channel = pair.first;
-		// 		const auto &slots = pair.second;
-		// 		const auto *table = reservation_manager->getReservationTable(channel);
-		// 		for (int t : slots) {
-		// 			int normalized_offset = t - reply_slot_1;
-		// 			const auto &res = table->getReservation(normalized_offset);					
-		// 			CPPUNIT_ASSERT_EQUAL(true, res.isLocked());
-		// 		}				
-		// 	}	
-		// 	size_t num_locks_now = 0;
-		// 	for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
-		// 		const auto *table = reservation_manager->getReservationTable(channel);
-		// 		for (int t = 0; t < env->planning_horizon; t++) {
-		// 			if (table->isLocked(t)) 						
-		// 				num_locks_now++;					
-		// 		}
-		// 	}
-		// 	CPPUNIT_ASSERT_EQUAL(num_locks, num_locks_now);
-		// }				
+		/** Due to the hidden node problem, one user may receive several link requests that want to occupy the same resources. */
+		void testTwoLinkRequestsWithSameResources() {			
+			// wait until advertisement has been received
+			size_t num_slots = 0, max_slots = 100;									
+			while (mac_initiator->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_broadcasts_rcvd.get());			
+
+			// start link establishment
+			pp_initiator->notifyOutgoing(1);			
+			num_slots = 0;
+			while(mac_recipient->stat_num_requests_rcvd.get() < 1 && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());
+			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac->stat_num_third_party_requests_rcvd.get());
+			// now that one request has been received
+			// create another one for another link
+			// but with the same resources
+			L2Packet *request_packet = nullptr;
+			for (auto *packet : env_initator->phy_layer->outgoing_packets) {
+				for (auto *header : packet->getHeaders()) {
+					if (!((L2HeaderSH*) header)->link_requests.empty()) {
+						request_packet = packet;
+						break;
+					}
+				}				
+			}
+			CPPUNIT_ASSERT(request_packet != nullptr);			
+			L2Packet *another_request_packet = request_packet->copy();
+			L2HeaderSH *base_header = (L2HeaderSH*) another_request_packet->getHeaders().at(0);
+			MacId imaginary_src_id = MacId(id.getId() + 1);
+			MacId imaginary_dest_id = MacId(id.getId() + 2);
+			base_header->src_id = imaginary_src_id;
+			L2HeaderSH::LinkRequest &request_header = base_header->link_requests.at(0);
+			request_header.dest_id = imaginary_dest_id;						
+			mac->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onPacketReception(another_request_packet);			
+			auto &third_party_link_1 = mac->getThirdPartyLink(id_initiator, id_recipient), &third_party_link_2 = mac->getThirdPartyLink(imaginary_src_id, imaginary_dest_id);
+			// locks should've been made for first link
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_1.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_1.locked_resources_for_recipient.size());
+			// but not for 2nd link
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
+			// remember which slots were locked
+			std::map<const FrequencyChannel*, std::vector<int>> locked_res;
+			size_t num_locks = 0;
+			for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (int t = 0; t < env->planning_horizon; t++) {
+					if (table->isLocked(t)) {
+						locked_res[channel].push_back(t);
+						num_locks++;
+					}
+				}
+			}	
+			CPPUNIT_ASSERT_EQUAL(third_party_link_1.locked_resources_for_initiator.size() + third_party_link_1.locked_resources_for_recipient.size(), num_locks);			
+			// proceed until first reply is expected
+			// but make sure it's not received
+			env_recipient->phy_layer->connected_phys.clear();
+			int reply_slot_1 = third_party_link_1.num_slots_until_expected_link_reply;
+			for (int t = 0; t < reply_slot_1; t++) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();
+			}
+			// locks should've been undone
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_1.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_EQUAL(size_t(0), third_party_link_1.locked_resources_for_recipient.size());
+			// and made for the 2nd link, whose reply is still expected
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_initiator.size());
+			CPPUNIT_ASSERT_GREATER(size_t(0), third_party_link_2.locked_resources_for_recipient.size());
+			// make sure it's the same slots (normalized to current time)			
+			for (const auto &pair : locked_res) {
+				const auto *channel = pair.first;
+				const auto &slots = pair.second;
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (int t : slots) {
+					int normalized_offset = t - reply_slot_1;															
+					CPPUNIT_ASSERT(table->getReservation(normalized_offset).getTarget() == imaginary_src_id || table->getReservation(normalized_offset).getTarget() == imaginary_dest_id);					
+				}				
+			}	
+			size_t num_locks_now = 0;
+			for (const auto *channel : reservation_manager->getP2PFreqChannels()) {
+				const auto *table = reservation_manager->getReservationTable(channel);
+				for (int t = 0; t < env->planning_horizon; t++) {
+					if (table->isLocked(t)) 						
+						num_locks_now++;					
+				}
+			}
+			CPPUNIT_ASSERT_EQUAL(num_locks, num_locks_now);
+		}				
 
 		// /** Tests that all locks in the current or later time slots are unlocked through the reset() function. */
 		// void testImmediateResetUnlocks() {
@@ -1454,8 +1459,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
 			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
 			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
-			CPPUNIT_TEST(testLinkReestablishment);
-			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
+			// CPPUNIT_TEST(testLinkReestablishment);
+			CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
 			// CPPUNIT_TEST(testImmediateResetUnlocks);
 			// CPPUNIT_TEST(testResetJustBeforeReplyUnlocks);			
 			// CPPUNIT_TEST(testImmediateResetUnschedules);

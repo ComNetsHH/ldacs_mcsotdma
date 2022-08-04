@@ -138,7 +138,7 @@ void ThirdPartyLink::lockIfPossible(ReservationMap& locks_initiator, Reservation
 		throw std::runtime_error(ss.str());
 	}	
 	// get time slots
-	auto slots = SlotCalculator::calculateAlternatingBursts(proposed_link.slot_offset, proposed_link.num_tx_initiator, proposed_link.num_tx_recipient, proposed_link.period, timeout);
+	auto slots = SlotCalculator::calculateAlternatingBursts(proposed_link.slot_offset - normalization_offset, proposed_link.num_tx_initiator, proposed_link.num_tx_recipient, proposed_link.period, timeout);
 	ReservationTable *table = mac->getReservationManager()->getReservationTable(channel);		
 	const auto &tx_slots = slots.first;
 	const auto &rx_slots = slots.second;
