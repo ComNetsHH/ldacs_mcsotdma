@@ -71,7 +71,7 @@ void PPLinkManager::onSlotEnd() {
 	if (link_status == awaiting_reply) {
 		this->expected_link_request_confirmation_slot--;
 		if (this->expected_link_request_confirmation_slot < 0) {
-			coutd << "expected link reply not received -> re-establishing -> ";
+			coutd << *mac << "::" << *this << " expected link reply not received -> re-establishing -> ";
 			mac->statisticReportPPLinkMissedLastReplyOpportunity();
 			cancelLink();
 			establishLink();

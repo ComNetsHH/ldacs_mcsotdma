@@ -11,6 +11,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 	class PPLinkManager : public LinkManager {
 
 		friend class PPLinkManagerTests;
+		friend class ThirdPartyLinkTests;
 
 	public:
 		PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac);

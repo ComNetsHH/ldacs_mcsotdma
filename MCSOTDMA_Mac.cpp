@@ -66,8 +66,8 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 			item.second->onSlotStart(num_slots);
 	}
 	// Notify the third-party links.
-	// for (auto &item : third_party_links) 
-	// 	item.second.onSlotStart(num_slots);
+	for (auto &item : third_party_links) 
+		item.second.onSlotStart(num_slots);
 	
 	// Notify the PHY about the channels to which receivers are tuned to in this time slot.
 	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
@@ -364,14 +364,14 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	}
 
 	// update third-party links
-	// try {
-	// 	for (auto &item : third_party_links)
-	// 		item.second.onSlotEnd();
-	// } catch (const std::exception &e) {
-	// 	std::stringstream ss;
-	// 	ss << *this << "::onSlotEnd error updating third party links: " << e.what() << std::endl;		
-	// 	throw std::runtime_error(ss.str());
-	// }
+	try {
+		for (auto &item : third_party_links)
+			item.second.onSlotEnd();
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *this << "::onSlotEnd error updating third party links: " << e.what() << std::endl;		
+		throw std::runtime_error(ss.str());
+	}
 
 	// update active neighbors list
 	active_neighbor_observer.onSlotEnd();

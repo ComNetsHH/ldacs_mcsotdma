@@ -50,7 +50,7 @@ void ThirdPartyLink::onSlotStart(size_t num_slots) {
 }
 
 void ThirdPartyLink::onSlotEnd() {
-	// was a link reply expected this slot?
+	// was a link reply expected this slot?	
 	if (num_slots_until_expected_link_reply == 0) {
 		coutd << *mac << "::" << *this << " expected link reply hasn't arrived -> resetting -> ";
 		reset();		
@@ -114,8 +114,7 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderSH::LinkRequest& he
 	sh_manager->reportThirdPartyExpectedLinkReply(this->num_slots_until_expected_link_reply, id_link_recipient);
 	// parse proposed resources
 
-	const LinkProposal &link_proposal = header.proposed_link;	
-	std::cout << "proposed_link=" << link_proposal.center_frequency << std::endl;
+	const LinkProposal &link_proposal = header.proposed_link;		
 	int timeout = mac->getDefaultPPLinkTimeout();
 	this->link_description = LinkDescription(link_proposal, timeout);
 	this->link_description.id_link_initiator = id_link_initiator;
