@@ -354,7 +354,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			env_recipient->rlc_layer->should_there_be_more_p2p_data = false;			
 			pp_initiator->notifyOutgoing(1);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::awaiting_request_generation, pp_initiator->link_status);
-			size_t num_slots = 0, max_slots = 1000;
+			size_t num_slots = 0, max_slots = 5000;
 			// proceed until link has been established at both sides
 			while (!(pp_initiator->link_status == LinkManager::link_established && pp_recipient->link_status == LinkManager::link_established) && num_slots++ < max_slots) {
 				mac_initiator->update(1);
@@ -404,9 +404,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 						}
 						if (res_thirdparty.isBusy())
 							num_busy_at_thirdparty++;
-					}
-					CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_initiator);
-					CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_recipient);
+					}										
 					CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);
 				}
 			}
@@ -1454,8 +1452,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testMissingReplyUnlocks);
 			// CPPUNIT_TEST(testExpectedReply);			
 			// CPPUNIT_TEST(testUnscheduleAfterTimeHasPassed);			
-			CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
-			// CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
+			// CPPUNIT_TEST(testNoLocksAfterLinkExpiry);
+			CPPUNIT_TEST(testResourceAgreementsMatchOverDurationOfOneLink);
 			// CPPUNIT_TEST(testLinkReestablishment);
 			// CPPUNIT_TEST(testTwoLinkRequestsWithSameResources);			
 			// CPPUNIT_TEST(testImmediateResetUnlocks);

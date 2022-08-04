@@ -242,7 +242,7 @@ void ThirdPartyLink::processLinkReplyMessage(const L2HeaderSH::LinkReply& header
 	// reset counters
 	num_slots_until_expected_link_reply = UNSET;	
 	// set new counter
-	link_expiry_offset = first_burst_slot_offset + (timeout-1)*5*std::pow(2, header.proposed_link.period);	
+	link_expiry_offset = first_burst_slot_offset + timeout*10*std::pow(2, header.proposed_link.period) - 5*std::pow(2, header.proposed_link.period);	
 }
 
 void ThirdPartyLink::onAnotherThirdLinkReset() {		
