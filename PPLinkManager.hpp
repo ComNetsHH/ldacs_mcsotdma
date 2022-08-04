@@ -54,7 +54,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Remaining number of exchanges until link termination. */
 		int timeout;
 		/** Holds the slot duration that has been negotiated upon. */
-		SlotDuration slot_duration;
+		SlotDuration slot_duration = SlotDuration::twentyfour_ms;
 		/** Currently-used frequency channel. */
 		const FrequencyChannel *channel;
 		/** Stores locked and reserved communication resources. */
