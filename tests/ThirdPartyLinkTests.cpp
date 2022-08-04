@@ -1019,53 +1019,53 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(pp_initiator->channel->getCenterFrequency(), (uint64_t) third_party_link.link_description.link_proposal.center_frequency);			
 		}
 
-		// /** Tests that upon reply reception, the link's resource reservations are made. */
-		// void testReplySchedulesBursts() {
-		// 	// initiate link establishment
-		// 	mac_initiator->notifyOutgoing(1, id_recipient);			
-		// 	auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
-		// 	size_t num_slots = 0, max_slots = 30;
-		// 	while (third_party_link.status != ThirdPartyLink::received_reply_link_established && num_slots++ < max_slots) {
-		// 		mac_initiator->update(1);
-		// 		mac_recipient->update(1);
-		// 		mac->update(1);
-		// 		mac_initiator->execute();
-		// 		mac_recipient->execute();
-		// 		mac->execute();
-		// 		mac_initiator->onSlotEnd();
-		// 		mac_recipient->onSlotEnd();
-		// 		mac->onSlotEnd();	
-		// 	}
-		// 	CPPUNIT_ASSERT_LESS(max_slots, num_slots);
-		// 	CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);
-		// 	// check that the correct reservations have been made			
-		// 	const auto *tbl_initiator = pp_initiator->current_reservation_table;
-		// 	const auto *tbl_recipient = pp_recipient->current_reservation_table;			
-		// 	CPPUNIT_ASSERT(tbl_initiator != nullptr && tbl_recipient != nullptr);
-		// 	const auto *tbl_thirdparty = reservation_manager->getReservationTable(tbl_initiator->getLinkedChannel());				
-		// 	CPPUNIT_ASSERT(tbl_thirdparty != nullptr);
-		// 	size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0;
-		// 	for (int t = 0; t < env->planning_horizon; t++) {
-		// 		const Reservation &res_initiator = tbl_initiator->getReservation(t),
-		// 						&res_recipient = tbl_recipient->getReservation(t),
-		// 						&res_thirdparty = tbl_thirdparty->getReservation(t);				
-		// 		if (res_initiator.isTx()) {					
-		// 			num_tx_at_initiator++;
-		// 			CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
-		// 			CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
-		// 		}
-		// 		if (res_recipient.isTx()) {
-		// 			num_tx_at_recipient++;
-		// 			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
-		// 			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
-		// 		}
-		// 		if (res_thirdparty.isBusy())
-		// 			num_busy_at_thirdparty++;
-		// 	}
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_initiator);
-		// 	CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_recipient);
-		// 	CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);			
-		// }
+		/** Tests that upon reply reception, the link's resource reservations are made. */
+		void testReplySchedulesBursts() {
+			// initiate link establishment
+			mac_initiator->notifyOutgoing(1, id_recipient);			
+			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
+			size_t num_slots = 0, max_slots = 500;
+			while (third_party_link.status != ThirdPartyLink::received_reply_link_established && num_slots++ < max_slots) {
+				mac_initiator->update(1);
+				mac_recipient->update(1);
+				mac->update(1);
+				mac_initiator->execute();
+				mac_recipient->execute();
+				mac->execute();
+				mac_initiator->onSlotEnd();
+				mac_recipient->onSlotEnd();
+				mac->onSlotEnd();	
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_EQUAL(ThirdPartyLink::received_reply_link_established, third_party_link.status);
+			// check that the correct reservations have been made			
+			const auto *tbl_initiator = pp_initiator->current_reservation_table;
+			const auto *tbl_recipient = pp_recipient->current_reservation_table;			
+			CPPUNIT_ASSERT(tbl_initiator != nullptr && tbl_recipient != nullptr);
+			const auto *tbl_thirdparty = reservation_manager->getReservationTable(tbl_initiator->getLinkedChannel());				
+			CPPUNIT_ASSERT(tbl_thirdparty != nullptr);
+			size_t num_tx_at_initiator = 0, num_tx_at_recipient = 0, num_busy_at_thirdparty = 0;
+			for (int t = 0; t < env->planning_horizon; t++) {
+				const Reservation &res_initiator = tbl_initiator->getReservation(t),
+								&res_recipient = tbl_recipient->getReservation(t),
+								&res_thirdparty = tbl_thirdparty->getReservation(t);				
+				if (res_initiator.isTx()) {					
+					num_tx_at_initiator++;
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::RX), res_recipient);
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_initiator, Reservation::BUSY), res_thirdparty);					
+				}
+				if (res_recipient.isTx()) {
+					num_tx_at_recipient++;
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), res_initiator);
+					CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::BUSY), res_thirdparty);					
+				}
+				if (res_thirdparty.isBusy())
+					num_busy_at_thirdparty++;
+			}
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_initiator);
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_tx_at_recipient);
+			CPPUNIT_ASSERT_EQUAL(num_tx_at_initiator + num_tx_at_recipient, num_busy_at_thirdparty);			
+		}
 
 		// /** Tests that upon reply reception, the link's resource reservations are made, not touching non-idle resources. */
 		// void testReplySchedulesBurstsButDoesNotOverwrite() {
@@ -1313,8 +1313,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// CPPUNIT_TEST(testRequestSchedulesExpectedReply);	
 			// CPPUNIT_TEST(testReplyUnlocks);
 			// CPPUNIT_TEST(testUnexpectedReply);
-			CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
-			// CPPUNIT_TEST(testReplySchedulesBursts);
+			// CPPUNIT_TEST(testRequestAndReplySaveLinkInfo);
+			CPPUNIT_TEST(testReplySchedulesBursts);
 			// CPPUNIT_TEST(testReplySchedulesBurstsButDoesNotOverwrite);
 			// CPPUNIT_TEST(testAnotherLinkResetLocksFutureResources);
 			// CPPUNIT_TEST(testAnotherLinkResetSchedulesFutureResources);
