@@ -85,41 +85,41 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_established.get());
 		}
 
-// 		/**
-// 		 * Tests that three users can communicate like so: A->B B->C.
-// 		 * They initiate communication at exactly the same time. Tests that links are re-established after expiry.
-// 		 */
-// 		void threeUsersLinkReestablishmentSameStart() {
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
-// 			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
-// 			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
-// 			((SHLinkManager*) env1->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
-// 			((SHLinkManager*) env2->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
-// 			auto* p2p_1_tx = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_1_rx = (PPLinkManager*) mac_2->getLinkManager(id1),
-// 				  *p2p_2_tx = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_2_rx = (PPLinkManager*) mac_3->getLinkManager(id2);
+		/**
+		 * Tests that three users can communicate like so: A->B B->C.
+		 * They initiate communication at exactly the same time. Tests that links are re-established after expiry.
+		 */
+		void threeUsersLinkReestablishmentSameStart() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			env1->rlc_layer->should_there_be_more_p2p_data_map[id2] = true;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id1] = false;
+			env2->rlc_layer->should_there_be_more_p2p_data_map[id3] = true;
+			env3->rlc_layer->should_there_be_more_p2p_data_map[id2] = false;
+			((SHLinkManager*) env1->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
+			((SHLinkManager*) env2->mac_layer->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->MIN_CANDIDATES = 3;
+			auto* p2p_1_tx = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_1_rx = (PPLinkManager*) mac_2->getLinkManager(id1),
+				  *p2p_2_tx = (PPLinkManager*) mac_2->getLinkManager(id3), *p2p_2_rx = (PPLinkManager*) mac_3->getLinkManager(id2);
 
-// 			// Trigger establishment.
-// 			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
-// 			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
+			// Trigger establishment.
+			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
+			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
 
-// 			size_t num_slots = 0, max_num_slots = 15000, num_renewals = 1;
-// 			while (((size_t) mac_1->stat_num_pp_links_established.get() < num_renewals || (size_t) mac_2->stat_num_pp_links_established.get() < num_renewals) && num_slots++ < max_num_slots) {
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}
-// 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-// 			CPPUNIT_ASSERT_GREATEREQUAL(num_renewals, (size_t) mac_1->stat_num_pp_links_established.get());
-// 			CPPUNIT_ASSERT_GREATEREQUAL(num_renewals, (size_t) mac_2->stat_num_pp_links_established.get());						
-// 		}
+			size_t num_slots = 0, max_num_slots = 15000, num_renewals = 1;
+			while (((size_t) mac_1->stat_num_pp_links_established.get() < num_renewals || (size_t) mac_2->stat_num_pp_links_established.get() < num_renewals) && num_slots++ < max_num_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(num_renewals, (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(num_renewals, (size_t) mac_2->stat_num_pp_links_established.get());						
+		}
 
 // 		/**
 // 		 * Tests that three users can communicate like so: A->B B->C.
@@ -267,44 +267,43 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_broadcasts_sent_3, num_packets_sent_3);
 		}		
 
-// 		void testCollisions() {			
-// 			env1->rlc_layer->should_there_be_more_broadcast_data = false;
-// 			env2->rlc_layer->should_there_be_more_broadcast_data = false;
-// 			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
-// 			env1->rlc_layer->always_return_broadcast_payload = true;
-// 			env2->rlc_layer->always_return_broadcast_payload = true;
-// 			env3->rlc_layer->always_return_broadcast_payload = true;						
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
-// 			for (auto *mac : macs) {
-// 				mac->setContentionMethod(ContentionMethod::naive_random_access);
-// 				mac->setAlwaysScheduleNextBroadcastSlot(false);
-// 				mac->setBcSlotSelectionMinNumCandidateSlots(3);
-// 				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
-// 			}		
-// 			size_t max_slots = 3000;
-// 			for (size_t t = 0; t < max_slots; t++) {
-// 				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 			}						
-// 			size_t num_packets_sent_to_1 = (size_t) mac_2->stat_num_packets_sent.get() + (size_t) mac_3->stat_num_packets_sent.get();
-// 			size_t num_packets_rcvd = (size_t) mac_1->stat_num_packets_rcvd.get();
-// 			size_t num_packets_missed = (size_t) env1->phy_layer->stat_num_packets_missed.get();
-// 			size_t num_packet_collisions = (size_t) mac_1->stat_num_packet_collisions.get();
-// 			CPPUNIT_ASSERT_GREATER(size_t(0), num_packet_collisions);
-// 			CPPUNIT_ASSERT_GREATER(size_t(0), num_packets_missed);			
-// 			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + (num_packet_collisions*2), num_packets_sent_to_1);
-// 		}
+		void testCollisions() {			
+			env1->rlc_layer->should_there_be_more_broadcast_data = false;
+			env2->rlc_layer->should_there_be_more_broadcast_data = false;
+			env3->rlc_layer->should_there_be_more_broadcast_data = false;			
+			env1->rlc_layer->always_return_broadcast_payload = true;
+			env2->rlc_layer->always_return_broadcast_payload = true;
+			env3->rlc_layer->always_return_broadcast_payload = true;						
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			std::vector<MACLayer*> macs = {mac_1, mac_2, mac_3};
+			for (auto *mac : macs) {
+				mac->setContentionMethod(ContentionMethod::naive_random_access);				
+				mac->setBcSlotSelectionMinNumCandidateSlots(3);
+				mac->setBcSlotSelectionMaxNumCandidateSlots(3);
+			}		
+			size_t max_slots = 3000;
+			for (size_t t = 0; t < max_slots; t++) {
+				mac_1->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_2->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_3->notifyOutgoing(512, SYMBOLIC_LINK_ID_BROADCAST);
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}						
+			size_t num_packets_sent_to_1 = (size_t) mac_2->stat_num_packets_sent.get() + (size_t) mac_3->stat_num_packets_sent.get();
+			size_t num_packets_rcvd = (size_t) mac_1->stat_num_packets_rcvd.get();
+			size_t num_packets_missed = (size_t) env1->phy_layer->stat_num_packets_missed.get();
+			size_t num_packet_collisions = (size_t) mac_1->stat_num_packet_collisions.get();
+			CPPUNIT_ASSERT_GREATER(size_t(0), num_packet_collisions);
+			// CPPUNIT_ASSERT_GREATER(size_t(0), num_packets_missed);			
+			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + (num_packet_collisions*2), num_packets_sent_to_1);
+		}
 
 // 		void testLinkEstablishmentThreeUsers() {
 // 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
@@ -416,10 +415,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);			
-			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
-			CPPUNIT_TEST(testStatPacketsSent);			
-			// CPPUNIT_TEST(testCollisions);
-			// CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
+			// CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
+			// CPPUNIT_TEST(testStatPacketsSent);			
+		//TODO	// CPPUNIT_TEST(testCollisions);
+			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 			// CPPUNIT_TEST(threeUsersNonOverlappingTest);
 			// CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
 			// CPPUNIT_TEST(testHiddenNodeScenario);			
