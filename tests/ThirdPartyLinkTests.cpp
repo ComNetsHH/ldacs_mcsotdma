@@ -163,7 +163,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		/** The reception of an expected reply should undo all previously-made locks and schedule all resources along the link. */
 		void testExpectedReply() {
-			size_t num_slots = 0, max_slots = 100;									
+			size_t num_slots = 0, max_slots = 1000;									
 			while (mac_initiator->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
 				mac_initiator->update(1);
 				mac_recipient->update(1);

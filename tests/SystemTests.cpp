@@ -162,7 +162,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 //			coutd.setVerbose(true);
 			mac_layer_me->notifyOutgoing(512, partner_id);
 			mac_layer_you->notifyOutgoing(512, own_id);
-			size_t num_slots = 0, max_num_slots = 5000;
+			size_t num_slots = 0, max_num_slots = 15000;
 			while ((pp_me->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_num_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
