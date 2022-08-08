@@ -913,7 +913,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			}
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 			CPPUNIT_ASSERT_EQUAL(LinkManager::Status::awaiting_reply, pp_initiator->link_status);
-			CPPUNIT_ASSERT_EQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_initiator->stat_num_requests_sent.get());
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_recipient->stat_num_requests_rcvd.get());
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(0), (size_t) mac->stat_num_third_party_requests_rcvd.get());
 			auto &third_party_link = mac->getThirdPartyLink(id_initiator, id_recipient);
