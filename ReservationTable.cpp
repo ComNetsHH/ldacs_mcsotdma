@@ -198,11 +198,11 @@ bool ReservationTable::isBurstValid(int start_slot, unsigned int burst_length, u
 		return false;
 }
 
-bool ReservationTable::isTxValid(int slot) const {
+bool ReservationTable::isTxValid(int slot) const {	
 	return isIdle(slot) && transmitter_reservation_table->isIdle(slot);
 }
 
-bool ReservationTable::isRxValid(int slot) const {
+bool ReservationTable::isRxValid(int slot) const {	
 	return isIdle(slot) && std::any_of(receiver_reservation_tables.begin(), receiver_reservation_tables.end(), [slot](ReservationTable* table) {return table->isIdle(slot);});
 }
 
@@ -485,9 +485,9 @@ void ReservationTable::linkReceiverReservationTable(ReservationTable* rx_table) 
 
 ReservationTable::~ReservationTable() = default;
 
-bool ReservationTable::isLinkValid(int start_slot_offset, int period, int num_tx_initiator, int num_tx_recipient, int timeout) const {
+bool ReservationTable::isLinkValid(int start_slot_offset, int period, int num_tx_initiator, int num_tx_recipient, int timeout, bool is_link_initiator) const {
 	auto tx_rx_slots = SlotCalculator::calculateAlternatingBursts(start_slot_offset, num_tx_initiator, num_tx_recipient, period, timeout);
-	const auto &tx_slots = tx_rx_slots.first;
-	const auto &rx_slots = tx_rx_slots.second;	
+	const auto &tx_slots = is_link_initiator ? tx_rx_slots.first : tx_rx_slots.second;
+	const auto &rx_slots = is_link_initiator ? tx_rx_slots.second : tx_rx_slots.first;	
 	return std::all_of(tx_slots.begin(), tx_slots.end(), [this](int slot){return this->isTxValid(slot);}) && std::all_of(rx_slots.begin(), rx_slots.end(), [this](int slot){return this->isRxValid(slot);});
 }

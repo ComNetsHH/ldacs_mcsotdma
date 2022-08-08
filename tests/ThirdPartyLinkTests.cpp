@@ -861,7 +861,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto request_header = (L2HeaderSH*) request_packet->getHeaders().at(0);
 			int reply_offset = request_header->slot_offset;
 			CPPUNIT_ASSERT_GREATER(0, reply_offset);
-			CPPUNIT_ASSERT_EQUAL(Reservation(id_recipient, Reservation::RX), sh->current_reservation_table->getReservation(reply_offset));
+			CPPUNIT_ASSERT(sh->current_reservation_table->getReservation(reply_offset) == Reservation(id_recipient, Reservation::RX) || sh->current_reservation_table->getReservation(reply_offset) == Reservation(id_initiator, Reservation::RX));			
 		}
 		
 		/** Tests that upon reply reception, all locks made after request reception are unlocked. */
@@ -900,7 +900,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			// initiate link establishment
 			mac_initiator->notifyOutgoing(1, id_recipient);			
 			size_t num_slots = 0, max_slots = 500;
-			while (pp_initiator->link_status != LinkManager::Status::awaiting_reply && num_slots++ < max_slots) {
+			while ((pp_initiator->link_status != LinkManager::Status::awaiting_reply || mac_recipient->stat_num_requests_rcvd.get() < 1.0) && num_slots++ < max_slots) {
 				mac_initiator->update(1);
 				mac_recipient->update(1);
 				mac->update(1);

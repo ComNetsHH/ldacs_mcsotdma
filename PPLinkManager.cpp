@@ -78,9 +78,16 @@ void PPLinkManager::onSlotEnd() {
 		}
 	}	
 	if (link_status == link_established) {
-		bool timeout_expiry = decrementTimeout();
-		if (timeout_expiry)
-			onTimeoutExpiry();
+		try {
+			bool timeout_expiry = decrementTimeout();
+			if (timeout_expiry)
+				onTimeoutExpiry();
+		} catch (const std::exception &e) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << " error during onSlotEnd: " << e.what() << "."; 
+			ss << "link_status=" << link_status << " timeout=" << timeout;
+			throw std::runtime_error(ss.str());
+		}
 	}
 }
 
@@ -113,6 +120,7 @@ void PPLinkManager::onTimeoutExpiry() {
 
 void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) {
 	coutd << *this << "::processing unicast -> ";
+	mac->reportNeighborActivity(header->src_id);
 }
 
 double PPLinkManager::getNumTxPerTimeSlot() const {

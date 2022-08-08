@@ -828,7 +828,7 @@ public:
 		CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);
 		CPPUNIT_TEST(testPPLinkEstablishmentTime);		
 		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);
-		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);		
+		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);				
 		
 	CPPUNIT_TEST_SUITE_END();
 };

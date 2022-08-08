@@ -104,7 +104,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			p2p_1_tx->notifyOutgoing(num_outgoing_bits);
 			p2p_2_tx->notifyOutgoing(num_outgoing_bits);
 
-			size_t num_slots = 0, max_num_slots = 15000, num_renewals = 1;
+			size_t num_slots = 0, max_num_slots = 50000, num_renewals = 1;
 			while (((size_t) mac_1->stat_num_pp_links_established.get() < num_renewals || (size_t) mac_2->stat_num_pp_links_established.get() < num_renewals) && num_slots++ < max_num_slots) {
 				mac_1->update(1);
 				mac_2->update(1);
@@ -302,35 +302,76 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(num_packets_rcvd + num_packets_missed + (num_packet_collisions*2), num_packets_sent_to_1);
 		}
 
-// 		void testLinkEstablishmentThreeUsers() {
-// 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
-// 			mac_1->reportNeighborActivity(id2);
-// 			mac_1->reportNeighborActivity(id3);
-// 			mac_2->reportNeighborActivity(id1);
-// 			mac_2->reportNeighborActivity(id3);
-// 			mac_3->reportNeighborActivity(id1);
-// 			mac_3->reportNeighborActivity(id2);
-// 			auto *p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id1), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
-// 			p2p_1->notifyOutgoing(num_outgoing_bits);
-// 			p2p_3->notifyOutgoing(num_outgoing_bits);
-// 			size_t num_slots = 0, max_num_slots = 200;
-// 			while ((mac_1->stat_num_pp_links_established.get() < 1 || mac_2->stat_num_pp_links_established.get() < 1 || mac_3->stat_num_pp_links_established.get() < 1) && num_slots++ < max_num_slots) {			
-// 				mac_1->update(1);
-// 				mac_2->update(1);
-// 				mac_3->update(1);
-// 				mac_1->execute();
-// 				mac_2->execute();
-// 				mac_3->execute();
-// 				mac_1->onSlotEnd();
-// 				mac_2->onSlotEnd();
-// 				mac_3->onSlotEnd();
-// 				p2p_1->notifyOutgoing(num_outgoing_bits);
-// 			}
-// 			CPPUNIT_ASSERT(num_slots < max_num_slots);
-// 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_established.get());
-// 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_established.get());
-// 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_established.get());				
-// 		}
+		void testTwoRequestsForSameAdvertisedResource() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;						
+			size_t num_slots = 0, max_slots = 1000;			
+			while ((mac_1->getNeighborObserver().getNumActiveNeighbors() < 2 || mac_2->getNeighborObserver().getNumActiveNeighbors() < 2 || mac_3->getNeighborObserver().getNumActiveNeighbors() < 2) && num_slots++ < max_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_broadcasts_sent.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_broadcasts_rcvd.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_broadcasts_rcvd.get());
+			// have MAC2 and MAC3 establish links
+			((SHLinkManager*) mac_1->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setShouldTransmit(false);
+			((SHLinkManager*) mac_1->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->unscheduleBroadcastSlot();
+			((SHLinkManager*) mac_2->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setShouldTransmit(true);
+			((SHLinkManager*) mac_3->getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setShouldTransmit(true);
+			mac_2->notifyOutgoing(1, id1);
+			mac_3->notifyOutgoing(1, id1);
+			num_slots = 0;
+			while (mac_1->stat_num_requests_rcvd.get() < 6 && num_slots++ < max_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(6), (size_t) mac_1->stat_num_requests_rcvd.get());			
+		}
+
+		void testLinkEstablishmentThreeUsers() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			mac_1->reportNeighborActivity(id2);
+			mac_1->reportNeighborActivity(id3);
+			mac_2->reportNeighborActivity(id1);
+			mac_2->reportNeighborActivity(id3);
+			mac_3->reportNeighborActivity(id1);
+			mac_3->reportNeighborActivity(id2);
+			auto *p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id1), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
+			p2p_1->notifyOutgoing(num_outgoing_bits);
+			p2p_3->notifyOutgoing(num_outgoing_bits);
+			size_t num_slots = 0, max_num_slots = 200;
+			while ((mac_1->stat_num_pp_links_established.get() < 1 || mac_2->stat_num_pp_links_established.get() < 1 || mac_3->stat_num_pp_links_established.get() < 1) && num_slots++ < max_num_slots) {			
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+				p2p_1->notifyOutgoing(num_outgoing_bits);
+			}
+			CPPUNIT_ASSERT(num_slots < max_num_slots);
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_established.get());
+			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_3->stat_num_pp_links_established.get());				
+		}
 
 // 		/** #134: during simulations, it was observed that when we have A-B-C, where A doesn't see C, then the link A-B is initiated in adequate time, but B-C is not. */
 // 		void testHiddenNodeScenario() {
@@ -412,11 +453,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(ThreeUsersTests);			
-			// CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
-			// CPPUNIT_TEST(testStatPacketsSent);			
-		//TODO	// CPPUNIT_TEST(testCollisions);
-			// CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
+			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
+			CPPUNIT_TEST(testStatPacketsSent);			
+		// TODO	// CPPUNIT_TEST(testCollisions);
+			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 			CPPUNIT_TEST(threeUsersNonOverlappingTest);
+			CPPUNIT_TEST(testTwoRequestsForSameAdvertisedResource);
 			// CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
 			// CPPUNIT_TEST(testHiddenNodeScenario);			
 			// CPPUNIT_TEST(testTwoLinksToOneUser);			

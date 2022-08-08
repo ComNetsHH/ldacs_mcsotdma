@@ -235,7 +235,8 @@ LinkProposal SHLinkManager::proposeRemoteLinks(const MacId& dest_id, int num_for
 	std::vector<LinkProposal> valid_links;
 	for (const auto possible_link : advertisements) {
 		const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(possible_link.center_frequency));
-		bool is_valid = table->isLinkValid(possible_link.slot_offset, possible_link.period, num_forward_bursts, num_reverse_bursts, mac->getDefaultPPLinkTimeout());
+		bool is_link_initiator = true;
+		bool is_valid = table->isLinkValid(possible_link.slot_offset, possible_link.period, num_forward_bursts, num_reverse_bursts, mac->getDefaultPPLinkTimeout(), is_link_initiator);
 		coutd << "link at t=" << possible_link.slot_offset << "@" << possible_link.center_frequency << "kHz is " << (is_valid ? "valid" : "invalid") << " -> ";
 		if (is_valid)
 			valid_links.push_back(possible_link);
@@ -485,6 +486,7 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 
 void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {	
 	mac->statisticReportBroadcastMessageProcessed();
+	mac->reportNeighborActivity(origin);
 
 	// check advertised next transmission slot	
 	if (header->slot_offset > 0) { // If it has been set ...
@@ -536,7 +538,8 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 			}			
 			// check if any proposed link works locally
 			const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));			
-			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout());
+			bool is_link_initiator = false;
+			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout(), is_link_initiator);
 			if (is_acceptable) {
 				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is acceptable -> ";
 				acceptable_links.push_back({proposal, link_request.generation_time});
