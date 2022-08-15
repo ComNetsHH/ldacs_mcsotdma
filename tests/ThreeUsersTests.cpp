@@ -77,7 +77,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_3->execute();
 				mac_1->onSlotEnd();
 				mac_2->onSlotEnd();
-				mac_3->onSlotEnd();--
+				mac_3->onSlotEnd();
 			}
 			CPPUNIT_ASSERT(num_slots < max_num_slots);
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_1->stat_num_pp_links_established.get());
