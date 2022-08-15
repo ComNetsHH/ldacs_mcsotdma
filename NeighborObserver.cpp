@@ -35,15 +35,28 @@ void NeighborObserver::onSlotEnd() {
 			if (broadcast_slot_it->second > 0) 
 				(*broadcast_slot_it).second--;				
 			else { // or erase if it goes beyond zero
-				advertised_broadcast_slots.erase(broadcast_slot_it);			
-				erased_broadcast_element = true;
+				try {
+					advertised_broadcast_slots.erase(broadcast_slot_it);			
+					erased_broadcast_element = true;
+				} catch (const std::exception &e) {
+					throw std::runtime_error("NeighborObserver error during erase (1st): " + std::string(e.what()));
+				}								
 			}
 		}
 		// and remove it if it hasn't been reported for too long
 		if (it->second >= this->max_last_seen_val) {
-			it = active_neighbors.erase(it);
-			if (!erased_broadcast_element)
-				advertised_broadcast_slots.erase(broadcast_slot_it);
+			try {				
+				it = active_neighbors.erase(it);				
+			} catch (const std::exception &e) {
+					throw std::runtime_error("NeighborObserver error during erase (2nd): " + std::string(e.what()));
+				}
+			if (!erased_broadcast_element && broadcast_slot_it != advertised_broadcast_slots.end()) {				
+				try {
+					advertised_broadcast_slots.erase(broadcast_slot_it);
+				} catch (const std::exception &e) {
+					throw std::runtime_error("NeighborObserver error during erase (3rd): " + std::string(e.what()));
+				}				
+			}
 		} else
 			++it;
 	}	
