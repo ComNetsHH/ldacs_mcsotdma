@@ -21,7 +21,7 @@ double DutyCycle::get() const {
 }
 
 void DutyCycle::setMinNumSupportedPPLinks(unsigned int n) {
-	this->min_num_supported_pp_links = n;
+	this->min_num_supported_pp_links = std::max(uint(1), n);
 }
 
 std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const {	
