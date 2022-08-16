@@ -74,7 +74,7 @@ L2Packet* SHLinkManager::onTransmissionReservation() {
 				min_offset = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
 				mac->statisticReportSentSavedProposals();
 			// fall-back to locally-usable links of the advertised ones don't fit
-			} catch (const std::runtime_error &e) {
+			} catch (const std::exception &e) {
 				mac->statisticReportSentOwnProposals();
 				coutd << "finding locally-usable links instead -> ";				
 				auto pair = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals_unadvertised_link_requests);			
@@ -414,6 +414,24 @@ void SHLinkManager::scheduleBroadcastSlot() {
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
 	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
 	int min_offset = mac->shouldConsiderDutyCycle() ? mac->getDutyCycle().getOffsetSH(used_pp_duty_cycle_budget) : 1;	
+	if (uint32_t(min_offset) > reservation_manager->getPlanningHorizon() || min_offset < 0) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << " computed min_offset=" << min_offset << " at planning_horizon=" << reservation_manager->getPlanningHorizon();
+		if (mac->shouldConsiderDutyCycle()) {
+			ss << " considering duty cycle with PP contributions of [";
+			for (auto d : used_pp_duty_cycle_budget)
+				ss << d << ", ";
+			ss << "] with link stati: ";
+			for (const auto &item : mac->getLinkManagers()) {
+				if (item.first != SYMBOLIC_LINK_ID_BROADCAST && item.first != SYMBOLIC_LINK_ID_BEACON) {
+					const PPLinkManager *pp = (const PPLinkManager*) item.second;
+					ss << *pp << " " << pp->getLinkStatus() << std::endl;
+				}
+			}
+		} else
+			ss << " not considering duty cycle";
+		throw std::runtime_error(ss.str());
+	}
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
@@ -539,7 +557,7 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 			// check if any proposed link works locally
 			const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));			
 			bool is_link_initiator = false;
-			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout(), is_link_initiator);
+			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout(), is_link_initiator) && isPPLinkDutyCycleConformant(proposal);
 			if (is_acceptable) {
 				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is acceptable -> ";
 				acceptable_links.push_back({proposal, link_request.generation_time});
@@ -598,8 +616,12 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 		if (header->link_reply.dest_id == mac->getMacId()) {
 			coutd << "processing link reply -> ";
 			const LinkProposal &link = header->link_reply.proposed_link;
-			auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
-			pp->acceptLink(link, false, 0);
+			if (isPPLinkDutyCycleConformant(link)) {
+				auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);			
+				pp->acceptLink(link, false, 0);
+			} else {
+				coutd << "rejecting because duty cycle would be violated -> ";
+			}
 			mac->statisticReportLinkReplyReceived();
 		} else {			
 			coutd << "passing link reply on to 3rd-party-link -> ";
@@ -610,8 +632,9 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 	}
 
 	// check link utilizations
+	coutd << "processing " << header->link_utilizations.size() << " link utilizations: ";
 	for (const auto &utilization : header->link_utilizations) {
-		coutd << "processing link utilization -> ";
+		coutd << "processing link utilization on f=" << utilization.center_frequency << " -> ";
 		mac->statisticReportLinkUtilizationReceived();
 		// TODO potential third party processing
 	}
@@ -722,4 +745,15 @@ std::pair<int, int> SHLinkManager::getPPMinOffsetAndPeriod() const {
 
 void SHLinkManager::setShouldTransmit(bool value) {
 	this->do_transmit = value;
+}
+
+bool SHLinkManager::isPPLinkDutyCycleConformant(const LinkProposal &link_proposal) const {
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;	
+	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);		
+	double sum_used_budget = sh_budget;
+	for (auto d : used_pp_duty_cycle_budget)
+		sum_used_budget += d;
+	sum_used_budget += 1.0 / (10.0 * std::pow(2.0, link_proposal.period));
+	return sum_used_budget <= mac->getDutyCycle().getTotalBudget();
 }

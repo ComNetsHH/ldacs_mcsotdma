@@ -381,6 +381,25 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_LESSEQUAL(3, min_offset_and_period.second);			
 		}
 
+		void testDutyCyclePeriodicityPPThreeLinksUsedFromCrash() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(0.025);
+			duty_cycle_contribs.push_back(0.0125);
+			duty_cycle_contribs.push_back(0.0125);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(101);
+			timeouts.push_back(102);
+			double used_sh_budget = 0.02;
+			int sh_slot_offset = 5;
+			auto min_offset_and_period = mac_layer_me->getDutyCycle().getPeriodicityPP(duty_cycle_contribs, timeouts, used_sh_budget, sh_slot_offset);
+			CPPUNIT_ASSERT_GREATEREQUAL(1, min_offset_and_period.second);
+			CPPUNIT_ASSERT_LESSEQUAL(3, min_offset_and_period.second);			
+		}
+
 		void testDutyCyclePeriodicityPPFourLinksUsed() {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
@@ -537,28 +556,47 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL((int) (1.0/0.02), sh_offset);
 		}
 
+		void testDutyCycleGetSHOffsetFourPPLinksFromCrash() {
+			unsigned int duty_cycle_periodicity = 100;
+			double max_duty_cycle = 0.1;
+			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			std::vector<double> duty_cycle_contribs;
+			duty_cycle_contribs.push_back(.025);
+			duty_cycle_contribs.push_back(.0125);
+			duty_cycle_contribs.push_back(.0125);
+			duty_cycle_contribs.push_back(.05);
+			std::vector<int> timeouts;
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			timeouts.push_back(100);
+			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs), std::runtime_error);
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
-		CPPUNIT_TEST(testLinkEstablishment);		
-		CPPUNIT_TEST(testCommunicateInOtherDirection);
-		CPPUNIT_TEST(testCommunicateReverseOrder);
-		CPPUNIT_TEST(testSimultaneousRequests);		
-		CPPUNIT_TEST(testManyReestablishments);				
-		CPPUNIT_TEST(testMACDelays);								
-		CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);										
-		CPPUNIT_TEST(testDutyCycleContributions);
-		CPPUNIT_TEST(testDutyCyclePeriodicityPP);
-		CPPUNIT_TEST(testDutyCyclePeriodicityPPOneLinkUsed);
-		CPPUNIT_TEST(testDutyCyclePeriodicityPPTwoLinksUsed);
-		CPPUNIT_TEST(testDutyCyclePeriodicityPPThreeLinksUsed);
-		CPPUNIT_TEST(testDutyCyclePeriodicityPPFourLinksUsed);		
-		CPPUNIT_TEST(testDutyCyclePeriodicityPPNoBudget);
-		CPPUNIT_TEST(testDutyCycleLastLink);
-		CPPUNIT_TEST(testDutyCycleSHTakesAll);		
-		CPPUNIT_TEST(testDutyCycleGetSHOffsetNoPPLinks);				
-		CPPUNIT_TEST(testDutyCycleGetSHOffsetOnePPLinks);						
-		CPPUNIT_TEST(testDutyCycleGetSHOffsetTwoPPLinks);
-		CPPUNIT_TEST(testDutyCycleGetSHOffsetThreePPLinks);
-		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);		
+	CPPUNIT_TEST(testLinkEstablishment);		
+	CPPUNIT_TEST(testCommunicateInOtherDirection);
+	CPPUNIT_TEST(testCommunicateReverseOrder);
+	CPPUNIT_TEST(testSimultaneousRequests);		
+	CPPUNIT_TEST(testManyReestablishments);				
+	CPPUNIT_TEST(testMACDelays);								
+	CPPUNIT_TEST(testMissedLastLinkEstablishmentOpportunity);										
+	CPPUNIT_TEST(testDutyCycleContributions);
+	CPPUNIT_TEST(testDutyCyclePeriodicityPP);
+	CPPUNIT_TEST(testDutyCyclePeriodicityPPOneLinkUsed);
+	CPPUNIT_TEST(testDutyCyclePeriodicityPPTwoLinksUsed);
+	CPPUNIT_TEST(testDutyCyclePeriodicityPPThreeLinksUsed);
+	CPPUNIT_TEST(testDutyCyclePeriodicityPPThreeLinksUsedFromCrash);	
+	CPPUNIT_TEST(testDutyCyclePeriodicityPPFourLinksUsed);		
+	CPPUNIT_TEST(testDutyCyclePeriodicityPPNoBudget);
+	CPPUNIT_TEST(testDutyCycleLastLink);
+	CPPUNIT_TEST(testDutyCycleSHTakesAll);		
+	CPPUNIT_TEST(testDutyCycleGetSHOffsetNoPPLinks);				
+	CPPUNIT_TEST(testDutyCycleGetSHOffsetOnePPLinks);						
+	CPPUNIT_TEST(testDutyCycleGetSHOffsetTwoPPLinks);
+	CPPUNIT_TEST(testDutyCycleGetSHOffsetThreePPLinks);
+	CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);	
+		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinksFromCrash);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

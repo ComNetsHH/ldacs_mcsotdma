@@ -73,19 +73,10 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 			used_pp_budgets.erase(used_pp_budgets.begin() + i);
 		}
 	}
-	if (avail_budget >= 0.01) {
-		// coutd << "arrived at " << avail_budget << " -> ";		
-		// // if there's more PP links to support after the one being currently established...
-		// if (num_active_links < min_num_supported_pp_links - 1) {
-		// 	// then they should fairly share the remaining budget		
-		// 	max_budget = avail_budget / (min_num_supported_pp_links - num_active_links);						
-		// } else {
-		// 	// if there's sufficiently many links, the new one can use the remaining budget
-		// 	max_budget = avail_budget;		
-		// }		
+	if (avail_budget >= 0.01) {		
 		// translate budget to minimum period n, where periodicity is every second burst of 5*2^n => 10*2^n
 		unsigned int min_period = std::max(0.0, std::ceil(std::log2(1.0/(10.0*avail_budget))));	
-		coutd << "max_budget=" << avail_budget << " -> min_period=" << min_period << " -> ";
+		coutd << "min_offset=" << min_offset << " max_budget=" << avail_budget << " -> min_period=" << min_period << " -> ";
 		return {min_offset, min_period};
 	} else {
 		std::stringstream ss;
@@ -101,11 +92,20 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 }
 
 double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {	
-	double avail_budget = this->max_duty_cycle;			
+	double avail_budget = this->max_duty_cycle;		
+	size_t num_active_pp_links = used_budget.size();	
 	for (double d : used_budget) 
-		avail_budget -= d;				
-	// if not all PP links have been established yet
-	size_t num_active_pp_links = used_budget.size();
+		avail_budget -= d;
+	if (avail_budget <= 0.01) {
+		std::stringstream ss;
+		ss << "avail_budget=" << avail_budget << " when computing SH budget after used_budget=[";
+		for (auto d : used_budget)
+			ss << d << ", ";
+		ss << "] and " << num_active_pp_links << " active PP links";
+		throw std::runtime_error(ss.str());
+	}
+	coutd << "avail_budget=" << avail_budget << std::endl;
+	// if not all PP links have been established yet	
 	if (num_active_pp_links < min_num_supported_pp_links)
 		avail_budget -= this->max_duty_cycle / ((double) min_num_supported_pp_links + 1); // leave budget to establish next PP link immediately
 	if (avail_budget == std::numeric_limits<double>::infinity() || avail_budget == -std::numeric_limits<double>::infinity()) {
@@ -125,4 +125,8 @@ int DutyCycle::getOffsetSH(const std::vector<double>& used_budget) const {
 	double avail_budget = getSHBudget(used_budget);
 	int slot_offset = std::max(1.0, 1.0 / avail_budget);	
 	return slot_offset;
+}
+
+double DutyCycle::getTotalBudget() const {
+	return max_duty_cycle;
 }

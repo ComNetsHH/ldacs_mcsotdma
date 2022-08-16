@@ -125,6 +125,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		std::pair<int, int> getPPMinOffsetAndPeriod() const;
 
+		bool isPPLinkDutyCycleConformant(const LinkProposal &link_proposal) const;
+
 	protected:
 		/** Collection of link requests that should be broadcast as soon as possible. */
 		// std::vector<std::pair<L2HeaderLinkRequest*, LinkEstablishmentPayload*>> link_requests;

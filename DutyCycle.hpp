@@ -68,6 +68,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			int getOffsetSH(const std::vector<double>& used_budget) const;
 
+			double getTotalBudget() const;
+
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */
 			unsigned int period;

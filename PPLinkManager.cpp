@@ -126,7 +126,7 @@ void PPLinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload
 double PPLinkManager::getNumTxPerTimeSlot() const {
 	if (!isActive())
 		throw std::runtime_error("cannot call PPLinkManager::getNumSlotsUntilExpiry for inactive link");
-	double d = 1.0 / (5.0 * std::pow(2.0, period)) / 2;
+	double d = 1.0 / (10.0 * std::pow(2.0, period));
 	if (d == std::numeric_limits<double>::infinity() || d == -std::numeric_limits<double>::infinity()) {
 		std::stringstream ss;
 		ss << *mac << "::" << *this << "::getNumTxPerTimeSlot=inf for period=" << period << " link_status=" << link_status;
@@ -136,7 +136,7 @@ double PPLinkManager::getNumTxPerTimeSlot() const {
 }
 
 bool PPLinkManager::isActive() const {
-	return !(link_status == LinkManager::Status::link_not_established || link_status == LinkManager::Status::awaiting_request_generation);
+	return link_status == LinkManager::Status::link_established;
 }
 
 void PPLinkManager::lockProposedResources(const LinkProposal& proposed_link) {	

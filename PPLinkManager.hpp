@@ -22,7 +22,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void onSlotEnd() override;
 		void processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) override;
 		double getNumTxPerTimeSlot() const override;
-		bool isActive() const override;		
+		bool isActive() const override;				
 
 		void lockProposedResources(const LinkProposal& proposed_link);
 		void notifyLinkRequestSent(int num_bursts_forward, int num_recipient_tx, int period, int expected_link_start, int expected_confirming_beacon_slot);		

@@ -92,14 +92,20 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 
 std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	// Fetch all reservations of the current time slot.
-	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
-	coutd << *this << " processing " << reservations.size() << " reservations..." << std::endl;	
+	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();	
 	size_t num_txs = 0, num_rxs = 0;
+	bool has_printed = false;
 	for (const std::pair<Reservation, const FrequencyChannel*>& pair : reservations) {
 		const Reservation& reservation = pair.first;
 		const FrequencyChannel* channel = pair.second;
 
-		coutd << *channel << ":" << reservation << std::endl;		
+		if (reservation != Reservation()) {
+			if (!has_printed) {
+				coutd << *this << " processing " << reservations.size() << " reservations..." << std::endl;	
+				has_printed = true;
+			}
+			coutd << *channel << ":" << reservation << std::endl;		
+		}
 		switch (reservation.getAction()) {
 			case Reservation::IDLE: {
 				// No user is utilizing this slot.
@@ -172,8 +178,7 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onReceptionReservation();
 			}
-		}		
-		coutd << std::endl;
+		}				
 	}	
 	// keep track of the number of transmissions w.r.t. the duty cycle
 	duty_cycle.reportNumTransmissions(num_txs);
@@ -546,6 +551,10 @@ const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {
 
 int MCSOTDMA_Mac::getDefaultPPLinkTimeout() const {
 	return this->default_pp_link_timeout;
+}
+
+const std::map<MacId, LinkManager*>& MCSOTDMA_Mac::getLinkManagers() const {
+	return this->link_managers;
 }
 
 std::vector<L2HeaderSH::LinkUtilizationMessage> MCSOTDMA_Mac::getPPLinkUtilizations() const {

@@ -138,6 +138,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		virtual bool isActive() const = 0;
 
+		LinkManager::Status getLinkStatus() const;
+
 	protected:		
 		virtual void processBroadcastMessage(const MacId& origin, L2HeaderSH*& header);
 		virtual void processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload);

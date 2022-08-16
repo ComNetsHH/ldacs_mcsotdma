@@ -86,6 +86,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		size_t getNumUtilizedP2PResources() const;
 		std::vector<L2HeaderSH::LinkUtilizationMessage> getPPLinkUtilizations() const;
+		const std::map<MacId, LinkManager*>& getLinkManagers() const;
 
 
 		void onThirdPartyLinkReset(const ThirdPartyLink* caller);

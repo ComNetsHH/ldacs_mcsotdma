@@ -294,6 +294,7 @@ public:
 		L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);
 		CPPUNIT_ASSERT_EQUAL(L2Header::FrameType::broadcast, header->frame_type);
 		LinkProposal proposal = LinkProposal();
+		proposal.period = 3;
 		proposal.center_frequency = mac_you->getReservationManager()->getP2PFreqChannels().at(0)->getCenterFrequency();
 		proposal.slot_offset = sh->next_broadcast_slot + 1;
 		L2HeaderSH::LinkRequest request = L2HeaderSH::LinkRequest(id, proposal);

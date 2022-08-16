@@ -142,3 +142,7 @@ unsigned int LinkManager::measureMacDelay() {
 	time_slot_of_last_channel_access = now;		
 	return mac_delay;
 }
+
+LinkManager::Status LinkManager::getLinkStatus() const {
+	return link_status;
+}
