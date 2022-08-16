@@ -554,9 +554,11 @@ std::vector<L2HeaderSH::LinkUtilizationMessage> MCSOTDMA_Mac::getPPLinkUtilizati
 		const MacId &id = pair.first;
 		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
 			const PPLinkManager *link_manager = (PPLinkManager*) pair.second;
-			L2HeaderSH::LinkUtilizationMessage utilization = link_manager->getUtilization();
-			if (utilization != L2HeaderSH::LinkUtilizationMessage())
-				utilizations.push_back(utilization);
+			if (link_manager->isActive()) {
+				L2HeaderSH::LinkUtilizationMessage utilization = link_manager->getUtilization();
+				if (utilization != L2HeaderSH::LinkUtilizationMessage())
+					utilizations.push_back(utilization);
+			}
 		}
 	}
 	return utilizations;
