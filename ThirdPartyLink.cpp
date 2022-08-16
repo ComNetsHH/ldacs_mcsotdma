@@ -35,13 +35,13 @@ void ThirdPartyLink::onSlotStart(size_t num_slots) {
 	// update counter towards expected link reply
 	if (this->num_slots_until_expected_link_reply != UNSET) {
 		if (this->num_slots_until_expected_link_reply < num_slots)
-			throw std::runtime_error("ThidPartyLink::onSlotStart attempted to decrement counter until expected link reply past zero.");
+			throw std::runtime_error("ThirdPartyLink::onSlotStart attempted to decrement counter until expected link reply past zero.");
 		this->num_slots_until_expected_link_reply -= num_slots;		
 	}
 	// update counter towards link expiry	
 	if (link_expiry_offset != UNSET) {
 		if (link_expiry_offset < num_slots)
-			throw std::runtime_error("ThidPartyLink attempted to decrement the counter until link expiry past zero.");
+			throw std::runtime_error("ThirdPartyLink attempted to decrement the counter until link expiry past zero.");
 		link_expiry_offset -= num_slots;				
 	}
 	// update normalization offset
@@ -61,9 +61,7 @@ void ThirdPartyLink::onSlotEnd() {
 		coutd << *mac << "::" << *this << " terminates -> resetting -> ";
 		reset();
 		mac->onThirdPartyLinkReset(this); // notify MAC, which notifies all other ThirdPartyLinks, which may schedule/lock some resources that were just unscheduled/unlocked
-	} else if (link_expiry_offset != UNSET) {
-		coutd << *mac << "::" << *this << " #slots until expiry: " << link_expiry_offset << std::endl;
-	}
+	} 
 }
 
 void ThirdPartyLink::reset() {
