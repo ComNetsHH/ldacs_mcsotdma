@@ -73,7 +73,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int period;
 			/** Maximum duty cycle as a percentage. */
 			double max_duty_cycle;
-			unsigned int min_num_supported_pp_links;
+			unsigned int min_num_supported_pp_links = 1;
 			MovingAverage duty_cycle;						
 	};	
 }
