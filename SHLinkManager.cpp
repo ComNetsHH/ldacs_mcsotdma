@@ -642,48 +642,6 @@ void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& he
 	mac->onBeaconReception(origin, header->position);
 }
 
-// void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
-// 	// TODO compare to local ID, discard or forward resp.
-// 	LinkManager::processUnicastMessage(header, payload);
-// }
-
-// void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {	
-// 	// Check indicated next broadcast slot.
-// 	int next_broadcast = (int) header->burst_offset;
-// 	if (next_broadcast > 0) { // If it has been set ...
-// 		// ... check local reservation
-// 		const Reservation& res = current_reservation_table->getReservation(next_broadcast);
-// 		// if locally the slot is IDLE, then schedule listening to this broadcast
-// 		if (res.isIdle()) {
-// 			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
-// 			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
-// 		// if locally, one's own transmission is scheduled...
-// 		} else if (res.isTx()) {
-// 			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
-// 			broadcastCollisionDetected(header->src_id, Reservation::RX);			
-// 		// if locally, one's own beacon is scheduled...
-// 		} else if (res.isBeaconTx()) {
-// 			coutd << "detected collision with own beacon in " << next_broadcast << " slots -> ";
-// 			throw std::runtime_error("beacon collision handling not implemented");
-// 			// beaconCollisionDetected(header->src_id, Reservation::RX);			
-// 		} else {
-// 			coutd << "indicated next broadcast in " << next_broadcast << " slots is locally reserved for " << res << " (not doing anything) -> ";
-// 		}
-// 	} else
-// 		coutd << "no next broadcast slot indicated -> ";
-// }
-
-// void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-// 	coutd << "forwarding link request to PPLinkManager -> ";
-// 	// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)	
-// 	((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);	
-// }
-
-// void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-// 	coutd << "forwarding link reply to PPLinkManager -> ";	
-// 	((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);	
-// }
-
 SHLinkManager::~SHLinkManager() {	
 }
 
