@@ -103,8 +103,7 @@ double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {
 			ss << d << ", ";
 		ss << "] and " << num_active_pp_links << " active PP links";
 		throw std::runtime_error(ss.str());
-	}
-	coutd << "avail_budget=" << avail_budget << std::endl;
+	}	
 	// if not all PP links have been established yet	
 	if (num_active_pp_links < min_num_supported_pp_links)
 		avail_budget -= this->max_duty_cycle / ((double) min_num_supported_pp_links + 1); // leave budget to establish next PP link immediately
