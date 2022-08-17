@@ -706,6 +706,8 @@ void SHLinkManager::setShouldTransmit(bool value) {
 }
 
 bool SHLinkManager::isPPLinkDutyCycleConformant(const LinkProposal &link_proposal) const {
+	if (!mac->shouldConsiderDutyCycle())
+		return true;
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
 	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;	
 	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);		
