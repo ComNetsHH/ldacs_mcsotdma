@@ -198,7 +198,7 @@ std::pair<std::vector<LinkProposal>, int> SHLinkManager::proposeLocalLinks(const
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
 	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
 	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;
-	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);
+	double sh_budget = mac->shouldConsiderDutyCycle() ? mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget) : 1.0;
 	coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
 	int min_offset;
 	int period;
@@ -693,7 +693,7 @@ std::pair<int, int> SHLinkManager::getPPMinOffsetAndPeriod() const {
 	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
 	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
 	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;	
-	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);			
+	double sh_budget = mac->shouldConsiderDutyCycle() ? mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget) : 1.0;
 	try {
 		auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);		
 		int min_offset = pair.first;		
