@@ -281,7 +281,9 @@ L2HeaderSH::LinkUtilizationMessage PPLinkManager::getUtilization() const {
 			try {
 			utilization.slot_offset = getNextTxSlot();
 			} catch (const std::runtime_error &e) {
-				throw std::runtime_error("Error during link utilization generation with timeout=" + std::to_string(getRemainingTimeout()) + ": " + std::string(e.what()));
+				std::stringstream ss;
+				ss << "Error during link utilization generation with timeout=" << std::to_string(getRemainingTimeout()) << " and link_status=: " << link_status << ", error:" << std::string(e.what());
+				throw std::runtime_error(ss.str());
 			}
 		} else
 			utilization.slot_offset = 0;		
