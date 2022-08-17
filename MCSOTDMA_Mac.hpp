@@ -83,6 +83,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) override;				
 		void setMaxNoPPLinkEstablishmentAttempts(int value) override;
 		void setMinNumSupportedPPLinks(unsigned int value) override;
+		void setForcePPPeriod(bool flag, int value) override;
 
 		size_t getNumUtilizedP2PResources() const;
 		std::vector<L2HeaderSH::LinkUtilizationMessage> getPPLinkUtilizations() const;
@@ -228,6 +229,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		double getUsedSHDutyCycleBudget() const;		
 		int getSHSlotOffset() const; 
 		int getDefaultPPLinkTimeout() const;
+		bool shouldUseFixedPPPeriod() const;
+		int getFixedPPPeriod() const;
 
 	protected:
 		/**
@@ -268,6 +271,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Holds the current prediction of DME channel accesses. */
 		std::vector<std::vector<double>> current_prediction_mat;	
 		int max_no_pp_link_establishment_attempts = 5;
+		/** If false, the PP period is computed during link establishment. If true, a fixed value is used. */
+		bool should_force_pp_period = false;
+		/** Is used for each PP link if should_force_pp_period is true. */
+		int forced_pp_period = 1;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

@@ -361,26 +361,37 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(true, link_manager->isNextBroadcastScheduled());
 		}				
 
+		void testFixedPPPeriod() {			
+			int forced_period = 27;
+			// before setting
+			CPPUNIT_ASSERT_LESS(forced_period, link_manager->getPPMinOffsetAndPeriod().second);
+			// set
+			mac->setForcePPPeriod(true, forced_period);
+			// after setting
+			CPPUNIT_ASSERT_EQUAL(forced_period, link_manager->getPPMinOffsetAndPeriod().second);
+		}
+
 
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);
-		CPPUNIT_TEST(testBroadcastSlotSelection);
-		CPPUNIT_TEST(testScheduleBroadcastSlot);
-		CPPUNIT_TEST(testBroadcast);
-		// CPPUNIT_TEST(testSendLinkRequestOnBC);						
-		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
-		CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
-		CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);		
-		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
-		CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
-		CPPUNIT_TEST(testMacDelay);		
-		CPPUNIT_TEST(testSHChannelAccessDelay);	
-		CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
-		CPPUNIT_TEST(testDutyCycleMacDelay);
-		CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
-		CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
-		CPPUNIT_TEST(testRememberAdvertisedSlotOffset);		
-		CPPUNIT_TEST(testForgetAdvertisedSlotOffset);						
-		CPPUNIT_TEST(testAutoStartBroadcasts);
+		// CPPUNIT_TEST(testBroadcastSlotSelection);
+		// CPPUNIT_TEST(testScheduleBroadcastSlot);
+		// CPPUNIT_TEST(testBroadcast);
+		// // CPPUNIT_TEST(testSendLinkRequestOnBC);						
+		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresNoData);
+		// CPPUNIT_TEST(testAutoScheduleBroadcastSlotIfTheresData);
+		// CPPUNIT_TEST(testAverageBroadcastSlotGenerationMeasurement);		
+		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOn);
+		// CPPUNIT_TEST(testSlotAdvertisementWhenAutoAdvertisementIsOnAndTheresMoreData);
+		// CPPUNIT_TEST(testMacDelay);		
+		// CPPUNIT_TEST(testSHChannelAccessDelay);	
+		// CPPUNIT_TEST(testNoCandidateSlotsForParticularValues);			
+		// CPPUNIT_TEST(testDutyCycleMacDelay);
+		// CPPUNIT_TEST(testMarkAdvertisedBroadcastSlot);
+		// CPPUNIT_TEST(testRescheduleBroadcastUponCollision);
+		// CPPUNIT_TEST(testRememberAdvertisedSlotOffset);		
+		// CPPUNIT_TEST(testForgetAdvertisedSlotOffset);								
+		// CPPUNIT_TEST(testAutoStartBroadcasts);
+		CPPUNIT_TEST(testFixedPPPeriod);		
 		CPPUNIT_TEST_SUITE_END();
 	};
 

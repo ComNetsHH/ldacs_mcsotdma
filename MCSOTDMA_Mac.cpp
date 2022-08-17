@@ -594,3 +594,16 @@ bool MCSOTDMA_Mac::shouldConsiderDutyCycle() const {
 void MCSOTDMA_Mac::setMinNumSupportedPPLinks(unsigned int value) {
 	this->duty_cycle.setMinNumSupportedPPLinks(value);
 }
+
+void MCSOTDMA_Mac::setForcePPPeriod(bool flag, int value) {
+	this->should_force_pp_period = flag;
+	this->forced_pp_period = value;
+}
+
+bool MCSOTDMA_Mac::shouldUseFixedPPPeriod() const {
+	return this->should_force_pp_period;
+}
+
+int MCSOTDMA_Mac::getFixedPPPeriod() const {
+	return this->forced_pp_period;
+}

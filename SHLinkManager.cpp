@@ -695,7 +695,10 @@ std::pair<int, int> SHLinkManager::getPPMinOffsetAndPeriod() const {
 	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;	
 	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);			
 	try {
-		return mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);		
+		auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);		
+		int min_offset = pair.first;		
+		int period = mac->shouldUseFixedPPPeriod() ? mac->getFixedPPPeriod() : pair.second;
+		return {min_offset, period};
 	} catch (const no_duty_cycle_budget_left_error &e) {
 		throw no_duty_cycle_budget_left_error("error in getPPMinOffsetAndPeriod: " + std::string(e.what()));
 	}

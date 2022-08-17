@@ -116,6 +116,7 @@ double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {
 		throw std::runtime_error(ss.str());
 	}
 		
+	coutd << "SH duty cycle budget is " << avail_budget*100 << "%/" << this->max_duty_cycle*100 << "% at " << num_active_pp_links << "/" << min_num_supported_pp_links << " active PP links -> ";
 	return avail_budget;
 }
 
