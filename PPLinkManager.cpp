@@ -93,11 +93,17 @@ void PPLinkManager::onSlotEnd() {
 
 bool PPLinkManager::decrementTimeout() {
 	if (link_status == link_established) {
-		bool is_exchange_end = is_link_initiator ? getNextRxSlot() == 0 : getNextTxSlot() == 0;		
-		if (is_exchange_end) {
-			coutd << *mac << "::" << *this << " timeout " << timeout << "->";
-			timeout--;
-			coutd << timeout << " -> ";
+		try {
+			bool is_exchange_end = is_link_initiator ? getNextRxSlot() == 0 : getNextTxSlot() == 0;		
+			if (is_exchange_end) {
+				coutd << *mac << "::" << *this << " timeout " << timeout << "->";
+				timeout--;
+				coutd << timeout << " -> ";
+			}
+		} catch (const std::exception &e) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << " couldn't decrement timeout with " << mac->getNumActivePPLinks() << " active PP links, this one has timeout=" << std::to_string(getRemainingTimeout()) << " and link_status=: " << link_status << ", error:" << std::string(e.what());
+			throw std::runtime_error(ss.str());
 		}
 	}
 	return timeout <= 0;

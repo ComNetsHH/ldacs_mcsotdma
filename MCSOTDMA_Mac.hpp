@@ -231,6 +231,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		int getDefaultPPLinkTimeout() const;
 		bool shouldUseFixedPPPeriod() const;
 		int getFixedPPPeriod() const;
+		size_t getNumActivePPLinks() const;
 
 	protected:
 		/**

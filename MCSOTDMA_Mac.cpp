@@ -536,6 +536,21 @@ std::pair<std::vector<double>, std::vector<int>> MCSOTDMA_Mac::getUsedPPDutyCycl
 	return contributions;
 }
 
+size_t MCSOTDMA_Mac::getNumActivePPLinks() const {
+	size_t num_active_pps = 0;
+	for (const auto &pair : link_managers) {
+		const MacId &id = pair.first;
+		const auto *link_manager = pair.second;		
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON && id != SYMBOLIC_LINK_ID_DME) {			
+			const auto *pp = (PPLinkManager*) link_manager;
+			if (pp->isActive()) {				
+				num_active_pps++;
+			}
+		}
+	}
+	return num_active_pps;
+}
+
 double MCSOTDMA_Mac::getUsedSHDutyCycleBudget() const {
 	return ((SHLinkManager*) link_managers.at(SYMBOLIC_LINK_ID_BROADCAST))->getNumTxPerTimeSlot();
 }
