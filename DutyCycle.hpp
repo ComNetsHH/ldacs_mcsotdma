@@ -55,6 +55,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 */
 			void setMinNumSupportedPPLinks(unsigned int n);
 
+			unsigned int getMinNumSupportedPPLinks() const;
+
 			/**			 
 			 * @param used_budget <used PP duty cycle budget per link>
 			 * @param timeouts <timeout in slots per PP link>

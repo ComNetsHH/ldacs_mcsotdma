@@ -9,10 +9,10 @@
 #include "../SHLinkManager.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
-	class ThreeUsersTests : public CppUnit::TestFixture {
+	class ManyUsersTests : public CppUnit::TestFixture {
 	private:
-		TestEnvironment* env1, * env2, * env3;
-		MacId id1, id2, id3;
+		TestEnvironment *env1, *env2, *env3, *env4, *env5;
+		MacId id1, id2, id3, id4, id5;
 		uint64_t center_frequency1, center_frequency2, center_frequency3, sh_frequency, bandwidth;
 		uint32_t planning_horizon;
 		size_t num_outgoing_bits;
@@ -22,9 +22,13 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			id1 = MacId(42);
 			id2 = MacId(43);
 			id3 = MacId(44);
+			id4 = MacId(45);
+			id5 = MacId(46);
 			env1 = new TestEnvironment(id1, id2);
 			env2 = new TestEnvironment(id2, id1);
 			env3 = new TestEnvironment(id3, id1);
+			env4 = new TestEnvironment(id4, id1);
+			env5 = new TestEnvironment(id5, id1);
 
 			center_frequency1 = env1->p2p_freq_1;
 			center_frequency2 = env1->p2p_freq_2;
@@ -35,12 +39,28 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			env1->phy_layer->connected_phys.push_back(env2->phy_layer);
 			env1->phy_layer->connected_phys.push_back(env3->phy_layer);
+			env1->phy_layer->connected_phys.push_back(env4->phy_layer);
+			env1->phy_layer->connected_phys.push_back(env5->phy_layer);
 
 			env2->phy_layer->connected_phys.push_back(env1->phy_layer);
 			env2->phy_layer->connected_phys.push_back(env3->phy_layer);
+			env2->phy_layer->connected_phys.push_back(env4->phy_layer);
+			env2->phy_layer->connected_phys.push_back(env5->phy_layer);
 
 			env3->phy_layer->connected_phys.push_back(env1->phy_layer);
 			env3->phy_layer->connected_phys.push_back(env2->phy_layer);
+			env3->phy_layer->connected_phys.push_back(env4->phy_layer);
+			env3->phy_layer->connected_phys.push_back(env5->phy_layer);
+
+			env4->phy_layer->connected_phys.push_back(env1->phy_layer);
+			env4->phy_layer->connected_phys.push_back(env2->phy_layer);
+			env4->phy_layer->connected_phys.push_back(env3->phy_layer);
+			env4->phy_layer->connected_phys.push_back(env5->phy_layer);
+
+			env5->phy_layer->connected_phys.push_back(env1->phy_layer);
+			env5->phy_layer->connected_phys.push_back(env2->phy_layer);
+			env5->phy_layer->connected_phys.push_back(env3->phy_layer);
+			env5->phy_layer->connected_phys.push_back(env4->phy_layer);
 
 			num_outgoing_bits = 512;
 		}
@@ -451,8 +471,56 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATEREQUAL(size_t(1), (size_t) mac_2->stat_num_pp_links_established.get());
 		}
 
+		void testEstablishFourLinks() {
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer, *mac_4 = env4->mac_layer, *mac_5 = env5->mac_layer;
+			size_t warmup = 500;
+			for (size_t t = 0; t < warmup; t++) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_4->update(1);
+				mac_5->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_4->execute();
+				mac_5->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+				mac_4->onSlotEnd();
+				mac_5->onSlotEnd();
+			}
+			mac_1->notifyOutgoing(1, id2);
+			mac_1->notifyOutgoing(1, id3);
+			mac_1->notifyOutgoing(1, id4);
+			mac_1->notifyOutgoing(1, id5);
+			size_t num_slots = 0, max_slots = 10000;
+			while (mac_1->stat_num_pp_links_established.get() < 4.0 && num_slots++ < max_slots) {
+				mac_1->update(1);
+				mac_2->update(1);
+				mac_3->update(1);
+				mac_4->update(1);
+				mac_5->update(1);
+				mac_1->execute();
+				mac_2->execute();
+				mac_3->execute();
+				mac_4->execute();
+				mac_5->execute();
+				mac_1->onSlotEnd();
+				mac_2->onSlotEnd();
+				mac_3->onSlotEnd();
+				mac_4->onSlotEnd();
+				mac_5->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+			auto pp_budget = mac_1->getUsedPPDutyCycleBudget();
+			size_t num_active_pp = pp_budget.first.size();
+			CPPUNIT_ASSERT_EQUAL(size_t(4), num_active_pp);
+		}
 
-		CPPUNIT_TEST_SUITE(ThreeUsersTests);			
+
+		CPPUNIT_TEST_SUITE(ManyUsersTests);			
 			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
 			CPPUNIT_TEST(testStatPacketsSent);			
 		// TODO	// CPPUNIT_TEST(testCollisions);
@@ -462,6 +530,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
 			CPPUNIT_TEST(testHiddenNodeScenario);
 			CPPUNIT_TEST(testTwoLinksToOneUser);			
+			CPPUNIT_TEST(testEstablishFourLinks);						
 		CPPUNIT_TEST_SUITE_END();
 	};
 }

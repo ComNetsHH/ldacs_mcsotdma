@@ -20,7 +20,7 @@ class PPLinkManager : public LinkManager, public LinkManager::LinkEstablishmentP
 
 	friend class PPLinkManagerTests;	
 	friend class SystemTests;
-	friend class ThreeUsersTests;
+	friend class ManyUsersTests;
 	friend class ThirdPartyLinkTests;
 
 	public:

@@ -16,7 +16,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		friend class MCSOTDMA_PhyTests;
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
-		friend class ThreeUsersTests;
+		friend class ManyUsersTests;
 
 	public:
 		explicit MCSOTDMA_Phy(uint32_t planning_horizon);

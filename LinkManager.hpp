@@ -24,7 +24,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class MCSOTDMA_MacTests;
 		friend class SystemTests;
-		friend class ThreeUsersTests;
+		friend class ManyUsersTests;
 		friend class ThirdPartyLinkTests;		
 		friend class PPLinkManagerTests;
 

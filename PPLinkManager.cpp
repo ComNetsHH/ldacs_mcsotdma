@@ -245,7 +245,19 @@ void PPLinkManager::acceptLink(LinkProposal proposal, bool through_request, uint
 	this->is_link_initiator = !through_request; // recipient of a link request is not the initiator
 	MacId initiator_id = this->is_link_initiator ? mac->getMacId() : link_id;
 	MacId recipient_id = this->is_link_initiator ? link_id : mac->getMacId();			
-	reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));						
+	try {
+		reserved_resources.merge(reservation_manager->scheduleBursts(channel, proposal.slot_offset, proposal.num_tx_initiator, proposal.num_tx_recipient, proposal.period, mac->getDefaultPPLinkTimeout(), initiator_id, recipient_id, is_link_initiator));						
+	} catch (const std::exception &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::acceptLink has accepted faulty link: " << e.what();
+		std::pair<std::vector<double>, std::vector<int>> pp_budgets = mac->getUsedPPDutyCycleBudget();
+		size_t num_pp_links = pp_budgets.first.size();
+		ss << "#active PP links is " << num_pp_links << " and used duty cycle budgets are: ";
+		for (double d : pp_budgets.first)
+			ss << d << " ";
+		ss << "used SH budget is " << mac->getUsedSHDutyCycleBudget();
+		throw std::runtime_error(ss.str());
+	}
 	current_reservation_table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));
 	// update status
 	coutd << "status is now '";

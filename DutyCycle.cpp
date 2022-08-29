@@ -130,3 +130,7 @@ int DutyCycle::getOffsetSH(const std::vector<double>& used_budget) const {
 double DutyCycle::getTotalBudget() const {
 	return max_duty_cycle;
 }
+
+unsigned int DutyCycle::getMinNumSupportedPPLinks() const {
+	return this->min_num_supported_pp_links;
+}

@@ -14,7 +14,7 @@
 #include "MCSOTDMA_MacTests.cpp"
 #include "SystemTests.cpp"
 #include "MCSOTDMA_PhyTests.cpp"
-#include "ThreeUsersTests.cpp"
+#include "ManyUsersTests.cpp"
 #include "PPLinkManagerTests.cpp"
 #include "ThirdPartyLinkTests.cpp"
 #include "LinkProposalFinderTests.cpp"
@@ -32,7 +32,7 @@ int main() {
 	runner.addTest(MCSOTDMA_PhyTests::suite());	
 	runner.addTest(SHLinkManagerTests::suite());
 	runner.addTest(SystemTests::suite());
-	runner.addTest(ThreeUsersTests::suite());
+	runner.addTest(ManyUsersTests::suite());
 	runner.addTest(PPLinkManagerTests::suite());
 	runner.addTest(ThirdPartyLinkTests::suite());
 	runner.addTest(LinkProposalFinderTests::suite());	
