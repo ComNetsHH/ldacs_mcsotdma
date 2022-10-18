@@ -48,3 +48,7 @@ void MovingAverage::reset() {
 bool MovingAverage::hasBeenUpdated() const {
 	return has_been_updated;
 }
+
+bool MovingAverage::hasReachedNumValues() const {
+	return index >= values.size();
+}

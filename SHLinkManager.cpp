@@ -6,12 +6,12 @@
 #include "SHLinkManager.hpp"
 #include "MCSOTDMA_Mac.hpp"
 #include "PPLinkManager.hpp"
+#include "LinkProposalFinder.hpp"
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
-: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100), beacon_module() {
-	beacon_module.setMinBeaconGap(min_beacon_gap);
+: LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100) {	
 }
 
 void SHLinkManager::onReceptionReservation() {
@@ -20,153 +20,240 @@ void SHLinkManager::onReceptionReservation() {
 
 L2Packet* SHLinkManager::onTransmissionReservation() {
 	coutd << *mac << "::" << *this << "::onTransmissionReservation -> ";	
+	size_t capacity = mac->getCurrentDatarate();
+	coutd << "requesting " << capacity << " bits from upper layer -> ";
 
-	auto *packet = new L2Packet();
-	auto *base_header = new L2HeaderBase(mac->getMacId(), 0, 1, 1, 0);
-	packet->addMessage(base_header, nullptr);
-	unsigned long capacity = mac->getCurrentDatarate();
+	// request data
+	L2Packet *packet = mac->requestSegment(capacity, link_id);
+	L2HeaderSH *&header = (L2HeaderSH*&) packet->getHeaders().at(0);		
+	coutd << "got " << packet->getBits() << "-bit packet -> ";		
+	assert(packet->getBits() <= capacity && "got more bits than I asked for");		
+	capacity -= packet->getBits();
 
-	bool is_beacon = false;
+	// write source iD
+	header->src_id = mac->getMacId();	
 
-	// Beacon slots are exclusive to beacons.
-	if (beacon_module.isEnabled() && beacon_module.shouldSendBeaconThisSlot()) {
-		coutd << "broadcasting beacon -> ";
-		// Schedule next beacon slot.
-		scheduleBeacon(); // prints when the next beacon slot is scheduled
-		coutd << "while non-beacon broadcast is " << (next_broadcast_scheduled ? "scheduled in " + std::to_string(next_broadcast_slot) + " slots -> " : "not scheduled -> ");
+	// add link requests
+	if (!link_requests.empty())
+		coutd << "considering " << link_requests.size() << " pending link requests: ";
+	for (auto pair : link_requests) {		
+		MacId &dest_id = pair.first;	
+		uint64_t &generation_time = pair.second;	
+		coutd << "id=" << dest_id << " -> ";
+		// check if we know preferred links
+		const auto &advertised_normalized_proposals = mac->getNeighborObserver().getAdvertisedLinkProposals(dest_id, mac->getCurrentSlot());
+		coutd << advertised_normalized_proposals.size() << " proposals -> ";
 
-		// Generate beacon message.
-		auto hostPosition = this->mac->getHostPosition();
-		packet->addMessage(beacon_module.generateBeacon(reservation_manager->getP2PReservationTables(), reservation_manager->getBroadcastReservationTable(), hostPosition, mac->getNumUtilizedP2PResources(), mac->getP2PBurstOffset()));
-		mac->statisticReportBeaconSent();
-		is_beacon = true;
-		base_header->burst_offset = beacon_module.getNextBeaconSlot();
-	// Non-beacon slots can be used for any other type of broadcast.
-	} else {
-		coutd << "broadcasting data -> ";		
-		// prioritize link replies
-		std::vector<std::pair<L2HeaderLinkReply*, LinkManager::LinkEstablishmentPayload*>> replies_to_add;
-		for (auto it = link_replies.begin(); it != link_replies.end(); it++) {
-			auto pair = *it;
-			coutd << "checking link reply in " << pair.first << " slots...";
-			if (pair.first == 0) {				
-				auto &header_payload_pair = pair.second;
-				if (header_payload_pair.first->getBits() + header_payload_pair.second->getBits() <= capacity) {
-					replies_to_add.push_back(pair.second);
-					link_replies.erase(it);
-					it--;
-					capacity -= pair.second.first->getBits() + pair.second.second->getBits();
-					coutd << "added link reply for '" << pair.second.first->dest_id << "' to broadcast -> ";
-					const L2HeaderLinkReply *header = pair.second.first;					
-					mac->statisticReportLinkReplySent();
-				}
-			}
-		}
-		// prioritize link requests
-		std::vector<std::pair<L2HeaderLinkRequest*, LinkManager::LinkEstablishmentPayload*>> requests_to_add;		
-		while (!link_requests.empty()) {
-			// Fetch next link request.
-			auto &pair = link_requests.at(0);
-			// Compute payload.
-			if (pair.second->callback == nullptr)
-				throw std::invalid_argument("SHLinkManager::onTransmissionReservation has nullptr link request callback - can't populate the LinkRequest!");
-			try {
-				pair.second->callback->populateLinkRequest(pair.first, pair.second);
-			} catch (const not_viable_error &e) {
-				coutd << "ignoring invalid link request -> ";				
-				delete (*link_requests.begin()).first;
-				delete (*link_requests.begin()).second;
-				link_requests.erase(link_requests.begin());
-				continue;
-			} catch (const std::exception &e) {				
-				std::cerr << "error while populating link request" << e.what() << std::endl;				
-				throw e;
-			}
-			// Add to the packet if it fits.
-			if (pair.first->getBits() + pair.second->getBits() <= capacity) {
-				requests_to_add.push_back(pair);				
-				link_requests.erase(link_requests.begin());
-				capacity -= pair.first->getBits() + pair.second->getBits();
-				coutd << "added link request for '" << pair.first->dest_id << "' to broadcast -> ";
-				mac->statisticReportLinkRequestSent();
-			} else
-				break; // Stop if it doesn't fit anymore.
-		}
-		// Add broadcast data.
-		int remaining_bits = capacity - packet->getBits() + base_header->getBits(); // The requested packet will have a base header, which we'll drop, so add it to the requested number of bits.
-		if (remaining_bits > 0) {
-			coutd << "requesting " << remaining_bits << " bits from upper sublayer -> ";
-			L2Packet* upper_layer_data = mac->requestSegment(remaining_bits, link_id);
-			size_t num_bits_added = 0;
-			for (size_t i = 0; i < upper_layer_data->getPayloads().size(); i++) {
-				const auto &upper_layer_header = upper_layer_data->getHeaders().at(i);
-				const auto &upper_layer_payload = upper_layer_data->getPayloads().at(i);
-				// ignore empty broadcasts
-				if (upper_layer_header->frame_type == L2Header::broadcast) {
-					if (upper_layer_payload == nullptr || (upper_layer_payload != nullptr && upper_layer_payload->getBits() == 0)) {						
-						coutd << "ignoring empty broadcast -> ";
-						continue;
-					}
-				}				
-				if (upper_layer_header->frame_type != L2Header::base) {					
-					// copy
-					L2Header *header = upper_layer_header->copy();
-					L2Packet::Payload *payload = upper_layer_data->getPayloads().at(i)->copy();
-					// add
-					packet->addMessage(header, payload);
-					num_bits_added += header->getBits() + payload->getBits();
-					coutd << "added '" << header->frame_type << "' message -> ";					
-				}
-			}
-			coutd << "added " << num_bits_added << " bits -> ";
-//			if (num_bits_added > remaining_bits) {
-//				std::stringstream ss;
-//				ss << *mac << "::" << *this << "::onTransmissionReservation error: " << num_bits_added << " bits were returned by upper sublayer instead of requested " << remaining_bits << "!";
-//				throw std::runtime_error(ss.str());
-//			}
-			delete upper_layer_data;
-		}
+		// propose locally-usable links if no proposals are saved or none are valid		
+		bool must_propose_something_new = advertised_normalized_proposals.empty(); // || !anyProposalValid(advertised_normalized_proposals);
+		std::vector<LinkProposal> link_proposals;
 		
-		// if no data has been added so far, but link requests or replies should be added
-		// add a broadcast header and no payload first
-		if (packet->getHeaders().size() == 1 && (!requests_to_add.empty() || !replies_to_add.empty())) 
-			packet->addMessage(new L2HeaderBroadcast(), nullptr);
-		for (const auto &pair : replies_to_add)
-			packet->addMessage(pair.first, pair.second);		
-		for (const auto &pair : requests_to_add)
-			packet->addMessage(pair.first, pair.second);		
+		int period, min_offset;
+		try {
+			period = getPPMinOffsetAndPeriod().second;		
+		} catch (const no_duty_cycle_budget_left_error &e) {
+			std::stringstream ss;
+			ss << *mac << "::" << *this << "::onTransmissionReservation error processing link request: " << e.what();
+			throw std::runtime_error(std::string(e.what()));
+		}			
 
-		bool should_schedule_next_broadcast_slot = always_schedule_next_slot || !link_requests.empty() || mac->isThereMoreData(link_id);
-		if (should_schedule_next_broadcast_slot) {
-			coutd << "scheduling next broadcast slot -> ";
-			try {
-				scheduleBroadcastSlot();
-				coutd << "next broadcast in " << next_broadcast_slot << " slots -> ";
-				// Put it into the header.
-				if (this->advertise_slot_in_header) {
-					coutd << "advertising slot in header -> ";
-					base_header->burst_offset = next_broadcast_slot;
-				}
-			} catch (const std::exception &e) {
-				throw std::runtime_error("Error when trying to schedule next broadcast because there's more data: " + std::string(e.what()));
-			}
+		int num_forward_bursts = 1, num_reverse_bursts = 1;
+		bool scheduled_broadcast_slot = false;
+		// propose something that works locally
+		if (must_propose_something_new) {
+			mac->statisticReportSentOwnProposals();
+			coutd << "finding locally-usable links -> ";			
+			auto pair = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals_unadvertised_link_requests);			
+			link_proposals = pair.first;
+			min_offset = pair.second;
+		// propose advertised links if we know of some
 		} else {
-			next_broadcast_scheduled = false;
-			next_broadcast_slot = 0;
-			coutd << "no more broadcast data, not scheduling a next slot -> ";
-		}		
+			coutd << "selecting remote-advertised links -> ";			
+			try {
+				link_proposals.push_back(proposeRemoteLinks(dest_id, num_forward_bursts, num_reverse_bursts));			
+				min_offset = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
+				mac->statisticReportSentSavedProposals();
+			// fall-back to locally-usable links of the advertised ones don't fit
+			} catch (const std::exception &e) {
+				mac->statisticReportSentOwnProposals();
+				coutd << "finding locally-usable links instead -> ";				
+				auto pair = proposeLocalLinks(dest_id, num_forward_bursts, num_reverse_bursts, num_proposals_unadvertised_link_requests);			
+				link_proposals = pair.first;
+				min_offset = pair.second;
+			}
+		}
+		coutd << "determined " << link_proposals.size() << " link proposals -> ";
+		coutd.flush();
+		if (!link_proposals.empty()) {			
+			bool notified_pp = false;
+			for (auto proposal : link_proposals) {
+				// save request
+				header->link_requests.push_back(L2HeaderSH::LinkRequest(dest_id, proposal, generation_time));			
+				// notify PP
+				auto *pp = (PPLinkManager*) mac->getLinkManager(dest_id);
+				if (!notified_pp) {
+					notified_pp = true;					
+					// this resets the locked resource map so must be called before lockProposedResources
+					pp->notifyLinkRequestSent(num_forward_bursts, num_reverse_bursts, period, min_offset, min_offset);
+				}
+				// lock resources				
+				pp->lockProposedResources(proposal);				
+			}
+			mac->statisticReportLinkRequestSent();		
+		} else {
+			coutd << "empty proposals, couldn't propose links during link request -> ";
+		}
+	}
+	// remove link requests that have been added
+	if (!header->link_requests.empty()) {
+		for (auto &request : header->link_requests) {
+			MacId dest_id = request.dest_id;
+			cancelLinkRequest(dest_id);
+		}
 	}
 
-	if (packet->getHeaders().size() == 1) {		
-		delete packet;
-		return nullptr;
-	} else {
-		if (!is_beacon) {
-			mac->statisticReportBroadcastSent();
-			mac->statisticReportBroadcastMacDelay(measureMacDelay());		
+	// schedule next slot and write offset into header	
+	try {
+		if (next_broadcast_slot == 0) {// could be that proposeLocalLinks already scheduled the next slot
+			coutd << "scheduling next broadcast slot -> ";
+			scheduleBroadcastSlot();	
+		} else
+			coutd << "next broadcast slot has already been scheduled -> ";
+		// Put it into the header.
+		if (this->advertise_slot_in_header) {			
+			header->slot_offset = next_broadcast_slot;
+			coutd << "advertising next broadcast in " << header->slot_offset << " slots -> ";
 		}
-		return packet;
+	} catch (const std::exception &e) {
+		throw std::runtime_error("Error when trying to schedule next broadcast: " + std::string(e.what()));
+	}	
+
+	// attach next link reply
+	if (!link_replies.empty()) {
+		auto reply = link_replies.at(0);
+		coutd << "attaching link reply for " << reply.dest_id << " -> ";
+		header->link_reply = L2HeaderSH::LinkReply(reply);		
+		link_replies.erase(link_replies.begin());
+		if (link_replies.empty())
+			coutd << "no more replies pending -> ";
+		else 
+			coutd << link_replies.size() << " replies pending -> ";
+		mac->statisticReportLinkReplySent();
+		// check if pending link replies are out-of-date now
 	}
+
+	// find link proposals	
+	size_t num_proposals = 3;
+	coutd << "computing " << num_proposals << " proposals -> ";
+	int min_offset, period;
+	try {
+		auto pair = getPPMinOffsetAndPeriod();		
+		min_offset = pair.first; 
+		period = pair.second;
+	} catch (const no_duty_cycle_budget_left_error &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::onTransmissionReservation error processing link request: " << e.what();
+		throw std::runtime_error(std::string(e.what()));
+	}				
+	int num_forward_bursts = 1, num_reverse_bursts = 1;	
+	std::vector<LinkProposal> proposable_links = LinkProposalFinder::findLinkProposals(num_proposals, next_broadcast_slot, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac);
+	// write proposals into header
+	for (const LinkProposal &proposal : proposable_links) 
+		header->link_proposals.push_back(L2HeaderSH::LinkProposalMessage(proposal));	
+	coutd << "wrote " << header->link_proposals.size() << " link proposals into header -> ";		
+
+	// write utilizations into header
+	header->link_utilizations = mac->getPPLinkUtilizations();
+
+	// transmit packet
+	mac->statisticReportBroadcastSent();
+	mac->statisticReportBroadcastMacDelay(measureMacDelay());				
+	return packet;	
+}
+
+size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
+	size_t num_cancelled = 0;
+	for (auto it = link_requests.begin(); it != link_requests.end();) {
+		if ((*it).first == id) {
+			it = link_requests.erase(it);
+			num_cancelled++;
+		} else
+			it++;
+	}
+	return num_cancelled;
+}
+size_t SHLinkManager::cancelLinkReply(const MacId& id) {	
+	size_t num_cancelled = 0;
+	for (auto it = link_replies.begin(); it != link_replies.end();) {		
+		if ((*it).dest_id == id) {
+			it = link_replies.erase(it);
+			num_cancelled++;
+		} else
+			it++;
+	}
+	return num_cancelled;
+}
+
+std::pair<std::vector<LinkProposal>, int> SHLinkManager::proposeLocalLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts, size_t num_proposals) {	
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
+	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;
+	double sh_budget = mac->shouldConsiderDutyCycle() ? mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget) : 1.0;
+	coutd << "duty cycle considerations: sh_budget=" << sh_budget*100 << "% -> ";
+	int min_offset;
+	int period;
+	try {
+		auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);	
+		min_offset = pair.first;						
+		period = pair.second;	
+	} catch (const no_duty_cycle_budget_left_error &e) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << "::proposeLocalLinks error: " << e.what();
+		throw std::runtime_error(std::string(e.what()));
+	}	
+	coutd << " min_period=" << period << " -> ";			
+	try {
+		// the proposal should be after the other user's next broadcast slot 
+		int next_expected_broadcast = mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(dest_id);
+		min_offset = std::max(min_offset, next_expected_broadcast + 1);
+		coutd << "using saved neighbor's next broadcast in " << min_offset << " slots as minimum offset -> ";
+	} catch (const std::exception &e) {
+		// if that is unknown, use own next broadcast slot
+		if (next_broadcast_slot == 0) 
+			scheduleBroadcastSlot();
+		min_offset = std::max(min_offset, (int) next_broadcast_slot);
+		coutd << "using own next broadcast in " << min_offset << " slots as minimum offset -> ";
+	}			
+	return {LinkProposalFinder::findLinkProposals(num_proposals, min_offset, num_forward_bursts, num_reverse_bursts, period, mac->getDefaultPPLinkTimeout(), mac->shouldLearnDmeActivity(), mac->getReservationManager(), mac), min_offset};			
+}
+
+LinkProposal SHLinkManager::proposeRemoteLinks(const MacId& dest_id, int num_forward_bursts, int num_reverse_bursts) {
+	// find advertised links
+	std::vector<LinkProposal> advertisements = mac->getNeighborObserver().getAdvertisedLinkProposals(dest_id, mac->getCurrentSlot());
+	coutd << "checking " << advertisements.size() << " advertised links -> ";
+	// compare to local reservations
+	std::vector<LinkProposal> valid_links;
+	for (const auto possible_link : advertisements) {
+		const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(possible_link.center_frequency));
+		bool is_link_initiator = true;
+		bool is_valid = table->isLinkValid(possible_link.slot_offset, possible_link.period, num_forward_bursts, num_reverse_bursts, mac->getDefaultPPLinkTimeout(), is_link_initiator);
+		coutd << "link at t=" << possible_link.slot_offset << "@" << possible_link.center_frequency << "kHz is " << (is_valid ? "valid" : "invalid") << " -> ";
+		if (is_valid)
+			valid_links.push_back(possible_link);
+	}		
+	if (valid_links.empty())
+		throw std::runtime_error("SHLinkManager::proposeRemoteLinks couldn't find any valid links");
+	// select earliest suitable
+	LinkProposal earliest_link;
+	int earliest_offset = (int) reservation_manager->getPlanningHorizon();
+	for (const auto valid_link : valid_links) {
+		if (valid_link.slot_offset < earliest_offset) {
+			earliest_link = valid_link;
+			earliest_offset = valid_link.slot_offset;
+		}
+	}
+	coutd << "earliest link is at t=" << earliest_link.slot_offset << "@" << earliest_link.center_frequency << "kHz -> ";
+	return earliest_link;
 }
 
 void SHLinkManager::notifyOutgoing(unsigned long num_bits) {
@@ -205,27 +292,18 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 			ss << *mac << "::" << *this << "::onSlotStart for scheduled broadcast but invalid table: broadcast_in=" << next_broadcast_slot << " tx_table=" << reservation_manager->getTxTable()->getReservation(next_broadcast_slot) << " sh_table=" << reservation_manager->getBroadcastReservationTable()->getReservation(next_broadcast_slot) << "!";			
 			throw std::runtime_error(ss.str());
 		}			
-	} else
-		coutd << "no next broadcast scheduled -> ";
-	if (next_beacon_scheduled) {
-		coutd << "next beacon " << (getNextBeaconSlot() == 0 ? "now" : "in " + std::to_string(getNextBeaconSlot()) + " slots") << " -> ";
-		if (reservation_manager->getTxTable()->getReservation(getNextBeaconSlot()).getAction() != Reservation::TX_BEACON || reservation_manager->getBroadcastReservationTable()->getReservation(getNextBeaconSlot()).getAction() != Reservation::TX_BEACON) {
-			std::stringstream ss;
-			ss << *mac << "::" << *this << "::onSlotStart for scheduled beacon but invalid table: beacon_in=" << getNextBeaconSlot() << " tx_table=" << reservation_manager->getTxTable()->getReservation(getNextBeaconSlot()) << " sh_table=" << reservation_manager->getBroadcastReservationTable()->getReservation(getNextBeaconSlot()) << "!";			
-			throw std::runtime_error(ss.str());
-		}			
-	} else
-		coutd << "no next beacon scheduled -> ";
+	} else {
+		coutd << "scheduling next broadcast slot -> ";	
+		scheduleBroadcastSlot();
+	}
 
-
-	// broadcast link manager should always have a ReservationTable assigned
-	if (current_reservation_table == nullptr)
-		throw std::runtime_error("SHLinkManager::broadcastSlotSelection for unset ReservationTable.");
+	// broadcast link manager should always have a ReservationTable assigned	
+	assert(current_reservation_table != nullptr && "SHLinkManager::onSlotStart for unset ReservationTable.");
 
 	// mark reception slot if there's nothing else to do
 	const auto& current_reservation = current_reservation_table->getReservation(0);
 	if (current_reservation.isIdle() || current_reservation.isBusy()) {
-		coutd << "marking BC reception -> ";
+		coutd << "marking SH reception -> ";
 		try {
 			current_reservation_table->mark(0, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::RX));
 		} catch (const std::exception& e) {
@@ -240,99 +318,33 @@ void SHLinkManager::onSlotEnd() {
 		avg_num_slots_inbetween_packet_generations.put(num_slots_since_last_packet_generation + 1);
 		num_slots_since_last_packet_generation = 0;
 	} else
-		num_slots_since_last_packet_generation++;
-
-	if (beacon_module.shouldSendBeaconThisSlot() || !next_beacon_scheduled) {
-		// Schedule next beacon slot.
-		scheduleBeacon();
-	}
-
-	// update counters that keep track when link replies are due
-	for (auto &item : link_replies) {
-		coutd << *mac << "::" << *this << " decrementing counter until link reply -> "; 
-		if (item.first > 0) {
-			coutd << item.first << "->";
-			item.first--;			
-			coutd << item.first << " -> ";
-		} else {			
-			coutd << "missed transmitting this reply -> ";
-			// link reply couldn't have been sent, probably because a third-party link has unscheduled the transmission
-			// erase it 
-			const MacId dest_id = item.second.first->dest_id;			 
-			cancelLinkReply(dest_id);
-			// notify the corresponding link manager
-			((PPLinkManager*) mac->getLinkManager(dest_id))->scheduledLinkReplyCouldNotHaveBeenSent();			
-		}		
-	}
+		num_slots_since_last_packet_generation++;	
 	
-	beacon_module.onSlotEnd();		
 	LinkManager::onSlotEnd();
 }
 
-void SHLinkManager::sendLinkRequest(L2HeaderLinkRequest*& header, LinkManager::LinkEstablishmentPayload*& payload) {
-	coutd << *this << " saving link request for transmission -> ";
+void SHLinkManager::sendLinkRequest(const MacId &dest_id) {	
+	coutd << *this << " will send link request to " << dest_id << " with next transmission -> ";	
 	// save request
-	link_requests.push_back({header, payload});	
+	link_requests.push_back({dest_id, mac->getCurrentSlot()});	
 	// schedule broadcast slot if necessary
-	notifyOutgoing(header->getBits() + payload->getBits());
+	notifyOutgoing(1);
 }
 
-bool SHLinkManager::canSendLinkReply(unsigned int time_slot_offset) const {
-	const Reservation &res = current_reservation_table->getReservation(time_slot_offset);
-	return (res.isIdle() && mac->isTransmitterIdle(time_slot_offset, 1)) || res.isTx();
-}
-
-void SHLinkManager::sendLinkReply(L2HeaderLinkReply*& header, LinkEstablishmentPayload*& payload, unsigned int time_slot_offset) {
-	coutd << *this << " saving link reply for transmission in " << time_slot_offset << " slots -> ";
-	if (!canSendLinkReply(time_slot_offset))
-		throw std::invalid_argument("SHLinkManager::sendLinkReply for a time slot offset where a reply cannot be sent.");
-	// schedule reply
-	if (current_reservation_table->getReservation(time_slot_offset).isIdle()) {
-		current_reservation_table->mark(time_slot_offset, Reservation(SYMBOLIC_LINK_ID_BROADCAST, Reservation::TX));		
-		coutd << "reserved t=" << time_slot_offset <<": " << current_reservation_table->getReservation(time_slot_offset) << " -> ";				
-		if (!next_broadcast_scheduled || next_broadcast_slot > time_slot_offset) {
-			next_broadcast_scheduled = true;
-			next_broadcast_slot = time_slot_offset;
-		}
-	} else {
-		coutd << "already reserved (" << current_reservation_table->getReservation(time_slot_offset) << " ) -> ";
-	}
-	// save reply
-	link_replies.push_back({time_slot_offset, {header, payload}});		
-	coutd << "saved -> ";
-}
-
-size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
-	size_t num_removed = 0;
-	for (auto it = link_requests.begin(); it != link_requests.end();) {
-		const auto* header = it->first;
-		if (header->getDestId() == id) {
-			delete (*it).first;
-			delete (*it).second;
-			it = link_requests.erase(it);
-			num_removed++;
-		} else
-			it++;
-	}
-	return num_removed;
-}
-
-size_t SHLinkManager::cancelLinkReply(const MacId& id) {
-	size_t num_removed = 0;	
-	for (auto it = link_replies.begin(); it != link_replies.end();) {
-		const auto &pair = *it;
-		const auto &reply_msg = pair.second;
-		const auto *header = reply_msg.first;		
-		if (header->dest_id == id) {
-			delete reply_msg.first;
-			delete reply_msg.second;
-			it = link_replies.erase(it);			
-			num_removed++;			
-		} else
-			it++;
-	}
-	return num_removed;
-}
+// size_t SHLinkManager::cancelLinkRequest(const MacId& id) {
+// 	size_t num_removed = 0;
+// 	for (auto it = link_requests.begin(); it != link_requests.end();) {
+// 		const auto* header = it->first;
+// 		if (header->getDestId() == id) {
+// 			delete (*it).first;
+// 			delete (*it).second;
+// 			it = link_requests.erase(it);
+// 			num_removed++;
+// 		} else
+// 			it++;
+// 	}
+// 	return num_removed;
+// }
 
 unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob, unsigned int min, unsigned int max) const {
 	if (target_collision_prob <= 0.0 || target_collision_prob >= 1.0)
@@ -348,9 +360,9 @@ unsigned int SHLinkManager::getNumCandidateSlots(double target_collision_prob, u
 		double m = (double) mac->getNeighborObserver().getNumActiveNeighbors();
 		k = std::ceil(1.0 / (1.0 - std::pow(1.0 - target_collision_prob, 1.0 / m)));
 		coutd << "channel access method: randomized slotted ALOHA for " << m << " active neighbors -> ";
-	// Don't make use of contention estimation in any way. Just select something out of the next seven idle slots.
+	// Don't make use of contention estimation in any way. Just select something out of the next MIN_CANDIDATES idle slots.
 	} else if (contention_method == ContentionMethod::naive_random_access) {
-		k = 7;
+		k = this->MIN_CANDIDATES;
 		coutd << "channel access method: naive random access -> ";
 	} else {
 		throw std::invalid_argument("SHLinkManager::getNumCandidateSlots for unknown contention method: '" + std::to_string(contention_method) + "'.");
@@ -376,10 +388,10 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 	std::vector<unsigned int > candidate_slots = current_reservation_table->findSHCandidates(num_candidates, (int) min_offset);
 	coutd << "found " << candidate_slots.size() << " -> ";
 	if (candidate_slots.empty()) {
-		coutd << "printing reservations over entire planning horizon: " << std::endl << "t\tlocal\t\tTX" << std::endl;
-		for (size_t t = 0; t < current_reservation_table->getPlanningHorizon(); t++) 
-			coutd << "t=" << t << ":\t" << current_reservation_table->getReservation(t) << "\t" << reservation_manager->getTxTable()->getReservation(t) << std::endl;
-		throw std::runtime_error("SHLinkManager::broadcastSlotSelection found zero candidate slots.");
+		// coutd << "printing reservations over entire planning horizon: " << std::endl << "t\tlocal\t\tTX" << std::endl;
+		// for (size_t t = 0; t < current_reservation_table->getPlanningHorizon(); t++) 
+		// 	coutd << "t=" << t << ":\t" << current_reservation_table->getReservation(t) << "\t" << reservation_manager->getTxTable()->getReservation(t) << std::endl;
+		throw std::runtime_error("SHLinkManager::broadcastSlotSelection found zero candidate slots at min_offset=" + std::to_string(min_offset));
 	}
 	unsigned int selected_slot;
 	try {
@@ -393,9 +405,33 @@ unsigned int SHLinkManager::broadcastSlotSelection(unsigned int min_offset) {
 }
 
 void SHLinkManager::scheduleBroadcastSlot() {	
+	if (!this->do_transmit) {
+		coutd << "configured not to transmit, cancelling broadcast slot selection -> ";
+		return;
+	}
 	unscheduleBroadcastSlot();
-	// By default, even the next slot could be chosen.
-	unsigned int min_offset = 1;	
+	// Compute minimum slot offset to adhere to duty cycle.
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
+	int min_offset = mac->shouldConsiderDutyCycle() ? mac->getDutyCycle().getOffsetSH(used_pp_duty_cycle_budget) : 1;	
+	if (uint32_t(min_offset) > reservation_manager->getPlanningHorizon() || min_offset < 0) {
+		std::stringstream ss;
+		ss << *mac << "::" << *this << " computed min_offset=" << min_offset << " at planning_horizon=" << reservation_manager->getPlanningHorizon();
+		if (mac->shouldConsiderDutyCycle()) {
+			ss << " considering duty cycle with PP contributions of [";
+			for (auto d : used_pp_duty_cycle_budget)
+				ss << d << ", ";
+			ss << "] with link stati: ";
+			for (const auto &item : mac->getLinkManagers()) {
+				if (item.first != SYMBOLIC_LINK_ID_BROADCAST && item.first != SYMBOLIC_LINK_ID_BEACON) {
+					const PPLinkManager *pp = (const PPLinkManager*) item.second;
+					ss << *pp << " " << pp->getLinkStatus() << std::endl;
+				}
+			}
+		} else
+			ss << " not considering duty cycle";
+		throw std::runtime_error(ss.str());
+	}
 	// Apply slot selection.
 	next_broadcast_slot = broadcastSlotSelection(min_offset);
 	next_broadcast_scheduled = true;
@@ -410,39 +446,24 @@ void SHLinkManager::unscheduleBroadcastSlot() {
 	}
 }
 
-void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	coutd << "parsing incoming beacon -> ";
-	auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
-	if (pair.first) {
-		beaconCollisionDetected(origin_id, Reservation::RX);		
-	} if (pair.second) {
-		broadcastCollisionDetected(origin_id, Reservation::RX);
-	}
-	// pass it to the MAC layer
-	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));
-}
+// void SHLinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+// 	coutd << "parsing incoming beacon -> ";
+// 	// auto pair = beacon_module.parseBeacon(origin_id, (const BeaconPayload*&) payload, reservation_manager);
+// 	// if (pair.first) {
+// 	// 	beaconCollisionDetected(origin_id, Reservation::RX);		
+// 	// } if (pair.second) {
+// 	// 	broadcastCollisionDetected(origin_id, Reservation::RX);
+// 	// }
+// 	// pass it to the MAC layer
+// 	mac->onBeaconReception(origin_id, L2HeaderBeacon(*header));
+// }
 
 bool SHLinkManager::isNextBroadcastScheduled() const {
 	return next_broadcast_scheduled;
 }
 
 unsigned int SHLinkManager::getNextBroadcastSlot() const {
-	int earliest_transmission = next_broadcast_slot;
-	for (const auto &item : link_replies) 
-		if (item.first < earliest_transmission)
-			earliest_transmission = item.first;
-	return earliest_transmission;
-}
-
-unsigned int SHLinkManager::getNextBeaconSlot() const {
-	if (!next_beacon_scheduled || !this->beacon_module.isEnabled())
-		throw std::runtime_error("SHLinkManager::getNextBeaconSlot for unscheduled beacon.");
-	unsigned int beacon_slot = this->beacon_module.getNextBeaconSlot();
-	if (current_reservation_table->getReservation(beacon_slot) != Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON))
-		beacon_slot++; // if onSlotEnd() has recently been called, then the returned beacon_slot is off by one
-	if (current_reservation_table->getReservation(beacon_slot) != Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON))
-		throw std::runtime_error("SHLinkManager::getNextBeaconSlot cannot find beacon reservation.");
-	return beacon_slot;
+	return next_broadcast_slot;	
 }
 
 void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
@@ -463,22 +484,6 @@ void SHLinkManager::broadcastCollisionDetected(const MacId& collider_id, Reserva
 	mac->statisticReportBroadcastCollisionDetected();
 }
 
-void SHLinkManager::beaconCollisionDetected(const MacId& collider_id, Reservation::Action mark_as) {
-	auto current_beacon_slot = getNextBeaconSlot();
-	coutd << "re-scheduling beacon from t=" << current_beacon_slot << " to -> ";		
-	// unschedule it
-	unscheduleBeaconSlot();
-	// mark it as BUSY so it won't be scheduled again
-	current_reservation_table->mark(current_beacon_slot, Reservation(collider_id, mark_as));
-	// find a new slot
-	try {
-		scheduleBeacon();		
-	} catch (const std::exception &e) {
-		throw std::runtime_error("Error when trying to re-schedule beacon due to detected collision detected: " + std::string(e.what()));
-	}		
-	mac->statisticReportBeaconCollisionDetected();
-}
-
 void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const MacId& sender_id) {
 	coutd << "marking slot in " << slot_offset << " as RX@" << sender_id << " (expecting a third-party link reply there) -> ";
 	const auto &res = current_reservation_table->getReservation(slot_offset);
@@ -488,7 +493,7 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 		broadcastCollisionDetected(sender_id, Reservation::RX);		
 	} else if (res.isBeaconTx()) {
 		coutd << "re-scheduling own scheduled beacon -> ";
-		beaconCollisionDetected(sender_id, Reservation::RX);
+		// beaconCollisionDetected(sender_id, Reservation::RX);
 	} else {
 		// overwrite any other reservations
 		coutd << res << "->";
@@ -497,60 +502,147 @@ void SHLinkManager::reportThirdPartyExpectedLinkReply(int slot_offset, const Mac
 	}	
 }
 
-void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
+void SHLinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {	
 	mac->statisticReportBroadcastMessageProcessed();
-}
+	mac->reportNeighborActivity(origin);
 
-void SHLinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
-	// TODO compare to local ID, discard or forward resp.
-	LinkManager::processUnicastMessage(header, payload);
-}
-
-void SHLinkManager::processBaseMessage(L2HeaderBase*& header) {	
-	// Check indicated next broadcast slot.
-	int next_broadcast = (int) header->burst_offset;
-	if (next_broadcast > 0) { // If it has been set ...
-		// ... check local reservation
-		const Reservation& res = current_reservation_table->getReservation(next_broadcast);
+	// check advertised next transmission slot	
+	if (header->slot_offset > 0) { // If it has been set ...
+		coutd << "checking advertised next broadcast slot in " << header->slot_offset << " slots -> ";
+		// remember the advertised slot offset
+		mac->reportBroadcastSlotAdvertisement(origin, header->slot_offset);
+		// ... check local reservation				
+		const Reservation& res = current_reservation_table->getReservation(header->slot_offset);		
 		// if locally the slot is IDLE, then schedule listening to this broadcast
 		if (res.isIdle()) {
-			current_reservation_table->mark(next_broadcast, Reservation(header->src_id, Reservation::RX));
-			coutd << "marked next broadcast in " << next_broadcast << " slots as RX -> ";
+			current_reservation_table->mark(header->slot_offset, Reservation(header->src_id, Reservation::RX));
+			coutd << "marked next broadcast in " << header->slot_offset << " slots as RX -> ";
 		// if locally, one's own transmission is scheduled...
 		} else if (res.isTx()) {
-			coutd << "detected collision with own broadcast in " << next_broadcast << " slots -> ";
-			broadcastCollisionDetected(header->src_id, Reservation::RX);			
-		// if locally, one's own beacon is scheduled...
-		} else if (res.isBeaconTx()) {
-			coutd << "detected collision with own beacon in " << next_broadcast << " slots -> ";
-			beaconCollisionDetected(header->src_id, Reservation::RX);			
+			coutd << "detected collision with own broadcast in " << header->slot_offset << " slots -> ";
+			broadcastCollisionDetected(header->src_id, Reservation::RX);							
 		} else {
-			coutd << "indicated next broadcast in " << next_broadcast << " slots is locally reserved for " << res << " (not doing anything) -> ";
+			coutd << "indicated next broadcast in " << header->slot_offset << " slots is locally reserved for " << res << " (not doing anything) -> ";
 		}
 	} else
 		coutd << "no next broadcast slot indicated -> ";
-}
 
-void SHLinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-	coutd << "forwarding link request to PPLinkManager -> ";
-	// do NOT report the received request to the MAC, as the PPLinkManager will do that (otherwise it'll be counted twice)	
-	((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkRequestMessage(header, payload, origin_id);	
-}
+	// save link proposals		
+	if (!header->link_proposals.empty()) {
+		coutd << "saving " << header->link_proposals.size() << " advertised link proposals -> ";	
+		mac->getNeighborObserver().clearAdvertisedLinkProposals(header->src_id);		
+		for (const auto &proposal : header->link_proposals) 
+			mac->getNeighborObserver().addAdvertisedLinkProposal(header->src_id, mac->getCurrentSlot(), proposal.proposed_link);	
+	}	
 
-void SHLinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {	
-	coutd << "forwarding link reply to PPLinkManager -> ";	
-	((PPLinkManager*) mac->getLinkManager(origin_id))->processLinkReplyMessage(header, payload, origin_id);	
-}
+	// check link requests
+	std::vector<std::pair<LinkProposal, uint64_t>> acceptable_links;
+	bool received_request = false;
+	if (!header->link_requests.empty())
+		coutd << "processing " << header->link_requests.size() << " link requests -> ";	
+	std::map<MacId, bool> already_processed_third_party_link_request = std::map<MacId, bool>();
+	for (const auto &link_request : header->link_requests) {
+		const MacId &dest_id = link_request.dest_id;
+		// destined to us?
+		if (dest_id == mac->getMacId()) {
+			mac->statisticReportLinkRequestReceived();
+			received_request = true;
+			const auto &proposal = link_request.proposed_link;			
+			// check if slot offset is large enough to reply in time
+			if (link_request.proposed_link.slot_offset <= next_broadcast_slot) {
+				coutd << "t=" << link_request.proposed_link.slot_offset << " would be before my next SH transmission at t=" << next_broadcast_slot << " -> NOT acceptable -> ";
+				mac->statisticReportLinkRequestRejectedDueToUnacceptableReplySlot();
+				continue;
+			}			
+			// check if any proposed link works locally
+			const ReservationTable *table = reservation_manager->getReservationTable(reservation_manager->getFreqChannelByCenterFreq(proposal.center_frequency));			
+			bool is_link_initiator = false;
+			bool is_acceptable = table->isLinkValid(proposal.slot_offset, proposal.period, proposal.num_tx_initiator, proposal.num_tx_recipient, mac->getDefaultPPLinkTimeout(), is_link_initiator) && isPPLinkDutyCycleConformant(proposal);
+			if (is_acceptable) {
+				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is acceptable -> ";
+				acceptable_links.push_back({proposal, link_request.generation_time});
+			} else
+				coutd << "t=" << proposal.slot_offset << "@" << proposal.center_frequency << "kHz is NOT acceptable -> ";
+		// destined to another user?
+		} else {
+			coutd << "passing link request on to 3rd-party-link -> ";
+			coutd.flush();
+			mac->statisticReportThirdPartyLinkRequestReceived();
+			const MacId &src_id = header->src_id;
+			auto &third_party_link = mac->getThirdPartyLink(src_id, dest_id);
+			// reset previous locks and schedules for first link request to this destination
+			auto it = already_processed_third_party_link_request.find(dest_id);
+			if (it == already_processed_third_party_link_request.end() || ((*it).second == false)) {
+				coutd << "resetting 3rd party link -> ";
+				third_party_link.reset();
+			}
+			third_party_link.processLinkRequestMessage(link_request);
+			already_processed_third_party_link_request[dest_id] = true;
+		}
+	}	
 
-SHLinkManager::~SHLinkManager() {
-	for (auto pair : link_requests) {
-		delete pair.first;
-		delete pair.second;
+	if (received_request) {
+		auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);
+		// accept if possible
+		if (!acceptable_links.empty()) {
+			LinkProposal earliest_link;
+			int earliest_start_slot = reservation_manager->getPlanningHorizon();
+			uint64_t generation_time;
+			for (auto pair : acceptable_links) {
+				auto link = pair.first;				 
+				if (link.slot_offset < earliest_start_slot) {
+					earliest_start_slot = link.slot_offset;
+					earliest_link = link;
+					generation_time = pair.second;
+				}
+			}
+			pp->acceptLink(earliest_link, true, generation_time);
+			size_t num_cancelled_own_link_requests = cancelLinkRequest(header->src_id);
+			coutd << (num_cancelled_own_link_requests > 0 ? "cancelled own link request -> " : "");
+			// write link reply			
+			LinkProposal normalized_proposal = LinkProposal(earliest_link);
+			normalized_proposal.slot_offset -= next_broadcast_slot;
+			coutd << "will attach link reply to next SH transmission with normalized offset t=" << normalized_proposal.slot_offset << " -> ";			
+			link_replies.push_back(L2HeaderSH::LinkReply(header->src_id, normalized_proposal));
+		// start own link establishment otherwise
+		} else {
+			coutd << "no link request could be accepted, starting own link establishment -> ";
+			pp->notifyOutgoing(1);
+		}		
 	}
-	for (auto pair : link_replies) {
-		delete pair.second.first;
-		delete pair.second.second;
+
+	// check link reply	
+	if (header->link_reply.dest_id != SYMBOLIC_ID_UNSET) {
+		if (header->link_reply.dest_id == mac->getMacId()) {
+			coutd << "processing link reply -> ";
+			const LinkProposal &link = header->link_reply.proposed_link;
+			if (isPPLinkDutyCycleConformant(link)) {
+				auto *pp = (PPLinkManager*) mac->getLinkManager(header->src_id);			
+				pp->acceptLink(link, false, 0);
+			} else {
+				coutd << "rejecting because duty cycle would be violated -> ";
+			}
+			mac->statisticReportLinkReplyReceived();
+		} else {			
+			coutd << "passing link reply on to 3rd-party-link -> ";
+			mac->statisticReportThirdPartyLinkReplyReceived();
+			auto &third_party_link = mac->getThirdPartyLink(header->src_id, header->link_reply.dest_id);
+			third_party_link.processLinkReplyMessage(header->link_reply, header->src_id);
+		}
 	}
+
+	// check link utilizations
+	coutd << "processing " << header->link_utilizations.size() << " link utilizations: ";
+	for (const auto &utilization : header->link_utilizations) {
+		coutd << "processing link utilization on f=" << utilization.center_frequency << " -> ";
+		mac->statisticReportLinkUtilizationReceived();
+		// TODO potential third party processing
+	}
+
+	mac->onBeaconReception(origin, header->position);
+}
+
+SHLinkManager::~SHLinkManager() {	
 }
 
 void SHLinkManager::assign(const FrequencyChannel* channel) {
@@ -566,51 +658,12 @@ void SHLinkManager::setTargetCollisionProb(double value) {
 	this->broadcast_target_collision_prob = value;
 }
 
-void SHLinkManager::scheduleBeacon() {
-	if (beacon_module.isEnabled()) {
-		// un-schedule current beacon slot
-		unscheduleBeaconSlot();
-		// and schedule a new one
-		try {
-			int num_candidates = getNumCandidateSlots(this->broadcast_target_collision_prob, beacon_module.getMinBeaconCandidateSlots(), this->MAX_CANDIDATES);
-			int next_beacon_slot = (int) beacon_module.scheduleNextBeacon(num_candidates, mac->getNeighborObserver().getNumActiveNeighbors(), current_reservation_table, reservation_manager->getTxTable());
-			mac->statisticReportMinBeaconOffset((std::size_t) beacon_module.getBeaconOffset());
-			if (!(current_reservation_table->isIdle(next_beacon_slot) || current_reservation_table->getReservation(next_beacon_slot).isBeaconTx())) {
-				std::stringstream ss;
-				ss << *mac << "::" << *this << "::scheduleBeacon scheduled a beacon slot at a non-idle resource: " << current_reservation_table->getReservation(next_beacon_slot) << "!";
-				throw std::runtime_error(ss.str());
-			}
-			current_reservation_table->mark(next_beacon_slot, Reservation(SYMBOLIC_LINK_ID_BEACON, Reservation::TX_BEACON));
-			next_beacon_scheduled = true;
-			coutd << *mac << "::" << *this << "::scheduleBeacon scheduled next beacon slot in " << next_beacon_slot << " slots (" << beacon_module.getMinBeaconCandidateSlots() << " candidates) -> ";					
-		} catch (const std::exception &e) {
-			coutd << "couldn't schedule a next beacon: " << e.what() << " -> ";
-		}
-	}
-}
-
-void SHLinkManager::unscheduleBeaconSlot() {	
-	if (beacon_module.isEnabled() && next_beacon_scheduled) {		
-		if (current_reservation_table == nullptr)
-			throw std::runtime_error("SHLinkManager::unscheduleBeaconSlot for unset ReservationTable.");			
-		int beacon_slot = getNextBeaconSlot();				
-		current_reservation_table->mark(beacon_slot, Reservation(SYMBOLIC_ID_UNSET, Reservation::IDLE));		
-		next_beacon_scheduled = false;
-		beacon_module.reset();
-	}
-}
-
 void SHLinkManager::setMinNumCandidateSlots(int value) {
-	MIN_CANDIDATES = value;
-	beacon_module.setMinBeaconCandidateSlots(value);
+	MIN_CANDIDATES = value;	
 }
 
 void SHLinkManager::setMaxNumCandidateSlots(int value) {
 	MAX_CANDIDATES = value;	
-}
-
-void SHLinkManager::setAlwaysScheduleNextBroadcastSlot(bool value) {
-	this->always_schedule_next_slot = value;
 }
 
 void SHLinkManager::setUseContentionMethod(ContentionMethod method) {
@@ -621,22 +674,49 @@ unsigned int SHLinkManager::getAvgNumSlotsInbetweenPacketGeneration() const {
 	return (unsigned int) std::ceil(avg_num_slots_inbetween_packet_generations.get());
 }
 
-void SHLinkManager::setMinBeaconInterval(unsigned int value) {
-	this->beacon_module.setMinBeaconInterval(value);
-}
-
-void SHLinkManager::setMaxBeaconInterval(unsigned int value) {
-	this->beacon_module.setMaxBeaconInterval(value);
-}
-
-void SHLinkManager::setWriteResourceUtilizationIntoBeacon(bool flag) {
-	this->beacon_module.setWriteResourceUtilizationIntoBeacon(flag);
-}
-
-void SHLinkManager::setEnableBeacons(bool flag) {
-	this->beacon_module.setEnabled(flag);
-}
-
 void SHLinkManager::setAdvertiseNextSlotInCurrentHeader(bool flag) {
 	this->advertise_slot_in_header = flag;
+}
+
+double SHLinkManager::getNumTxPerTimeSlot() const {
+	if (!next_broadcast_scheduled)
+		return 0.0;
+	double num_broadcasts = next_broadcast_scheduled && next_broadcast_slot > 0 ? 1.0/((double) next_broadcast_slot) : 0.0;	
+	return num_broadcasts;
+}
+
+bool SHLinkManager::isActive() const {
+	return next_broadcast_scheduled;
+}
+
+std::pair<int, int> SHLinkManager::getPPMinOffsetAndPeriod() const {
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;
+	const std::vector<int> &remaining_pp_timeouts = contributions_and_timeouts.second;	
+	double sh_budget = mac->shouldConsiderDutyCycle() ? mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget) : 1.0;
+	try {
+		auto pair = mac->getDutyCycle().getPeriodicityPP(used_pp_duty_cycle_budget, remaining_pp_timeouts, sh_budget, next_broadcast_slot);		
+		int min_offset = pair.first;		
+		int period = mac->shouldUseFixedPPPeriod() ? mac->getFixedPPPeriod() : pair.second;
+		return {min_offset, period};
+	} catch (const no_duty_cycle_budget_left_error &e) {
+		throw no_duty_cycle_budget_left_error("error in getPPMinOffsetAndPeriod: " + std::string(e.what()));
+	}
+}
+
+void SHLinkManager::setShouldTransmit(bool value) {
+	this->do_transmit = value;
+}
+
+bool SHLinkManager::isPPLinkDutyCycleConformant(const LinkProposal &link_proposal) const {
+	if (!mac->shouldConsiderDutyCycle())
+		return true;
+	auto contributions_and_timeouts = mac->getUsedPPDutyCycleBudget();
+	const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;	
+	double sh_budget = mac->getDutyCycle().getSHBudget(used_pp_duty_cycle_budget);		
+	double sum_used_budget = sh_budget;
+	for (auto d : used_pp_duty_cycle_budget)
+		sum_used_budget += d;
+	sum_used_budget += 1.0 / (10.0 * std::pow(2.0, link_proposal.period));
+	return sum_used_budget <= mac->getDutyCycle().getTotalBudget();
 }

@@ -12,12 +12,11 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000) {
-	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();
-	stat_min_beacon_offset.dontEmitBeforeFirstReport();
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000), duty_cycle(DutyCycle(default_duty_cycle_period, default_max_duty_cycle, default_min_num_supported_pp_links)) {
+	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();	
 	stat_broadcast_candidate_slots.dontEmitBeforeFirstReport();
 	stat_broadcast_selected_candidate_slots.dontEmitBeforeFirstReport();
-	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();	
+	stat_pp_link_establishment_time.dontEmitBeforeFirstReport();		
 }
 
 MCSOTDMA_Mac::~MCSOTDMA_Mac() {
@@ -35,7 +34,7 @@ void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
 
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {
 	assert(lower_layer && "MCSOTDMA_Mac's lower layer is unset.");
-	// check that the packet is not empty
+	// check that the packet is not empty	
 	if (packet->getDestination() == SYMBOLIC_ID_UNSET) {
 		delete packet;
 		return;
@@ -93,14 +92,20 @@ void MCSOTDMA_Mac::update(uint64_t num_slots) {
 
 std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 	// Fetch all reservations of the current time slot.
-	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();
-	coutd << *this << " processing " << reservations.size() << " reservations..." << std::endl;	
+	std::vector<std::pair<Reservation, const FrequencyChannel*>> reservations = reservation_manager->collectCurrentReservations();	
 	size_t num_txs = 0, num_rxs = 0;
+	bool has_printed = false;
 	for (const std::pair<Reservation, const FrequencyChannel*>& pair : reservations) {
 		const Reservation& reservation = pair.first;
 		const FrequencyChannel* channel = pair.second;
 
-		coutd << *channel << ":" << reservation << std::endl;		
+		if (reservation != Reservation()) {
+			if (!has_printed) {
+				coutd << *this << " processing " << reservations.size() << " reservations..." << std::endl;	
+				has_printed = true;
+			}
+			coutd << *channel << ":" << reservation << std::endl;		
+		}
 		switch (reservation.getAction()) {
 			case Reservation::IDLE: {
 				// No user is utilizing this slot.
@@ -143,13 +148,10 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				L2Packet* outgoing_packet = link_manager->onTransmissionReservation();
 				if (outgoing_packet != nullptr) {
 					outgoing_packet->notifyCallbacks();				
+					coutd << "passing to lower layer -> ";
 					passToLower(outgoing_packet, channel->getCenterFrequency());					
 				} else {										
-					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";
-					if (id == SYMBOLIC_LINK_ID_BROADCAST || id == SYMBOLIC_LINK_ID_BEACON)
-						this->stat_broadcast_wasted_tx_opportunities.increment();
-					else
-						this->stat_unicast_wasted_tx_opportunities.increment();
+					coutd << "got empty packet from link manager; this is a wasted TX reservation -> ";					
 				}
 				break;
 			}			
@@ -176,10 +178,22 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
 				getLinkManager(SYMBOLIC_LINK_ID_BROADCAST)->onReceptionReservation();
 			}
-		}		
-		coutd << std::endl;
+		}				
 	}	
+	// keep track of the number of transmissions w.r.t. the duty cycle
+	duty_cycle.reportNumTransmissions(num_txs);
+	// emit the duty cycle once enough values have been recorded
+	if (duty_cycle.shouldEmitStatistic()) {
+		stat_duty_cycle.capture(duty_cycle.get());
+		stat_duty_cycle.update();
+	}
+
 	return {num_txs, num_rxs};
+}
+
+void MCSOTDMA_Mac::storePacket(L2Packet *&packet, uint64_t center_freq) {	
+	received_packets[center_freq].push_back(packet);
+	coutd << "stored until slot end -> ";
 }
 
 void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency) {
@@ -189,13 +203,13 @@ void MCSOTDMA_Mac::receiveFromLower(L2Packet* packet, uint64_t center_frequency)
 	if (origin_id == id) {
 		this->deletePacket(packet);
 		delete packet;
+		coutd << "deleted -> ";		
 		return;
 	}
 	if (dest_id == SYMBOLIC_ID_UNSET && origin_id != SYMBOLIC_LINK_ID_DME)
 		throw std::invalid_argument("MCSOTDMA_Mac::onPacketReception for unset dest_id.");	
-	// store until slot end, then process
-	received_packets[center_frequency].push_back(packet);
-	coutd << "stored until slot end.";
+	// store until slot end, then process	
+	storePacket(packet, center_frequency);		
 }
 
 LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
@@ -219,9 +233,8 @@ LinkManager* MCSOTDMA_Mac::getLinkManager(const MacId& id) {
 			link_manager = new SHLinkManager(reservation_manager, this, 1);
 			link_manager->assign(reservation_manager->getBroadcastFreqChannel());
 		} else {						
-			link_manager = new PPLinkManager(internal_id, reservation_manager, this);
-			((PPLinkManager*) link_manager)->setForceBidirectionalLinks(this->should_force_bidirectional_links);			
-			((PPLinkManager*) link_manager)->setBurstOffset(this->pp_link_burst_offset);			
+			link_manager = new PPLinkManager(internal_id, reservation_manager, this);			
+			((PPLinkManager*) link_manager)->setMaxNoPPLinkEstablishmentAttempts(this->max_no_pp_link_establishment_attempts);
 		}		
 		auto insertion_result = link_managers.insert(std::map<MacId, LinkManager*>::value_type(internal_id, link_manager));
 		if (!insertion_result.second)
@@ -271,6 +284,10 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		for (auto it = packets.begin(); it != packets.end();) {
 			auto *packet = *it;
 			if (packet->isDME()) {							
+				// remember on which channel 
+				if (learn_dme_activity) {
+					channel_sensing_observation[freq] = true;					
+				}
 				this->deletePacket(packet);
 				delete packet;
 				it = packets.erase(it);
@@ -399,68 +416,43 @@ void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
 	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setUseContentionMethod(method);
 }
 
-void MCSOTDMA_Mac::setAlwaysScheduleNextBroadcastSlot(bool value) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setAlwaysScheduleNextBroadcastSlot(value);
-}
-
 void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
 	active_neighbor_observer.reportActivity(id);
 }
 
-const NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() const {
+void MCSOTDMA_Mac::reportBroadcastSlotAdvertisement(const MacId& id, unsigned int advertised_slot_offset) {
+	active_neighbor_observer.reportBroadcastSlotAdvertisement(id, advertised_slot_offset);
+}
+
+
+
+NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() {
 	return this->active_neighbor_observer;
-}
-
-void MCSOTDMA_Mac::setMinBeaconOffset(unsigned int value) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMinBeaconInterval(value);
-}
-
-void MCSOTDMA_Mac::setMaxBeaconOffset(unsigned int value) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setMaxBeaconInterval(value);
-}
-
-void MCSOTDMA_Mac::setForceBidirectionalLinks(bool flag) {
-	// this sets the flag which treats link managers that are created in the future
-	IMac::setForceBidirectionalLinks(flag);	
-	// now also handle those that already exist
-	for (auto pair : link_managers) {
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) {			
-			((PPLinkManager*) pair.second)->setForceBidirectionalLinks(flag);			
-		}
-	}	
 }
 
 size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
 	size_t n = 0;	
-	for (const auto pair : link_managers) 
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
-			n += ((PPLinkManager*) pair.second)->getNumUtilizedResources();					
+	// for (const auto pair : link_managers) 
+	// 	if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST)
+	// 		n += ((PPLinkManager*) pair.second)->getNumUtilizedResources();					
 	return n;
 }
 
 unsigned int MCSOTDMA_Mac::getP2PBurstOffset() const {
 	unsigned int max_burst_offset = 0;
-	if (link_managers.size() <= 1) 
-		max_burst_offset = default_p2p_link_burst_offset;
-	else {
-		for (auto pair : link_managers) {
-			MacId id = pair.first;
-			if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
-				auto *link_manager = (PPLinkManager*) pair.second;
-				if (link_manager->getBurstOffset() > max_burst_offset)
-					max_burst_offset = link_manager->getBurstOffset();
-			}
-		}
-	}
+	// if (link_managers.size() <= 1) 
+	// 	max_burst_offset = default_p2p_link_burst_offset;
+	// else {
+	// 	for (auto pair : link_managers) {
+	// 		MacId id = pair.first;
+	// 		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
+	// 			auto *link_manager = (PPLinkManager*) pair.second;
+	// 			if (link_manager->getBurstOffset() > max_burst_offset)
+	// 				max_burst_offset = link_manager->getBurstOffset();
+	// 		}
+	// 	}
+	// }
 	return max_burst_offset;
-}
-
-void MCSOTDMA_Mac::setWriteResourceUtilizationIntoBeacon(bool flag) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setWriteResourceUtilizationIntoBeacon(flag);
-}
-
-void MCSOTDMA_Mac::setEnableBeacons(bool flag) {
-	((SHLinkManager*) getLinkManager(SYMBOLIC_LINK_ID_BROADCAST))->setEnableBeacons(flag);
 }
 
 void MCSOTDMA_Mac::setAdvertiseNextBroadcastSlotInCurrentHeader(bool flag) {
@@ -474,24 +466,6 @@ void MCSOTDMA_Mac::onThirdPartyLinkReset(const ThirdPartyLink* caller) {
 			third_party_link.onAnotherThirdLinkReset();
 		}
 	}
-}
-
-void MCSOTDMA_Mac::setPPLinkBurstOffset(unsigned int value) {
-	// set variable that is used to instantiate new PPLinkManagers
-	pp_link_burst_offset = value;
-	// handle those that already exist
-	for (auto pair : link_managers) 
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
-			((PPLinkManager*) pair.second)->setBurstOffset(value);					
-}
-
-void MCSOTDMA_Mac::setPPLinkBurstOffsetAdaptive(bool value) {
-	// set variable that is used to instantiate new PPLinkManagers
-	this->adapt_burst_offset = value;
-	// handle those that already exist
-	for (auto pair : link_managers) 
-		if (pair.first != SYMBOLIC_LINK_ID_BEACON && pair.first != SYMBOLIC_LINK_ID_BROADCAST) 
-			((PPLinkManager*) pair.second)->setBurstOffsetAdaptive(value);
 }
 
 bool MCSOTDMA_Mac::isGoingToTransmitDuringCurrentSlot(uint64_t center_frequency) const {
@@ -529,6 +503,10 @@ const std::vector<int> MCSOTDMA_Mac::getChannelSensingObservation() const {
 	return observation;
 }
 
+void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) {
+	this->duty_cycle = DutyCycle(period, max, min_num_supported_pp_links);
+}
+
 void MCSOTDMA_Mac::setLearnDMEActivity(bool value) {
 	this->learn_dme_activity = value;
 }
@@ -545,6 +523,107 @@ bool MCSOTDMA_Mac::shouldLearnDmeActivity() const {
 	return this->learn_dme_activity;
 }
 
-void MCSOTDMA_Mac::setDutyCycle(unsigned int period, double max, unsigned int min_num_supported_pp_links) {
-	// do nothing; implementation will be merged in soon from its branch
+std::pair<std::vector<double>, std::vector<int>> MCSOTDMA_Mac::getUsedPPDutyCycleBudget() const {
+	std::pair<std::vector<double>, std::vector<int>> contributions;	
+	std::vector<double> &used_pp_duty_cycle_budget = contributions.first;
+	std::vector<int> &timeouts = contributions.second;
+	for (const auto &pair : link_managers) {
+		const MacId &id = pair.first;
+		const auto *link_manager = pair.second;		
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON && id != SYMBOLIC_LINK_ID_DME) {			
+			const auto *pp = (PPLinkManager*) link_manager;
+			if (pp->isActive()) {				
+				used_pp_duty_cycle_budget.push_back(link_manager->getNumTxPerTimeSlot());
+				timeouts.push_back(pp->getRemainingTimeout());
+			}
+		}		
+	}
+	return contributions;
+}
+
+size_t MCSOTDMA_Mac::getNumActivePPLinks() const {
+	size_t num_active_pps = 0;
+	for (const auto &pair : link_managers) {
+		const MacId &id = pair.first;
+		const auto *link_manager = pair.second;		
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON && id != SYMBOLIC_LINK_ID_DME) {			
+			const auto *pp = (PPLinkManager*) link_manager;
+			if (pp->isActive()) {				
+				num_active_pps++;
+			}
+		}
+	}
+	return num_active_pps;
+}
+
+double MCSOTDMA_Mac::getUsedSHDutyCycleBudget() const {
+	return ((SHLinkManager*) link_managers.at(SYMBOLIC_LINK_ID_BROADCAST))->getNumTxPerTimeSlot();
+}
+
+int MCSOTDMA_Mac::getSHSlotOffset() const {
+	return ((SHLinkManager*) link_managers.at(SYMBOLIC_LINK_ID_BROADCAST))->getNextBroadcastSlot();
+}
+
+const DutyCycle& MCSOTDMA_Mac::getDutyCycle() const {
+	return this->duty_cycle;
+}
+
+
+int MCSOTDMA_Mac::getDefaultPPLinkTimeout() const {
+	return this->default_pp_link_timeout;
+}
+
+const std::map<MacId, LinkManager*>& MCSOTDMA_Mac::getLinkManagers() const {
+	return this->link_managers;
+}
+
+std::vector<L2HeaderSH::LinkUtilizationMessage> MCSOTDMA_Mac::getPPLinkUtilizations() const {
+	auto utilizations = std::vector<L2HeaderSH::LinkUtilizationMessage>();
+	for (const auto pair : link_managers) {
+		const MacId &id = pair.first;
+		if (id != SYMBOLIC_LINK_ID_BROADCAST && id != SYMBOLIC_LINK_ID_BEACON) {
+			const PPLinkManager *link_manager = (PPLinkManager*) pair.second;
+			if (link_manager->isActive()) {
+				L2HeaderSH::LinkUtilizationMessage utilization = link_manager->getUtilization();
+				if (utilization != L2HeaderSH::LinkUtilizationMessage())
+					utilizations.push_back(utilization);
+			}
+		}
+	}
+	return utilizations;
+}
+
+void MCSOTDMA_Mac::setMaxNoPPLinkEstablishmentAttempts(int value) {
+	this->max_no_pp_link_establishment_attempts = value;
+	for (auto pair : link_managers) {
+		if (pair.first != SYMBOLIC_LINK_ID_BROADCAST && pair.first != SYMBOLIC_LINK_ID_BEACON) {
+			auto *pp = (PPLinkManager*) pair.second;
+			pp->setMaxNoPPLinkEstablishmentAttempts(this->max_no_pp_link_establishment_attempts);
+		}
+	}
+}
+
+void MCSOTDMA_Mac::setConsiderDutyCycle(bool flag) {
+	this->use_duty_cycle = flag;
+}
+
+bool MCSOTDMA_Mac::shouldConsiderDutyCycle() const {
+	return this->use_duty_cycle;
+}
+
+void MCSOTDMA_Mac::setMinNumSupportedPPLinks(unsigned int value) {
+	this->duty_cycle.setMinNumSupportedPPLinks(value);
+}
+
+void MCSOTDMA_Mac::setForcePPPeriod(bool flag, int value) {
+	this->should_force_pp_period = flag;
+	this->forced_pp_period = value;
+}
+
+bool MCSOTDMA_Mac::shouldUseFixedPPPeriod() const {
+	return this->should_force_pp_period;
+}
+
+int MCSOTDMA_Mac::getFixedPPPeriod() const {
+	return this->forced_pp_period;
 }

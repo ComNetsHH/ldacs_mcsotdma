@@ -8,6 +8,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <limits>
 #include "ReservationTable.hpp"
 #include "Reservation.hpp"
 
@@ -15,6 +16,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 /** Container that saves the resources that were locked or scheduled during link establishment. */
 class ReservationMap {
+
+	friend class PPLinkManagerTests;
+	friend class PPLinkManager;	
+
 public:
 	ReservationMap() : num_slots_since_creation(0) {};		
 
@@ -38,8 +43,14 @@ public:
 	}
 
 	size_t size() const {
-		return scheduled_resources.size() + locked_resources.size();
+		return size_scheduled() + size_locked();
 	}			
+	size_t size_scheduled() const {
+		return scheduled_resources.size();
+	}
+	size_t size_locked() const {
+		return locked_resources.size();
+	}
 	
 	void reset() {				
 		this->scheduled_resources.clear();
@@ -48,10 +59,10 @@ public:
 	}	
 
 	/** 	 
-	 * @throws std::invalid_argument if any resource was not locked
+	 * @throws std::runtime_error if any resource was not locked
 	 * */
 	size_t unlock_either_id(const MacId &id1, const MacId &id2) {				
-		size_t num_unlocked = 0;
+		size_t num_unlocked = 0;		
 		for (const auto& pair : locked_resources) {
 			ReservationTable *table = pair.first;
 			// skip SH reservations
@@ -61,10 +72,10 @@ public:
 			if (slot_offset > 0) {				
 				try {
 					table->unlock_either_id(slot_offset, id1, id2);							
-					num_unlocked++;
-				} catch (const id_mismatch &e) {
+					num_unlocked++;					
+				} catch (const id_mismatch &e) {					
 					// do nothing
-				} catch (const std::invalid_argument &e) {
+				} catch (const std::invalid_argument &e) {					
 					// do nothing
 				} catch (const std::exception &e) {
 					throw std::runtime_error("ReservationMap::unlock_either_id error: " + std::string(e.what()));
@@ -108,6 +119,36 @@ public:
 		}
 		return num_unscheduled;
 	}	
+
+	std::pair<ReservationTable*, int> getNextTxReservation() const {
+		int closest_time_slot = std::numeric_limits<int>::max();
+		std::pair<ReservationTable*, int> best_match = {nullptr, 0};
+		for (auto pair : scheduled_resources) {			
+			int time_slot = pair.second - this->num_slots_since_creation;
+			bool is_tx = pair.first->getReservation(pair.second - this->num_slots_since_creation).isTx();
+			if (time_slot >= 0 && time_slot < closest_time_slot && is_tx) {
+				closest_time_slot = time_slot;
+				best_match = pair;
+				best_match.second = time_slot;								
+			}
+		}		
+		return best_match;
+	}
+
+	std::pair<ReservationTable*, int> getNextRxReservation() const {
+		int closest_time_slot = std::numeric_limits<int>::max();
+		std::pair<ReservationTable*, int> best_match = {nullptr, 0};
+		for (auto pair : scheduled_resources) {			
+			int time_slot = pair.second - this->num_slots_since_creation;
+			bool is_rx = pair.first->getReservation(pair.second - this->num_slots_since_creation).isRx();
+			if (time_slot >= 0 && time_slot < closest_time_slot && is_rx) {
+				closest_time_slot = time_slot;
+				best_match = pair;
+				best_match.second = time_slot;
+			}
+		}
+		return best_match;
+	}
 
 	protected:		
 		std::vector<std::pair<ReservationTable*, int>> scheduled_resources;				

@@ -25,7 +25,7 @@ void LinkManager::assign(const FrequencyChannel* channel) {
 }
 
 void LinkManager::onPacketReception(L2Packet*& packet) {
-	coutd << *mac << "::" << *this << "::onPacketReception... ";
+	coutd << *mac << "::" << *this << "::onPacketReception: ";
 	coutd << "a packet from '" << packet->getOrigin() << "' ";
 	if (packet->getDestination() != SYMBOLIC_ID_UNSET) {
 		coutd << "to '" << packet->getDestination() << "";
@@ -34,10 +34,8 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			mac->statisticReportUnicastReceived();
 		} else {
 			coutd << "' -> ";
-			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST)
-				mac->statisticReportBroadcastReceived();
-			else if (packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
-				mac->statisticReportBeaconReceived();
+			if (packet->getDestination() == SYMBOLIC_LINK_ID_BROADCAST || packet->getDestination() == SYMBOLIC_LINK_ID_BEACON)
+				mac->statisticReportBroadcastReceived();			
 			else {
 				std::stringstream ss;
 				ss << *mac << "::" << *this << "::onPacketReception(unsupported destination): " << packet->getDestination();
@@ -54,37 +52,14 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
 	// Go through all header and payload pairs...
 	bool contains_data = false;
-	for (size_t i = 0; i < packet->getHeaders().size(); i++) {
+	for (size_t i = 0; i < packet->getHeaders().size(); i++) {		
 		auto*& header = (L2Header*&) packet->getHeaders().at(i);
 		auto*& payload = (L2Packet::Payload*&) packet->getPayloads().at(i);
-		switch (header->frame_type) {
-			case L2Header::base: {
-				coutd << "processing base header -> ";
-				auto*& base_header = (L2HeaderBase*&) header;
-				try {
-					processBaseMessage(base_header);
-				} catch (const std::exception &e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << " error processing base message: " << e.what() << std::endl;					
-					throw std::runtime_error(ss.str());
-				}
-				break;
-			}
-			case L2Header::beacon: {
-				coutd << "processing beacon -> ";
-				try {
-					processBeaconMessage(packet->getOrigin(), (L2HeaderBeacon*&) header, (BeaconPayload*&) payload);				
-				} catch (const std::exception &e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << " error processing beacon message: " << e.what() << std::endl;					
-					throw std::runtime_error(ss.str());
-				}
-				break;
-			}
+		switch (header->frame_type) {			
 			case L2Header::broadcast: {
 				coutd << "processing broadcast -> ";
-				try {
-					processBroadcastMessage(packet->getOrigin(), (L2HeaderBroadcast*&) header);
+				try {					
+					processBroadcastMessage(((L2HeaderSH*) header)->src_id, (L2HeaderSH*&) header);
 				} catch (const std::exception &e) {
 					std::stringstream ss;
 					ss << *mac << "::" << *this << " error processing broadcast message: " << e.what() << std::endl;					
@@ -96,7 +71,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 			case L2Header::unicast: {
 				coutd << "processing unicast -> ";
 				try {
-					processUnicastMessage((L2HeaderUnicast*&) header, payload);
+					processUnicastMessage((L2HeaderPP*&) header, payload);
 				} catch (const std::exception &e) {
 					std::stringstream ss;
 					ss << *mac << "::" << *this << " error processing unicast message: " << e.what() << std::endl;					
@@ -104,29 +79,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 				}
 				contains_data = true;
 				break;
-			}
-			case L2Header::link_establishment_request: {
-				coutd << "processing link establishment request -> ";
-				try {
-					processLinkRequestMessage((const L2HeaderLinkRequest*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
-				} catch (const std::exception &e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << " error processing link request message: " << e.what() << std::endl;			
-					throw std::runtime_error(ss.str());
-				}
-				break;
-			}
-			case L2Header::link_establishment_reply: {
-				coutd << "processing link establishment reply -> ";
-				try {
-					processLinkReplyMessage((const L2HeaderLinkReply*&) header, (const LinkManager::LinkEstablishmentPayload*&) payload, packet->getOrigin());				
-				} catch (const std::exception &e) {
-					std::stringstream ss;
-					ss << *mac << "::" << *this << " error processing link reply message: " << e.what() << std::endl;					
-					throw std::runtime_error(ss.str());
-				}
-				break;
-			}
+			}			
 			case L2Header::dme_request: {
 				coutd << "discarding DME request -> ";
 				break;
@@ -151,35 +104,35 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 	}
 }
 
-void LinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-	coutd << *this << "::processBeaconMessage" << std::endl;
-	throw std::runtime_error("not implemented");
-}
+// void LinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
+// 	coutd << *this << "::processBeaconMessage" << std::endl;
+// 	throw std::runtime_error("not implemented");
+// }
 
-void LinkManager::processBroadcastMessage(const MacId& origin, L2HeaderBroadcast*& header) {
+void LinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {
 	coutd << *this << "::processBroadcastMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processUnicastMessage(L2HeaderUnicast*& header, L2Packet::Payload*& payload) {
+void LinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*& payload) {
 	coutd << *this << "::processUnicastMessage" << std::endl;
 	throw std::runtime_error("not implemented");
 }
 
-void LinkManager::processBaseMessage(L2HeaderBase*& header) {
-	coutd << *this << "::processBaseMessage" << std::endl;
-	throw std::runtime_error("not implemented");
-}
+// void LinkManager::processBaseMessage(L2HeaderBase*& header) {
+// 	coutd << *this << "::processBaseMessage" << std::endl;
+// 	throw std::runtime_error("not implemented");
+// }
 
-void LinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
-	coutd << *this << "::processLinkRequestMessage" << std::endl;
-	throw std::runtime_error("not implemented");
-}
+// void LinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
+// 	coutd << *this << "::processLinkRequestMessage" << std::endl;
+// 	throw std::runtime_error("not implemented");
+// }
 
-void LinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
-	coutd << *this << "::processLinkReplyMessage" << std::endl;
-	throw std::runtime_error("not implemented");
-}
+// void LinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
+// 	coutd << *this << "::processLinkReplyMessage" << std::endl;
+// 	throw std::runtime_error("not implemented");
+// }
 
 void LinkManager::onSlotEnd() {}
 
@@ -188,4 +141,8 @@ unsigned int LinkManager::measureMacDelay() {
 	unsigned int mac_delay = now - time_slot_of_last_channel_access;
 	time_slot_of_last_channel_access = now;		
 	return mac_delay;
+}
+
+LinkManager::Status LinkManager::getLinkStatus() const {
+	return link_status;
 }

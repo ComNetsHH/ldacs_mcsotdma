@@ -107,7 +107,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param timeout 		 
 		 * @return Start slot offsets that could be used to initiate a PP link.
 		 */
-		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, unsigned int burst_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int timeout, MCSOTDMA_Mac* mac) const;		
+		std::vector<unsigned int> findPPCandidates(unsigned int num_proposal_slots, unsigned int min_offset, int num_forward_bursts, int num_reverse_bursts, int period, int timeout) const;		
 
 		/**		 
 		 * @param slot_offset 
@@ -245,6 +245,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		bool canLock(unsigned int slot_offset) const;		
 
+		bool isLinkValid(int start_slot_offset, int period, int num_tx_initiator, int num_tx_recipient, int timeout, bool is_link_initiator) const;
+
 	protected:
 		bool isValid(int32_t slot_offset) const;
 
@@ -278,7 +280,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @param timeout 
 		 * @return Start slot where a link with the given characteristics can be initiated.
 		 */
-		unsigned int findEarliestIdleSlotsPP(unsigned int start_offset, unsigned int burst_length, unsigned int burst_length_tx, unsigned int burst_offset, unsigned int timeout, MCSOTDMA_Mac *mac) const;
+		unsigned int findEarliestIdleSlotsPP(int start_offset, int num_forward_bursts, int num_reverse_bursts, int period, int timeout) const;
 		unsigned int findEarliestIdleSlotsBC(unsigned int start_offset) const;
 
 		/**
@@ -289,6 +291,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * @return Whether the given transmission burst is reservable.
 		 */
 		bool isBurstValid(int start_slot, unsigned int burst_length, unsigned int burst_length_tx, bool rx_idle_during_first_slot, MCSOTDMA_Mac *mac) const;
+		bool isTxValid(int slot) const;
+		bool isRxValid(int slot) const;
 
 	protected:
 		/** Holds the utilization status of every slot from the current one up to some planning horizon both into past and future. */

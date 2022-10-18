@@ -201,24 +201,19 @@ std::vector<ReservationTable*>& ReservationManager::getP2PReservationTables() {
 	return this->p2p_reservation_tables;
 }
 
-ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channel, const unsigned int timeout, const int first_burst_in, const unsigned int burst_length, const unsigned int burst_length_tx, const unsigned int burst_length_rx, const unsigned int burst_offset, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator) {
-	if (first_burst_in + timeout*burst_length >= planning_horizon) {
-		std::stringstream ss;
-		ss << "ReservationManager::scheduleBursts(timeout=" << timeout << ", first_burst_in=" << first_burst_in << ", burst_length=" << burst_length << ", burst_length_tx=" << burst_length_tx << ", burst_length_rx=" << burst_length_rx << ", burst_offset=" << burst_offset << ") exceeds planning horizon: " << first_burst_in + timeout*burst_length << " > " << planning_horizon << ".";
-		throw std::invalid_argument(ss.str());
-	}		
+ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channel, const int &start_slot_offset, const int &num_forward_bursts, const int &num_reverse_bursts, const int &period, const int &timeout, const MacId& initiator_id, const MacId& recipient_id, bool is_link_initiator) {	
 	ReservationMap reservation_map;
 	ReservationTable *tbl = getReservationTable(channel);	
 	Reservation::Action action_1, action_2;	
 	// we differentiate between being the link initiator or not
 	action_1 = is_link_initiator ? Reservation::TX : Reservation::RX;
-	action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;
-	// and the target is always the other user
-	MacId target_id = recipient_id;	
+	action_2 = is_link_initiator ? Reservation::RX : Reservation::TX;	
+	MacId target_id = is_link_initiator ? recipient_id : initiator_id; 	
 	
-	auto tx_rx_slots = SlotCalculator::calculateTxRxSlots(first_burst_in, burst_length, burst_length_tx, burst_length_rx, burst_offset, timeout);	
-	// go over link initiator's TX slots
-	coutd << "scheduling TX slots: ";
+	auto tx_rx_slots = SlotCalculator::calculateAlternatingBursts(start_slot_offset, num_forward_bursts, num_reverse_bursts, period, timeout);	
+	size_t num_tx_scheduled = 0, num_rx_scheduled = 0;
+	// go over link initiator's TX slots	
+	coutd << (is_link_initiator ? "scheduling TX slots: " : "scheduling RX slots: ");
 	for (int &slot_offset : tx_rx_slots.first) {
 		bool can_write = false, can_overwrite = false;
 		const auto &res = tbl->getReservation(slot_offset);
@@ -229,7 +224,7 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 		else if (res.isBusy() && res.getTarget() == target_id) 
 			can_overwrite = true;		
 
-		coutd << "t=" << slot_offset << " ";
+		coutd << "t=" << slot_offset;
 		// make sure that hardware is available
 		if (can_write || can_overwrite) {			
 			if (action_1 == Reservation::TX) {
@@ -257,11 +252,13 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 		if (can_write || can_overwrite) {
 			tbl->mark(slot_offset, Reservation(target_id, action_1));						
 			reservation_map.add_scheduled_resource(tbl, slot_offset);
-			coutd << (can_write ? "written" : "overwritten");
-		}
+			coutd << ":" << tbl->getReservation(slot_offset);
+			coutd << (can_write ? "" : " overwritten");
+			action_1 == Reservation::TX ? num_tx_scheduled++ : num_rx_scheduled++;
+		} 
 		coutd << ", ";
 	}
-	coutd << "-> scheduling RX slots: ";
+	coutd << (is_link_initiator ? "scheduling RX slots: " : "scheduling TX slots: ");
 	// go over the link initiator's RX slots
 	for (int &slot_offset : tx_rx_slots.second) {
 		bool can_write = false, can_overwrite = false;
@@ -300,10 +297,19 @@ ReservationMap ReservationManager::scheduleBursts(const FrequencyChannel *channe
 		if (can_write || can_overwrite) {
 			tbl->mark(slot_offset, Reservation(target_id, action_2));		
 			reservation_map.add_scheduled_resource(tbl, slot_offset);	
-			coutd << " " << (can_write ? "written" : "overwritten");
+			coutd << ":" << tbl->getReservation(slot_offset);
+			coutd << (can_write ? "" : " overwritten");
+			action_2 == Reservation::TX ? num_tx_scheduled++ : num_rx_scheduled++;
 		}
 		coutd << ", ";
-	}
+	}	
 	coutd << "done -> ";
+	if (num_tx_scheduled == 0 || num_rx_scheduled == 0) {		
+		throw std::invalid_argument("ReservationManager::scheduleBursts could schedule " + std::to_string(num_tx_scheduled) + " TX reservations and " + std::to_string(num_rx_scheduled) + " RX reservations. Too many PP links, i.e. is the duty cycle exhausted?");
+	}	
 	return reservation_map;
+}
+
+uint32_t ReservationManager::getPlanningHorizon() const {
+	return this->planning_horizon;
 }

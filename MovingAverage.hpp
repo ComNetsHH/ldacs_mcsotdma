@@ -31,6 +31,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void reset();
 
+		/**		 		 
+		 * @return Whether the initial num_values-many values have been put() yet.
+		 */
+		bool hasReachedNumValues() const;
+
 	protected:
 		std::vector<unsigned long long> values;
 		std::size_t index;
