@@ -244,7 +244,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}
 
 		void testUnscheduleAfterTimeHasPassed() {
-			size_t num_slots = 0, max_slots = 100;									
+			size_t num_slots = 0, max_slots = 500;									
 			while (mac_initiator->stat_num_broadcasts_rcvd.get() < 1.0 && num_slots++ < max_slots) {
 				mac_initiator->update(1);
 				mac_recipient->update(1);

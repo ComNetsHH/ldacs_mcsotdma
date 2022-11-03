@@ -85,6 +85,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void setMinNumSupportedPPLinks(unsigned int value) override;
 		void setForcePPPeriod(bool flag, int value) override;
 
+		void setDutyCycleBudgetComputationStrategy(const DutyCycleBudgetStrategy& strategy) override;
+
 		size_t getNumUtilizedP2PResources() const;
 		std::vector<L2HeaderSH::LinkUtilizationMessage> getPPLinkUtilizations() const;
 		const std::map<MacId, LinkManager*>& getLinkManagers() const;
@@ -264,8 +266,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		
 		/** Time slots. */
 		const unsigned int default_duty_cycle_period = 100;
+		/** Percentage. */
 		const double default_max_duty_cycle = 0.1;
-		const unsigned int default_min_num_supported_pp_links = 4;
+		const unsigned int default_min_num_supported_pp_links = 1;
 		DutyCycle duty_cycle;
 
 		bool learn_dme_activity = false;

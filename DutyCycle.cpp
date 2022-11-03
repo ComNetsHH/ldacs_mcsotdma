@@ -24,7 +24,24 @@ void DutyCycle::setMinNumSupportedPPLinks(unsigned int n) {
 	this->min_num_supported_pp_links = std::max(uint(1), n);
 }
 
-std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const {	
+std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const {
+	switch (this->strategy) {
+		case DutyCycleBudgetStrategy::STATIC: {return this->getPeriodicityPP_STATIC(used_pp_budgets, timeouts, used_sh_budget, sh_slot_offset); break;}
+		case DutyCycleBudgetStrategy::DYNAMIC: {return this->getPeriodicityPP_DYNAMIC(used_pp_budgets, timeouts, used_sh_budget, sh_slot_offset); break;}
+		default: {throw std::runtime_error("unexpected DutyCycle strategy: " + std::to_string(this->strategy));}
+	}
+}
+
+std::pair<int, int> DutyCycle::getPeriodicityPP_STATIC(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const {
+	// compute statically available budget
+	double avail_budget = this->max_duty_cycle / ((double) this->getMinNumSupportedPPLinks() + 1);  // +1 due to Shared Channel
+	// translate budget to minimum period n, where periodicity is every second burst of 5*2^n => 10*2^n
+	unsigned int min_period = std::max(0.0, std::ceil(std::log2(1.0/(10.0*avail_budget))));		
+	unsigned int min_offset = 0;
+	return {min_offset, min_period};
+}
+
+std::pair<int, int> DutyCycle::getPeriodicityPP_DYNAMIC(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const {	
 	coutd << "computing duty cycle restriction with used_pp_budgets=[";
 	for (auto d : used_pp_budgets)
 		coutd << d << ", ";
@@ -91,7 +108,21 @@ std::pair<int, int> DutyCycle::getPeriodicityPP(std::vector<double> used_pp_budg
 	}
 }
 
-double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {	
+double DutyCycle::getSHBudget(const std::vector<double>& used_budget) const {
+	switch (this->strategy) {
+		case DutyCycleBudgetStrategy::STATIC: {return this->getSHBudget_STATIC(used_budget); break;}
+		case DutyCycleBudgetStrategy::DYNAMIC: {return this->getSHBudget_DYNAMIC(used_budget); break;}
+		default: {throw std::runtime_error("unexpected DutyCycle strategy: " + std::to_string(this->strategy)); break;}
+	}
+}
+
+double DutyCycle::getSHBudget_STATIC(const std::vector<double>& used_budget) const {	
+	// compute statically available budget
+	double avail_budget = this->max_duty_cycle / ((double) this->getMinNumSupportedPPLinks() + 1);
+	return avail_budget;
+}
+
+double DutyCycle::getSHBudget_DYNAMIC(const std::vector<double>& used_budget) const {	
 	double avail_budget = this->max_duty_cycle;		
 	size_t num_active_pp_links = used_budget.size();	
 	for (double d : used_budget) 
@@ -133,4 +164,12 @@ double DutyCycle::getTotalBudget() const {
 
 unsigned int DutyCycle::getMinNumSupportedPPLinks() const {
 	return this->min_num_supported_pp_links;
+}
+
+void DutyCycle::setStrategy(const DutyCycleBudgetStrategy& strategy) {	
+	this->strategy = strategy;	
+}
+
+DutyCycleBudgetStrategy DutyCycle::getStrategy() const {
+	return this->strategy;
 }

@@ -627,3 +627,8 @@ bool MCSOTDMA_Mac::shouldUseFixedPPPeriod() const {
 int MCSOTDMA_Mac::getFixedPPPeriod() const {
 	return this->forced_pp_period;
 }
+
+
+void MCSOTDMA_Mac::setDutyCycleBudgetComputationStrategy(const DutyCycleBudgetStrategy& strategy) {
+	this->duty_cycle.setStrategy(strategy);
+}

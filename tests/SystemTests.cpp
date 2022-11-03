@@ -319,10 +319,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_GREATER(0.0, used_budget);
 		}
 
-		void testDutyCyclePeriodicityPP() {
+		void testDutyCyclePeriodicityPP() {			
+			mac_layer_me->setMinNumSupportedPPLinks(4);
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			std::vector<int> timeouts;
 			double used_sh_budget = 0.0;
@@ -334,7 +336,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void testDutyCyclePeriodicityPPOnlyOneLinkNeeded() {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
-			mac_layer_me->setDutyCycle(100, 0.1, 1);			
+			mac_layer_me->setDutyCycle(100, 0.1, 1);		
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);	
 			std::vector<double> duty_cycle_contribs;
 			std::vector<int> timeouts;
 			double used_sh_budget = 0.02;
@@ -350,6 +353,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 1);
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			auto contributions_and_timeouts = mac_layer_me->getUsedPPDutyCycleBudget();
 			const std::vector<double> &used_pp_duty_cycle_budget = contributions_and_timeouts.first;			
 			const std::vector<int>& timeouts = contributions_and_timeouts.second;
@@ -363,6 +367,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.02);
 			std::vector<int> timeouts;
@@ -377,6 +382,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.02);
 			duty_cycle_contribs.push_back(0.02);
@@ -394,6 +400,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.02);
 			duty_cycle_contribs.push_back(0.02);
@@ -413,6 +420,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.025);
 			duty_cycle_contribs.push_back(0.0125);
@@ -432,6 +440,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.02);
 			duty_cycle_contribs.push_back(0.02);
@@ -453,6 +462,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(0.025);
 			duty_cycle_contribs.push_back(0.025);
@@ -474,6 +484,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			// 3% used
 			duty_cycle_contribs.push_back(0.01);
@@ -495,6 +506,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			// PP uses 2%
 			duty_cycle_contribs.push_back(0.02);
@@ -513,6 +525,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			std::vector<int> timeouts;
 			int sh_offset = mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs);
@@ -524,6 +537,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(.02);
 			std::vector<int> timeouts;
@@ -537,6 +551,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(.02);
 			duty_cycle_contribs.push_back(.02);
@@ -552,6 +567,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(.02);
 			duty_cycle_contribs.push_back(.02);
@@ -569,6 +585,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(.02);
 			duty_cycle_contribs.push_back(.02);
@@ -588,6 +605,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			unsigned int duty_cycle_periodicity = 100;
 			double max_duty_cycle = 0.1;
 			mac_layer_me->setDutyCycle(100, 0.1, 4);			
+			mac_layer_me->setDutyCycleBudgetComputationStrategy(DutyCycleBudgetStrategy::DYNAMIC);
 			std::vector<double> duty_cycle_contribs;
 			duty_cycle_contribs.push_back(.025);
 			duty_cycle_contribs.push_back(.0125);

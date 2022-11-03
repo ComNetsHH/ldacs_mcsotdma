@@ -5,6 +5,7 @@
 #ifndef TUHH_INTAIRNET_MC_SOTDMA_DUTYCYCLE_HPP
 #define TUHH_INTAIRNET_MC_SOTDMA_DUTYCYCLE_HPP
 
+#include "DutyCycleBudgetStrategy.hpp"
 #include "MovingAverage.hpp"
 #include <string>
 #include <stdexcept>
@@ -24,7 +25,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		friend class SystemTests;
 
-		public:
+		public:			
 			DutyCycle();
 
 			/**			 
@@ -57,6 +58,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 			unsigned int getMinNumSupportedPPLinks() const;
 
+			/** Set the strategy used to compute the available duty cycle for a new link. */
+			void setStrategy(const DutyCycleBudgetStrategy& strategy);
+			DutyCycleBudgetStrategy getStrategy() const;
+
 			/**			 
 			 * @param used_budget <used PP duty cycle budget per link>
 			 * @param timeouts <timeout in slots per PP link>
@@ -64,13 +69,16 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			 * @param sh_slot_offset offset until next SH channel access
 			 * @return <Minimum slot offset, Minimum number of time slots in-between two transmission bursts so that the duty cycle budget is maintained>
 			 */
-			std::pair<int, int> getPeriodicityPP(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const;
+			std::pair<int, int> getPeriodicityPP(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const;						
+			double getSHBudget(const std::vector<double>& used_budget) const;			
+			int getOffsetSH(const std::vector<double>& used_budget) const;			
+			double getTotalBudget() const;						
 
-			double getSHBudget(const std::vector<double>& used_budget) const;
-
-			int getOffsetSH(const std::vector<double>& used_budget) const;
-
-			double getTotalBudget() const;
+		protected:
+			std::pair<int, int> getPeriodicityPP_STATIC(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const;
+			std::pair<int, int> getPeriodicityPP_DYNAMIC(std::vector<double> used_pp_budgets, std::vector<int> timeouts, double used_sh_budget, int sh_slot_offset) const;
+			double getSHBudget_STATIC(const std::vector<double>& used_budget) const;
+			double getSHBudget_DYNAMIC(const std::vector<double>& used_budget) const;			
 
 		protected:
 			/** Number of time slots to consider when computing the duty cycle. */
@@ -79,6 +87,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			double max_duty_cycle;
 			unsigned int min_num_supported_pp_links = 1;
 			MovingAverage duty_cycle;						
+			DutyCycleBudgetStrategy strategy = DutyCycleBudgetStrategy::STATIC;
 	};	
 }
 

@@ -147,7 +147,10 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void threeUsersNonOverlappingTest() {			
 //			coutd.setVerbose(true);
-			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;			
+			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer;
+			mac_1->setMinNumSupportedPPLinks(4);
+			mac_2->setMinNumSupportedPPLinks(4);
+			mac_3->setMinNumSupportedPPLinks(4);
 			mac_1->reportNeighborActivity(id2);
 			mac_1->reportNeighborActivity(id3);
 			mac_2->reportNeighborActivity(id1);
@@ -374,7 +377,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			auto *p2p_1 = (PPLinkManager*) mac_1->getLinkManager(id2), *p2p_2 = (PPLinkManager*) mac_2->getLinkManager(id1), *p2p_3 = (PPLinkManager*) mac_3->getLinkManager(id2);
 			p2p_1->notifyOutgoing(num_outgoing_bits);
 			p2p_3->notifyOutgoing(num_outgoing_bits);
-			size_t num_slots = 0, max_num_slots = 200;
+			size_t num_slots = 0, max_num_slots = 500;
 			while ((mac_1->stat_num_pp_links_established.get() < 1 || mac_2->stat_num_pp_links_established.get() < 1 || mac_3->stat_num_pp_links_established.get() < 1) && num_slots++ < max_num_slots) {			
 				mac_1->update(1);
 				mac_2->update(1);
@@ -473,6 +476,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testEstablishFourLinks() {
 			MACLayer *mac_1 = env1->mac_layer, *mac_2 = env2->mac_layer, *mac_3 = env3->mac_layer, *mac_4 = env4->mac_layer, *mac_5 = env5->mac_layer;
+			mac_1->setMinNumSupportedPPLinks(4);
+			mac_2->setMinNumSupportedPPLinks(4);
+			mac_3->setMinNumSupportedPPLinks(4);
+			mac_4->setMinNumSupportedPPLinks(4);
+			mac_5->setMinNumSupportedPPLinks(4);
 			size_t warmup = 500;
 			for (size_t t = 0; t < warmup; t++) {
 				mac_1->update(1);
@@ -521,15 +529,15 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 
 		CPPUNIT_TEST_SUITE(ManyUsersTests);			
-			CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
-			CPPUNIT_TEST(testStatPacketsSent);			
+			// CPPUNIT_TEST(threeUsersLinkEstablishmentSameStart);			
+			// CPPUNIT_TEST(testStatPacketsSent);			
 		// TODO	// CPPUNIT_TEST(testCollisions);
-			CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
+			// CPPUNIT_TEST(threeUsersLinkReestablishmentSameStart);
 			CPPUNIT_TEST(threeUsersNonOverlappingTest);
-			CPPUNIT_TEST(testTwoRequestsForSameAdvertisedResource);
-			CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
-			CPPUNIT_TEST(testHiddenNodeScenario);
-			CPPUNIT_TEST(testTwoLinksToOneUser);			
+			// CPPUNIT_TEST(testTwoRequestsForSameAdvertisedResource);
+			// CPPUNIT_TEST(testLinkEstablishmentThreeUsers);
+			// CPPUNIT_TEST(testHiddenNodeScenario);
+			// CPPUNIT_TEST(testTwoLinksToOneUser);			
 			CPPUNIT_TEST(testEstablishFourLinks);						
 		CPPUNIT_TEST_SUITE_END();
 	};

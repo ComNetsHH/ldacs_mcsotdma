@@ -21,4 +21,4 @@ target_link_libraries(tuhh_intairnet_mc-sotdma LINK_PUBLIC intairnet_linklayer_g
 add_executable(mcsotdma-unittests ${MCSOTDMA_SRC} ${MCSOTDMA_TEST_SRC} ${GLUE_SRC_HPP})
 target_include_directories(mcsotdma-unittests PUBLIC glue-lib-headers)
 target_link_libraries(mcsotdma-unittests PRIVATE cppunit tuhh_intairnet_mc-sotdma) # Link in cppunit and MC-SOTDMA libraries.
-target_compile_options(mcsotdma-unittests PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(mcsotdma-unittests PRIVATE) #-Wall -Wextra -Wpedantic
