@@ -47,6 +47,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		bool isStartOfTxBurst() const;
 
+		void receivedPacketThisSlot() override;
+
 	protected:		
 		/** Whether this user has initiated this link and gets to transmit first during one exchange. */
 		bool is_link_initiator; 
@@ -71,7 +73,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** These are reset every slot. */	
 		bool transmission_this_slot = false, reception_this_slot = false;
 		/** For testing purposes only. */
-		bool reported_start_tx_burst_to_arq = false, reported_end_tx_burst_to_arq = false;
+		bool reported_start_tx_burst_to_arq = false, reported_end_tx_burst_to_arq = false, reported_missing_packet_to_arq = false;
+		bool received_packet_this_slot = false;
 	};
 }
 
