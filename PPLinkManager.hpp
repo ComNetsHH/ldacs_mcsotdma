@@ -62,7 +62,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Holds the absolute slot number at which link establishment was initiated, s.t. the link establishment time can be measured. */
 		int stat_link_establishment_start;		
 		int expected_link_request_confirmation_slot = 0;
-		int max_establishment_attempts = 5, establishment_attempts = 0;		
+		int max_establishment_attempts = 5, establishment_attempts = 0;	
+		/** These are reset every slot. */	
+		bool transmission_this_slot = false, reception_this_slot = false;
 	};
 }
 

@@ -9,7 +9,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 PPLinkManager::PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
 void PPLinkManager::onReceptionReservation() {
-	
+	reception_this_slot = true;
 }
 
 L2Packet* PPLinkManager::onTransmissionReservation() {			
@@ -23,6 +23,7 @@ L2Packet* PPLinkManager::onTransmissionReservation() {
 	// report statistics
 	mac->statisticReportUnicastSent();	
 	mac->statisticReportUnicastMacDelay(measureMacDelay());
+	transmission_this_slot = true;
 	// return packet
 	return packet;	
 }
@@ -65,6 +66,9 @@ void PPLinkManager::establishLink() {
 
 void PPLinkManager::onSlotStart(uint64_t num_slots) {
 	reserved_resources.onSlotStart();
+	// reset flags
+	transmission_this_slot = false;
+	reception_this_slot = false;
 }
 
 void PPLinkManager::onSlotEnd() {
@@ -79,6 +83,19 @@ void PPLinkManager::onSlotEnd() {
 	}	
 	if (link_status == link_established) {
 		try {
+			// report end of bursts 
+			if (transmission_this_slot) {				
+				bool transmission_next_slot;
+				try {
+					transmission_next_slot = getNextTxSlot() == 1;
+				} catch (const std::runtime_error &e) {
+					// this error is thrown if no next TX slot is found
+					transmission_next_slot = false;
+				}
+				if (!transmission_next_slot)
+					mac->reportEndOfTxBurstToArq(link_id);
+			}
+			// decrement timeout
 			bool timeout_expiry = decrementTimeout();
 			if (timeout_expiry)
 				onTimeoutExpiry();
