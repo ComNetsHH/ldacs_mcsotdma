@@ -14,9 +14,13 @@ void PPLinkManager::onReceptionReservation() {
 
 L2Packet* PPLinkManager::onTransmissionReservation() {			
 	coutd << *this << "::onTransmission -> ";		
+	// report start of TX burst to ARQ
+
+	// get capacity and request data packet
 	size_t capacity = mac->getCurrentDatarate();
 	coutd << "requesting " << capacity << " bits from upper sublayer -> ";
 	L2Packet *packet = mac->requestSegment(capacity, link_id);	
+	// set header fields
 	auto *&header = (L2HeaderPP*&) packet->getHeaders().at(0);
 	header->src_id = mac->getMacId();
 	header->dest_id = link_id;
@@ -347,6 +351,22 @@ int PPLinkManager::getNextTxSlot() const {
 	}
 	return pair.second;
 }		
+
+bool PPLinkManager::isStartOfTxBurst() const {
+	bool is_start_of_tx_burst = false;
+	try {
+		int next_tx_slot = getNextTxSlot();		
+		// does *not* check whether the last slot was also a transmission slot
+		// because at the moment, only single-slot transmissions are supported
+		if (next_tx_slot == 0)
+			is_start_of_tx_burst = true;
+	} catch (const std::runtime_error &e) {
+		// couldn't find next TX slot
+		is_start_of_tx_burst = false;
+	}
+	return is_start_of_tx_burst;
+}
+
 int PPLinkManager::getNextRxSlot() const {
 	auto pair = reserved_resources.getNextRxReservation();
 	if (pair.first == nullptr) {

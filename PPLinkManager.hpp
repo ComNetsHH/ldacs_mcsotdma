@@ -41,6 +41,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		bool decrementTimeout();
 		void onTimeoutExpiry();
+		/**
+		 * Only checks if the current slot is a TX reservation.
+		 * Multi-slot transmission bursts are no (longer) supported!
+		 */
+		bool isStartOfTxBurst() const;
 
 	protected:		
 		/** Whether this user has initiated this link and gets to transmit first during one exchange. */

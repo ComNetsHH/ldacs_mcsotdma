@@ -466,10 +466,46 @@ public:
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
 		CPPUNIT_ASSERT(pp->current_reservation_table != nullptr);
 		CPPUNIT_ASSERT(pp_you->current_reservation_table != nullptr);				
-		CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, pp->current_reservation_table->getReservation(pp->getNextTxSlot()).getAction());
+		CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, pp->current_reservation_table->getReservation(pp->getNextTxSlot()).getAction());		
 		CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, pp->current_reservation_table->getReservation(pp_you->getNextTxSlot()).getAction());
 		CPPUNIT_ASSERT_EQUAL(Reservation::Action::TX, pp_you->current_reservation_table->getReservation(pp_you->getNextTxSlot()).getAction());
 		CPPUNIT_ASSERT_EQUAL(Reservation::Action::RX, pp_you->current_reservation_table->getReservation(pp->getNextTxSlot()).getAction());
+	}
+
+	void testIsStartOfTxBurst() {
+		size_t num_slots = 0, max_slots = 250;
+		mac->notifyOutgoing(1, partner_id);
+		env->rlc_layer->should_there_be_more_p2p_data = false;  // don't reestablish the link		
+		while (pp->link_status != LinkManager::link_established && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+		max_slots = 1000;
+		num_slots = 0;
+		size_t num_tx_slots = 0;
+		while (pp->link_status != LinkManager::link_not_established && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			if (std::any_of(mac->reservation_manager->getP2PReservationTables().begin(), mac->reservation_manager->getP2PReservationTables().end(), [](ReservationTable *tbl) { return tbl->getReservation(0).isTx(); })) {
+				num_tx_slots++;
+				CPPUNIT_ASSERT_EQUAL(true, pp->isStartOfTxBurst());
+			}
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_EQUAL(size_t(mac->getDefaultPPLinkTimeout()), num_tx_slots);
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
+
+		// CPPUNIT_ASSERT_EQUAL(true, pp->isStartOfTxBurst());
 	}
 
 	/** Tests that throughout an entire PP link, the timeouts between two users match and are correctly decremented. */
@@ -804,32 +840,33 @@ public:
 	}
 
 	CPPUNIT_TEST_SUITE(PPLinkManagerTests);
-		CPPUNIT_TEST(testGet);		
-		CPPUNIT_TEST(testAskSHToSendLinkRequest);
-		CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
-		CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
-		CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
-		CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
-		CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
-		CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
-		CPPUNIT_TEST(testUnlockAfterLinkRequest);		
-		CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);						
-		CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
-		CPPUNIT_TEST(testProcessLinkReply);		
-		CPPUNIT_TEST(testLocalLinkEstablishment);
-		CPPUNIT_TEST(testProposalLinkEstablishment);		
-		CPPUNIT_TEST(testUnicastPacketIsSent);		
-		CPPUNIT_TEST(testCommOverWholePPLink);		
-		CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
-		CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
-		CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceived);		
-		CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
-		CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
-		CPPUNIT_TEST(testCommOverWholePPLink);
-		CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);
-		CPPUNIT_TEST(testPPLinkEstablishmentTime);		
-		CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);
-		CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);				
+		// CPPUNIT_TEST(testGet);		
+		// CPPUNIT_TEST(testAskSHToSendLinkRequest);
+		// CPPUNIT_TEST(testSendLinkRequestWithNoAdvertisedLink);				
+		// CPPUNIT_TEST(testSendLinkRequestWithAdvertisedLink);
+		// CPPUNIT_TEST(testAcceptAdvertisedLinkRequest);
+		// CPPUNIT_TEST(testStartOwnLinkIfRequestInacceptable);
+		// CPPUNIT_TEST(testLinkUtilizationIsCorrectAfterEstablishment);
+		// CPPUNIT_TEST(testResourcesScheduledAfterLinkRequest);				
+		// CPPUNIT_TEST(testUnlockAfterLinkRequest);		
+		// CPPUNIT_TEST(testLinkRequestLaterThanNextSHTransmissionIsRejected);						
+		// CPPUNIT_TEST(testLinkReplySlotOffsetIsNormalized);						
+		// CPPUNIT_TEST(testProcessLinkReply);		
+		// CPPUNIT_TEST(testLocalLinkEstablishment);
+		// CPPUNIT_TEST(testProposalLinkEstablishment);		
+		// CPPUNIT_TEST(testUnicastPacketIsSent);		
+		// CPPUNIT_TEST(testCommOverWholePPLink);		
+		// CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
+		CPPUNIT_TEST(testIsStartOfTxBurst);				
+		// CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
+		// CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceived);		
+		// CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		
+		// CPPUNIT_TEST(testNextTxSlotCorrectlySetOverWholePPLink);		
+		// CPPUNIT_TEST(testCommOverWholePPLink);
+		// CPPUNIT_TEST(testMaxLinkEstablishmentAttemptsReached);
+		// CPPUNIT_TEST(testPPLinkEstablishmentTime);		
+		// CPPUNIT_TEST(testManyPPLinkEstablishmentTimes);
+		// CPPUNIT_TEST(testManyPPLinkEstablishmentTimesStartLate);				
 		
 	CPPUNIT_TEST_SUITE_END();
 };
