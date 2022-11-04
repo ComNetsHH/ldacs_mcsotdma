@@ -15,7 +15,10 @@ void PPLinkManager::onReceptionReservation() {
 L2Packet* PPLinkManager::onTransmissionReservation() {			
 	coutd << *this << "::onTransmission -> ";		
 	// report start of TX burst to ARQ
-
+	if (isStartOfTxBurst()) {
+		reported_start_tx_burst_to_arq = true;
+		mac->reportStartOfTxBurstToArq(link_id);		
+	}
 	// get capacity and request data packet
 	size_t capacity = mac->getCurrentDatarate();
 	coutd << "requesting " << capacity << " bits from upper sublayer -> ";
@@ -73,6 +76,8 @@ void PPLinkManager::onSlotStart(uint64_t num_slots) {
 	// reset flags
 	transmission_this_slot = false;
 	reception_this_slot = false;
+	reported_start_tx_burst_to_arq = false;
+	reported_end_tx_burst_to_arq = false;
 }
 
 void PPLinkManager::onSlotEnd() {
@@ -96,8 +101,10 @@ void PPLinkManager::onSlotEnd() {
 					// this error is thrown if no next TX slot is found
 					transmission_next_slot = false;
 				}
-				if (!transmission_next_slot)
+				if (!transmission_next_slot) {
+					reported_end_tx_burst_to_arq = true;
 					mac->reportEndOfTxBurstToArq(link_id);
+				}
 			}
 			// decrement timeout
 			bool timeout_expiry = decrementTimeout();

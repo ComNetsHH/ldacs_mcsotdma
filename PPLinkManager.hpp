@@ -70,6 +70,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		int max_establishment_attempts = 5, establishment_attempts = 0;	
 		/** These are reset every slot. */	
 		bool transmission_this_slot = false, reception_this_slot = false;
+		/** For testing purposes only. */
+		bool reported_start_tx_burst_to_arq = false, reported_end_tx_burst_to_arq = false;
 	};
 }
 
