@@ -41,6 +41,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		bool decrementTimeout();
 		void onTimeoutExpiry();
+		/**
+		 * Only checks if the current slot is a TX reservation.
+		 * Multi-slot transmission bursts are no (longer) supported!
+		 */
+		bool isStartOfTxBurst() const;
 
 	protected:		
 		/** Whether this user has initiated this link and gets to transmit first during one exchange. */
@@ -62,7 +67,11 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Holds the absolute slot number at which link establishment was initiated, s.t. the link establishment time can be measured. */
 		int stat_link_establishment_start;		
 		int expected_link_request_confirmation_slot = 0;
-		int max_establishment_attempts = 5, establishment_attempts = 0;		
+		int max_establishment_attempts = 5, establishment_attempts = 0;	
+		/** These are reset every slot. */	
+		bool transmission_this_slot = false, reception_this_slot = false;
+		/** For testing purposes only. */
+		bool reported_start_tx_burst_to_arq = false, reported_end_tx_burst_to_arq = false;
 	};
 }
 

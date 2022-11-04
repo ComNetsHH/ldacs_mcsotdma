@@ -9,20 +9,28 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 PPLinkManager::PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
 void PPLinkManager::onReceptionReservation() {
-	
+	reception_this_slot = true;
 }
 
 L2Packet* PPLinkManager::onTransmissionReservation() {			
 	coutd << *this << "::onTransmission -> ";		
+	// report start of TX burst to ARQ
+	if (isStartOfTxBurst()) {
+		reported_start_tx_burst_to_arq = true;
+		mac->reportStartOfTxBurstToArq(link_id);		
+	}
+	// get capacity and request data packet
 	size_t capacity = mac->getCurrentDatarate();
 	coutd << "requesting " << capacity << " bits from upper sublayer -> ";
 	L2Packet *packet = mac->requestSegment(capacity, link_id);	
+	// set header fields
 	auto *&header = (L2HeaderPP*&) packet->getHeaders().at(0);
 	header->src_id = mac->getMacId();
 	header->dest_id = link_id;
 	// report statistics
 	mac->statisticReportUnicastSent();	
 	mac->statisticReportUnicastMacDelay(measureMacDelay());
+	transmission_this_slot = true;
 	// return packet
 	return packet;	
 }
@@ -65,6 +73,11 @@ void PPLinkManager::establishLink() {
 
 void PPLinkManager::onSlotStart(uint64_t num_slots) {
 	reserved_resources.onSlotStart();
+	// reset flags
+	transmission_this_slot = false;
+	reception_this_slot = false;
+	reported_start_tx_burst_to_arq = false;
+	reported_end_tx_burst_to_arq = false;
 }
 
 void PPLinkManager::onSlotEnd() {
@@ -79,6 +92,21 @@ void PPLinkManager::onSlotEnd() {
 	}	
 	if (link_status == link_established) {
 		try {
+			// report end of bursts 
+			if (transmission_this_slot) {				
+				bool transmission_next_slot;
+				try {
+					transmission_next_slot = getNextTxSlot() == 1;
+				} catch (const std::runtime_error &e) {
+					// this error is thrown if no next TX slot is found
+					transmission_next_slot = false;
+				}
+				if (!transmission_next_slot) {
+					reported_end_tx_burst_to_arq = true;
+					mac->reportEndOfTxBurstToArq(link_id);
+				}
+			}
+			// decrement timeout
 			bool timeout_expiry = decrementTimeout();
 			if (timeout_expiry)
 				onTimeoutExpiry();
@@ -330,6 +358,22 @@ int PPLinkManager::getNextTxSlot() const {
 	}
 	return pair.second;
 }		
+
+bool PPLinkManager::isStartOfTxBurst() const {
+	bool is_start_of_tx_burst = false;
+	try {
+		int next_tx_slot = getNextTxSlot();		
+		// does *not* check whether the last slot was also a transmission slot
+		// because at the moment, only single-slot transmissions are supported
+		if (next_tx_slot == 0)
+			is_start_of_tx_burst = true;
+	} catch (const std::runtime_error &e) {
+		// couldn't find next TX slot
+		is_start_of_tx_burst = false;
+	}
+	return is_start_of_tx_burst;
+}
+
 int PPLinkManager::getNextRxSlot() const {
 	auto pair = reserved_resources.getNextRxReservation();
 	if (pair.first == nullptr) {
