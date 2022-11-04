@@ -555,6 +555,44 @@ public:
 		CPPUNIT_ASSERT_EQUAL(LinkManager::link_not_established, pp->link_status);
 	}
 
+	void testReportMissingPacketToArq() {
+		size_t num_slots = 0, max_slots = 250;
+		mac->notifyOutgoing(1, partner_id);
+		env->rlc_layer->should_there_be_more_p2p_data = false;  // don't reestablish the link		
+		env_you->rlc_layer->should_there_be_more_p2p_data = false;  // don't reestablish the link		
+		while ((pp->link_status != LinkManager::link_established || pp_you->link_status != LinkManager::link_established) && num_slots++ < max_slots) {
+			mac->update(1);
+			mac_you->update(1);
+			mac->execute();
+			mac_you->execute();
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+		}
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp->link_status);
+		CPPUNIT_ASSERT_EQUAL(LinkManager::link_established, pp_you->link_status);
+		max_slots = 1000;
+		num_slots = 0;
+		bool expect_missing_packet = false;
+		// drop all packets going A->B
+		env->phy_layer->connected_phys.clear();
+		while (!expect_missing_packet && num_slots++ < max_slots) {			
+			mac->update(1);
+			mac_you->update(1);
+			if (std::any_of(mac->reservation_manager->getP2PReservationTables().begin(), mac->reservation_manager->getP2PReservationTables().end(), [](ReservationTable *tbl) { return tbl->getReservation(0).isTx(); })) {
+				expect_missing_packet = true;
+			}			
+			mac->execute();
+			mac_you->execute();			
+			mac->onSlotEnd();
+			mac_you->onSlotEnd();
+			if (expect_missing_packet) 
+				CPPUNIT_ASSERT_EQUAL(true, pp_you->reported_missing_packet_to_arq);							
+		}		
+		CPPUNIT_ASSERT_EQUAL(true, expect_missing_packet);
+		CPPUNIT_ASSERT_LESS(max_slots, num_slots);				
+	}
+
 	/** Tests that throughout an entire PP link, the timeouts between two users match and are correctly decremented. */
 	void testTimeoutsMatchOverWholePPLink() {
 		env->rlc_layer->should_there_be_more_p2p_data = false;
@@ -906,6 +944,7 @@ public:
 		CPPUNIT_TEST(testNextTxSlotCorrectlySetAfterLinkEstablishment);		
 		CPPUNIT_TEST(testIsStartOfTxBurst);				
 		CPPUNIT_TEST(testReportStartAndEndOfTxBurstsToArq);						
+		CPPUNIT_TEST(testReportMissingPacketToArq);								
 		CPPUNIT_TEST(testTimeoutsMatchOverWholePPLink);		
 		CPPUNIT_TEST(testCancelLinkRequestWhenRequestIsReceived);		
 		CPPUNIT_TEST(testLinkReestablishmentWhenTheresMoreData);		

@@ -78,9 +78,16 @@ void PPLinkManager::onSlotStart(uint64_t num_slots) {
 	reception_this_slot = false;
 	reported_start_tx_burst_to_arq = false;
 	reported_end_tx_burst_to_arq = false;
+	reported_missing_packet_to_arq = false;
+	received_packet_this_slot = false;
 }
 
 void PPLinkManager::onSlotEnd() {
+	if (reception_this_slot && !received_packet_this_slot) {
+		reported_missing_packet_to_arq = true;
+		mac->reportMissingPpPacket(link_id);
+	}
+
 	if (link_status == awaiting_reply) {
 		this->expected_link_request_confirmation_slot--;
 		if (this->expected_link_request_confirmation_slot < 0) {
@@ -386,4 +393,8 @@ int PPLinkManager::getNextRxSlot() const {
 
 void PPLinkManager::setMaxNoPPLinkEstablishmentAttempts(int value) {
 	this->max_establishment_attempts = value;
+}
+
+void PPLinkManager::receivedPacketThisSlot() {
+	received_packet_this_slot = true;
 }

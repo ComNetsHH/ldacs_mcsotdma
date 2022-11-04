@@ -150,6 +150,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		unsigned int measureMacDelay();
 
+		/** Called when a packet is successfully received. */
+		virtual void receivedPacketThisSlot();
+
 	protected:
 		MacId link_id;
 		MCSOTDMA_Mac *mac;
@@ -160,6 +163,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Status link_status;
 		/** To measure the MAC delay, keep track of the number of slots in-between channel accesses. */
 		unsigned int time_slot_of_last_channel_access = 0;
+		bool received_packet_this_slot = false;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {

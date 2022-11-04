@@ -50,6 +50,7 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 
 	assert(!packet->getHeaders().empty() && "LinkManager::onPacketReception(empty packet)");
 	assert(packet->getHeaders().size() == packet->getPayloads().size());
+	this->receivedPacketThisSlot();
 	// Go through all header and payload pairs...
 	bool contains_data = false;
 	for (size_t i = 0; i < packet->getHeaders().size(); i++) {		
@@ -135,6 +136,8 @@ void LinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*&
 // }
 
 void LinkManager::onSlotEnd() {}
+
+void LinkManager::receivedPacketThisSlot() {}
 
 unsigned int LinkManager::measureMacDelay() {	
 	unsigned int now = mac->getCurrentSlot();	
