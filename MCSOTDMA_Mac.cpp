@@ -33,6 +33,11 @@ void MCSOTDMA_Mac::notifyOutgoing(unsigned long num_bits, const MacId& mac_id) {
 }
 
 void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) {
+	// stop transmission if this node is silent
+	if (silent) {
+		delete packet;
+		return;
+	}
 	assert(lower_layer && "MCSOTDMA_Mac's lower layer is unset.");
 	// check that the packet is not empty	
 	if (packet->getDestination() == SYMBOLIC_ID_UNSET) {
@@ -639,4 +644,8 @@ int MCSOTDMA_Mac::getFixedPPPeriod() const {
 
 void MCSOTDMA_Mac::setDutyCycleBudgetComputationStrategy(const DutyCycleBudgetStrategy& strategy) {
 	this->duty_cycle.setStrategy(strategy);
+}
+
+void MCSOTDMA_Mac::setSilent(bool is_silent) {
+	this->silent = is_silent;
 }

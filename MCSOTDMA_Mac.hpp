@@ -101,6 +101,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void reportBroadcastSlotAdvertisement(const MacId& id, unsigned int advertised_slot_offset);
 		NeighborObserver& getNeighborObserver();		
 
+		void setSilent(bool is_silent) override;
+
 		void statisticReportBroadcastMessageProcessed() {
 			stat_num_broadcast_msgs_processed.increment();
 		}
@@ -287,6 +289,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool should_force_pp_period = false;
 		/** Is used for each PP link if should_force_pp_period is true. */
 		int forced_pp_period = 1;
+		/** A silent node cannot transmit packets. */
+		bool silent = false;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
