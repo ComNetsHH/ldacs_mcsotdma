@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include "LinkProposal.hpp"
+#include "MovingAverage.hpp"
 
 namespace TUHH_INTAIRNET_MCSOTDMA {
 	/**
@@ -25,6 +26,14 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		void clearAdvertisedLinkProposals(const MacId &id);
 		void addAdvertisedLinkProposal(const MacId &id, unsigned long current_slot, const LinkProposal &proposal);
 		std::vector<LinkProposal> getAdvertisedLinkProposals(const MacId &id, const unsigned long current_slot) const;
+
+	protected:		
+		/** Sets the respective value in active_neighbors, which is incremented each slot. 
+		 * @return The number of time slots since this user was last seen.
+		*/
+		uint updateLastSeenCounter(const MacId &id);
+		/** Updates the respective average value of the number of time slots in-between beacon receptions. */
+		void updateAvgLastSeen(const MacId &id, uint num_time_slots_since_last_seen);
  
 	protected:
 		/** Pairs of <ID, last-seen-this-many-slots-ago> */
@@ -32,6 +41,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Pairs of <ID, next-broadcast> */
 		std::map<MacId, unsigned int> advertised_broadcast_slots;
 		std::map<MacId, std::vector<std::pair<unsigned long, LinkProposal>>> advertised_link_proposals;
+		std::map<MacId, MovingAverage> avg_last_seen;
+		/** Number of time slots to use for the moving averages in avg_last_seen.*/
+		const uint num_time_slots_to_average = 10;
 
 		unsigned int max_last_seen_val;
 	};
