@@ -9,15 +9,52 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-NeighborObserver::NeighborObserver(unsigned int max_time_slots_until_neighbor_not_active_anymore) : max_last_seen_val(max_time_slots_until_neighbor_not_active_anymore) {}
+NeighborObserver::NeighborObserver(unsigned int max_time_slots_until_neighbor_not_active_anymore) : max_last_seen_val(max_time_slots_until_neighbor_not_active_anymore), first_neighbor_avg_last_seen(MovingAverage(this->num_time_slots_to_average)) {}
 
 void NeighborObserver::reportActivity(const MacId& id) {
+	uint num_time_slots_since_last_seen = updateLastSeenCounter(id);
+	updateAvgLastSeen(id, num_time_slots_since_last_seen);
+}
+
+uint NeighborObserver::updateLastSeenCounter(const MacId &id) {
 	auto it = active_neighbors.find(id);
+	uint num_time_slots_since_last_seen;
 	// if id does not exist
-	if (it == active_neighbors.end())
-		active_neighbors.insert({id, 0}); // add it
-	else  // if it does
-		(*it).second = 0;  // then set the last-seen value to zero slots	
+	if (it == active_neighbors.end()) {
+		// add it
+		num_time_slots_since_last_seen = 0;
+		active_neighbors.insert({id, num_time_slots_since_last_seen}); 		
+	// if id already exists
+	} else {  
+		// get the current value
+		num_time_slots_since_last_seen = (*it).second;
+		// and reset to zero
+		(*it).second = 0;  // then set the counter value to zero slots	
+	}
+	return num_time_slots_since_last_seen;
+}
+
+void NeighborObserver::updateAvgLastSeen(const MacId &id, uint num_time_slots_since_last_seen) {	
+	try {
+		if (first_neighbor_id == SYMBOLIC_ID_UNSET) 		
+			first_neighbor_id = MacId(id);
+		if (id == first_neighbor_id && num_time_slots_since_last_seen > 0)
+			first_neighbor_avg_last_seen.put(num_time_slots_since_last_seen);
+	} catch (const std::exception &e) {		
+		throw std::runtime_error("error updating first-neighbor average time between beacons, with first neighbor id=" + std::to_string(id.getId()));
+	}	
+	auto it = avg_last_seen.find(id);
+	// if id does not exist
+	if (it == avg_last_seen.end()) {
+		// add it		
+		auto pair = avg_last_seen.emplace(id, this->num_time_slots_to_average);		
+		// add the value only if this is not a new observation
+		if (num_time_slots_since_last_seen > 0 && pair.second)
+			pair.first->second.put(num_time_slots_since_last_seen);
+	// if id already exists
+	} else {
+		(*it).second.put(num_time_slots_since_last_seen);
+	}
 }
 
 void NeighborObserver::onSlotEnd() {
@@ -126,4 +163,21 @@ std::vector<LinkProposal> NeighborObserver::getAdvertisedLinkProposals(const Mac
 		}
 	}
 	return valid_proposals;
+}
+
+double NeighborObserver::getAvgBeaconDelay() const {
+	double avg = 0.0;
+	size_t i = 0;
+	for (auto pair : avg_last_seen) {
+		double current_avg = pair.second.get();
+		if (current_avg > 0.0) {
+			avg += current_avg;
+			i++;
+		}
+	}
+	return avg / ((double) i);
+}
+
+double NeighborObserver::getAvgFirstNeighborBeaconDelay() const {
+	return first_neighbor_avg_last_seen.get();
 }

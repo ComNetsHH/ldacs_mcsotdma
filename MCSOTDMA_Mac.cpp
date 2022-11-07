@@ -12,7 +12,7 @@
 
 using namespace TUHH_INTAIRNET_MCSOTDMA;
 
-MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), active_neighbor_observer(50000), duty_cycle(DutyCycle(default_duty_cycle_period, default_max_duty_cycle, default_min_num_supported_pp_links)) {
+MCSOTDMA_Mac::MCSOTDMA_Mac(const MacId& id, uint32_t planning_horizon) : IMac(id), reservation_manager(new ReservationManager(planning_horizon)), neighbor_observer(50000), duty_cycle(DutyCycle(default_duty_cycle_period, default_max_duty_cycle, default_min_num_supported_pp_links)) {
 	stat_broadcast_mac_delay.dontEmitBeforeFirstReport();	
 	stat_broadcast_candidate_slots.dontEmitBeforeFirstReport();
 	stat_broadcast_selected_candidate_slots.dontEmitBeforeFirstReport();
@@ -384,8 +384,16 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	}
 
 	// update active neighbors list
-	active_neighbor_observer.onSlotEnd();
-	statisticReportNumActiveNeighbors(active_neighbor_observer.getNumActiveNeighbors());
+	neighbor_observer.onSlotEnd();
+	statisticReportNumActiveNeighbors(neighbor_observer.getNumActiveNeighbors());
+	if (stat_num_broadcasts_rcvd.get() > 2.0) {
+		double avg_beacon_delay = neighbor_observer.getAvgBeaconDelay();
+		if (avg_beacon_delay > 0.0)
+			statisticReportAvgBeaconReceptionDelay(avg_beacon_delay);
+		double avg_first_neighbor_delay = neighbor_observer.getAvgFirstNeighborBeaconDelay();
+		if (avg_first_neighbor_delay > 0.0)
+			statisticReportFirstNeighborAvgBeaconReceptionDelay(avg_first_neighbor_delay);
+	}
 
 	// Statistics reporting.
 	for (auto* stat : statistics)
@@ -417,17 +425,17 @@ void MCSOTDMA_Mac::setContentionMethod(ContentionMethod method) {
 }
 
 void MCSOTDMA_Mac::reportNeighborActivity(const MacId& id) {
-	active_neighbor_observer.reportActivity(id);
+	neighbor_observer.reportActivity(id);
 }
 
 void MCSOTDMA_Mac::reportBroadcastSlotAdvertisement(const MacId& id, unsigned int advertised_slot_offset) {
-	active_neighbor_observer.reportBroadcastSlotAdvertisement(id, advertised_slot_offset);
+	neighbor_observer.reportBroadcastSlotAdvertisement(id, advertised_slot_offset);
 }
 
 
 
 NeighborObserver& MCSOTDMA_Mac::getNeighborObserver() {
-	return this->active_neighbor_observer;
+	return this->neighbor_observer;
 }
 
 size_t MCSOTDMA_Mac::getNumUtilizedP2PResources() const {
