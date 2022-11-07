@@ -19,12 +19,14 @@ MovingAverage::MovingAverage(const MovingAverage& old, unsigned int num_values) 
 
 void MovingAverage::put(unsigned long value) {
 	has_been_updated = true;
+	if (values.size() == 0)
+		throw std::runtime_error("MovingAverage has size zero, but put has been called.");
 	// If the window hasn't been filled yet.
-	if (index <= values.size() - 1) {
+	if (index <= values.size() - 1) {		
 		values.at(index) = value;
 		index++;
 		// If it has, kick out an old value.
-	} else {
+	} else {		
 		for (std::size_t i = 1; i < values.size(); i++)
 			values.at(i - 1) = values.at(i);
 		values.at(values.size() - 1) = value;

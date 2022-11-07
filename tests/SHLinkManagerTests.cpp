@@ -342,7 +342,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->reportNeighborActivity(partner_id);
 			CPPUNIT_ASSERT_EQUAL(header->slot_offset, mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id));
 			for (size_t t = 0; t < header->slot_offset + 1; t++) {
-				mac->active_neighbor_observer.onSlotEnd();
+				mac->neighbor_observer.onSlotEnd();
 				if (t < header->slot_offset)
 					CPPUNIT_ASSERT_EQUAL((unsigned int) (header->slot_offset - (t+1)), mac->getNeighborObserver().getNextExpectedBroadcastSlotOffset(partner_id));				
 			}

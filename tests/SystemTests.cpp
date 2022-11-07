@@ -619,6 +619,21 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_THROW(mac_layer_me->getDutyCycle().getOffsetSH(duty_cycle_contribs), std::runtime_error);
 		}
 
+		void testMeasureTimeInbetweenBeaconReceptions() {
+			size_t num_slots = 0, max_slots = 3000;
+			while (mac_layer_me->stat_num_broadcasts_rcvd.get() < 10.0 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_GREATEREQUAL(2.0, mac_layer_me->stat_num_broadcasts_rcvd.get());
+			CPPUNIT_ASSERT_GREATER(0.0, mac_layer_me->getNeighborObserver().avg_last_seen.at(partner_id).get());
+			CPPUNIT_ASSERT_EQUAL(mac_layer_me->getNeighborObserver().avg_last_seen.at(partner_id).get(), mac_layer_me->getNeighborObserver().getAvgBeaconDelay());
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 		CPPUNIT_TEST(testLinkEstablishment);		
 		CPPUNIT_TEST(testCommunicateInOtherDirection);
@@ -645,6 +660,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetThreePPLinks);
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);	
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinksFromCrash);	
+		CPPUNIT_TEST(testMeasureTimeInbetweenBeaconReceptions);			
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

@@ -142,7 +142,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		}				
 		void statisticReportNumActiveNeighbors(size_t val) {
 			stat_num_active_neighbors.capture(val);
-		}		
+		}				
 		void statisticReportBroadcastCandidateSlots(size_t val) {
 			stat_broadcast_candidate_slots.capture(val);
 		}
@@ -154,6 +154,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 */
 		void statisticReportBroadcastMacDelay(unsigned int mac_delay) {			
 			stat_broadcast_mac_delay.capture((double) mac_delay);
+		}
+		void statisticReportAvgBeaconReceptionDelay(double avg_delay) {
+			stat_avg_beacon_rx_delay.capture(avg_delay);
+		}
+		void statisticReportFirstNeighborAvgBeaconReceptionDelay(double avg_delay) {
+			stat_first_neighbor_beacon_rx_delay.capture(avg_delay);
 		}
 
 		void statisticReportUnicastMacDelay(unsigned int mac_delay) {			
@@ -254,7 +260,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<MacId, CPRPosition> position_map;
 		std::map<uint64_t, std::vector<L2Packet*>> received_packets;		
 		/** Keeps a list of active neighbors, which have demonstrated activity within the last 50.000 slots (10min if slot duration is 12ms). */
-		NeighborObserver active_neighbor_observer; 
+		NeighborObserver neighbor_observer; 
 		/** Number of transmission bursts before a P2P link expires. */
 		const unsigned int default_p2p_link_timeout = 10;
 		/** Number of slots between two transmission bursts. */
@@ -263,11 +269,12 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool adapt_burst_offset = true;
 		bool use_duty_cycle = true;
 		int default_pp_link_timeout = 20;
-		
-		/** Time slots. */
-		const unsigned int default_duty_cycle_period = 100;
-		/** Percentage. */
+				
+		/** Percentage of time that can be used for transmissions. */
 		const double default_max_duty_cycle = 0.1;
+		/** Number of time slots to consider when checking whether the duty cycle is kept. */
+		const unsigned int default_duty_cycle_period = 100;
+		/** Number of PP links that the MAC should be able to maintain, given the maximum duty cycle. */
 		const unsigned int default_min_num_supported_pp_links = 1;
 		DutyCycle duty_cycle;
 
@@ -301,7 +308,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);		
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
 		Statistic stat_broadcast_selected_candidate_slots = Statistic("mcsotdma_statistic_broadcast_selected_candidate_slot", this);		
-		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);				
+		Statistic stat_broadcast_mac_delay = Statistic("mcsotdma_statistic_broadcast_mac_delay", this);
+		Statistic stat_avg_beacon_rx_delay = Statistic("mcsotdma_statistic_avg_beacon_rx_delay", this);
+		Statistic stat_first_neighbor_beacon_rx_delay = Statistic("mcsotdma_statistic_first_neighbor_beacon_rx_delay", this);
 		Statistic stat_unicast_mac_delay = Statistic("mcsotdma_statistic_unicast_mac_delay", this);								
 		Statistic stat_pp_link_missed_last_reply_opportunity = Statistic("mcsotdma_statistic_pp_link_missed_last_reply_opportunity", this);		
 		Statistic stat_pp_link_exceeded_max_no_establishment_attempts = Statistic("mcsotdma_statistic_pp_link_exceeded_max_no_establishment_attempts", this);
@@ -340,6 +349,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_broadcast_candidate_slots,
 				&stat_broadcast_selected_candidate_slots,				
 				&stat_broadcast_mac_delay,
+				&stat_avg_beacon_rx_delay,
+				&stat_first_neighbor_beacon_rx_delay,
 				&stat_unicast_mac_delay,				
 				&stat_pp_link_missed_last_reply_opportunity,				
 				&stat_pp_link_establishment_time,				
