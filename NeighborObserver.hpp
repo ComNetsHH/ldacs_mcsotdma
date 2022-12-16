@@ -38,9 +38,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Sets the respective value in active_neighbors, which is incremented each slot. 
 		 * @return The number of time slots since this user was last seen.
 		*/
-		uint updateLastSeenCounter(const MacId &id);
+		uint64_t updateLastSeenCounter(const MacId &id);
 		/** Updates the respective average value of the number of time slots in-between beacon receptions. */
-		void updateAvgLastSeen(const MacId &id, uint num_time_slots_since_last_seen);
+		void updateAvgLastSeen(const MacId &id, uint64_t num_time_slots_since_last_seen);
  
 	protected:
 		/** Pairs of <ID, last-seen-this-many-slots-ago> */
@@ -50,7 +50,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		std::map<MacId, std::vector<std::pair<unsigned long, LinkProposal>>> advertised_link_proposals;
 		std::map<MacId, MovingAverage> avg_last_seen;
 		/** Number of time slots to use for the moving averages in avg_last_seen.*/
-		const uint num_time_slots_to_average = 10;
+		const uint64_t num_time_slots_to_average = 10;
 		/** Average time in-between beacons of the first user whose beacon has been received. */
 		MovingAverage first_neighbor_avg_last_seen;
 		MacId first_neighbor_id = SYMBOLIC_ID_UNSET;		

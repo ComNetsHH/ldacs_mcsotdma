@@ -12,13 +12,13 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 NeighborObserver::NeighborObserver(unsigned int max_time_slots_until_neighbor_not_active_anymore) : max_last_seen_val(max_time_slots_until_neighbor_not_active_anymore), first_neighbor_avg_last_seen(MovingAverage(this->num_time_slots_to_average)) {}
 
 void NeighborObserver::reportActivity(const MacId& id) {
-	uint num_time_slots_since_last_seen = updateLastSeenCounter(id);
+	uint64_t num_time_slots_since_last_seen = updateLastSeenCounter(id);
 	updateAvgLastSeen(id, num_time_slots_since_last_seen);
 }
 
-uint NeighborObserver::updateLastSeenCounter(const MacId &id) {
+uint64_t NeighborObserver::updateLastSeenCounter(const MacId &id) {
 	auto it = active_neighbors.find(id);
-	uint num_time_slots_since_last_seen;
+	uint64_t num_time_slots_since_last_seen;
 	// if id does not exist
 	if (it == active_neighbors.end()) {
 		// add it
@@ -34,7 +34,7 @@ uint NeighborObserver::updateLastSeenCounter(const MacId &id) {
 	return num_time_slots_since_last_seen;
 }
 
-void NeighborObserver::updateAvgLastSeen(const MacId &id, uint num_time_slots_since_last_seen) {	
+void NeighborObserver::updateAvgLastSeen(const MacId &id, uint64_t num_time_slots_since_last_seen) {	
 	try {
 		if (first_neighbor_id == SYMBOLIC_ID_UNSET) 		
 			first_neighbor_id = MacId(id);
