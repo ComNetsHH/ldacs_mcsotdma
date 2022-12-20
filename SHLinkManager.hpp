@@ -22,8 +22,6 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		SHLinkManager(ReservationManager *reservation_manager, MCSOTDMA_Mac *mac, unsigned int min_beacon_gap);
 		virtual ~SHLinkManager();
 
-		void onReceptionReservation() override;		
-
 		L2Packet* onTransmissionReservation() override;		
 
 		void notifyOutgoing(unsigned long num_bits) override;

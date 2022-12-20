@@ -14,10 +14,6 @@ SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_M
 : LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100) {	
 }
 
-void SHLinkManager::onReceptionReservation() {
-
-}
-
 L2Packet* SHLinkManager::onTransmissionReservation() {
 	coutd << *mac << "::" << *this << "::onTransmissionReservation -> ";	
 	size_t capacity = mac->getCurrentDatarate();
@@ -275,6 +271,7 @@ void SHLinkManager::notifyOutgoing(unsigned long num_bits) {
 }
 
 void SHLinkManager::onSlotStart(uint64_t num_slots) {
+	LinkManager::onSlotStart(num_slots);
 	// decrement next broadcast slot counter
 	if (next_broadcast_scheduled) {
 		if (next_broadcast_slot == 0)
@@ -313,6 +310,7 @@ void SHLinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void SHLinkManager::onSlotEnd() {
+	LinkManager::onSlotEnd();
 	if (packet_generated_this_slot) {
 		packet_generated_this_slot = false;
 		avg_num_slots_inbetween_packet_generations.put(num_slots_since_last_packet_generation + 1);

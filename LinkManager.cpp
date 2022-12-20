@@ -105,11 +105,6 @@ void LinkManager::onPacketReception(L2Packet*& packet) {
 	}
 }
 
-// void LinkManager::processBeaconMessage(const MacId& origin_id, L2HeaderBeacon*& header, BeaconPayload*& payload) {
-// 	coutd << *this << "::processBeaconMessage" << std::endl;
-// 	throw std::runtime_error("not implemented");
-// }
-
 void LinkManager::processBroadcastMessage(const MacId& origin, L2HeaderSH*& header) {
 	coutd << *this << "::processBroadcastMessage" << std::endl;
 	throw std::runtime_error("not implemented");
@@ -120,24 +115,26 @@ void LinkManager::processUnicastMessage(L2HeaderPP*& header, L2Packet::Payload*&
 	throw std::runtime_error("not implemented");
 }
 
-// void LinkManager::processBaseMessage(L2HeaderBase*& header) {
-// 	coutd << *this << "::processBaseMessage" << std::endl;
-// 	throw std::runtime_error("not implemented");
-// }
+void LinkManager::onSlotStart(uint64_t num_slots) {
+	expected_reception_this_slot = false;
+	received_packet_this_slot = false;
+	reported_missing_packet_to_arq = false;
+}
 
-// void LinkManager::processLinkRequestMessage(const L2HeaderLinkRequest*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
-// 	coutd << *this << "::processLinkRequestMessage" << std::endl;
-// 	throw std::runtime_error("not implemented");
-// }
+void LinkManager::onSlotEnd() {	
+	if (expected_reception_this_slot && !received_packet_this_slot) {		
+		reported_missing_packet_to_arq = true;
+		mac->reportMissingPpPacket(link_id);
+	}
+}
 
-// void LinkManager::processLinkReplyMessage(const L2HeaderLinkReply*& header, const LinkManager::LinkEstablishmentPayload*& payload, const MacId& origin_id) {
-// 	coutd << *this << "::processLinkReplyMessage" << std::endl;
-// 	throw std::runtime_error("not implemented");
-// }
+void LinkManager::onReceptionReservation() {	
+	expected_reception_this_slot = true;
+}
 
-void LinkManager::onSlotEnd() {}
-
-void LinkManager::receivedPacketThisSlot() {}
+void LinkManager::receivedPacketThisSlot() {
+	received_packet_this_slot = true;
+}
 
 unsigned int LinkManager::measureMacDelay() {	
 	unsigned int now = mac->getCurrentSlot();	

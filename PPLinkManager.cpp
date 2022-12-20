@@ -8,10 +8,6 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 PPLinkManager::PPLinkManager(const MacId& link_id, ReservationManager *reservation_manager, MCSOTDMA_Mac *mac) : LinkManager(link_id, reservation_manager, mac) {}
 
-void PPLinkManager::onReceptionReservation() {
-	reception_this_slot = true;
-}
-
 L2Packet* PPLinkManager::onTransmissionReservation() {			
 	coutd << *this << "::onTransmission -> ";		
 	// report start of TX burst to ARQ
@@ -72,22 +68,18 @@ void PPLinkManager::establishLink() {
 }
 
 void PPLinkManager::onSlotStart(uint64_t num_slots) {
+	LinkManager::onSlotStart(num_slots);
 	reserved_resources.onSlotStart();
 	// reset flags
 	transmission_this_slot = false;
 	reception_this_slot = false;
 	reported_start_tx_burst_to_arq = false;
 	reported_end_tx_burst_to_arq = false;
-	reported_missing_packet_to_arq = false;
-	received_packet_this_slot = false;
+	
 }
 
 void PPLinkManager::onSlotEnd() {
-	if (reception_this_slot && !received_packet_this_slot) {
-		reported_missing_packet_to_arq = true;
-		mac->reportMissingPpPacket(link_id);
-	}
-
+	LinkManager::onSlotEnd();
 	if (link_status == awaiting_reply) {
 		this->expected_link_request_confirmation_slot--;
 		if (this->expected_link_request_confirmation_slot < 0) {
@@ -393,8 +385,4 @@ int PPLinkManager::getNextRxSlot() const {
 
 void PPLinkManager::setMaxNoPPLinkEstablishmentAttempts(int value) {
 	this->max_establishment_attempts = value;
-}
-
-void PPLinkManager::receivedPacketThisSlot() {
-	received_packet_this_slot = true;
 }
