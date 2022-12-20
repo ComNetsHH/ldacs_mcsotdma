@@ -127,7 +127,13 @@ std::pair<size_t, size_t> MCSOTDMA_Mac::execute() {
 				num_rxs++;
 				if (num_rxs > num_receivers)
 					throw std::runtime_error("MCSOTDMA_Mac::execute for too many receptions within this time slot.");
-				LinkManager *link_manager = getLinkManager(reservation.getTarget());
+				LinkManager *link_manager;
+				// there might be a non-SH reception on the SH e.g. for link replies
+				// these should not go to a PP link manager, who would falsely report a missing packet
+				if (channel->isSH())
+					link_manager = getLinkManager(SYMBOLIC_LINK_ID_BROADCAST);
+				else				
+					link_manager = getLinkManager(reservation.getTarget());				
 				link_manager->onReceptionReservation();
 				onReceptionSlot(channel);
 				break;

@@ -636,7 +636,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 
 		void testDontReportMissingSHPacketToArq() {
 			size_t num_slots = 0, max_slots = 250;
-			// wait until the "I" have noticed "you"
+			// wait until "I" have noticed "you"
 			while (mac_layer_me->neighbor_observer.getNumActiveNeighbors() == 0 && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -668,6 +668,49 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
 		}
 
+		void testDontReportMissingPPPacketOnSHToArq() {
+			size_t num_slots = 0, max_slots = 250;
+			// wait until "I" have noticed "you"
+			while (mac_layer_me->neighbor_observer.getNumActiveNeighbors() == 0 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_me->neighbor_observer.getNumActiveNeighbors());			
+			// now the neighbor's next transmission should be known and scheduled
+			int expected_rx_slot = 0;
+			for (int t = 0; t < planning_horizon; t++) {
+				if (mac_layer_me->getReservationManager()->getBroadcastReservationTable()->getReservation(t) == Reservation(partner_id, Reservation::RX)) {
+					expected_rx_slot = t;
+					break;
+				}
+			}			
+			CPPUNIT_ASSERT_GREATER(0, expected_rx_slot);
+			// drop all packets going B->A
+			env_you->phy_layer->connected_phys.clear();
+			// proceed to the end of the slot
+			for (int t = 0; t < expected_rx_slot; t++) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+				// make sure that no missing packets are reported at all
+				for (auto &pair : mac_layer_me->getLinkManagers()) {
+					auto *link_manager = pair.second;
+					if (link_manager->reported_missing_packet_to_arq) {
+						std::cerr << "LinkManager for ID" << pair.first << " reported a missing packet to ARQ!" << std::endl;
+					}
+					CPPUNIT_ASSERT_EQUAL(false, link_manager->reported_missing_packet_to_arq);
+				}
+			}			
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 		CPPUNIT_TEST(testLinkEstablishment);		
 		CPPUNIT_TEST(testCommunicateInOtherDirection);
@@ -695,7 +738,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);	
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinksFromCrash);	
 		CPPUNIT_TEST(testMeasureTimeInbetweenBeaconReceptions);			
-		CPPUNIT_TEST(testDontReportMissingSHPacketToArq);			
+		CPPUNIT_TEST(testDontReportMissingSHPacketToArq);
+		CPPUNIT_TEST(testDontReportMissingPPPacketOnSHToArq);
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

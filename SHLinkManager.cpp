@@ -648,11 +648,6 @@ void SHLinkManager::assign(const FrequencyChannel* channel) {
 	LinkManager::assign(channel);
 }
 
-void SHLinkManager::onPacketReception(L2Packet*& packet) {
-	const MacId& id = packet->getOrigin();			
-	LinkManager::onPacketReception(packet);
-}
-
 void SHLinkManager::setTargetCollisionProb(double value) {
 	this->broadcast_target_collision_prob = value;
 }

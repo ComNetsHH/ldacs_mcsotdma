@@ -67,9 +67,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		 * If 'true': advertise the next broadcast slot in the current header.		 
 		 * @param flag 
 		 */
-		void setAdvertiseNextSlotInCurrentHeader(bool flag);				
-
-		void onPacketReception(L2Packet*& packet) override;		
+		void setAdvertiseNextSlotInCurrentHeader(bool flag);						
 
 		bool isNextBroadcastScheduled() const;
 		unsigned int getNextBroadcastSlot() const;
