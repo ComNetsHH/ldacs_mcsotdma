@@ -249,7 +249,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			rlc_layer_me->should_there_be_more_p2p_data = false;
 			rlc_layer_you->should_there_be_more_p2p_data = false;
 			pp_me->notifyOutgoing(512);
-			size_t num_slots = 0, max_slots = 100;
+			size_t num_slots = 0, max_slots = 500;
 			while (pp_you->link_status != LinkManager::link_established && num_slots++ < max_slots) {
 				mac_layer_you->update(1);
 				mac_layer_me->update(1);
@@ -634,7 +634,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(mac_layer_me->getNeighborObserver().avg_last_seen.at(partner_id).get(), mac_layer_me->getNeighborObserver().getAvgBeaconDelay());
 		}
 
-		void testReportMissingPacketToArq() {
+		void testDontReportMissingSHPacketToArq() {
 			size_t num_slots = 0, max_slots = 250;
 			// wait until the "I" have noticed "you"
 			while (mac_layer_me->neighbor_observer.getNumActiveNeighbors() == 0 && num_slots++ < max_slots) {
@@ -662,7 +662,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				mac_layer_you->onSlotEnd();
 				mac_layer_me->onSlotEnd();
 				if (expect_missing_packet) 					
-					CPPUNIT_ASSERT_EQUAL(true, sh_me->reported_missing_packet_to_arq);											
+					CPPUNIT_ASSERT_EQUAL(false, sh_me->reported_missing_packet_to_arq);											
 			}		
 			CPPUNIT_ASSERT_EQUAL(true, expect_missing_packet);
 			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
@@ -695,7 +695,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);	
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinksFromCrash);	
 		CPPUNIT_TEST(testMeasureTimeInbetweenBeaconReceptions);			
-		CPPUNIT_TEST(testReportMissingPacketToArq);			
+		CPPUNIT_TEST(testDontReportMissingSHPacketToArq);			
 	CPPUNIT_TEST_SUITE_END();
 	};
 }

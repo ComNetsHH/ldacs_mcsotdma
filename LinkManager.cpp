@@ -122,7 +122,7 @@ void LinkManager::onSlotStart(uint64_t num_slots) {
 }
 
 void LinkManager::onSlotEnd() {	
-	if (expected_reception_this_slot && !received_packet_this_slot) {		
+	if (should_report_missing_packets_to_arq && expected_reception_this_slot && !received_packet_this_slot) {		
 		reported_missing_packet_to_arq = true;
 		mac->reportMissingPpPacket(link_id);
 	}

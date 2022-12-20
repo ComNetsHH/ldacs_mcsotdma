@@ -12,6 +12,7 @@ using namespace TUHH_INTAIRNET_MCSOTDMA;
 
 SHLinkManager::SHLinkManager(ReservationManager* reservation_manager, MCSOTDMA_Mac* mac, unsigned int min_beacon_gap)
 : LinkManager(SYMBOLIC_LINK_ID_BROADCAST, reservation_manager, mac), avg_num_slots_inbetween_packet_generations(100) {	
+	should_report_missing_packets_to_arq = false;
 }
 
 L2Packet* SHLinkManager::onTransmissionReservation() {

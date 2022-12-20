@@ -126,6 +126,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		bool received_packet_this_slot = false;
 		/** Flag to indicate that an expected packet was not received and that this was reported to ARQ. */
 		bool reported_missing_packet_to_arq = false;
+		/** Flag to indicate whether a missing packet should be reported to ARQ. Defaults to true. */
+		bool should_report_missing_packets_to_arq = true;
 	};
 
 	inline std::ostream& operator<<(std::ostream& stream, const LinkManager& lm) {
