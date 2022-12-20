@@ -369,7 +369,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			mac->setForcePPPeriod(true, forced_period);
 			// after setting
 			CPPUNIT_ASSERT_EQUAL(forced_period, link_manager->getPPMinOffsetAndPeriod().second);
-		}
+		}		
 
 
 	CPPUNIT_TEST_SUITE(SHLinkManagerTests);

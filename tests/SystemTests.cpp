@@ -634,6 +634,40 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 			CPPUNIT_ASSERT_EQUAL(mac_layer_me->getNeighborObserver().avg_last_seen.at(partner_id).get(), mac_layer_me->getNeighborObserver().getAvgBeaconDelay());
 		}
 
+		void testReportMissingPacketToArq() {
+			size_t num_slots = 0, max_slots = 250;
+			// wait until the "I" have noticed "you"
+			while (mac_layer_me->neighbor_observer.getNumActiveNeighbors() == 0 && num_slots++ < max_slots) {
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+			}
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);		
+			CPPUNIT_ASSERT_EQUAL(size_t(1), mac_layer_me->neighbor_observer.getNumActiveNeighbors());			
+			max_slots = 1000;
+			num_slots = 0;
+			bool expect_missing_packet = false;
+			// drop all packets going A->B
+			env_you->phy_layer->connected_phys.clear();
+			while (!expect_missing_packet && num_slots++ < max_slots) {			
+				mac_layer_you->update(1);
+				mac_layer_me->update(1);
+				if (mac_layer_me->getReservationManager()->getBroadcastReservationTable()->getReservation(0).isRx())				
+					expect_missing_packet = true;				
+				mac_layer_you->execute();
+				mac_layer_me->execute();
+				mac_layer_you->onSlotEnd();
+				mac_layer_me->onSlotEnd();
+				if (expect_missing_packet) 					
+					CPPUNIT_ASSERT_EQUAL(true, sh_me->reported_missing_packet_to_arq);											
+			}		
+			CPPUNIT_ASSERT_EQUAL(true, expect_missing_packet);
+			CPPUNIT_ASSERT_LESS(max_slots, num_slots);
+		}
+
 	CPPUNIT_TEST_SUITE(SystemTests);
 		CPPUNIT_TEST(testLinkEstablishment);		
 		CPPUNIT_TEST(testCommunicateInOtherDirection);
@@ -661,6 +695,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinks);	
 		CPPUNIT_TEST(testDutyCycleGetSHOffsetFourPPLinksFromCrash);	
 		CPPUNIT_TEST(testMeasureTimeInbetweenBeaconReceptions);			
+		CPPUNIT_TEST(testReportMissingPacketToArq);			
 	CPPUNIT_TEST_SUITE_END();
 	};
 }
