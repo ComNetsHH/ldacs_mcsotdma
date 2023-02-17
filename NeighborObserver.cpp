@@ -41,7 +41,7 @@ void NeighborObserver::updateAvgLastSeen(const MacId &id, uint64_t num_time_slot
 		if (id == first_neighbor_id && num_time_slots_since_last_seen > 0)
 			first_neighbor_avg_last_seen.put(num_time_slots_since_last_seen);
 	} catch (const std::exception &e) {		
-		throw std::runtime_error("error updating first-neighbor average time between beacons, with first neighbor id=" + std::to_string(id.getId()));
+		throw std::runtime_error("error updating first-neighbor average time between beacons, with first neighbor id=" + std::to_string(id.getId()) + ", error is: " + std::string(e.what()));
 	}	
 	auto it = avg_last_seen.find(id);
 	// if id does not exist
