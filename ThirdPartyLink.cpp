@@ -104,7 +104,11 @@ void ThirdPartyLink::processLinkRequestMessage(const L2HeaderSH::LinkRequest& he
 		this->num_slots_until_expected_link_reply = neighbor_observer.getNextExpectedBroadcastSlotOffset(id_link_recipient);
 	} catch (const std::invalid_argument &e) {
 		// else use initiator's, which must be known because we've just received this user's beacon
-		this->num_slots_until_expected_link_reply = neighbor_observer.getNextExpectedBroadcastSlotOffset(id_link_initiator);
+		try {
+			this->num_slots_until_expected_link_reply = neighbor_observer.getNextExpectedBroadcastSlotOffset(id_link_initiator);
+		} catch (const std::exception &e) {
+			throw std::runtime_error("While processing a link request, couldn't determine the next broadcast of the sender, which must be part of the beacon with the link request. Did you set advertiseNextBroadcastSlotInCurrentHeader to false? If you to simulate link establishments, this should be true (at least for those users that engage in PP comms). The error: " + std::string(e.what()));
+		}
 	}	
 	// this->reply_offset = (int) header->reply_offset; // this one is not updated and will be used in slot offset normalization when the reply is processed
 	// mark the slot as RX (collisions are handled, too)
