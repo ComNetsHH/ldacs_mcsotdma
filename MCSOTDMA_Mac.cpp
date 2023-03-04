@@ -53,7 +53,7 @@ void MCSOTDMA_Mac::passToUpper(L2Packet* packet) {
 	upper_layer->receiveFromLower(packet);
 }
 
-void MCSOTDMA_Mac::update(uint64_t num_slots) {
+void MCSOTDMA_Mac::update(uint64_t num_slots) {	
 	// Update time.
 	IMac::update(num_slots);
 	coutd << "t=" << getCurrentSlot() << " " << *this << "::onSlotStart(" << num_slots << ")... ";
@@ -335,7 +335,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			}			
 		// several packets are cause for a collision
 		} else if (packets.size() > 1) {			
-			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() << " packets -> ";
+			coutd << *this << " collision on frequency " << freq << " -> dropping " << packets.size() - 1 << " packets -> ";
 			stat_num_packet_collisions.increment();
 			// figure out which packet to keep
 			// by comparing SINRs
@@ -368,6 +368,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 				if (packet != packet_with_largest_snr) {
 					this->deletePacket(packet);
 					delete packet;
+					num_dropped_packets_this_slot++;
 				}
             }
         }
@@ -405,6 +406,11 @@ void MCSOTDMA_Mac::onSlotEnd() {
 		if (avg_first_neighbor_delay > 0.0)
 			statisticReportFirstNeighborAvgBeaconReceptionDelay(avg_first_neighbor_delay);
 	}
+
+	// update dropped packets statistic
+	avg_num_dropped_packets_over_last_ten_time_slots.put(num_dropped_packets_this_slot);
+	stat_dropped_packets_over_last_ten_time_slots.capture(avg_num_dropped_packets_over_last_ten_time_slots.get());
+	num_dropped_packets_this_slot = 0;	
 
 	// Statistics reporting.
 	for (auto* stat : statistics)

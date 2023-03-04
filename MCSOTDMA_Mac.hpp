@@ -290,7 +290,9 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		/** Is used for each PP link if should_force_pp_period is true. */
 		int forced_pp_period = 1;
 		/** A silent node cannot transmit packets. */
-		bool silent = false;
+		bool silent = false;		
+		MovingAverage avg_num_dropped_packets_over_last_ten_time_slots = MovingAverage(10);		
+		size_t num_dropped_packets_this_slot = 0;
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);
@@ -307,7 +309,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		Statistic stat_num_broadcasts_sent = Statistic("mcsotdma_statistic_num_broadcasts_sent", this);
 		Statistic stat_num_unicasts_sent = Statistic("mcsotdma_statistic_num_unicasts_sent", this);
 		Statistic stat_num_replies_sent = Statistic("mcsotdma_statistic_num_link_replies_sent", this);				
-		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);				
+		Statistic stat_num_packet_collisions = Statistic("mcsotdma_statistic_num_packet_collisions", this);
+		Statistic stat_dropped_packets_over_last_ten_time_slots = Statistic("mcsotdma_statistic_dropped_packets_over_last_ten_time_slots", this);
 		Statistic stat_num_channel_errors = Statistic("mcsotdma_statistic_num_channel_errors", this);		
 		Statistic stat_num_active_neighbors = Statistic("mcsotdma_statistic_num_active_neighbors", this);		
 		Statistic stat_broadcast_candidate_slots = Statistic("mcsotdma_statistic_broadcast_candidate_slots", this);
@@ -347,7 +350,8 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 				&stat_num_broadcasts_sent,
 				&stat_num_unicasts_sent,
 				&stat_num_replies_sent,								
-				&stat_num_packet_collisions,					
+				&stat_num_packet_collisions,
+				&stat_dropped_packets_over_last_ten_time_slots,
 				&stat_num_channel_errors,			
 				&stat_num_active_neighbors,				
 				&stat_broadcast_candidate_slots,
