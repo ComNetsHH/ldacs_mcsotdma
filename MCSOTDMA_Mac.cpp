@@ -46,6 +46,7 @@ void MCSOTDMA_Mac::passToLower(L2Packet* packet, unsigned int center_frequency) 
 	}
 	statisticReportPacketSent();
 	lower_layer->receiveFromUpper(packet, center_frequency);
+	num_sent_packets_this_slot++;
 }
 
 void MCSOTDMA_Mac::passToUpper(L2Packet* packet) {
@@ -286,6 +287,9 @@ void MCSOTDMA_Mac::notifyAboutDmeTransmission(uint64_t center_frequency) {
 }
 
 void MCSOTDMA_Mac::onSlotEnd() {
+	size_t num_dropped_packets_this_slot = 0;
+	size_t num_rcvd_packets_this_slot = 0;
+
 	for (auto &packet_freq_pair : received_packets) {
 		// On this frequency channel,
 		uint64_t freq = packet_freq_pair.first;
@@ -327,6 +331,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 					else
 						getLinkManager(packet->getOrigin())->onPacketReception(packet);				
 					stat_num_packets_rcvd.increment();
+					num_rcvd_packets_this_slot = 1;
 				} catch (const std::exception &e) {
 					std::stringstream ss;
 					ss << *this << "::onSlotEnd error processing received packet: " << e.what() << std::endl;						
@@ -357,6 +362,7 @@ void MCSOTDMA_Mac::onSlotEnd() {
 					else
 						getLinkManager(packet_with_largest_snr->getOrigin())->onPacketReception(packet_with_largest_snr);				
 					stat_num_packets_rcvd.increment();
+					num_rcvd_packets_this_slot = 1;
 				} catch (const std::exception &e) {
 					std::stringstream ss;
 					ss << *this << "::onSlotEnd error processing received packet: " << e.what() << std::endl;						
@@ -407,10 +413,11 @@ void MCSOTDMA_Mac::onSlotEnd() {
 			statisticReportFirstNeighborAvgBeaconReceptionDelay(avg_first_neighbor_delay);
 	}
 
-	// update dropped packets statistic
-	avg_num_dropped_packets_over_last_ten_time_slots.put(num_dropped_packets_this_slot);
-	stat_dropped_packets_over_last_ten_time_slots.capture(avg_num_dropped_packets_over_last_ten_time_slots.get());
-	num_dropped_packets_this_slot = 0;	
+	// update per-slot statistics
+	stat_dropped_packets_this_slot.capture(num_dropped_packets_this_slot);
+	stat_rcvd_packets_this_slot.capture(num_rcvd_packets_this_slot);
+	stat_sent_packets_this_slot.capture(num_sent_packets_this_slot);
+	num_sent_packets_this_slot = 0;
 
 	// Statistics reporting.
 	for (auto* stat : statistics)
