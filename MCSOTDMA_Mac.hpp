@@ -291,7 +291,7 @@ namespace TUHH_INTAIRNET_MCSOTDMA {
 		int forced_pp_period = 1;
 		/** A silent node cannot transmit packets. */
 		bool silent = false;	
-		size_t num_sent_packets_this_slot = 0;
+		size_t num_sent_packets_this_slot = 0;		
 
 		// Statistics
 		Statistic stat_num_packets_rcvd = Statistic("mcsotdma_statistic_num_packets_received", this);

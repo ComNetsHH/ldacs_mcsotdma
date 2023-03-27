@@ -414,10 +414,12 @@ void MCSOTDMA_Mac::onSlotEnd() {
 	}
 
 	// update per-slot statistics
-	stat_dropped_packets_this_slot.capture(num_dropped_packets_this_slot);
-	stat_rcvd_packets_this_slot.capture(num_rcvd_packets_this_slot);
-	stat_sent_packets_this_slot.capture(num_sent_packets_this_slot);
-	num_sent_packets_this_slot = 0;
+	if (this->capture_per_slot_statistics) {
+		stat_dropped_packets_this_slot.capture(num_dropped_packets_this_slot);
+		stat_rcvd_packets_this_slot.capture(num_rcvd_packets_this_slot);
+		stat_sent_packets_this_slot.capture(num_sent_packets_this_slot);
+		num_sent_packets_this_slot = 0;		
+	} 
 
 	// Statistics reporting.
 	for (auto* stat : statistics)
