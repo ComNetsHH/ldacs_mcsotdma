@@ -1,37 +1,19 @@
-# Multi Channel Self Organized Time Division Multiple Access (MCSOTDMA) Protocol
+    The L-Band Digital Aeronautical Communications System (LDACS) Multi Channel Self-Organized TDMA (TDMA) Library provides an implementation of Multi Channel Self-Organized TDMA (MCSOTDMA) for the LDACS Air-Air Medium Access Control simulator.
+    Copyright (C) 2023  Sebastian Lindner, Konrad Fuger, Musab Ahmed Eltayeb Ahmed, Andreas Timm-Giel, Institute of Communication Networks, Hamburg University of Technology, Hamburg, Germany
 
-Implements the MCSOTDMA protocol.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-## Building
-The protocol is made available as a shared library.
-It is unit-tested through an executable that loads this library.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
 
-Both targets must be linked against the `glue` library.
-The `CMakeLists.txt` expects it to be available through a folder, which should be provided using symbolic links.
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-### Library Prerequisites
-The `libtuhh_intairnet_mc-sotdma.so` library must be linked against the [Glue Library](https://collaborating.tuhh.de/e-4/research-projects/intairnet-collection/intairnet-linklayer-glue/-/tree/master).  
+This repository is part of the L-Band Digital Aeronautical Communications System (LDACS) Air-Air (A/A) mode simulator that implements the proposed Medium Access Control (MAC) protocol "Multi Channel Self-Organized TDMA (MCSOTDMA)".
 
-- Please create a symbolic link `glue-lib-headers` that points to the top directory of that repository, i.e. `ln -s <path/to/glue/lib> glue-lib-headers`.
-
-### Executable Prerequisites
-The `mcsotdma-unittests` exectuable must be linked against the [Glue Library](https://collaborating.tuhh.de/e-4/research-projects/intairnet-collection/intairnet-linklayer-glue/-/tree/master).  
-
-- Please create a symbolic link `glue-lib-headers` that points to the top directory of that repository, i.e. `ln -s <path/to/glue/lib> glue-lib-headers`.
-
-### Using `cmake`
-Once the prerequisities are provided, you can build the two targets using `cmake`.  
-
-#### Release build
-- Create a directory for the release-type build: `mkdir cmake-build-release`.  
-- Change to that directory: `cd cmake-build-release`
-- Call `cmake` to generate a `Makefile`: `cmake -DCMAKE_BUILD_TYPE=Release ..`
-- Build the library: `make tuhh_intairnet_mc-sotdma`
-- Build the executable: `make mcsotdma-unittests`
-
-#### Debug build
-- Create a directory for the release-type build: `mkdir cmake-build-debug`.  
-- Change to that directory: `cd cmake-build-debug`
-- Call `cmake` to generate a `Makefile`: `cmake -DCMAKE_BUILD_TYPE=Debug ..`
-- Build the library: `make tuhh_intairnet_mc-sotdma`
-- Build the executable: `make mcsotdma-unittests`
+This library implements the MCSOTDMA MAC protocol.
