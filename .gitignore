@@ -9,3 +9,4 @@ avionic-rlc-headers
 avionic-rlc
 docs/non_working_output.txt
 .vscode/
+.DS_Store
